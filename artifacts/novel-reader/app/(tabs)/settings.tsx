@@ -1223,7 +1223,6 @@ export default function SettingsScreen() {
         <View style={[styles.versionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.versionText, { color: colors.textMuted }]}>
             Novel DR — v{Constants.expoConfig?.version ?? "2.5.18"}
-            const appVersion = Constants.expoConfig?.version ?? "2.5.18";
             {Application.nativeBuildVersion ? ` (build ${Application.nativeBuildVersion})` : ""}
           </Text>
           <Text style={[styles.madeByText, { color: colors.textMuted }]}>Made by Moggs ☕</Text>
