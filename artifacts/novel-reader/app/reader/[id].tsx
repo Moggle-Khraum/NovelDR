@@ -29,33 +29,22 @@ const TTS_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/tts_simple_set
 const TTS_MIN_CHARS = 500;
 
 function splitIntoSentences(text: string): string[] {
-  // Replace smart quotes with regular quotes
   let cleanText = text.replace(/[""'']/g, '"');
-  
-  // Replace common symbols with words for TTS
   cleanText = cleanText.replace(/→|->|=>|→/g, ' to ');
   cleanText = cleanText.replace(/←|<-|<=/g, ' from ');
   cleanText = cleanText.replace(/↔|<->/g, ' between ');
-  
-  // Split by sentence-ending punctuation
   const raw = cleanText.match(/[^.!?…\n]+[.!?…]*|[^\n]+/g) ?? [];
   const sentences: string[] = [];
-  
   for (const chunk of raw) {
     const trimmed = chunk.trim();
     if (trimmed.length <= 1) continue;
-    
-    // Check if this line has multiple segments separated by newlines or double spaces
-    // (like stat blocks: "Name: Value\nEssence: Value")
     if (trimmed.includes('\n') || trimmed.match(/\s{2,}/)) {
-      // Split by newlines and multiple spaces
       const segments = trimmed.split(/\n+|\s{2,}/).filter(s => s.trim().length > 0);
       segments.forEach(segment => {
         const seg = segment.trim();
         if (seg.length >= 2) sentences.push(seg);
       });
     } else {
-      // Normal sentence splitting by commas and semicolons
       const sub = trimmed.match(/[^,;]+[,;]?/g) ?? [trimmed];
       for (const s of sub) {
         const st = s.trim();
@@ -63,7 +52,6 @@ function splitIntoSentences(text: string): string[] {
       }
     }
   }
-  
   return sentences;
 }
 
@@ -107,8 +95,8 @@ export default function ReaderScreen() {
   const ttsErrorCountRef = useRef(0);
   const isMountedRef = useRef(true);
 
-  const [showTTSHelp, setShowTTSHelp] = useState(false);
   const [showTTSSettings, setShowTTSSettings] = useState(false);
+  const [showTTSHelp, setShowTTSHelp] = useState(false);
   const [ttsVoices, setTtsVoices] = useState<Speech.Voice[]>([]);
   const [ttsVoiceId, setTtsVoiceId] = useState<string | undefined>(undefined);
   const ttsVoiceIdRef = useRef<string | undefined>(undefined);
@@ -147,16 +135,12 @@ export default function ReaderScreen() {
       if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       await FileSystem.writeAsStringAsync(
         READER_SETTINGS_FILE,
-        JSON.stringify({
-          fontSizeIdx: font,
-          lineSpacingIdx: line,
-          autoScrollSpeedIdx: scroll,
-        })
+        JSON.stringify({ fontSizeIdx: font, lineSpacingIdx: line, autoScrollSpeedIdx: scroll })
       );
     } catch (error) { console.error('Failed to save settings:', error); }
   };
 
-  // Load TTS settings (lazy - only when reader opens)
+  // Load TTS settings
   useEffect(() => {
     (async () => {
       try {
@@ -205,9 +189,7 @@ export default function ReaderScreen() {
     }
   };
 
-  useEffect(() => {
-    loadContent();
-  }, [chapterIndex, novel?.id]);
+  useEffect(() => { loadContent(); }, [chapterIndex, novel?.id]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -231,10 +213,7 @@ export default function ReaderScreen() {
 
   const speakSentence = useCallback((sentences: string[], index: number) => {
     if (!isMountedRef.current) return;
-    if (index >= sentences.length || !ttsActiveRef.current) {
-      stopTTS();
-      return;
-    }
+    if (index >= sentences.length || !ttsActiveRef.current) { stopTTS(); return; }
     ttsIndexRef.current = index;
     setTtsIndex(index);
     try {
@@ -262,11 +241,7 @@ export default function ReaderScreen() {
           if (!isMountedRef.current) return;
           if (!ttsActiveRef.current) return;
           ttsErrorCountRef.current += 1;
-          if (ttsErrorCountRef.current > 3) { 
-            console.warn('[TTS] Too many consecutive errors, stopping TTS');
-            stopTTS(); 
-            return; 
-          }
+          if (ttsErrorCountRef.current > 3) { stopTTS(); return; }
           speakSentence(sentences, index + 1);
         }
       });
@@ -342,9 +317,7 @@ export default function ReaderScreen() {
     updateReadingProgress();
   };
 
-  const handleScrollBeginDrag = () => {
-    if (autoScrollActive) stopAutoScroll();
-  };
+  const handleScrollBeginDrag = () => { if (autoScrollActive) stopAutoScroll(); };
 
   const handleContentSizeChange = (_width: number, height: number) => {
     contentHeightRef.current = height;
@@ -493,17 +466,12 @@ export default function ReaderScreen() {
               {chapterContent.split('\n').map((line, lineIdx) => {
                 const parts: any[] = [];
                 let lastIndex = 0;
-                
-                // Normalize the line for matching (replace symbols with words)
                 const normalizedLine = line
                   .replace(/→|->|=>|→/g, ' to ')
                   .replace(/←|<-|<=/g, ' from ')
                   .replace(/↔|<->/g, ' between ');
-                
                 ttsSentences.forEach((sentence, sentIdx) => {
-                  // Clean sentence for matching
                   const cleanSentence = sentence.replace(/[""'']/g, '"');
-                  
                   const index = normalizedLine.indexOf(cleanSentence);
                   if (index !== -1) {
                     if (index > lastIndex) {
@@ -513,15 +481,12 @@ export default function ReaderScreen() {
                     lastIndex = index + cleanSentence.length;
                   }
                 });
-                
                 if (lastIndex < line.length) {
                   parts.push({ text: line.substring(lastIndex), isCurrent: false });
                 }
-                
                 if (parts.length === 0) {
                   parts.push({ text: line, isCurrent: false });
                 }
-                
                 return (
                   <Text key={lineIdx}>
                     {parts.map((part, partIdx) => (
@@ -542,7 +507,7 @@ export default function ReaderScreen() {
             </Text>
           )}
         </ScrollView>
-        
+
         {/* TTS Help Button */}
         {ttsAvailable && (
           <Pressable
@@ -552,7 +517,7 @@ export default function ReaderScreen() {
             <Ionicons name="book-outline" size={20} color={colors.text} />
           </Pressable>
         )}
-        
+
         {/* TTS Floating Button */}
         {ttsAvailable && (
           <Pressable
@@ -564,6 +529,7 @@ export default function ReaderScreen() {
             <Ionicons name={ttsActive ? "pause" : "volume-high"} size={22} color="#fff" />
           </Pressable>
         )}
+      </View>
 
       {/* TTS status overlay */}
       {ttsActive && (
@@ -637,13 +603,12 @@ export default function ReaderScreen() {
           <Pressable style={[styles.ttsHelpModal, { backgroundColor: colors.surface }]} onPress={() => {}}>
             <View style={[styles.ttsModalHandle, { backgroundColor: colors.border }]} />
             <Text style={[styles.ttsModalTitle, { color: colors.text }]}>How to Use Text-to-Speech</Text>
-      
             {[
-              { icon: "volume-high", title: "Start / Pause Reading", desc: "Tap the orange speaker button to start TTS. Tap again to pause." },
-              { icon: "settings-outline", title: "Open TTS Settings", desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
-              { icon: "refresh", title: "Load More Voices", desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
-              { icon: "musical-note", title: "Change Voice & Speed", desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
-              { icon: "close-circle-outline", title: "Close Settings", desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
+              { icon: "volume-high",         title: "Start / Pause Reading",  desc: "Tap the speaker button to start TTS. Tap again to pause." },
+              { icon: "settings-outline",    title: "Open TTS Settings",       desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
+              { icon: "refresh",             title: "Load More Voices",        desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
+              { icon: "musical-note",        title: "Change Voice & Speed",    desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
+              { icon: "close-circle-outline",title: "Close Settings",          desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
             ].map(({ icon, title, desc }) => (
               <View key={title} style={styles.ttsHelpItem}>
                 <View style={[styles.ttsHelpIconWrap, { backgroundColor: colors.accent + '20' }]}>
@@ -655,7 +620,6 @@ export default function ReaderScreen() {
                 </View>
               </View>
             ))}
-      
             <Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent, marginTop: 20 }]} onPress={() => setShowTTSHelp(false)}>
               <Text style={{ color: '#fff', fontWeight: '600' }}>Got it!</Text>
             </Pressable>
@@ -751,7 +715,13 @@ const styles = StyleSheet.create({
   chapterHeader: { fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 20, lineHeight: 26 },
   content: { fontFamily: "Inter_400Regular" },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  ttsHelpBtn: { position: 'absolute', bottom: 74, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 3 },
   ttsFloatingBtn: { position: 'absolute', bottom: 20, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  ttsHelpModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12, marginBottom: 11 },
+  ttsHelpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
+  ttsHelpIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  ttsHelpTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13, marginBottom: 3 },
+  ttsHelpDesc: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17 },
   ttsSentenceBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 20, borderRadius: 10, borderWidth: 2, paddingHorizontal: 12, paddingVertical: 8 },
   ttsSentenceLabel: { fontFamily: "Inter_600SemiBold", fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
   ttsSentenceText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
@@ -787,10 +757,4 @@ const styles = StyleSheet.create({
   ttsVoiceChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignItems: 'center', minWidth: 80 },
   ttsVoiceChipText: { fontFamily: "Inter_500Medium", fontSize: 12 },
   ttsVoiceChipLang: { fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 },
-  ttsHelpBtn: { position: 'absolute', bottom: 74, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 3 },
-  ttsHelpModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12, marginBottom: 11 },
-  ttsHelpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
-  ttsHelpIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  ttsHelpTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13, marginBottom: 3 },
-  ttsHelpDesc: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17 },    
 });
