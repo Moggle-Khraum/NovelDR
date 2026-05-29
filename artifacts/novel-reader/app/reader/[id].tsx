@@ -107,6 +107,7 @@ export default function ReaderScreen() {
   const ttsErrorCountRef = useRef(0);
   const isMountedRef = useRef(true);
 
+  const [showTTSHelp, setShowTTSHelp] = useState(false);
   const [showTTSSettings, setShowTTSSettings] = useState(false);
   const [ttsVoices, setTtsVoices] = useState<Speech.Voice[]>([]);
   const [ttsVoiceId, setTtsVoiceId] = useState<string | undefined>(undefined);
@@ -541,7 +542,17 @@ export default function ReaderScreen() {
             </Text>
           )}
         </ScrollView>
-
+        
+        {/* TTS Help Button */}
+        {ttsAvailable && (
+          <Pressable
+            style={[styles.ttsHelpBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setShowTTSHelp(true)}
+          >
+            <Ionicons name="book-outline" size={20} color={colors.text} />
+          </Pressable>
+        )}
+        
         {/* TTS Floating Button */}
         {ttsAvailable && (
           <Pressable
@@ -553,7 +564,6 @@ export default function ReaderScreen() {
             <Ionicons name={ttsActive ? "pause" : "volume-high"} size={22} color="#fff" />
           </Pressable>
         )}
-      </View>
 
       {/* TTS status overlay */}
       {ttsActive && (
@@ -619,6 +629,38 @@ export default function ReaderScreen() {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* TTS Help Modal */}
+      <Modal visible={showTTSHelp} animationType="fade" transparent onRequestClose={() => setShowTTSHelp(false)}>
+        <Pressable style={styles.ttsModalOverlay} onPress={() => setShowTTSHelp(false)}>
+          <Pressable style={[styles.ttsHelpModal, { backgroundColor: colors.surface }]} onPress={() => {}}>
+            <View style={[styles.ttsModalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.ttsModalTitle, { color: colors.text }]}>How to Use Text-to-Speech</Text>
+      
+            {[
+              { icon: "volume-high", title: "Start / Pause Reading", desc: "Tap the orange speaker button to start TTS. Tap again to pause." },
+              { icon: "settings-outline", title: "Open TTS Settings", desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
+              { icon: "refresh", title: "Load More Voices", desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
+              { icon: "musical-note", title: "Change Voice & Speed", desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
+              { icon: "close-circle-outline", title: "Close Settings", desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
+            ].map(({ icon, title, desc }) => (
+              <View key={title} style={styles.ttsHelpItem}>
+                <View style={[styles.ttsHelpIconWrap, { backgroundColor: colors.accent + '20' }]}>
+                  <Ionicons name={icon as any} size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.ttsHelpTitle, { color: colors.text }]}>{title}</Text>
+                  <Text style={[styles.ttsHelpDesc, { color: colors.textSecondary }]}>{desc}</Text>
+                </View>
+              </View>
+            ))}
+      
+            <Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent, marginTop: 20 }]} onPress={() => setShowTTSHelp(false)}>
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Got it!</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* TTS Settings Modal */}
@@ -745,4 +787,10 @@ const styles = StyleSheet.create({
   ttsVoiceChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignItems: 'center', minWidth: 80 },
   ttsVoiceChipText: { fontFamily: "Inter_500Medium", fontSize: 12 },
   ttsVoiceChipLang: { fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 },
+  ttsHelpBtn: { position: 'absolute', bottom: 74, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 3 },
+  ttsHelpModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12, marginBottom: 11 },
+  ttsHelpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
+  ttsHelpIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  ttsHelpTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13, marginBottom: 3 },
+  ttsHelpDesc: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17 },    
 });
