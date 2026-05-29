@@ -620,9 +620,9 @@ export default function ReaderScreen() {
                 </View>
               </View>
             ))}
-            <Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent, marginTop: 20 }]} onPress={() => setShowTTSHelp(false)}>
+            {/*<Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent, marginTop: 20 }]} onPress={() => setShowTTSHelp(false)}>
               <Text style={{ color: '#fff', fontWeight: '600' }}>Got it!</Text>
-            </Pressable>
+            </Pressable>*/}
           </Pressable>
         </Pressable>
       </Modal>
