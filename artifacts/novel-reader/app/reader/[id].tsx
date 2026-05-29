@@ -248,7 +248,7 @@ export default function ReaderScreen() {
           if (!ttsActiveRef.current) return;
           ttsErrorCountRef.current = 0;
           ttsScrollCounterRef.current += 1;
-          if (ttsScrollCounterRef.current >= 5) {
+          if (ttsScrollCounterRef.current >= 4) {
             ttsScrollCounterRef.current = 0;
             const newY = scrollYRef.current + 120;
             scrollRef.current?.scrollTo({ y: newY, animated: true });
