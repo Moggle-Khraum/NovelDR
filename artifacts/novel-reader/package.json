@@ -1,6 +1,6 @@
 {
   "name": "@workspace/novel-reader",
-  "version": "2.5.20",
+  "version": "2.6.1",
   "private": true,
   "main": "expo-router/entry",
   "dependencies": {
