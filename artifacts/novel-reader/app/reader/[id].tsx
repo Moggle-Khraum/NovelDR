@@ -191,12 +191,26 @@ export default function ReaderScreen() {
 
   useEffect(() => { loadContent(); }, [chapterIndex, novel?.id]);
 
+  const novelRef = useRef(novel);
+  const chapterIndexRef = useRef(chapterIndex);
+  const chapterRef = useRef(chapter);
+
+  useEffect(() => { novelRef.current = novel; }, [novel]);
+  useEffect(() => { chapterIndexRef.current = chapterIndex; }, [chapterIndex]);
+  useEffect(() => { chapterRef.current = chapter; }, [chapter]);
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       Speech.stop();
       if (intervalRef.current) clearInterval(intervalRef.current);
+      // Save progress on unmount (when user closes the reader)
+      const n = novelRef.current;
+      const ch = chapterRef.current;
+      if (n && ch) {
+        saveReadingProgress(n.id, chapterIndexRef.current, ch.title, scrollYRef.current);
+      }
     };
   }, []);
 
