@@ -152,7 +152,7 @@ export default function SettingsScreen() {
   const APP_DATA_DIR = `${FileSystem.documentDirectory}NovelDR/`;
   const BACKUP_DIR = `${FileSystem.documentDirectory}noveldrr-backups/`;
   const SETTINGS_FILE = `${APP_DATA_DIR}settings.json`;
-  const COVERS_DIR = `${APP_DATA_DIR}covers/`;
+  const COVERS_DIR = `${FileSystem.documentDirectory}covers/`;
 
   const getAsyncStorage = async () => {
     try {
