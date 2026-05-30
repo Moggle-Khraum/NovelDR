@@ -407,9 +407,44 @@ export default function SettingsScreen() {
         }
         
         addBackupLog(`📊 Covers collected: ${covers.length} (${(totalCoverSize / (1024 * 1024)).toFixed(2)} MB total)`);
+      // After
       } else {
         addBackupLog("⚠️ No covers directory found - no covers to backup");
       }
+
+      // Fallback: fetch remote covers for novels that only have a remote URL
+      if (covers.length === 0 && Array.isArray(libraryData)) {
+        addBackupLog("🔄 Trying to fetch remote covers for novels without local files...");
+        await ensureDir(COVERS_DIR);
+        for (const novel of libraryData) {
+          if (novel.coverUrl && novel.coverUrl.startsWith('http')) {
+            try {
+              const coverPath = `${COVERS_DIR}${novel.id}.jpg`;
+              const result = await FileSystem.downloadAsync(novel.coverUrl, coverPath, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                },
+              });
+              const fileInfo = await FileSystem.getInfoAsync(result.uri);
+              if (fileInfo.exists && (fileInfo as any).size > 1000) {
+                const base64 = await imageToBase64(result.uri);
+                if (base64) {
+                  covers.push({ novelId: novel.id, coverBase64: base64, fileName: `${novel.id}.jpg` });
+                  addBackupLog(`   ✅ Fetched remote cover: ${novel.title}`);
+                }
+              } else {
+                addBackupLog(`   ⚠️ Cover too small or empty: ${novel.title}`);
+              }
+            } catch (e) {
+              addBackupLog(`   ⚠️ Could not fetch cover for: ${novel.title}`);
+            }
+          }
+        }
+        if (covers.length > 0) {
+          addBackupLog(`📊 Fetched ${covers.length} remote covers as fallback`);
+        }
+      }
+
     } catch (coversError) {
       addBackupLog(`❌ Error scanning covers: ${String(coversError)}`);
     }
