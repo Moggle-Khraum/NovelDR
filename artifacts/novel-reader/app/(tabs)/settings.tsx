@@ -149,6 +149,9 @@ export default function SettingsScreen() {
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
 
+  // Credits modal state
+  const [showCredits, setShowCredits] = useState(false);
+
   const APP_DATA_DIR = `${FileSystem.documentDirectory}NovelDR/`;
   const BACKUP_DIR = `${FileSystem.documentDirectory}noveldrr-backups/`;
   const SETTINGS_FILE = `${APP_DATA_DIR}settings.json`;
@@ -1255,6 +1258,15 @@ export default function SettingsScreen() {
           <Text style={[styles.reportBtnText, { color: colors.text }]}>Report Issue / Feedback</Text>
         </Pressable>
 
+        {/* Credits Button */}
+        <Pressable
+          style={[styles.creditsBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={() => setShowCredits(true)}
+        >
+          <Ionicons name="heart-outline" size={18} color={colors.accent} />
+          <Text style={[styles.creditsBtnText, { color: colors.text }]}>Credits & Acknowledgments</Text>
+        </Pressable>
+
         <View style={[styles.versionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.versionText, { color: colors.textMuted }]}>
             Novel DR — v{Constants.expoConfig?.version ?? "2.5.18"}
@@ -1339,6 +1351,135 @@ export default function SettingsScreen() {
             <Text style={[styles.bugFooter, { color: colors.textMuted }]}>
               This will open your email app. Internet connection required.
             </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Credits Modal */}
+      <Modal visible={showCredits} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.creditsModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.creditsModalHeader}>
+              <Text style={[styles.creditsModalTitle, { color: colors.text }]}>Credits & Acknowledgments</Text>
+              <Pressable onPress={() => setShowCredits(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.creditsScrollView} showsVerticalScrollIndicator={false}>
+              {/* Scraper Authors Section */}
+              <Text style={[styles.creditsSectionTitle, { color: colors.accent }]}>🔍 Scraper Development</Text>
+              
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Original Scraper Foundation</Text>
+                <Pressable onPress={() => Linking.openURL("https://github.com/andrei-tatar/node-novel-scraper")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@andrei-tatar/node-novel-scraper</Text>
+                </Pressable>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Original scraper architecture and core concepts
+                </Text>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Additional Sources Inspiration</Text>
+                <Pressable onPress={() => Linking.openURL("https://github.com/flyingrub/scrapers")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@flyingrub/scrapers</Text>
+                </Pressable>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Multiple site scraper implementations used as reference
+                </Text>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Independent Scraper Contributors</Text>
+                <View style={styles.creditsLinksRow}>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/arkenidar")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@arkenidar</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/andrews")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@andrews</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/imranhsayed")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@imranhsayed</Text>
+                  </Pressable>
+                </View>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Community contributors for various site parsers
+                </Text>
+              </View>
+
+              {/* Tech Stack Section */}
+              <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ Tech Stack</Text>
+              
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>React Native & Expo</Text>
+                <Pressable onPress={() => Linking.openURL("https://reactnative.dev/")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>React Native</Text>
+                </Pressable>
+                <Pressable onPress={() => Linking.openURL("https://expo.dev/")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Expo</Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>TypeScript</Text>
+                <Pressable onPress={() => Linking.openURL("https://www.typescriptlang.org/")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>TypeScript</Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>State Management & Storage</Text>
+                <View style={styles.creditsLinksRow}>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/react-navigation/react-navigation")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>React Navigation</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/react-native-async-storage/async-storage")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>AsyncStorage</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>UI & Icons</Text>
+                <View style={styles.creditsLinksRow}>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/oblador/react-native-vector-icons")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>React Native Vector Icons</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://icons.expo.fyi/")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Vector Icons</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>File System & Sharing</Text>
+                <View style={styles.creditsLinksRow}>
+                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/filesystem/")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo FileSystem</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/sharing/")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Sharing</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Haptics & Device Features</Text>
+                <View style={styles.creditsLinksRow}>
+                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/haptics/")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Haptics</Text>
+                  </Pressable>
+                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/intent-launcher/")}>
+                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Intent Launcher</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <Text style={[styles.creditsFooter, { color: colors.textMuted }]}>
+                Thank you to all open source contributors who made this app possible! 🙏
+              </Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1521,6 +1662,86 @@ const styles = StyleSheet.create({
   reportBtnText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
+  },
+  // Credits styles
+  creditsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  creditsBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+  },
+  creditsModalCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 12,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  creditsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  creditsModalTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+  },
+  creditsScrollView: {
+    maxHeight: '90%',
+  },
+  creditsSectionTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  creditsItem: {
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 4,
+  },
+  creditsItemName: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+  },
+  creditsItemLink: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  creditsItemDesc: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  creditsLinksRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 2,
+  },
+  creditsInlineLink: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  creditsFooter: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 8,
   },
   bugModalCard: {
     borderRadius: 20,
