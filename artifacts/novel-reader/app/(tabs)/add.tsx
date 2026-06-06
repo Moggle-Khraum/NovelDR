@@ -137,22 +137,28 @@ export default function AddNovelScreen() {
     setProgressLabel("");
   };
 
+  // Lightweight helper — fetches only next URL and title, no full content processing
+  const getChapterMetadata = async (
+    url: string,
+    chapterNum: number
+  ): Promise<{ nextUrl: string | null; title: string }> => {
+    const data = await fetchChapter(url, chapterNum);
+    return { nextUrl: data.nextUrl || null, title: data.title };
+  };
+
   // Extract chapter number from title
   const extractChapterNumber = (title: string): number => {
     const patterns = [
-      /chapter\s+(\d+(?:\.\d+)?)/i,      // "Chapter 1", "Chapter 1.5"
-      /ch\.?\s*(\d+(?:\.\d+)?)/i,         // "Ch. 1", "Ch 1.5"
-      /#(\d+(?:\.\d+)?)/,                  // "#1", "#1.5"
-      /(\d+)(?:st|nd|rd|th)\s+chapter/i,  // "1st chapter"
-      /^(\d+(?:\.\d+)?)[\s\-:]/,           // "1 - Title" or "1: Title"
-      /volume\s+\d+\s+chapter\s+(\d+)/i,  // "Volume 1 Chapter 2"
+      /chapter\s+(\d+(?:\.\d+)?)/i,
+      /ch\.?\s*(\d+(?:\.\d+)?)/i,
+      /#(\d+(?:\.\d+)?)/,
+      /(\d+)(?:st|nd|rd|th)\s+chapter/i,
+      /^(\d+(?:\.\d+)?)[\s\-:]/,
+      /volume\s+\d+\s+chapter\s+(\d+)/i,
     ];
-    
     for (const pattern of patterns) {
       const match = title.match(pattern);
-      if (match) {
-        return parseFloat(match[1]);
-      }
+      if (match) return parseFloat(match[1]);
     }
     return 0;
   };
@@ -160,16 +166,13 @@ export default function AddNovelScreen() {
   // Download cover image to local file system
   const downloadAndSaveCover = async (coverUrl: string, novelId: string): Promise<string> => {
     if (!coverUrl) return '';
-    
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
-    
     try {
       const dirInfo = await FileSystem.getInfoAsync(coverDir);
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(coverDir, { intermediates: true });
       }
-      
       const downloadResult = await FileSystem.downloadAsync(coverUrl, coverPath);
       addLog(`Cover image saved locally`, "success");
       return downloadResult.uri;
@@ -213,30 +216,24 @@ export default function AddNovelScreen() {
           [
             {
               text: "OK",
-              onPress: () => {
-                setUrl("");
-                setProgress(0);
-              }
+              onPress: () => { setUrl(""); setProgress(0); }
             },
             {
               text: "Go to Updates",
               onPress: () => {
-                setUrl("");
-                setProgress(0);
+                setUrl(""); setProgress(0);
                 router.push("/(tabs)/updates");
               }
             }
           ]
         );
-        
         setIsDownloading(false);
         return;
       }
 
       let domain = "";
       try {
-        const urlObj = new URL(trimmedUrl);
-        domain = urlObj.hostname;
+        domain = new URL(trimmedUrl).hostname;
       } catch {
         domain = "Unknown";
       }
@@ -245,7 +242,6 @@ export default function AddNovelScreen() {
       addLog(`CONNECTING TO SOURCE...`, "downloading");
       addLog(`Source Domain: ${domain}`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-
       addLog(`Connection successful!`, "success");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`NOVEL INFORMATION`, "downloading");
@@ -254,16 +250,13 @@ export default function AddNovelScreen() {
       addLog(`Author: ${meta.author}`, "info");
       
       if (meta.synopsis && meta.synopsis !== "No summary available.") {
-        const shortSynopsis = meta.synopsis.length > 100 
-          ? meta.synopsis.substring(0, 100) + "..." 
+        const shortSynopsis = meta.synopsis.length > 100
+          ? meta.synopsis.substring(0, 100) + "..."
           : meta.synopsis;
         addLog(`Synopsis: ${shortSynopsis}`, "info");
       }
       
-      if (meta.coverUrl) {
-        addLog(`Cover found, downloading...`, "info");
-      }
-      
+      if (meta.coverUrl) addLog(`Cover found, downloading...`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       if (!meta.firstChapterUrl) {
@@ -275,55 +268,69 @@ export default function AddNovelScreen() {
       addLog(`First chapter URL found`, "success");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
-      const safeId = meta.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
-      const novelId = safeId;
+      const safeId =
+        meta.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") +
+        "-" + Date.now();
 
       let localCoverUrl = "";
       if (meta.coverUrl) {
-        localCoverUrl = await downloadAndSaveCover(meta.coverUrl, novelId);
+        localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
 
-      const newChapters: (Chapter & { chapterNumber: number })[] = [];
-      
-      addLog(`Starting from chapter ${startCh}...`, "downloading");
-      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-
+      // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
       let currentUrl: string | null = meta.firstChapterUrl;
       let chapterNum = 1;
+
+      if (startCh > 1) {
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+        addLog(`Skipping to chapter ${startCh}...`, "downloading");
+
+        let skippedCount = 0;
+        let lastLoggedPercent = 0;
+        const totalToSkip = startCh - 1;
+
+        while (currentUrl && chapterNum < startCh && !stopRef.current) {
+          try {
+            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+            currentUrl = nextUrl;
+            chapterNum++;
+            skippedCount++;
+
+            // Log at 25%, 50%, 75% milestones
+            const percent = Math.floor((skippedCount / totalToSkip) * 100);
+            if (percent >= lastLoggedPercent + 25 && percent < 100) {
+              addLog(
+                `Skipping... ${percent}% complete (${skippedCount}/${totalToSkip} chapters)`,
+                "warning"
+              );
+              lastLoggedPercent = percent;
+            }
+          } catch (err) {
+            addLog(`Failed to skip chapter ${chapterNum}`, "error");
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+
+        if (skippedCount > 0) {
+          addLog(`Skipped ${skippedCount} chapters, ready at chapter ${startCh}`, "success");
+        }
+
+        if (!currentUrl) {
+          addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
+          setIsDownloading(false);
+          return;
+        }
+
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      }
+
+      // ========== DOWNLOAD CHAPTERS ==========
+      const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
 
-      addLog(`Skipping to chapter ${startCh}...`, "downloading");
-      let skippedCount = 0;
-      
-      while (currentUrl && chapterNum < startCh && !stopRef.current) {
-        try {
-          const data = await fetchChapter(currentUrl, chapterNum);
-          if (!data.nextUrl) break;
-          currentUrl = data.nextUrl;
-          chapterNum++;
-          skippedCount++;
-          
-          if (skippedCount % 30 === 0) {
-            addLog(`[SKIPPED] ${skippedCount} chapters`, "warning");
-          }
-        } catch (err) {
-          addLog(`Failed to skip chapter ${chapterNum}`, "error");
-          break;
-        }
-      }
-      
-      if (skippedCount % 30 !== 0 && skippedCount > 0) {
-        addLog(`[SKIPPED] ${skippedCount} chapters total`, "warning");
-      }
-      
-      if (currentUrl) {
-        addLog(`Ready to start from chapter ${startCh}`, "success");
-        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      } else {
-        addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
-        setIsDownloading(false);
-        return;
-      }
+      addLog(`Starting from chapter ${startCh}...`, "downloading");
+      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       while (currentUrl && !stopRef.current) {
         if (maxCh !== null && downloaded >= maxCh) {
@@ -334,95 +341,90 @@ export default function AddNovelScreen() {
         }
 
         setProgressLabel(`Chapter ${chapterNum}`);
-        if (maxCh) {
-          setProgress((downloaded / maxCh) * 100);
-        }
+        if (maxCh) setProgress((downloaded / maxCh) * 100);
         
-        addLog(`📥 Downloading Chapter ${chapterNum}...`, "downloading");
+        addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
 
         try {
           const data = await fetchChapter(currentUrl, chapterNum);
-          
           const chapterNumber = extractChapterNumber(data.title);
 
           newChapters.push({
             title: data.title,
             url: currentUrl,
             content: data.content,
-            chapterNumber: chapterNumber,
+            chapterNumber,
           });
 
           downloaded++;
-          
+
           if (downloaded % 10 === 0) {
-            addLog(`💾 Saved: ${data.title} (Chapter ${chapterNumber}) [${downloaded} chapters downloaded so far]`, "success");
+            addLog(
+              `Saved: ${data.title} (Chapter ${chapterNumber}) [${downloaded} chapters so far]`,
+              "success"
+            );
           } else {
-            addLog(`💾 Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
+            addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
           }
 
-          if (maxCh) {
-            setProgress((downloaded / maxCh) * 100);
-          }
+          if (maxCh) setProgress((downloaded / maxCh) * 100);
 
           if (!data.nextUrl) {
             addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-            addLog(`🏁 No more chapters found.`, "info");
+            addLog(`No more chapters found.`, "info");
             addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
             break;
           }
           currentUrl = data.nextUrl;
           chapterNum++;
         } catch (err: any) {
-          addLog(`❌ Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
+          addLog(`Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
           break;
         }
 
         await new Promise((r) => setTimeout(r, 200));
       }
 
+      // ========== SORT & FINALIZE ==========
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      addLog(`📚 Sorting ${newChapters.length} chapters by chapter number...`, "info");
-      
-      newChapters.sort((a, b) => {
-        return a.chapterNumber - b.chapterNumber;
-      });
-      
+      addLog(`Sorting ${newChapters.length} chapters by chapter number...`, "info");
+
+      newChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
+
       if (newChapters.length > 0) {
-        const chapterNums = newChapters.map(c => c.chapterNumber);
-        const validNums = chapterNums.filter(n => n > 0);
+        const validNums = newChapters.map(c => c.chapterNumber).filter(n => n > 0);
         if (validNums.length > 0) {
           const minCh = Math.min(...validNums);
           const maxChNum = Math.max(...validNums);
-          const missingCount = newChapters.length - validNums.length;
-          addLog(`📚 Chapters sorted: ${minCh} → ${maxChNum} (${newChapters.length} total${missingCount > 0 ? `, ${missingCount} untitled` : ""})`, "success");
+          const missing = newChapters.length - validNums.length;
+          addLog(
+            `Chapters sorted: ${minCh} → ${maxChNum} (${newChapters.length} total${missing > 0 ? `, ${missing} untitled` : ""})`,
+            "success"
+          );
         }
       }
-      
-      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      
-      if (stopRef.current) {
-        addLog(`⚠️ Download halted by user.`, "warning");
-        addLog(`📊 Downloaded ${downloaded} chapters before stop.`, "info");
-      } else {
-        addLog(`✅ DOWNLOAD COMPLETE!`, "success");
-        addLog(`📊 Total chapters added: ${downloaded}`, "success");
-        if (downloaded > 0) {
-          addLog(`🎉 Novel saved to your library`, "success");
-        }
-      }
-      
+
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
-      const finalChapters = newChapters.map(({ chapterNumber, ...chapter }) => chapter);
-      
-      const finalCoverUrl = localCoverUrl || meta.coverUrl;
+      if (stopRef.current) {
+        addLog(`Download halted by user.`, "warning");
+        addLog(`Downloaded ${downloaded} chapters before stop.`, "info");
+      } else {
+        addLog(`DOWNLOAD COMPLETE!`, "success");
+        addLog(`Total chapters added: ${downloaded}`, "success");
+        if (downloaded > 0) addLog(`Novel saved to your library`, "success");
+      }
+
+      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+
+      const finalChapters = newChapters.map(({ chapterNumber, ...ch }) => ch);
 
       const novel: Novel = {
-        id: novelId,
+        id: safeId,
         title: meta.title,
         author: meta.author,
         synopsis: meta.synopsis,
-        coverUrl: finalCoverUrl,
+        coverUrl: localCoverUrl || meta.coverUrl,
         sourceUrl: trimmedUrl,
         chapters: finalChapters,
         dateAdded: Date.now(),
@@ -432,7 +434,7 @@ export default function AddNovelScreen() {
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
-      addLog(`❌ ERROR: ${e.message || "Download failed"}`, "error");
+      addLog(`ERROR: ${e.message || "Download failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
       setIsDownloading(false);
@@ -463,13 +465,12 @@ export default function AddNovelScreen() {
         showsVerticalScrollIndicator={true}
         alwaysBounceVertical={true}
       >
-        {/* Supported Sites Section - Now shows all sites, no modal */}
+        {/* Supported Sites Section */}
         <View style={styles.sitesSection}>
           <View style={styles.sitesHeader}>
             <Ionicons name="globe" size={16} color={colors.accent} />
             <Text style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}>SUPPORTED SITES</Text>
           </View>
-          
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {SUPPORTED_SITES.map((site) => (
               <SiteCell key={site.name} name={site.name} />
@@ -604,9 +605,7 @@ export default function AddNovelScreen() {
                 Ready to download...
               </Text>
             ) : (
-              logs.map((entry) => (
-                <LogLine key={entry.id} entry={entry} />
-              ))
+              logs.map((entry) => <LogLine key={entry.id} entry={entry} />)
             )}
           </ScrollView>
         </View>
@@ -631,7 +630,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 22,
   },
-  scrollContent: { 
+  scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
   },
@@ -658,7 +657,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   siteCell: {
-    width: "31%", // 3 columns
+    width: "31%",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 6,
@@ -671,7 +670,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
   },
-  form: { 
+  form: {
     gap: 14,
     marginBottom: 16,
   },
@@ -716,7 +715,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 14,
   },
-  progressSection: { 
+  progressSection: {
     gap: 8,
     marginBottom: 16,
   },
@@ -743,7 +742,7 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 3,
   },
-  logSection: { 
+  logSection: {
     gap: 8,
     marginBottom: 16,
   },
