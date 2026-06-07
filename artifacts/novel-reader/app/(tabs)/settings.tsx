@@ -1371,22 +1371,22 @@ export default function SettingsScreen() {
               <Text style={[styles.creditsSectionTitle, { color: colors.accent }]}>🔍 Scraper Development</Text>
               
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Original Scraper Foundation</Text>
-                <Pressable onPress={() => Linking.openURL("https://github.com/andrei-tatar/node-novel-scraper")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@andrei-tatar/node-novel-scraper</Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Original Python Prototype</Text>
+                <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR-Python")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@Moggle-Khraum/NovelDR-Python</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  Original scraper architecture and core concepts
+                 Rebuilt as ReactNative App from Python novel scraper 
                 </Text>
               </View>
 
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Additional Sources Inspiration</Text>
-                <Pressable onPress={() => Linking.openURL("https://github.com/flyingrub/scrapers")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@flyingrub/scrapers</Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>WebNovel Source Scrapers</Text>
+                <Pressable onPress={() => Linking.openURL("https://github.com/TUVIMEN/lightnovelworld")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@TUVIMEN/lightnovelworld</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  Multiple site scraper implementations used as reference
+                  forked LightNovelWorld Scraper into the App.
                 </Text>
               </View>
 
