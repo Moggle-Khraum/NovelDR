@@ -1393,6 +1393,7 @@ export default function SettingsScreen() {
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Adapted and ported 5 novel scraper src into the App.
+                </Text>
               </View>
 
               {/* Tech Stack Section */}
@@ -1408,7 +1409,7 @@ export default function SettingsScreen() {
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>DeepSeek</Text>
                 <Pressable onPress={() => Linking.openURL("https://chat.deepseek.com/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Translate Python -> RectNative using DeepSeek</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Translate Python -> ReactNative using DeepSeek</Text>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Provides overhauled code and improvements to the old code</Text>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with Claude in improving the source code</Text>
                 </Pressable>
@@ -1417,7 +1418,7 @@ export default function SettingsScreen() {
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>Claude.ai</Text>
                 <Pressable onPress={() => Linking.openURL("https://claude.ai/new")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Improved Code and UI uisng Claude</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Improved Code and UI using Claude</Text>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Added TTS, Progress Tracking, Material 3 UI design, UI Overhaul</Text>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with DeepSeek in improving the source code</Text>
                 </Pressable>
