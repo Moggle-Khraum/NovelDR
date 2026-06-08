@@ -1376,7 +1376,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@Moggle-Khraum/NovelDR-Python</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                 Rebuilt as ReactNative App from Python novel scraper 
+                 Rebuilt as ReactNative Mobile App from Python Source  
                 </Text>
               </View>
 
@@ -1386,98 +1386,69 @@ export default function SettingsScreen() {
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@TUVIMEN/lightnovelworld</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  forked LightNovelWorld Scraper into the App.
+                  Forked LightNovelWorld Scraper into the App.
                 </Text>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Independent Scraper Contributors</Text>
-                <View style={styles.creditsLinksRow}>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/arkenidar")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@arkenidar</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/andrews")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@andrews</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/imranhsayed")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>@imranhsayed</Text>
-                  </Pressable>
-                </View>
+                <Pressable onPress={() => Linking.openURL("https://github.com/lncrawl/lightnovel-crawler/tree/dev")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@lncrawl/lightnovel-crawler</Text>
+                </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  Community contributors for various site parsers
-                </Text>
+                  Adapted and ported 5 novel scraper src into the App.
               </View>
 
               {/* Tech Stack Section */}
-              <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ Tech Stack</Text>
+              <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ This App is Built with</Text>
               
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>React Native & Expo</Text>
-                <Pressable onPress={() => Linking.openURL("https://reactnative.dev/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>React Native</Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Replit</Text>
+                <Pressable onPress={() => Linking.openURL("https://replit.com/")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Built the APK Template</Text>
                 </Pressable>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>DeepSeek</Text>
+                <Pressable onPress={() => Linking.openURL("https://chat.deepseek.com/")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Translate Python -> RectNative using DeepSeek</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Provides overhauled code and improvements to the old code</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with Claude in improving the source code</Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Claude.ai</Text>
+                <Pressable onPress={() => Linking.openURL("https://claude.ai/new")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Improved Code and UI uisng Claude</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Added TTS, Progress Tracking, Material 3 UI design, UI Overhaul</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with DeepSeek in improving the source code</Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Expo Dev</Text>
                 <Pressable onPress={() => Linking.openURL("https://expo.dev/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Expo</Text>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Used for Mobile Preview by Replit</Text>
                 </Pressable>
               </View>
 
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>TypeScript</Text>
-                <Pressable onPress={() => Linking.openURL("https://www.typescriptlang.org/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>TypeScript</Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Github Actions</Text>
+                <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR/actions")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Github Actions workflow building APK</Text>
                 </Pressable>
               </View>
 
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>State Management & Storage</Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>Donors & Feedbacks</Text>
                 <View style={styles.creditsLinksRow}>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/react-navigation/react-navigation")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>React Navigation</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/react-native-async-storage/async-storage")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>AsyncStorage</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>UI & Icons</Text>
-                <View style={styles.creditsLinksRow}>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/oblador/react-native-vector-icons")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>React Native Vector Icons</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://icons.expo.fyi/")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Vector Icons</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>File System & Sharing</Text>
-                <View style={styles.creditsLinksRow}>
-                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/filesystem/")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo FileSystem</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/sharing/")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Sharing</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Haptics & Device Features</Text>
-                <View style={styles.creditsLinksRow}>
-                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/haptics/")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Haptics</Text>
-                  </Pressable>
-                  <Pressable onPress={() => Linking.openURL("https://docs.expo.dev/versions/latest/sdk/intent-launcher/")}>
-                    <Text style={[styles.creditsInlineLink, { color: colors.accent }]}>Expo Intent Launcher</Text>
-                  </Pressable>
+                  <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                    - Furbiden
+                    - ExTicketMan Reborn
+                  </Text>
                 </View>
               </View>
 
               <Text style={[styles.creditsFooter, { color: colors.textMuted }]}>
-                Thank you to all open source contributors who made this app possible! 🙏
+                Thank you to the sponsors, scraper authors, and AI that makes this app possible! 🙏
               </Text>
             </ScrollView>
           </View>
