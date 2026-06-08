@@ -7,16 +7,17 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Application from "expo-application";
 import * as IntentLauncher from "expo-intent-launcher";
 import React, { useState, useEffect } from "react";
-import { 
-  Alert, 
-  Platform, 
-  Pressable, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  View, 
-  Modal, 
+import {
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  Modal,
   Linking,
   AppState,
   ActivityIndicator,
@@ -27,22 +28,19 @@ import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Theme } from "@/constants/colors";
 
-// Helper to convert image to base64
 const imageToBase64 = async (imagePath: string): Promise<string | null> => {
   try {
     const info = await FileSystem.getInfoAsync(imagePath);
     if (!info.exists) return null;
-    const base64 = await FileSystem.readAsStringAsync(imagePath, {
+    return await FileSystem.readAsStringAsync(imagePath, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    return base64;
   } catch (error) {
     console.error('Failed to convert image to base64:', error);
     return null;
   }
 };
 
-// Helper to save base64 as image file
 const saveBase64AsImage = async (base64: string, targetPath: string): Promise<boolean> => {
   try {
     await FileSystem.writeAsStringAsync(targetPath, base64, {
@@ -56,41 +54,21 @@ const saveBase64AsImage = async (base64: string, targetPath: string): Promise<bo
 };
 
 function ThemeButton({
-  label,
-  icon,
-  themeKey,
-  active,
-  onPress,
+  label, icon, themeKey, active, onPress,
 }: {
-  label: string;
-  icon: string;
-  themeKey: Theme;
-  active: boolean;
-  onPress: () => void;
+  label: string; icon: string; themeKey: Theme; active: boolean; onPress: () => void;
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
-      style={[
-        styles.themeBtn,
-        {
-          backgroundColor: active ? colors.accent : colors.surface,
-          borderColor: active ? colors.accent : colors.border,
-        },
-      ]}
+      style={[styles.themeBtn, {
+        backgroundColor: active ? colors.accent : colors.surface,
+        borderColor: active ? colors.accent : colors.border,
+      }]}
       onPress={onPress}
     >
-      <Ionicons
-        name={icon as any}
-        size={18}
-        color={active ? "#fff" : colors.textSecondary}
-      />
-      <Text
-        style={[
-          styles.themeBtnLabel,
-          { color: active ? "#fff" : colors.textSecondary },
-        ]}
-      >
+      <Ionicons name={icon as any} size={18} color={active ? "#fff" : colors.textSecondary} />
+      <Text style={[styles.themeBtnLabel, { color: active ? "#fff" : colors.textSecondary }]}>
         {label}
       </Text>
     </Pressable>
@@ -143,13 +121,9 @@ export default function SettingsScreen() {
   const [showWarningCard, setShowWarningCard] = useState(true);
   const [operationProgress, setOperationProgress] = useState("");
   const [backupLogs, setBackupLogs] = useState<string[]>([]);
-
-  // Bug report state
   const [showBugReport, setShowBugReport] = useState(false);
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
-
-  // Credits modal state
   const [showCredits, setShowCredits] = useState(false);
 
   const APP_DATA_DIR = `${FileSystem.documentDirectory}NovelDR/`;
@@ -161,9 +135,7 @@ export default function SettingsScreen() {
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       return AsyncStorage;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   };
 
   const loadAppSettings = async (): Promise<Record<string, any>> => {
@@ -172,9 +144,7 @@ export default function SettingsScreen() {
       if (!fileInfo.exists) return {};
       const content = await FileSystem.readAsStringAsync(SETTINGS_FILE);
       return JSON.parse(content);
-    } catch {
-      return {};
-    }
+    } catch { return {}; }
   };
 
   const saveAppSettings = async (settings: Record<string, any>) => {
@@ -197,18 +167,11 @@ export default function SettingsScreen() {
         console.error('Failed to check warning status:', error);
       }
     };
-
     checkWarningStatus();
-
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        checkWarningStatus();
-      }
+      if (nextAppState === 'active') checkWarningStatus();
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
 
   const ensureDir = async (dirPath: string) => {
@@ -227,9 +190,7 @@ export default function SettingsScreen() {
       const info = await FileSystem.getInfoAsync(path);
       if (!info.exists) return null;
       return await FileSystem.readAsStringAsync(path);
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   };
 
   const addBackupLog = (msg: string) => {
@@ -258,9 +219,7 @@ export default function SettingsScreen() {
       libraryRaw = await AsyncStorage.getItem('novel_library_v1');
       if (libraryRaw) addBackupLog("✅ Found legacy library data");
     }
-    if (AsyncStorage && !sortRaw) {
-      sortRaw = await AsyncStorage.getItem('chapter_sort_preference');
-    }
+    if (AsyncStorage && !sortRaw) sortRaw = await AsyncStorage.getItem('chapter_sort_preference');
     if (AsyncStorage && !readerRaw) {
       const fontSize = await AsyncStorage.getItem('reader_font_size_idx');
       const lineSpacing = await AsyncStorage.getItem('reader_line_spacing_idx');
@@ -281,29 +240,22 @@ export default function SettingsScreen() {
 
     const chapters: Record<string, Record<string, any>> = {};
     const chaptersDir = `${APP_DATA_DIR}chapters/`;
-    
     addBackupLog("🔍 Scanning chapter files...");
-    
+
     try {
       const chaptersDirInfo = await FileSystem.getInfoAsync(chaptersDir);
-      
       if (chaptersDirInfo.exists && chaptersDirInfo.isDirectory) {
         const novelDirs = await FileSystem.readDirectoryAsync(chaptersDir);
         addBackupLog(`📁 Found ${novelDirs.length} novel directories`);
-        
         let totalChaptersFound = 0;
-        
         for (const novelId of novelDirs) {
           const novelChapterDir = `${chaptersDir}${novelId}/`;
           const novelChapterInfo = await FileSystem.getInfoAsync(novelChapterDir);
-          
           if (novelChapterInfo.exists && novelChapterInfo.isDirectory) {
             const chapterFiles = await FileSystem.readDirectoryAsync(novelChapterDir);
             const jsonFiles = chapterFiles.filter(f => f.startsWith('chapter_') && f.endsWith('.json'));
-            
             if (jsonFiles.length > 0) {
               chapters[novelId] = {};
-              
               for (const chapterFile of jsonFiles) {
                 const chapterPath = `${novelChapterDir}${chapterFile}`;
                 try {
@@ -318,18 +270,15 @@ export default function SettingsScreen() {
                   addBackupLog(`⚠️ Skipped corrupted: ${chapterFile}`);
                 }
               }
-              
               const novelData = Array.isArray(libraryData) ? libraryData.find((n: any) => n.id === novelId) : null;
               const novelTitle = novelData?.title || novelId.slice(0, 12);
               addBackupLog(`   📄 ${novelTitle}: ${jsonFiles.length} chapters`);
             }
           }
         }
-        
         addBackupLog(`📊 Total chapters found: ${totalChaptersFound}`);
       } else {
         addBackupLog("⚠️ No chapters folder found");
-        
         if (AsyncStorage && Array.isArray(libraryData)) {
           addBackupLog("🔍 Checking AsyncStorage for chapter content...");
           let asyncChapterCount = 0;
@@ -343,7 +292,7 @@ export default function SettingsScreen() {
                     chapters[novel.id][i.toString()] = {
                       title: novel.chapters[i].title || `Chapter ${i + 1}`,
                       url: novel.chapters[i].url || '',
-                      content: novel.chapters[i].content
+                      content: novel.chapters[i].content,
                     };
                     asyncChapterCount++;
                   }
@@ -352,9 +301,7 @@ export default function SettingsScreen() {
               }
             }
           }
-          if (asyncChapterCount > 0) {
-            addBackupLog(`📊 Total legacy chapters: ${asyncChapterCount}`);
-          }
+          if (asyncChapterCount > 0) addBackupLog(`📊 Total legacy chapters: ${asyncChapterCount}`);
         }
       }
     } catch (chaptersError) {
@@ -365,57 +312,43 @@ export default function SettingsScreen() {
       (sum, novelChapters) => sum + Object.keys(novelChapters).length, 0
     );
 
-    // ── COLLECT COVERS ──
     addBackupLog("🖼️ Scanning novel covers...");
     const covers: NovelCoverBackup[] = [];
     let totalCoverSize = 0;
-    
+
     try {
       const coversDirInfo = await FileSystem.getInfoAsync(COVERS_DIR);
-      
       if (coversDirInfo.exists && coversDirInfo.isDirectory) {
         const coverFiles = await FileSystem.readDirectoryAsync(COVERS_DIR);
-        const imageFiles = coverFiles.filter(f => 
+        const imageFiles = coverFiles.filter(f =>
           f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png') || f.endsWith('.webp')
         );
-        
         addBackupLog(`📁 Found ${imageFiles.length} cover images in covers/ directory`);
-        
         for (const coverFile of imageFiles) {
           const coverPath = `${COVERS_DIR}${coverFile}`;
           const novelId = coverFile.replace(/\.(jpg|jpeg|png|webp)$/i, '');
-          
           const novelExists = Array.isArray(libraryData) && libraryData.some((n: any) => n.id === novelId);
-          
           if (novelExists) {
             const coverInfo = await FileSystem.getInfoAsync(coverPath);
             if (coverInfo.exists) {
               addBackupLog(`   🖼️ Converting cover: ${coverFile} (${((coverInfo.size || 0) / 1024).toFixed(1)} KB)`);
-              
               const coverBase64 = await imageToBase64(coverPath);
               if (coverBase64) {
-                covers.push({
-                  novelId,
-                  coverBase64,
-                  fileName: coverFile,
-                });
+                covers.push({ novelId, coverBase64, fileName: coverFile });
                 totalCoverSize += coverInfo.size || 0;
               } else {
                 addBackupLog(`   ⚠️ Failed to convert cover: ${coverFile}`);
               }
             }
           } else {
-            addBackupLog(`   ⏭️ Skipping orphan cover: ${coverFile} (no matching novel found)`);
+            addBackupLog(`   ⏭️ Skipping orphan cover: ${coverFile}`);
           }
         }
-        
         addBackupLog(`📊 Covers collected: ${covers.length} (${(totalCoverSize / (1024 * 1024)).toFixed(2)} MB total)`);
-      // After
       } else {
         addBackupLog("⚠️ No covers directory found - no covers to backup");
       }
 
-      // Fallback: fetch remote covers for novels that only have a remote URL
       if (covers.length === 0 && Array.isArray(libraryData)) {
         addBackupLog("🔄 Trying to fetch remote covers for novels without local files...");
         await ensureDir(COVERS_DIR);
@@ -424,9 +357,7 @@ export default function SettingsScreen() {
             try {
               const coverPath = `${COVERS_DIR}${novel.id}.jpg`;
               const result = await FileSystem.downloadAsync(novel.coverUrl, coverPath, {
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                },
+                headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
               });
               const fileInfo = await FileSystem.getInfoAsync(result.uri);
               if (fileInfo.exists && (fileInfo as any).size > 1000) {
@@ -443,11 +374,8 @@ export default function SettingsScreen() {
             }
           }
         }
-        if (covers.length > 0) {
-          addBackupLog(`📊 Fetched ${covers.length} remote covers as fallback`);
-        }
+        if (covers.length > 0) addBackupLog(`📊 Fetched ${covers.length} remote covers as fallback`);
       }
-
     } catch (coversError) {
       addBackupLog(`❌ Error scanning covers: ${String(coversError)}`);
     }
@@ -457,17 +385,12 @@ export default function SettingsScreen() {
       addBackupLog("📦 Saving legacy preferences...");
       try {
         const keys = [
-          'novel_library_v1',
-          'chapter_sort_preference',
-          'reader_font_size_idx',
-          'reader_line_spacing_idx',
-          'noveldr_warning_dismissed',
+          'novel_library_v1', 'chapter_sort_preference',
+          'reader_font_size_idx', 'reader_line_spacing_idx', 'noveldr_warning_dismissed',
         ];
         for (const key of keys) {
           const value = await AsyncStorage.getItem(key);
-          if (value !== null) {
-            asyncStorageData[key] = value;
-          }
+          if (value !== null) asyncStorageData[key] = value;
         }
         addBackupLog("✅ Legacy preferences saved");
       } catch (e) {
@@ -476,7 +399,7 @@ export default function SettingsScreen() {
     }
 
     addBackupLog(`✅ Backup ready: ${novelCount} novels, ${totalChapters} chapters, ${covers.length} covers`);
-    
+
     return {
       metadata: {
         version: 4,
@@ -528,82 +451,56 @@ export default function SettingsScreen() {
       );
     }
 
-    if (backup.appSettings) {
-      await saveAppSettings(backup.appSettings);
-    }
+    if (backup.appSettings) await saveAppSettings(backup.appSettings);
 
     if (backup.chapters && Object.keys(backup.chapters).length > 0) {
       const chaptersDir = `${APP_DATA_DIR}chapters/`;
       await ensureDir(chaptersDir);
-      
       let totalChaptersRestored = 0;
       const novelIds = Object.keys(backup.chapters);
-      
       addBackupLog(`📄 Restoring chapters for ${novelIds.length} novels...`);
-      
       for (const novelId of novelIds) {
         const novelChapterDir = `${chaptersDir}${novelId}/`;
         await ensureDir(novelChapterDir);
-        
         const novelChapters = backup.chapters[novelId];
         const chapterIndices = Object.keys(novelChapters);
-        
         for (const chapterIndex of chapterIndices) {
           const chapterPath = `${novelChapterDir}chapter_${chapterIndex}.json`;
           try {
-            await FileSystem.writeAsStringAsync(
-              chapterPath,
-              JSON.stringify(novelChapters[chapterIndex])
-            );
+            await FileSystem.writeAsStringAsync(chapterPath, JSON.stringify(novelChapters[chapterIndex]));
             totalChaptersRestored++;
           } catch (err) {
             addBackupLog(`⚠️ Failed chapter ${chapterIndex}`);
           }
         }
-        
         addBackupLog(`   ✅ Novel ${novelId.slice(0, 8)}...: ${chapterIndices.length} chapters`);
       }
-      
       addBackupLog(`📊 Total chapters restored: ${totalChaptersRestored}`);
     } else {
       addBackupLog("⚠️ No chapters to restore");
     }
 
-    // ── RESTORE COVERS ──
     if (backup.covers && backup.covers.length > 0) {
       addBackupLog(`🖼️ Restoring ${backup.covers.length} novel covers...`);
       await ensureDir(COVERS_DIR);
-      
-      let coversRestored = 0;
-      let coversFailed = 0;
-      
+      let coversRestored = 0, coversFailed = 0;
       for (const cover of backup.covers) {
         if (cover.coverBase64) {
           const coverPath = `${COVERS_DIR}${cover.fileName}`;
           const success = await saveBase64AsImage(cover.coverBase64, coverPath);
-          if (success) {
-            coversRestored++;
-            addBackupLog(`   ✅ ${cover.fileName}`);
-          } else {
-            coversFailed++;
-            addBackupLog(`   ❌ Failed: ${cover.fileName}`);
-          }
+          if (success) { coversRestored++; addBackupLog(`   ✅ ${cover.fileName}`); }
+          else { coversFailed++; addBackupLog(`   ❌ Failed: ${cover.fileName}`); }
         } else {
           coversFailed++;
           addBackupLog(`   ⚠️ No image data for ${cover.fileName}`);
         }
       }
-      
       addBackupLog(`📊 Covers restored: ${coversRestored} ✅, ${coversFailed} ❌`);
-      
-      // Update novel objects with correct local cover paths
       addBackupLog(`🔄 Updating novel cover references...`);
       if (backup.libraryData && Array.isArray(backup.libraryData)) {
         for (const novel of backup.libraryData) {
           const matchingCover = backup.covers.find(c => c.novelId === novel.id);
-          if (matchingCover) {
-            novel.coverUrl = `${COVERS_DIR}${matchingCover.fileName}`;
-          }
+          if (matchingCover) novel.coverUrl = `${COVERS_DIR}${matchingCover.fileName}`;
         }
         await FileSystem.writeAsStringAsync(
           `${APP_DATA_DIR}novel_library_v1.json`,
@@ -611,7 +508,6 @@ export default function SettingsScreen() {
         );
         addBackupLog(`✅ Novel cover references updated`);
       }
-      
       if (backup.metadata.totalCoverSize) {
         addBackupLog(`💾 Total cover size: ${(backup.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB`);
       }
@@ -645,54 +541,32 @@ export default function SettingsScreen() {
       closePanel();
       setExporting(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
       const backup = await collectAppData();
       addBackupLog("💾 Saving backup file...");
-
       await ensureDir(BACKUP_DIR);
-
       const dateTag = formatDateTag();
       const tag = comment.trim().replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
       const filename = `noveldrr-backup-${dateTag}${tag ? "_" + tag : ""}.json`;
       const backupPath = `${BACKUP_DIR}${filename}`;
-
-      await FileSystem.writeAsStringAsync(
-        backupPath,
-        JSON.stringify(backup, null, 2),
-        { encoding: FileSystem.EncodingType.UTF8 }
-      );
-
+      await FileSystem.writeAsStringAsync(backupPath, JSON.stringify(backup, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
       const fileInfo = await FileSystem.getInfoAsync(backupPath);
       const sizeMB = fileInfo.exists ? ((fileInfo.size || 0) / (1024 * 1024)).toFixed(1) : "0";
-
       addBackupLog(`✅ Backup saved: ${filename} (${sizeMB} MB)`);
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
       let coverInfo = "";
       if (backup.metadata.includesCovers) {
         coverInfo = `\n🖼️ ${backup.covers.length} covers (${(backup.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
       }
-      
       Alert.alert(
         "Backup Complete ✓",
-        `Saved to: ${filename}\n\n` +
-        `📚 ${backup.metadata.novelCount} novels\n` +
-        `📄 ${backup.metadata.totalChapters} chapters${coverInfo}\n` +
-        `💾 ${sizeMB} MB\n\n` +
-        `All data backed up including covers and legacy AsyncStorage content.`,
+        `Saved to: ${filename}\n\n📚 ${backup.metadata.novelCount} novels\n📄 ${backup.metadata.totalChapters} chapters${coverInfo}\n💾 ${sizeMB} MB\n\nAll data backed up including covers and legacy AsyncStorage content.`,
         [
           { text: "OK" },
           {
             text: "Share Backup",
             onPress: async () => {
               const canShare = await Sharing.isAvailableAsync();
-              if (canShare) {
-                await Sharing.shareAsync(backupPath, {
-                  mimeType: "application/json",
-                  dialogTitle: "Share NovelDR Backup"
-                });
-              }
+              if (canShare) await Sharing.shareAsync(backupPath, { mimeType: "application/json", dialogTitle: "Share NovelDR Backup" });
             },
           },
         ]
@@ -710,26 +584,20 @@ export default function SettingsScreen() {
       await ensureDir(BACKUP_DIR);
       const files = await FileSystem.readDirectoryAsync(BACKUP_DIR);
       const jsonBackups = files
-        .filter((f) => f.startsWith("noveldrr-backup-") && f.endsWith(".json"))
-        .sort()
-        .reverse();
-
+        .filter(f => f.startsWith("noveldrr-backup-") && f.endsWith(".json"))
+        .sort().reverse();
       const backupsWithMeta = await Promise.all(
         jsonBackups.map(async (filename) => {
           const path = `${BACKUP_DIR}${filename}`;
           try {
             const raw = await FileSystem.readAsStringAsync(path);
             const backup = JSON.parse(raw);
-            return {
-              name: filename,
-              metadata: backup.metadata || null,
-            };
+            return { name: filename, metadata: backup.metadata || null };
           } catch {
             return { name: filename, metadata: null };
           }
         })
       );
-
       setBackupList(backupsWithMeta);
       openPanel("restore");
     } catch (e) {
@@ -739,7 +607,6 @@ export default function SettingsScreen() {
 
   const handleImportBackup = async (filename: string) => {
     const backupPath = `${BACKUP_DIR}${filename}`;
-    
     let coverInfo = "";
     try {
       const rawPreview = await FileSystem.readAsStringAsync(backupPath);
@@ -747,15 +614,11 @@ export default function SettingsScreen() {
       if (preview.metadata?.includesCovers) {
         coverInfo = `\n🖼️ Includes ${preview.covers?.length || 0} novel covers (${(preview.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
       }
-    } catch (e) {
-      // Ignore preview errors
-    }
-    
+    } catch (e) {}
+
     Alert.alert(
       "Restore Backup",
-      `This will replace ALL current data with the backup.\n\n` +
-      `"${filename}"${coverInfo}\n\n` +
-      `⚠️ Current data will be overwritten. Continue?`,
+      `This will replace ALL current data with the backup.\n\n"${filename}"${coverInfo}\n\n⚠️ Current data will be overwritten. Continue?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -765,36 +628,26 @@ export default function SettingsScreen() {
             try {
               setImporting(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
               const raw = await FileSystem.readAsStringAsync(backupPath);
               const backup: FullBackup = JSON.parse(raw);
-
               if (!backup.metadata || !backup.libraryData) {
                 Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
                 return;
               }
-
               await restoreAppData(backup);
-
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert(
                 "Restore Complete ✓",
-                `Successfully restored:\n\n` +
-                `📚 ${backup.metadata.novelCount} novels\n` +
-                `📄 ${backup.metadata.totalChapters} chapters\n` +
+                `Successfully restored:\n\n📚 ${backup.metadata.novelCount} novels\n📄 ${backup.metadata.totalChapters} chapters\n` +
                 (backup.metadata.includesCovers ? `🖼️ ${backup.covers?.length || 0} covers\n` : "") +
                 (backup.asyncStorageData ? `🔄 Legacy data also restored\n\n` : "\n") +
                 `Please refresh the Library by pulling or pressing the refresh button.`,
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      if (Platform.OS === 'android') {
-                        IntentLauncher.startActivityAsync('android.intent.action.MAIN');
-                      }
-                    }
+                [{
+                  text: "OK",
+                  onPress: () => {
+                    if (Platform.OS === 'android') IntentLauncher.startActivityAsync('android.intent.action.MAIN');
                   }
-                ]
+                }]
               );
               closePanel();
             } catch (e) {
@@ -810,13 +663,8 @@ export default function SettingsScreen() {
 
   const handleImportFromPicker = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/json",
-        copyToCacheDirectory: true
-      });
-
+      const result = await DocumentPicker.getDocumentAsync({ type: "application/json", copyToCacheDirectory: true });
       if (result.canceled) return;
-
       Alert.alert(
         "Restore Backup",
         "This will replace ALL current data with the selected backup.\n\n⚠️ Continue?",
@@ -829,23 +677,15 @@ export default function SettingsScreen() {
               try {
                 setImporting(true);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
                 const raw = await FileSystem.readAsStringAsync(result.assets[0].uri);
                 const backup: FullBackup = JSON.parse(raw);
-
                 if (!backup.metadata || !backup.libraryData) {
                   Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
                   return;
                 }
-
                 await restoreAppData(backup);
-
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert(
-                  "Restore Complete ✓",
-                  "Data restored. Please restart the app.",
-                  [{ text: "OK" }]
-                );
+                Alert.alert("Restore Complete ✓", "Data restored. Please restart the app.", [{ text: "OK" }]);
               } catch (e) {
                 Alert.alert("Import Failed", String(e));
               } finally {
@@ -869,7 +709,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           await FileSystem.deleteAsync(BACKUP_DIR + filename, { idempotent: true });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          setBackupList((prev) => prev.filter((b) => b.name !== filename));
+          setBackupList(prev => prev.filter(b => b.name !== filename));
         },
       },
     ]);
@@ -894,10 +734,7 @@ export default function SettingsScreen() {
       } catch (error) {
         try {
           const packageName = Application.applicationId;
-          await IntentLauncher.startActivityAsync(
-            'android.settings.APPLICATION_DETAILS_SETTINGS',
-            { data: `package:${packageName}` }
-          );
+          await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', { data: `package:${packageName}` });
           await saveAppSettings({ warningDismissed: true });
           setShowWarningCard(false);
         } catch (e) {
@@ -909,13 +746,7 @@ export default function SettingsScreen() {
             Alert.alert(
               'Manual Steps Required',
               'Go to Settings > Apps > Novel DR\nTurn off: Pause app activity if unused & Remove permissions',
-              [{
-                text: 'OK',
-                onPress: async () => {
-                  await saveAppSettings({ warningDismissed: true });
-                  setShowWarningCard(false);
-                }
-              }]
+              [{ text: 'OK', onPress: async () => { await saveAppSettings({ warningDismissed: true }); setShowWarningCard(false); } }]
             );
           }
         }
@@ -931,18 +762,11 @@ export default function SettingsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const openPanel = (panel: ActivePanel) => {
-    setActivePanel((prev) => (prev === panel ? null : panel));
-  };
-
+  const openPanel = (panel: ActivePanel) => setActivePanel(prev => prev === panel ? null : panel);
   const closePanel = () => setActivePanel(null);
 
   const totalChapters = novels.reduce((sum, n) => sum + n.chapters.length, 0);
-
-  const handleThemeChange = (t: Theme) => {
-    setTheme(t);
-    Haptics.selectionAsync();
-  };
+  const handleThemeChange = (t: Theme) => { setTheme(t); Haptics.selectionAsync(); };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -956,10 +780,7 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 100 }]} showsVerticalScrollIndicator={false}>
         {showWarningCard && Platform.OS === 'android' && (
           <Pressable
             style={[styles.warningCard, { backgroundColor: colors.surface, borderColor: "#ffb300" }]}
@@ -980,9 +801,7 @@ export default function SettingsScreen() {
               <Text style={{ fontWeight: '700' }}>'Remove permissions and free up space'</Text>{' '}
               to prevent data loss.
             </Text>
-            <Text style={[styles.warningTapHint, { color: '#ffb300' }]}>
-              👆 Tap here to open settings
-            </Text>
+            <Text style={[styles.warningTapHint, { color: '#ffb300' }]}>👆 Tap here to open settings</Text>
           </Pressable>
         )}
 
@@ -1044,15 +863,9 @@ export default function SettingsScreen() {
                   <Text style={[styles.backupClearLog, { color: colors.textMuted }]}>Clear</Text>
                 </Pressable>
               </View>
-              <ScrollView 
-                style={styles.backupActivityLogScroll}
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-              >
+              <ScrollView style={styles.backupActivityLogScroll} nestedScrollEnabled showsVerticalScrollIndicator>
                 {backupLogs.map((log, index) => (
-                  <Text key={index} style={[styles.backupActivityLogLine, { color: colors.text }]}>
-                    {log}
-                  </Text>
+                  <Text key={index} style={[styles.backupActivityLogLine, { color: colors.text }]}>{log}</Text>
                 ))}
               </ScrollView>
             </View>
@@ -1060,30 +873,15 @@ export default function SettingsScreen() {
 
           <View style={styles.backupRow}>
             <Pressable
-              style={[
-                styles.backupBtn,
-                {
-                  backgroundColor: activePanel === "comment" ? colors.accent + "dd" : colors.accent,
-                  opacity: exporting ? 0.6 : 1,
-                },
-              ]}
+              style={[styles.backupBtn, { backgroundColor: activePanel === "comment" ? colors.accent + "dd" : colors.accent, opacity: exporting ? 0.6 : 1 }]}
               onPress={handleExport}
               disabled={exporting || novels.length === 0}
             >
               <Ionicons name="save-outline" size={18} color="#fff" />
               <Text style={styles.backupBtnText}>{exporting ? "Backing up…" : "Backup All Data"}</Text>
             </Pressable>
-
             <Pressable
-              style={[
-                styles.backupBtn,
-                {
-                  backgroundColor: activePanel === "restore" ? colors.accent + "18" : colors.surface,
-                  borderWidth: 1,
-                  borderColor: activePanel === "restore" ? colors.accent : colors.border,
-                  opacity: importing ? 0.6 : 1,
-                },
-              ]}
+              style={[styles.backupBtn, { backgroundColor: activePanel === "restore" ? colors.accent + "18" : colors.surface, borderWidth: 1, borderColor: activePanel === "restore" ? colors.accent : colors.border, opacity: importing ? 0.6 : 1 }]}
               onPress={loadBackupList}
               disabled={importing}
             >
@@ -1093,15 +891,7 @@ export default function SettingsScreen() {
           </View>
 
           <Pressable
-            style={[
-              styles.backupBtn,
-              {
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: importing ? 0.6 : 1,
-              },
-            ]}
+            style={[styles.backupBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: importing ? 0.6 : 1 }]}
             onPress={handleImportFromPicker}
             disabled={importing}
           >
@@ -1110,9 +900,7 @@ export default function SettingsScreen() {
           </Pressable>
 
           {novels.length === 0 && (
-            <Text style={[styles.backupHint, { color: colors.textMuted }]}>
-              Add novels before creating a backup.
-            </Text>
+            <Text style={[styles.backupHint, { color: colors.textMuted }]}>Add novels before creating a backup.</Text>
           )}
         </View>
 
@@ -1138,13 +926,9 @@ export default function SettingsScreen() {
                     <View style={styles.backupItemInfo}>
                       <View style={styles.backupItemMeta}>
                         <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                        <Text style={[styles.backupItemDate, { color: colors.textSecondary }]}>
-                          {date} {time}
-                        </Text>
+                        <Text style={[styles.backupItemDate, { color: colors.textSecondary }]}>{date} {time}</Text>
                       </View>
-                      <Text style={[styles.backupItemTag, { color: colors.text }]}>
-                        {tag || "No label"}
-                      </Text>
+                      <Text style={[styles.backupItemTag, { color: colors.text }]}>{tag || "No label"}</Text>
                       {backup.metadata && (
                         <View style={{ gap: 2 }}>
                           <Text style={[styles.backupItemStats, { color: colors.textMuted }]}>
@@ -1162,21 +946,13 @@ export default function SettingsScreen() {
                       <Pressable
                         onPress={async () => {
                           const canShare = await Sharing.isAvailableAsync();
-                          if (canShare) {
-                            await Sharing.shareAsync(BACKUP_DIR + backup.name, {
-                              mimeType: "application/json",
-                              dialogTitle: "Share Backup"
-                            });
-                          }
+                          if (canShare) await Sharing.shareAsync(BACKUP_DIR + backup.name, { mimeType: "application/json", dialogTitle: "Share Backup" });
                         }}
                         style={styles.backupItemAction}
                       >
                         <Ionicons name="share-outline" size={18} color={colors.accent} />
                       </Pressable>
-                      <Pressable
-                        onPress={() => handleDeleteBackup(backup.name)}
-                        style={styles.backupItemAction}
-                      >
+                      <Pressable onPress={() => handleDeleteBackup(backup.name)} style={styles.backupItemAction}>
                         <Ionicons name="trash-outline" size={18} color="#FF4444" />
                       </Pressable>
                     </View>
@@ -1190,9 +966,7 @@ export default function SettingsScreen() {
         {activePanel === "comment" && (
           <View style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.commentTitle, { color: colors.text }]}>Label this backup</Text>
-            <Text style={[styles.commentSub, { color: colors.textSecondary }]}>
-              Optional — helps identify this backup later
-            </Text>
+            <Text style={[styles.commentSub, { color: colors.textSecondary }]}>Optional — helps identify this backup later</Text>
             <TextInput
               style={[styles.commentInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g. full library backup"
@@ -1209,10 +983,7 @@ export default function SettingsScreen() {
               >
                 <Text style={[styles.backupBtnText, { color: colors.textSecondary }]}>Cancel</Text>
               </Pressable>
-              <Pressable
-                style={[styles.backupBtn, { backgroundColor: colors.accent }]}
-                onPress={() => confirmExport(pendingComment)}
-              >
+              <Pressable style={[styles.backupBtn, { backgroundColor: colors.accent }]} onPress={() => confirmExport(pendingComment)}>
                 <Ionicons name="save-outline" size={16} color="#fff" />
                 <Text style={styles.backupBtnText}>Create Backup</Text>
               </Pressable>
@@ -1224,32 +995,23 @@ export default function SettingsScreen() {
         <View style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.aboutRow}>
             <Ionicons name="globe" size={16} color={colors.accent} />
-            <Text style={[styles.aboutText, { color: colors.text }]}>
-              Download novels from popular supported sites. More sites coming soon.
-            </Text>
+            <Text style={[styles.aboutText, { color: colors.text }]}>Download novels from popular supported sites. More sites coming soon.</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.aboutRow}>
             <Ionicons name="eye" size={16} color={colors.accent} />
-            <Text style={[styles.aboutText, { color: colors.text }]}>
-              Easy, Intuitive design & Feature-rich App.
-            </Text>
+            <Text style={[styles.aboutText, { color: colors.text }]}>Easy, Intuitive design & Feature-rich App.</Text>
           </View>
           <View style={styles.aboutRow}>
             <Ionicons name="bookmark" size={16} color={colors.accent} />
-            <Text style={[styles.aboutText, { color: colors.text }]}>
-              Tracks reading progress & where you left off.
-            </Text>
+            <Text style={[styles.aboutText, { color: colors.text }]}>Tracks reading progress & where you left off.</Text>
           </View>
           <View style={styles.aboutRow}>
             <Ionicons name="cloud-offline" size={16} color={colors.accent} />
-            <Text style={[styles.aboutText, { color: colors.text }]}>
-              Download once, Read forever.
-            </Text>
+            <Text style={[styles.aboutText, { color: colors.text }]}>Download once, Read forever.</Text>
           </View>
         </View>
 
-        {/* Report Issue Button */}
         <Pressable
           style={[styles.reportBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
           onPress={() => setShowBugReport(true)}
@@ -1258,7 +1020,6 @@ export default function SettingsScreen() {
           <Text style={[styles.reportBtnText, { color: colors.text }]}>Report Issue / Feedback</Text>
         </Pressable>
 
-        {/* Credits Button */}
         <Pressable
           style={[styles.creditsBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
           onPress={() => setShowCredits(true)}
@@ -1286,7 +1047,6 @@ export default function SettingsScreen() {
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
             </View>
-
             <Text style={[styles.bugLabel, { color: colors.textSecondary }]}>Alias (optional)</Text>
             <TextInput
               style={[styles.bugInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
@@ -1295,11 +1055,10 @@ export default function SettingsScreen() {
               value={alias}
               onChangeText={setAlias}
             />
-
             <Text style={[styles.bugLabel, { color: colors.textSecondary }]}>What's the problem?</Text>
             <TextInput
               style={[styles.bugTextArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-              placeholder="Please the describe the issue in detail... what sorts of problem have you encountered?"
+              placeholder="Please describe the issue in detail..."
               placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={6}
@@ -1307,15 +1066,10 @@ export default function SettingsScreen() {
               value={bugDescription}
               onChangeText={setBugDescription}
             />
-
             <View style={styles.bugButtonsRow}>
               <Pressable
                 style={[styles.bugCancelBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                onPress={() => {
-                  setShowBugReport(false);
-                  setAlias("");
-                  setBugDescription("");
-                }}
+                onPress={() => { setShowBugReport(false); setAlias(""); setBugDescription(""); }}
               >
                 <Text style={[styles.bugCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </Pressable>
@@ -1326,18 +1080,13 @@ export default function SettingsScreen() {
                     Alert.alert("Missing Info", "Please describe the problem before sending.");
                     return;
                   }
-                  
                   const appVersion = Constants.expoConfig?.version ?? "2.5.18";
                   const emailSubject = encodeURIComponent(`Bug Report from NovelDR (${alias || "Anonymous"})`);
                   const emailBody = encodeURIComponent(
                     `Alias: ${alias || "Anonymous"}\n\nDescription:\n${bugDescription}\n\n---\nApp Version: ${appVersion}\nDevice: ${Platform.OS} ${Platform.Version}`
                   );
-                  const mailtoUrl = `mailto:noveldrapp.concerns@gmail.com?subject=${emailSubject}&body=${emailBody}`;
-                  Linking.openURL(mailtoUrl).catch(() => {
-                    Alert.alert(
-                      "Email Client Required",
-                      "No email app found. Please send your report manually to: noveldrapp.concerns@gmail.com"
-                    );
+                  Linking.openURL(`mailto:noveldrapp.concerns@gmail.com?subject=${emailSubject}&body=${emailBody}`).catch(() => {
+                    Alert.alert("Email Client Required", "No email app found. Please send your report manually to: noveldrapp.concerns@gmail.com");
                   });
                   setShowBugReport(false);
                   setAlias("");
@@ -1365,21 +1114,17 @@ export default function SettingsScreen() {
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
             </View>
-
             <ScrollView style={styles.creditsScrollView} showsVerticalScrollIndicator={false}>
-              {/* Scraper Authors Section */}
               <Text style={[styles.creditsSectionTitle, { color: colors.accent }]}>🔍 Scraper Development</Text>
-              
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>Original Python Prototype</Text>
                 <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR-Python")}>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@Moggle-Khraum/NovelDR-Python</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                 Rebuilt as ReactNative Mobile App from Python Source  
+                  Rebuilt as ReactNative Mobile App from Python Source
                 </Text>
               </View>
-
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>WebNovel Source Scrapers</Text>
                 <Pressable onPress={() => Linking.openURL("https://github.com/TUVIMEN/lightnovelworld")}>
@@ -1388,7 +1133,6 @@ export default function SettingsScreen() {
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Forked LightNovelWorld Scraper into the App.
                 </Text>
-                
                 <Pressable onPress={() => Linking.openURL("https://github.com/lncrawl/lightnovel-crawler/tree/dev")}>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@lncrawl/lightnovel-crawler</Text>
                 </Pressable>
@@ -1396,44 +1140,30 @@ export default function SettingsScreen() {
                   Adapted and ported 5 novel scraper src into the App.
                 </Text>
               </View>
-
-              {/* Tech Stack Section */}
               <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ This App is Built with</Text>
-              
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <Pressable onPress={() => Linking.openURL("https://replit.com/")}>
-                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Replit</Text>
-                  </Pressable>
-                  <Text style={{ color: colors.textSecondary }}>•</Text>
-                  <Pressable onPress={() => Linking.openURL("https://chat.deepseek.com/")}>
-                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>DeepSeek</Text>
-                  </Pressable>
-                  <Text style={{ color: colors.textSecondary }}>•</Text>
-                  <Pressable onPress={() => Linking.openURL("https://claude.ai/new")}>
-                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Claude.ai</Text>
-                  </Pressable>
-                  <Text style={{ color: colors.textSecondary }}>•</Text>
-                  <Pressable onPress={() => Linking.openURL("https://expo.dev/")}>
-                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Expo Dev</Text>
-                  </Pressable>
-                  <Text style={{ color: colors.textSecondary }}>•</Text>
-                  <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR/actions")}>
-                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Github Actions</Text>
-                  </Pressable>
+                  {[
+                    { label: "Replit", url: "https://replit.com/" },
+                    { label: "DeepSeek", url: "https://chat.deepseek.com/" },
+                    { label: "Claude.ai", url: "https://claude.ai/new" },
+                    { label: "Expo Dev", url: "https://expo.dev/" },
+                    { label: "Github Actions", url: "https://github.com/Moggle-Khraum/NovelDR/actions" },
+                  ].map((item, i, arr) => (
+                    <React.Fragment key={item.label}>
+                      <Pressable onPress={() => Linking.openURL(item.url)}>
+                        <Text style={[styles.creditsItemLink, { color: colors.accent }]}>{item.label}</Text>
+                      </Pressable>
+                      {i < arr.length - 1 && <Text style={{ color: colors.textSecondary }}>•</Text>}
+                    </React.Fragment>
+                  ))}
                 </View>
               </View>
-              
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>Donors & Feedbacks</Text>
-                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  - Furbiden
-                </Text>
-                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  - ExTicketMan Reborn
-                </Text>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>- Furbiden</Text>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>- ExTicketMan Reborn</Text>
               </View>
-
               <Text style={[styles.creditsFooter, { color: colors.textMuted }]}>
                 Thank you to the sponsors, scraper authors, and AI that makes this app possible! 🙏
               </Text>
@@ -1446,45 +1176,50 @@ export default function SettingsScreen() {
       <Modal visible={showDevProfile} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.devCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.devHeader}>
-              <Text style={[styles.devTitle, { color: colors.text }]}>About Developer</Text>
-              <Pressable onPress={() => setShowDevProfile(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
+
+            {/* Close button — top right */}
+            <Pressable style={styles.devCloseBtn} onPress={() => setShowDevProfile(false)}>
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
+            </Pressable>
+
+            {/* App icon + name row */}
+            <View style={styles.devProfileRow}>
+              <Image
+                source={require("../../assets/icon.png")}
+                style={styles.devAppIcon}
+              />
+              <View style={styles.devInfo}>
+                <Text style={[styles.devLabel, { color: colors.textMuted }]}>Name</Text>
+                <Text style={[styles.devValue, { color: colors.text }]}>Moggle Khraum</Text>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={[styles.devDivider, { backgroundColor: colors.border }]} />
+
+            {/* Side-by-side link buttons */}
+            <View style={styles.devLinksRow}>
+              <Pressable
+                style={[styles.devLinkBtn, { borderColor: colors.border }]}
+                onPress={() => Linking.openURL("https://moggle.is-a-good.dev/")}
+              >
+                <Ionicons name="globe-outline" size={15} color={colors.accent} />
+                <Text style={[styles.devLinkBtnText, { color: colors.text }]}>NovelDR</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.devLinkBtn, { borderColor: colors.border }]}
+                onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/noveldr-site/releases")}
+              >
+                <Ionicons name="logo-github" size={15} color={colors.accent} />
+                <Text style={[styles.devLinkBtnText, { color: colors.text }]}>Official Release</Text>
               </Pressable>
             </View>
 
-            <View style={styles.devProfileRow}>
-              <View style={[styles.profileImage, { backgroundColor: colors.accent + "20" }]}>
-                <Ionicons name="person" size={40} color={colors.accent} />
-              </View>
-              <View style={styles.devInfo}>
-                <Text style={[styles.devLabel, { color: colors.textMuted }]}>Name</Text>
-                <Text style={[styles.devValue, { color: colors.text }]}>Moggs</Text>
-              </View>
-            </View>
-
-            <Pressable
-              style={styles.devLinkRow}
-              onPress={() => Linking.openURL("https://moggle.is-a-good.dev/")}
-            >
-              <Text style={[styles.devLinkLabel, { color: colors.textSecondary }]}>Website:</Text>
-              <Text style={[styles.devLinkText, { color: colors.accent }]}>NovelDR Site</Text>
-              <Ionicons name="open-outline" size={14} color={colors.accent} />
-            </Pressable>
-
-            <Pressable
-              style={styles.devLinkRow}
-              onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/noveldr-site/releases")}
-            >
-              <Text style={[styles.devLinkLabel, { color: colors.textSecondary }]}>Github:</Text>
-              <Text style={[styles.devLinkText, { color: colors.accent }]}>Github/Releases</Text>
-              <Ionicons name="open-outline" size={14} color={colors.accent} />
-            </Pressable>
-            
-
+            {/* Footer note */}
             <Text style={[styles.devIssueText, { color: colors.textSecondary }]}>
-              For any suggestions / issues / bugs, please use Github Issues or the Report Issue button.
+              For any suggestions/issues/bugs encountered, please use Github Issue or the Report Issue button.
             </Text>
+
           </View>
         </View>
       </Modal>
@@ -1495,34 +1230,15 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitleContainer: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerTitle: { fontFamily: "Inter_700Bold", fontSize: 22 },
   scroll: { padding: 16, gap: 12 },
-  sectionLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 11,
-    letterSpacing: 0.8,
-    marginTop: 8,
-  },
-  warningCard: { 
-    borderRadius: 14, 
-    borderWidth: 1, 
-    padding: 14, 
-    gap: 6, 
-    marginBottom: 4,
-  },
-  warningHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  sectionLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 0.8, marginTop: 8 },
+  warningCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 6, marginBottom: 4 },
+  warningHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   dismissButton: { padding: 4 },
   warningTitle: { fontFamily: "Inter_700Bold", fontSize: 14 },
   warningText: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 },
@@ -1542,7 +1258,6 @@ const styles = StyleSheet.create({
   aboutCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 10 },
   aboutRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   aboutText: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
-  aboutSite: { fontFamily: "Inter_500Medium", fontSize: 13 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
   versionCard: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, alignItems: "center", marginTop: 4 },
   versionText: { fontFamily: "Inter_400Regular", fontSize: 12 },
@@ -1551,8 +1266,7 @@ const styles = StyleSheet.create({
   backupDesc: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
   progressContainer: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    paddingVertical: 8, paddingHorizontal: 12,
-    backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 8,
+    paddingVertical: 8, paddingHorizontal: 12, backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 8,
   },
   progressText: { fontFamily: "Inter_400Regular", fontSize: 12 },
   backupRow: { flexDirection: "row", gap: 8 },
@@ -1562,14 +1276,10 @@ const styles = StyleSheet.create({
   },
   backupBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#fff" },
   backupHint: { fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" },
-  backupActivityLog: {
-    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth,
-    padding: 10, maxHeight: 200, minHeight: 100,
-  },
+  backupActivityLog: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10, maxHeight: 200, minHeight: 100 },
   backupActivityLogHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 8, paddingBottom: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e0e0e0',
+    marginBottom: 8, paddingBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e0e0e0',
   },
   backupActivityLogTitle: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 0.5 },
   backupClearLog: { fontFamily: "Inter_500Medium", fontSize: 11 },
@@ -1594,187 +1304,46 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular", fontSize: 14,
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  devCard: { borderRadius: 20, borderWidth: 1, padding: 20, gap: 16, width: '100%', maxWidth: 380 },
-  devHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  devTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
-  devProfileRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 8 },
-  profileImage: { width: 70, height: 70, borderRadius: 35, justifyContent: "center", alignItems: "center" },
-  devInfo: { flex: 1, gap: 4 },
-  devLabel: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
-  devValue: { fontFamily: "Inter_600SemiBold", fontSize: 18 },
-  devLinkRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, paddingVertical: 4 },
-  devLinkLabel: { fontFamily: "Inter_500Medium", fontSize: 14 },
-  devLinkText: { fontFamily: "Inter_500Medium", fontSize: 14, textDecorationLine: "underline" },
-  devIssueText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, marginTop: 8, textAlign: "center" },
-  // Bug report styles
-  reportBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  reportBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-  },
-  // Credits styles
-  creditsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  creditsBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-  },
-  creditsModalCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
-    gap: 12,
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-  },
-  creditsModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  creditsModalTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-  },
-  creditsScrollView: {
-    maxHeight: '90%',
-  },
-  creditsSectionTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  creditsItem: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 4,
-  },
-  creditsItemName: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-  },
-  creditsItemLink: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    textDecorationLine: "underline",
-  },
-  creditsItemDesc: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    marginTop: 2,
-  },
-  creditsLinksRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 2,
-  },
-  creditsInlineLink: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    textDecorationLine: "underline",
-  },
-  creditsFooter: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  bugModalCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
-    gap: 12,
-    width: '100%',
-    maxWidth: 400,
-  },
-  bugModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  bugModalTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-  },
-  bugLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  bugInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-  },
-  bugTextArea: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    minHeight: 120,
-  },
-  bugButtonsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  bugCancelBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  bugCancelText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-  },
-  bugSendBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  bugSendText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: "#fff",
-  },
-  bugFooter: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 8,
-  },
+  // Dev modal
+  devCard: { borderRadius: 16, borderWidth: 1, padding: 16, width: '100%', maxWidth: 360, gap: 12 },
+  devCloseBtn: { alignSelf: "flex-end", padding: 2 },
+  devProfileRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  devAppIcon: { width: 58, height: 58, borderRadius: 13 },
+  devInfo: { flexDirection: "column", gap: 2 },
+  devLabel: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.4 },
+  devValue: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  devDivider: { height: StyleSheet.hairlineWidth },
+  devLinksRow: { flexDirection: "row", gap: 10 },
+  devLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 9 },
+  devLinkBtnText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  devIssueText: { fontFamily: "Inter_400Regular", fontSize: 11, lineHeight: 16, textAlign: "center" },
+  // Bug report
+  reportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginTop: 8 },
+  reportBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  // Credits
+  creditsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginTop: 8 },
+  creditsBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  creditsModalCard: { borderRadius: 20, borderWidth: 1, padding: 20, gap: 12, width: '100%', maxWidth: 400, maxHeight: '80%' },
+  creditsModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  creditsModalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  creditsScrollView: { maxHeight: '90%' },
+  creditsSectionTitle: { fontFamily: "Inter_700Bold", fontSize: 15, marginTop: 12, marginBottom: 8 },
+  creditsItem: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 4 },
+  creditsItemName: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  creditsItemLink: { fontFamily: "Inter_500Medium", fontSize: 12, textDecorationLine: "underline" },
+  creditsItemDesc: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 },
+  creditsFooter: { fontFamily: "Inter_400Regular", fontSize: 11, textAlign: "center", marginTop: 16, marginBottom: 8 },
+  // Bug report modal
+  bugModalCard: { borderRadius: 20, borderWidth: 1, padding: 20, gap: 12, width: '100%', maxWidth: 400 },
+  bugModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  bugModalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  bugLabel: { fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 4 },
+  bugInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontFamily: "Inter_400Regular", fontSize: 14 },
+  bugTextArea: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Inter_400Regular", fontSize: 14, minHeight: 120 },
+  bugButtonsRow: { flexDirection: "row", gap: 12, marginTop: 8 },
+  bugCancelBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  bugCancelText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  bugSendBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 10 },
+  bugSendText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
+  bugFooter: { fontFamily: "Inter_400Regular", fontSize: 11, textAlign: "center", marginTop: 8 },
 });
