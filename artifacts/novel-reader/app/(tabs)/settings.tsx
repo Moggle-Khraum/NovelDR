@@ -1185,7 +1185,7 @@ export default function SettingsScreen() {
             {/* App icon + name row */}
             <View style={styles.devProfileRow}>
               <Image
-                source={require("../../assets/icon.png")}
+                source={require("../../assets/images/icon.png")}
                 style={styles.devAppIcon}
               />
               <View style={styles.devInfo}>
