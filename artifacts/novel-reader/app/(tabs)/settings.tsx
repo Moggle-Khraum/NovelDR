@@ -1388,6 +1388,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Forked LightNovelWorld Scraper into the App.
                 </Text>
+                
                 <Pressable onPress={() => Linking.openURL("https://github.com/lncrawl/lightnovel-crawler/tree/dev")}>
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@lncrawl/lightnovel-crawler</Text>
                 </Pressable>
@@ -1400,52 +1401,37 @@ export default function SettingsScreen() {
               <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ This App is Built with</Text>
               
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Replit</Text>
-                <Pressable onPress={() => Linking.openURL("https://replit.com/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Built the APK Template</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <Pressable onPress={() => Linking.openURL("https://replit.com/")}>
+                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Replit</Text>
+                  </Pressable>
+                  <Text style={{ color: colors.textSecondary }}>•</Text>
+                  <Pressable onPress={() => Linking.openURL("https://chat.deepseek.com/")}>
+                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>DeepSeek</Text>
+                  </Pressable>
+                  <Text style={{ color: colors.textSecondary }}>•</Text>
+                  <Pressable onPress={() => Linking.openURL("https://claude.ai/new")}>
+                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Claude.ai</Text>
+                  </Pressable>
+                  <Text style={{ color: colors.textSecondary }}>•</Text>
+                  <Pressable onPress={() => Linking.openURL("https://expo.dev/")}>
+                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Expo Dev</Text>
+                  </Pressable>
+                  <Text style={{ color: colors.textSecondary }}>•</Text>
+                  <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR/actions")}>
+                    <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Github Actions</Text>
+                  </Pressable>
+                </View>
               </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>DeepSeek</Text>
-                <Pressable onPress={() => Linking.openURL("https://chat.deepseek.com/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Translate Python -> ReactNative using DeepSeek</Text>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Provides overhauled code and improvements to the old code</Text>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with Claude in improving the source code</Text>
-                </Pressable>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Claude.ai</Text>
-                <Pressable onPress={() => Linking.openURL("https://claude.ai/new")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Improved Code and UI using Claude</Text>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Added TTS, Progress Tracking, Material 3 UI design, UI Overhaul</Text>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Works hand-in-hand with DeepSeek in improving the source code</Text>
-                </Pressable>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Expo Dev</Text>
-                <Pressable onPress={() => Linking.openURL("https://expo.dev/")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Used for Mobile Preview by Replit</Text>
-                </Pressable>
-              </View>
-
-              <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.creditsItemName, { color: colors.text }]}>Github Actions</Text>
-                <Pressable onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/NovelDR/actions")}>
-                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>Github Actions workflow building APK</Text>
-                </Pressable>
-              </View>
-
+              
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>Donors & Feedbacks</Text>
-                <View style={styles.creditsLinksRow}>
-                  <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                    - Furbiden
-                    - ExTicketMan Reborn
-                  </Text>
-                </View>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  - Furbiden
+                </Text>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  - ExTicketMan Reborn
+                </Text>
               </View>
 
               <Text style={[styles.creditsFooter, { color: colors.textMuted }]}>
