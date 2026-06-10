@@ -25,12 +25,6 @@ type LogEntry = {
   type: "info" | "downloading" | "success" | "error" | "warning";
 };
 
-type ChapterInfo = {
-  url: string;
-  number: number;
-  title?: string;
-};
-
 function LogLine({ entry }: { entry: LogEntry }) {
   const { colors } = useTheme();
   const colorMap = {
@@ -70,6 +64,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("Starting from chapter")) return "📍";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter number")) return "🔢";
+    if (text.includes("Direct skip")) return "⚡";
     return "";
   };
 
@@ -100,7 +95,7 @@ export default function UpdatesScreen() {
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [novelSearchQuery, setNovelSearchQuery] = useState("");
   const [showNovelSearch, setShowNovelSearch] = useState(false);
-  
+
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
   const startTimeRef = useRef<number>(0);
@@ -110,18 +105,17 @@ export default function UpdatesScreen() {
     if (!novelSearchQuery.trim()) return novels;
     const query = novelSearchQuery.toLowerCase().trim();
     return novels.filter(
-      (n) => n.title.toLowerCase().includes(query) || 
-             n.author.toLowerCase().includes(query)
+      (n) =>
+        n.title.toLowerCase().includes(query) ||
+        n.author.toLowerCase().includes(query)
     );
   }, [novels, novelSearchQuery]);
 
+  // ─── Log (capped at 500) ────────────────────────────────────────────────────
   const addLog = (text: string, type: LogEntry["type"] = "info") => {
     const entry: LogEntry = { id: Date.now().toString() + Math.random(), text, type };
-    setLogs((prev) => [...prev.slice(-200), entry]);
-    
-    setTimeout(() => {
-      logScrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setLogs((prev) => [...prev.slice(-500), entry]);
+    setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
   const clearAll = () => {
@@ -139,6 +133,7 @@ export default function UpdatesScreen() {
     }
   };
 
+  // ─── Timer ──────────────────────────────────────────────────────────────────
   const formatTime = (seconds: number): string => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -162,62 +157,125 @@ export default function UpdatesScreen() {
     }
   };
 
-  // Extract chapter number from title
+  // ─── Extract chapter number from title ──────────────────────────────────────
   const extractChapterNumber = (title: string): number => {
     const patterns = [
-      /chapter\s+(\d+(?:\.\d+)?)/i,      // "Chapter 1", "Chapter 1.5"
-      /ch\.?\s*(\d+(?:\.\d+)?)/i,         // "Ch. 1", "Ch 1.5"
-      /#(\d+(?:\.\d+)?)/,                  // "#1", "#1.5"
-      /(\d+)(?:st|nd|rd|th)\s+chapter/i,  // "1st chapter"
-      /^(\d+(?:\.\d+)?)[\s\-:]/,           // "1 - Title" or "1: Title"
-      /volume\s+\d+\s+chapter\s+(\d+)/i,  // "Volume 1 Chapter 2"
+      /chapter\s+(\d+(?:\.\d+)?)/i,
+      /ch\.?\s*(\d+(?:\.\d+)?)/i,
+      /#(\d+(?:\.\d+)?)/,
+      /(\d+)(?:st|nd|rd|th)\s+chapter/i,
+      /^(\d+(?:\.\d+)?)[\s\-:]/,
+      /volume\s+\d+\s+chapter\s+(\d+)/i,
     ];
-    
     for (const pattern of patterns) {
       const match = title.match(pattern);
-      if (match) {
-        return parseFloat(match[1]);
-      }
+      if (match) return parseFloat(match[1]);
     }
-    return 0; // Fallback for unparseable titles
+    return 0;
   };
 
-  // Download and save cover image to local file system
+  // ─── Download cover ──────────────────────────────────────────────────────────
   const downloadAndSaveCover = async (coverUrl: string, novelId: string): Promise<string> => {
-    if (!coverUrl) return '';
-    
+    if (!coverUrl) return "";
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
-    
     try {
-      // Ensure directory exists
       const dirInfo = await FileSystem.getInfoAsync(coverDir);
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(coverDir, { intermediates: true });
       }
-      
-      // Download the image
       const downloadResult = await FileSystem.downloadAsync(coverUrl, coverPath);
       addLog(`Cover image saved locally`, "success");
-      return downloadResult.uri; // local file URI
+      return downloadResult.uri;
     } catch (err) {
-      console.warn('Failed to download cover:', err);
+      console.warn("Failed to download cover:", err);
       addLog(`Cover download failed, using remote URL`, "warning");
-      return coverUrl; // fallback to remote URL
+      return coverUrl;
     }
   };
 
-  // Helper to check if a chapter URL already exists in library
-  const chapterExists = (url: string, existingChapters: Chapter[]): boolean => {
-    return existingChapters.some((c) => c.url === url);
+  // ─── Chapter exists check ────────────────────────────────────────────────────
+  const chapterExists = (url: string, existingChapters: Chapter[]): boolean =>
+    existingChapters.some((c) => c.url === url);
+
+  // ─── Lightweight metadata fetch (next URL only, no content parsing) ──────────
+  const getChapterMetadata = async (
+    url: string,
+    chapterNum: number
+  ): Promise<{ nextUrl: string | null }> => {
+    try {
+      const isFreeWebNovel =
+        url.toLowerCase().includes("freewebnovel") ||
+        url.toLowerCase().includes("bednovel");
+
+      let html: string;
+      if (isFreeWebNovel) {
+        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+        });
+        html = await res.text();
+      } else {
+        const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+        html = await res.text();
+      }
+
+      const stripTags = (s: string) => s.replace(/<[^>]*>/g, " ").trim();
+      const makeAbsolute = (rel: string, base: string) => {
+        if (!rel) return base;
+        if (rel.startsWith("http")) return rel;
+        try { return new URL(rel, base).href; } catch { return rel; }
+      };
+
+      const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
+      let linkMatch: RegExpExecArray | null;
+      while ((linkMatch = linkRegex.exec(html)) !== null) {
+        const attrsStr = linkMatch[1];
+        const hrefMatch = attrsStr.match(/href=["']([^"']+)["']/i);
+        const href = hrefMatch ? hrefMatch[1] : null;
+        const txt = stripTags(linkMatch[2]).toLowerCase();
+        const classAttr = (attrsStr.match(/class=["']([^"']*)["']/i)?.[1] ?? "").toLowerCase();
+        const idAttr = (attrsStr.match(/id=["']([^"']*)["']/i)?.[1] ?? "").toLowerCase();
+        const attrs = classAttr + " " + idAttr;
+        if (
+          (txt.includes("next") ||
+            txt.includes("next chapter") ||
+            attrs.includes("next") ||
+            attrs.includes("next_chapter")) &&
+          href
+        ) {
+          return { nextUrl: makeAbsolute(href, url) };
+        }
+      }
+      return { nextUrl: null };
+    } catch {
+      // Fallback to full fetchChapter if lightweight fetch fails
+      const data = await fetchChapter(url, chapterNum);
+      return { nextUrl: data.nextUrl || null };
+    }
   };
 
-  // Lightweight function to get chapter data without heavy processing
-  const getChapterMetadata = async (url: string, chapterNum: number): Promise<{ nextUrl: string | null; title: string }> => {
-    const data = await fetchChapter(url, chapterNum);
-    return { nextUrl: data.nextUrl || null, title: data.title };
+  // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
+  // Handles LightNovelWorld (/chapter/1/), FreeWebNovel/NovelBin (/chapter-1), etc.
+  const tryDirectSkip = (firstChapterUrl: string, targetChapter: number): string | null => {
+    const patterns = [
+      { regex: /(\/chapter\/)(\d+)(\/?)$/ },
+      { regex: /(\/chapter-)(\d+)(\/?)$/ },
+      { regex: /(\/chapter-)(\d+)(\.html)$/ },
+      { regex: /(_chapter_)(\d+)()$/ },
+    ];
+    for (const { regex } of patterns) {
+      if (regex.test(firstChapterUrl)) {
+        return firstChapterUrl.replace(
+          regex,
+          (_: string, prefix: string, _num: string, suffix: string) =>
+            `${prefix}${targetChapter}${suffix}`
+        );
+      }
+    }
+    return null;
   };
 
+  // ─── Main update handler ─────────────────────────────────────────────────────
   const handleUpdate = async () => {
     if (!selectedNovel) {
       addLog("Please select a novel first", "error");
@@ -240,8 +298,7 @@ export default function UpdatesScreen() {
     try {
       let domain = "";
       try {
-        const urlObj = new URL(selectedNovel.sourceUrl);
-        domain = urlObj.hostname;
+        domain = new URL(selectedNovel.sourceUrl).hostname;
       } catch {
         domain = "Unknown";
       }
@@ -260,13 +317,8 @@ export default function UpdatesScreen() {
       addLog(`Title: ${meta.title}`, "success");
       addLog(`Author: ${meta.author}`, "info");
       addLog(`Current chapters in library: ${existingCount}`, "info");
-      
-      if (startChStr) {
-        addLog(`Starting from chapter: ${startCh}`, "info");
-      }
-      if (maxCh) {
-        addLog(`Max chapters to download: ${maxCh}`, "info");
-      }
+      if (startChStr) addLog(`Starting from chapter: ${startCh}`, "info");
+      if (maxCh) addLog(`Max chapters to download: ${maxCh}`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       if (!meta.firstChapterUrl) {
@@ -276,7 +328,7 @@ export default function UpdatesScreen() {
         return;
       }
 
-      // Download and update cover if available
+      // Cover update
       let updatedCoverUrl = selectedNovel.coverUrl;
       if (meta.coverUrl) {
         addLog(`Cover found, downloading...`, "info");
@@ -284,74 +336,82 @@ export default function UpdatesScreen() {
         addLog(`Cover updated successfully`, "success");
       }
 
-      // If synopsis or author changed, log it
       if (meta.author !== selectedNovel.author) {
         addLog(`Author updated: ${meta.author}`, "info");
       }
 
-      // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
+      // ========== SKIP TO START CHAPTER ==========
+      let currentUrl: string | null = meta.firstChapterUrl;
+      let chapterNum = 1;
+
       if (startCh > 1) {
-          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-          addLog(`⏭️ Skipping to chapter ${startCh}...`, "downloading");
-          
-          let tempUrl: string | null = meta.firstChapterUrl;
-          let tempNum = 1;
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+        addLog(`Skipping to chapter ${startCh}...`, "downloading");
+
+        // Try instant URL construction first
+        const directUrl = tryDirectSkip(meta.firstChapterUrl, startCh);
+        if (directUrl) {
+          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+          currentUrl = directUrl;
+          chapterNum = startCh;
+        } else {
+          // Crawl chapter-by-chapter
+          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
+
           let skippedCount = 0;
-          let lastLoggedPercent = 0;
+          let lastLoggedMilestone = 0;
           const totalToSkip = startCh - 1;
-          
-          while (tempUrl && tempNum < startCh && !stopRef.current) {
+
+          while (currentUrl && chapterNum < startCh && !stopRef.current) {
             try {
-              const { nextUrl } = await getChapterMetadata(tempUrl, tempNum);
-              tempUrl = nextUrl;
-              tempNum++;
+              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              currentUrl = nextUrl;
+              chapterNum++;
               skippedCount++;
-              
-              // Log at 25%, 50%, 75%
+
+              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, + final)
               const percent = Math.floor((skippedCount / totalToSkip) * 100);
-              if (percent >= lastLoggedPercent + 25 && percent < 100) {
-                addLog(`⏭️ Skipping... ${percent}% complete (${skippedCount}/${totalToSkip} chapters)`, "warning");
-                lastLoggedPercent = percent;
+              const nextMilestone = lastLoggedMilestone + 20;
+              if (percent >= nextMilestone && nextMilestone <= 80) {
+                addLog(
+                  `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
+                  "warning"
+                );
+                lastLoggedMilestone = nextMilestone;
               }
-            } catch (err) {
-              addLog(`Failed to skip chapter ${tempNum}`, "error");
-              break;
+            } catch {
+              addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+              try {
+                const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+                currentUrl = nextUrl;
+                chapterNum++;
+                skippedCount++;
+              } catch {
+                addLog(`Skip aborted at chapter ${chapterNum}`, "error");
+                break;
+              }
             }
-            await new Promise((r) => setTimeout(r, 50));
+            // 35ms — fast but courteous; yield every 20 chapters to keep UI responsive
+            await new Promise((r) => setTimeout(r, 35));
+            if (skippedCount % 20 === 0) await new Promise((r) => setTimeout(r, 0));
           }
-          
-          // Final summary log
+
           if (skippedCount > 0) {
-            addLog(`✅ Skipped ${skippedCount} chapters, ready at chapter ${startCh}`, "success");
+            addLog(
+              `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
+              "success"
+            );
           }
-          
-          if (tempUrl) {
-            addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-          } else {
+
+          if (!currentUrl) {
             addLog(`Could not reach chapter ${startCh}. Update aborted.`, "error");
             stopTimer();
             setIsUpdating(false);
             return;
           }
         }
-      
-        // ========== FIND STARTING POINT ==========
-        let currentUrl: string | null = meta.firstChapterUrl;
-        let chapterNum = 1;
-      
-        // Navigate to start chapter
-        while (currentUrl && chapterNum < startCh && !stopRef.current) {
-          const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
-          if (!nextUrl) break;
-          currentUrl = nextUrl;
-          chapterNum++;
-        }
-      
-      if (!currentUrl) {
-        addLog(`Could not find chapter ${startCh}`, "error");
-        stopTimer();
-        setIsUpdating(false);
-        return;
+
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       }
 
       addLog(`Starting download from chapter ${chapterNum}...`, "downloading");
@@ -370,54 +430,52 @@ export default function UpdatesScreen() {
         }
 
         setProgressLabel(`Chapter ${chapterNum}`);
-        if (maxCh) {
-          setProgress((downloaded / maxCh) * 100);
-        }
-        
-        addLog(`📥 Downloading Chapter ${chapterNum}...`, "downloading");
+        if (maxCh) setProgress((downloaded / maxCh) * 100);
+
+        addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
 
         try {
           const data = await fetchChapter(currentUrl, chapterNum);
 
-          // Check if chapter already exists in library
-          if (!chapterExists(currentUrl, existingChapters) && !chapterExists(currentUrl, newChapters)) {
+          if (
+            !chapterExists(currentUrl, existingChapters) &&
+            !chapterExists(currentUrl, newChapters)
+          ) {
             const chapterNumber = extractChapterNumber(data.title);
-            
             newChapters.push({
               title: data.title,
               url: currentUrl,
               content: data.content,
-              chapterNumber: chapterNumber,
+              chapterNumber,
             });
             downloaded++;
             consecutiveErrors = 0;
 
             if (downloaded % 5 === 0) {
-              addLog(`💾 Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`, "success");
+              addLog(`Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`, "success");
             } else {
-              addLog(`💾 Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
+              addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
             }
           } else {
-            addLog(`⏭️ SKIPPED: Chapter ${chapterNum} already exists`, "warning");
+            addLog(`SKIPPED: Chapter ${chapterNum} already exists`, "warning");
           }
 
           if (!data.nextUrl) {
             addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-            addLog(`🏁 No more chapters found.`, "info");
+            addLog(`No more chapters found.`, "info");
             break;
           }
           currentUrl = data.nextUrl;
           chapterNum++;
         } catch (err: any) {
           consecutiveErrors++;
-          addLog(`❌ Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
+          addLog(`Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
 
           if (consecutiveErrors >= 3) {
-            addLog(`⚠️ Too many consecutive errors, stopping update.`, "warning");
+            addLog(`Too many consecutive errors, stopping update.`, "warning");
             break;
           }
 
-          // Try to get next URL even if download failed
           try {
             const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
             if (nextUrl) {
@@ -434,42 +492,35 @@ export default function UpdatesScreen() {
         await new Promise((r) => setTimeout(r, 200));
       }
 
-      // ========== FINALIZE MERGE WITH SORTING ==========
+      // ========== FINALIZE & SORT ==========
       if (downloaded > 0 || updatedCoverUrl !== selectedNovel.coverUrl) {
-        // Merge existing chapters with new chapters
         const allChapters = [...existingChapters];
-        
-        // Add new chapters (converting from temp type to Chapter type)
+
         newChapters.forEach((newCh) => {
           if (!chapterExists(newCh.url, allChapters)) {
-            // Remove the chapterNumber property before saving (or keep it if your Chapter type supports it)
             const { chapterNumber, ...chapterData } = newCh;
             allChapters.push(chapterData);
           }
         });
 
-        // Sort by extracted chapter number (from title)
-        addLog(`📚 Sorting ${allChapters.length} chapters by chapter number...`, "info");
-        
+        addLog(`Sorting ${allChapters.length} chapters by chapter number...`, "info");
+
         allChapters.sort((a, b) => {
           const numA = extractChapterNumber(a.title);
           const numB = extractChapterNumber(b.title);
-          
-          if (numA === 0 && numB === 0) {
-            // If both have no numbers, maintain original order by URL
-            return (a.url || '').localeCompare(b.url || '');
-          }
+          if (numA === 0 && numB === 0) return (a.url || "").localeCompare(b.url || "");
           return numA - numB;
         });
 
-        // Log the chapter range after sorting
-        const chapterNums = allChapters.map(c => extractChapterNumber(c.title));
-        const validNums = chapterNums.filter(n => n > 0);
+        const validNums = allChapters.map(c => extractChapterNumber(c.title)).filter(n => n > 0);
         if (validNums.length > 0) {
           const minCh = Math.min(...validNums);
-          const maxCh = Math.max(...validNums);
+          const maxChNum = Math.max(...validNums);
           const missingCount = allChapters.length - validNums.length;
-          addLog(`📚 Chapters sorted: ${minCh} → ${maxCh} (${allChapters.length} total${missingCount > 0 ? `, ${missingCount} untitled` : ""})`, "success");
+          addLog(
+            `Chapters sorted: ${minCh} → ${maxChNum} (${allChapters.length} total${missingCount > 0 ? `, ${missingCount} untitled` : ""})`,
+            "success"
+          );
         }
 
         await updateNovel(selectedNovel.id, {
@@ -478,31 +529,31 @@ export default function UpdatesScreen() {
           author: meta.author,
           synopsis: meta.synopsis,
         });
-        
+
         if (downloaded > 0) {
-          addLog(`✅ Novel updated with ${downloaded} new chapters!`, "success");
+          addLog(`Novel updated with ${downloaded} new chapters!`, "success");
         }
       }
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       if (stopRef.current) {
-        addLog(`⚠️ Update halted by user.`, "warning");
-        addLog(`📊 Downloaded ${downloaded} new chapters before stop.`, "info");
+        addLog(`Update halted by user.`, "warning");
+        addLog(`Downloaded ${downloaded} new chapters before stop.`, "info");
       } else if (downloaded === 0) {
-        addLog(`✨ UPDATE COMPLETE!`, "success");
-        addLog(`📊 No new chapters found. Novel is up to date!`, "success");
+        addLog(`UPDATE COMPLETE!`, "success");
+        addLog(`No new chapters found. Novel is up to date!`, "success");
       } else {
-        addLog(`✅ UPDATE COMPLETE!`, "success");
-        addLog(`📊 Total new chapters added: ${downloaded}`, "success");
-        addLog(`🎉 Novel updated in your library!`, "success");
+        addLog(`UPDATE COMPLETE!`, "success");
+        addLog(`Total new chapters added: ${downloaded}`, "success");
+        addLog(`Novel updated in your library!`, "success");
       }
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
-      addLog(`❌ ERROR: ${e.message || "Update failed"}`, "error");
+      addLog(`ERROR: ${e.message || "Update failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
       setIsUpdating(false);
@@ -533,7 +584,6 @@ export default function UpdatesScreen() {
         setSelectedNovel(novel);
         setShowNovelSearch(false);
         setNovelSearchQuery("");
-        // Auto-fill start chapter suggestion
         setStartChStr((novel.chapters.length + 1).toString());
       }}
     >
@@ -578,18 +628,19 @@ export default function UpdatesScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Novel selector */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>SELECT NOVEL</Text>
             {novels.length > 3 && (
-              <Pressable 
+              <Pressable
                 onPress={() => setShowNovelSearch(!showNovelSearch)}
                 style={styles.searchToggle}
               >
-                <Ionicons 
-                  name={showNovelSearch ? "close" : "search"} 
-                  size={18} 
-                  color={colors.accent} 
+                <Ionicons
+                  name={showNovelSearch ? "close" : "search"}
+                  size={18}
+                  color={colors.accent}
                 />
                 <Text style={[styles.searchToggleText, { color: colors.accent }]}>
                   {showNovelSearch ? "Close" : "Search"}
@@ -600,7 +651,12 @@ export default function UpdatesScreen() {
 
           {showNovelSearch && novels.length > 3 && (
             <Animated.View entering={FadeIn} style={styles.searchContainer}>
-              <View style={[styles.searchInputContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.searchInputContainer,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                ]}
+              >
                 <Ionicons name="search" size={18} color={colors.textSecondary} />
                 <TextInput
                   style={[styles.novelSearchInput, { color: colors.text }]}
@@ -632,7 +688,7 @@ export default function UpdatesScreen() {
                 No novels matching "{novelSearchQuery}"
               </Text>
             ) : (
-              <ScrollView 
+              <ScrollView
                 style={styles.novelScrollView}
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
@@ -645,6 +701,7 @@ export default function UpdatesScreen() {
           </View>
         </View>
 
+        {/* Form */}
         <View style={styles.form}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -714,6 +771,7 @@ export default function UpdatesScreen() {
           </View>
         </View>
 
+        {/* Progress */}
         {(isUpdating || progress > 0) && (
           <Animated.View entering={FadeIn}>
             <View style={styles.progressSection}>
@@ -730,10 +788,7 @@ export default function UpdatesScreen() {
                 <Animated.View
                   style={[
                     styles.progressFill,
-                    {
-                      backgroundColor: colors.accent,
-                      width: `${Math.min(progress, 100)}%`,
-                    },
+                    { backgroundColor: colors.accent, width: `${Math.min(progress, 100)}%` },
                   ]}
                 />
               </View>
@@ -741,6 +796,7 @@ export default function UpdatesScreen() {
           </Animated.View>
         )}
 
+        {/* Elapsed Time */}
         {(isUpdating || elapsedTime !== "00:00:00") && (
           <View style={styles.timerSection}>
             <View style={styles.timerHeader}>
@@ -751,6 +807,7 @@ export default function UpdatesScreen() {
           </View>
         )}
 
+        {/* Activity Log */}
         <View style={styles.logSection}>
           <View style={styles.logHeader}>
             <Ionicons name="sync" size={15} color={colors.accent} />
@@ -765,14 +822,12 @@ export default function UpdatesScreen() {
           >
             {logs.length === 0 ? (
               <Text style={[styles.logLine, { color: colors.textMuted }]}>
-                {selectedNovel 
-                  ? `Ready to check for updates in "${selectedNovel.title}"` 
+                {selectedNovel
+                  ? `Ready to check for updates in "${selectedNovel.title}"`
                   : "Select a novel to check for updates"}
               </Text>
             ) : (
-              logs.map((entry) => (
-                <LogLine key={entry.id} entry={entry} />
-              ))
+              logs.map((entry) => <LogLine key={entry.id} entry={entry} />)
             )}
           </ScrollView>
         </View>
@@ -791,31 +846,16 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-  },
-  scroll: { 
-    padding: 16, 
-    gap: 16,
-    flexGrow: 1,
-  },
-  card: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-  },
+  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 22 },
+  scroll: { padding: 16, gap: 16, flexGrow: 1 },
+  card: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  cardLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 10,
-    letterSpacing: 0.8,
-  },
+  cardLabel: { fontFamily: "Inter_600SemiBold", fontSize: 10, letterSpacing: 0.8 },
   searchToggle: {
     flexDirection: "row",
     alignItems: "center",
@@ -824,14 +864,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  searchToggleText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-  },
-  searchContainer: {
-    marginBottom: 12,
-    gap: 6,
-  },
+  searchToggleText: { fontFamily: "Inter_500Medium", fontSize: 12 },
+  searchContainer: { marginBottom: 12, gap: 6 },
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -841,26 +875,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  novelSearchInput: {
-    flex: 1,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    paddingVertical: 4,
-  },
-  searchResultText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    paddingLeft: 4,
-  },
-  novelListContainer: {
-    minHeight: 0,
-  },
-  novelScrollView: {
-    maxHeight: 240,
-  },
-  novelListInner: {
-    gap: 8,
-  },
+  novelSearchInput: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 4 },
+  searchResultText: { fontFamily: "Inter_400Regular", fontSize: 11, paddingLeft: 4 },
+  novelListContainer: { minHeight: 0 },
+  novelScrollView: { maxHeight: 240 },
+  novelListInner: { gap: 8 },
   novelItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -870,21 +889,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  novelItemContent: {
-    flex: 1,
-  },
-  novelTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  novelChapters: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-  },
-  checkIcon: {
-    marginLeft: 8,
-  },
+  novelItemContent: { flex: 1 },
+  novelTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 4 },
+  novelChapters: { fontFamily: "Inter_400Regular", fontSize: 11 },
+  checkIcon: { marginLeft: 8 },
   emptyText: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
@@ -893,11 +901,7 @@ const styles = StyleSheet.create({
   },
   form: { gap: 14 },
   row: { flexDirection: "row", gap: 12 },
-  label: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    marginBottom: 6,
-  },
+  label: { fontFamily: "Inter_500Medium", fontSize: 12, marginBottom: 6 },
   input: {
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
@@ -915,11 +919,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  primaryBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: "#fff",
-  },
+  primaryBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
   outlineBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -929,61 +929,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  outlineBtnText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-  },
+  outlineBtnText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   progressSection: { gap: 8 },
-  progressHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  timerSection: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  timerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  timerValue: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    marginLeft: "auto",
-  },
-  sectionTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    flex: 1,
-  },
-  progressLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  logSection: { 
-    gap: 8,
-    marginBottom: 22, 
-  },
-  logHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  clearLog: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-  },
+  progressHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  timerSection: { gap: 8, marginBottom: 16 },
+  timerHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  timerValue: { fontFamily: "Inter_600SemiBold", fontSize: 16, marginLeft: "auto" },
+  sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, flex: 1 },
+  progressLabel: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  progressBar: { height: 6, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3 },
+  logSection: { gap: 8, marginBottom: 22 },
+  logHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   logBox: {
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
@@ -991,14 +948,12 @@ const styles = StyleSheet.create({
     maxHeight: 350,
     minHeight: 150,
   },
-  logContent: {
-    paddingBottom: 38,
-  },
+  logContent: { paddingBottom: 38 },
   logLine: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 4,
     paddingHorizontal: 4,
-  }
+  },
 });
