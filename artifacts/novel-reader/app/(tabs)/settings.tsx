@@ -1124,6 +1124,10 @@ export default function SettingsScreen() {
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Rebuilt as ReactNative Mobile App from Python Source
                 </Text>
+                <Text style={[styles.creditsItemName, { color: colors.text }]}>DeepSeek & Claude</Text>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Utilzed DeepSeek/Claude in building the useDirectScraper API in ReactNative
+                </Text>
               </View>
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.creditsItemName, { color: colors.text }]}>WebNovel Source Scrapers</Text>
@@ -1137,9 +1141,10 @@ export default function SettingsScreen() {
                   <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@lncrawl/lightnovel-crawler</Text>
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
-                  Adapted and ported 5 novel scraper src into the App.
+                  Adapted and ported 3 novel scraper src into the App.
                 </Text>
               </View>
+
               <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ This App is Built with</Text>
               <View style={[styles.creditsItem, { borderBottomColor: colors.border }]}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1177,16 +1182,19 @@ export default function SettingsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.devCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
-            {/* Close button — top right */}
-            <Pressable style={styles.devCloseBtn} onPress={() => setShowDevProfile(false)}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </Pressable>
+            {/* Title bar */}
+            <View style={[styles.devTitleBar, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.devTitle, { color: colors.text }]}>About Developer</Text>
+              <Pressable onPress={() => setShowDevProfile(false)} hitSlop={8}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
 
             {/* App icon + name row */}
             <View style={styles.devProfileRow}>
               <Image
                 source={require("../../assets/images/icon.png")}
-                style={styles.devAppIcon}
+                style={[styles.devAppIcon, { borderColor: colors.border }]}
               />
               <View style={styles.devInfo}>
                 <Text style={[styles.devLabel, { color: colors.textMuted }]}>Name</Text>
@@ -1197,28 +1205,36 @@ export default function SettingsScreen() {
             {/* Divider */}
             <View style={[styles.devDivider, { backgroundColor: colors.border }]} />
 
-            {/* Side-by-side link buttons */}
+            {/* Side-by-side link buttons with labels above */}
             <View style={styles.devLinksRow}>
-              <Pressable
-                style={[styles.devLinkBtn, { borderColor: colors.border }]}
-                onPress={() => Linking.openURL("https://moggle.is-a-good.dev/")}
-              >
-                <Ionicons name="globe-outline" size={15} color={colors.accent} />
-                <Text style={[styles.devLinkBtnText, { color: colors.text }]}>NovelDR</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.devLinkBtn, { borderColor: colors.border }]}
-                onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/noveldr-site/releases")}
-              >
-                <Ionicons name="logo-github" size={15} color={colors.accent} />
-                <Text style={[styles.devLinkBtnText, { color: colors.text }]}>Official Release</Text>
-              </Pressable>
+              <View style={styles.devLinkCol}>
+                <Text style={[styles.devLinkColLabel, { color: colors.textSecondary }]}>Website:</Text>
+                <Pressable
+                  style={[styles.devLinkBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={() => Linking.openURL("https://moggle.is-a-good.dev/")}
+                >
+                  <Ionicons name="globe-outline" size={15} color={colors.accent} />
+                  <Text style={[styles.devLinkBtnText, { color: colors.text }]}>NovelDR</Text>
+                </Pressable>
+              </View>
+              <View style={styles.devLinkCol}>
+                <Text style={[styles.devLinkColLabel, { color: colors.textSecondary }]}>Github Release:</Text>
+                <Pressable
+                  style={[styles.devLinkBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={() => Linking.openURL("https://github.com/Moggle-Khraum/noveldr-site/releases")}
+                >
+                  <Ionicons name="logo-github" size={15} color={colors.accent} />
+                  <Text style={[styles.devLinkBtnText, { color: colors.text }]}>Official Release</Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Footer note */}
-            <Text style={[styles.devIssueText, { color: colors.textSecondary }]}>
-              For any suggestions/issues/bugs encountered, please use Github Issue or the Report Issue button.
-            </Text>
+            <View style={[styles.devFooterBox, { borderTopColor: colors.border }]}>
+              <Text style={[styles.devIssueText, { color: colors.textSecondary }]}>
+                For any suggestions/issues/bugs encountered, please use Github Issue or the Report Issue button.
+              </Text>
+            </View>
 
           </View>
         </View>
@@ -1305,17 +1321,28 @@ const styles = StyleSheet.create({
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   // Dev modal
-  devCard: { borderRadius: 16, borderWidth: 1, padding: 16, width: '100%', maxWidth: 360, gap: 12 },
-  devCloseBtn: { alignSelf: "flex-end", padding: 2 },
-  devProfileRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  devAppIcon: { width: 58, height: 58, borderRadius: 13 },
+  devCard: { borderRadius: 14, borderWidth: 1, width: '100%', maxWidth: 360, overflow: "hidden" },
+  devTitleBar: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  devTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  devProfileRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, paddingBottom: 14 },
+  devAppIcon: { width: 54, height: 54, borderRadius: 27, borderWidth: StyleSheet.hairlineWidth },
   devInfo: { flexDirection: "column", gap: 2 },
   devLabel: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.4 },
   devValue: { fontFamily: "Inter_700Bold", fontSize: 17 },
-  devDivider: { height: StyleSheet.hairlineWidth },
-  devLinksRow: { flexDirection: "row", gap: 10 },
-  devLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 9 },
+  devDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  devLinksRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  devLinkCol: { flex: 1, gap: 5 },
+  devLinkColLabel: { fontFamily: "Inter_500Medium", fontSize: 11 },
+  devLinkBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, borderWidth: 1, borderRadius: 20, paddingVertical: 8,
+  },
   devLinkBtnText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  devFooterBox: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingHorizontal: 16, paddingVertical: 12 },
   devIssueText: { fontFamily: "Inter_400Regular", fontSize: 11, lineHeight: 16, textAlign: "center" },
   // Bug report
   reportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginTop: 8 },
