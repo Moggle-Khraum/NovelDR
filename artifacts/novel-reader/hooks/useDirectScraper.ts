@@ -367,8 +367,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      const coverMatch = safeMatch(html, /<img[^>]*class="novel-cover[^"]*"[^>]*src="([^"]+)"/i) ||
-                         safeMatch(html, /<img[^>]*src="([^"]+)"[^>]*class="novel-cover[^"]*"/i);
+      const coverMatch = safeMatch(html, /<img[^>]*class="novel-cover"[^>]*src="([^"]+)"/i) ||
+                         safeMatch(html, /<img[^>]*src="([^"]+)"[^>]*class="novel-cover"/i);
       if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
       
       const summaryMatch = safeMatch(html, /<div[^>]*class="summary-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
@@ -425,30 +425,34 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
                          safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
                          safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
                          safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
-      if (titleMatch) {
-        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
-        rawTitle = rawTitle.replace(/^.*Chapter\s+\d+(\s+\d+)?\s*[:.\-–—]?\s*/i, '').trim();
-        rawTitle = rawTitle.replace(/^[\s,]+/, '').trim();
-        title = `Chapter ${chapterNum}: ${rawTitle}`;
-        skipCleanup = true;
-      }
+   if (titleMatch) {
+     let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+     rawTitle = rawTitle.replace(/^.*Chapter\s+\d+(\s+\d+)?\s*[:.\-–—]?\s*/i, '').trim();
+     // Remove any leading comma and spaces left over
+     rawTitle = rawTitle.replace(/^[\s,]+/, '').trim();
+     title = `Chapter ${chapterNum}: ${rawTitle}`;
+     skipCleanup = true;
     }
+  }
         
-    // FreeWebNovel Title Extractor
+    //FreeWebNovel Title Extractor
     if (isFreeWebNovel) {
       const titleMatch = safeMatch(html, /<h1[^>]*class="tit"[^>]*>([^<]+)<\/h1>/i) ||
                          safeMatch(html, /<h4[^>]*>([^<]*Chapter[^<]*)<\/h4>/i) ||
                          safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+        // Remove all "Chapter X:" prefixes
         rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]\s*/gi, '').trim();
+        // Remove stray duplicate number (e.g., "15 :")
         rawTitle = rawTitle.replace(new RegExp(`^\\s*${chapterNum}\\s*[:.\\-–—]?\\s*`, 'i'), '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
       }
     }
 
-    // Novelbin Title Extractor
+
+    // Novelbin
     if (isNovelBin) {
       const titleMatch = safeMatch(html, /<span[^>]*class="chr-text"[^>]*>([^<]+)<\/span>/i) ||
                          safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ||
@@ -463,7 +467,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
 
-    // LightNovelWorld Title Extractor
+    //LightNovelWorld
     if (isLightNovelWorld) {
       const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
                          safeMatch(html, /<h2[^>]*class="chapter-title"[^>]*>([^<]+)<\/h2>/i) ||
@@ -510,29 +514,16 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
     
-    // --- FIXED: LightNovelWorld content extraction ---
-    // Uses #chapter-container (correct ID per TUVIMEN's scraper)
-    // Strips nested divs before extracting <p> tags to prevent duplicate paragraphs
-    // from hidden TTS/SEO mirror elements inside the container
     if (isLightNovelWorld && !paragraphMatches) {
-      const containerMatch = html.match(/<div[^>]*id="chapter-container"[^>]*>([\s\S]*?)<\/div>/i);
+      const containerMatch = html.match(/<div[^>]*id="chapterText"[^>]*>([\s\S]*?)<\/div>/i) ||
+                             html.match(/<div[^>]*class="chapter-text[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (containerMatch) {
         let cleaned = containerMatch[1]
-          .replace(/<div[^>]*>[\s\S]*?<\/div>/gi, '')
+          .replace(/<div[^>]*class="chapter-ad-container"[^>]*>[\s\S]*?<\/div>/gi, '')
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+        cleaned = cleaned.replace(/<div[^>]*class="text-to-speech[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+        cleaned = cleaned.replace(/<div[^>]*class="cta-banner[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
         paragraphMatches = cleaned.match(/<p[^>]*>([\s\S]*?)<\/p>/gis);
-      }
-
-      // Fallback to old selectors if #chapter-container not found
-      if (!paragraphMatches) {
-        const fallbackMatch = html.match(/<div[^>]*id="chapterText"[^>]*>([\s\S]*?)<\/div>/i) ||
-                              html.match(/<div[^>]*class="chapter-text[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-        if (fallbackMatch) {
-          let cleaned = fallbackMatch[1]
-            .replace(/<div[^>]*>[\s\S]*?<\/div>/gi, '')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-          paragraphMatches = cleaned.match(/<p[^>]*>([\s\S]*?)<\/p>/gis);
-        }
       }
     }
     
@@ -661,16 +652,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       while (endIdx >= 0 && filtered[endIdx].toLowerCase().includes('comment')) endIdx--;
       
       const cleaned = filtered.slice(startIdx, endIdx + 1);
-
-      // Deduplicate consecutive identical paragraphs
-      const deduped: string[] = [];
-      for (const para of cleaned) {
-        if (deduped.length === 0 || para !== deduped[deduped.length - 1]) {
-          deduped.push(para);
-        }
-      }
-
-      content = deduped.join('\n\n');
+      content = cleaned.join('\n\n');
       if (!content.trim()) {
         content = validParagraphs.join('\n\n');
       }
