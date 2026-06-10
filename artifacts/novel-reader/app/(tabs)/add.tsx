@@ -119,6 +119,9 @@ export default function AddNovelScreen() {
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const startTimeRef = useRef<number>(0);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
 
