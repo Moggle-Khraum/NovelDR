@@ -114,6 +114,35 @@ const httpClient = axios.create({
   },
 });
 
+// LNW-specific fetch — sends full browser-like headers including Sec-Fetch-*
+// and a Referer. LNW detects non-browser clients and injects duplicate paragraph
+// content via inline JS inside ad containers when it suspects scraping.
+const fetchLightNovelWorld = async (url: string): Promise<string> => {
+  const parsed = new URL(url);
+  const origin = `${parsed.protocol}//${parsed.host}`;
+  try {
+    const response = await httpClient.get(url, {
+      headers: {
+        'Referer': `${origin}/`,
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Sec-Ch-Ua': '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'DNT': '1',
+      },
+    });
+    return response.data;
+  } catch (err) {
+    console.warn('[LNW] Direct fetch failed, trying proxy:', err.message);
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const proxyResponse = await httpClient.get(proxyUrl);
+    return proxyResponse.data;
+  }
+};
+
 // Fetch with fallback to proxy for FreeWebNovel
 const fetchWithFallback = async (url: string, isFreeWebNovel: boolean): Promise<string> => {
   if (isFreeWebNovel) {
@@ -552,7 +581,9 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isNovelBin = domainLower.includes('novelbin');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     
-    const html = await fetchWithFallback(url, isFreeWebNovel);
+    const html = isLightNovelWorld
+      ? await fetchLightNovelWorld(url)
+      : await fetchWithFallback(url, isFreeWebNovel);
     
     let title = `Chapter ${chapterNum}`;
     let skipCleanup = false;
