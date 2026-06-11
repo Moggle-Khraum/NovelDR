@@ -444,7 +444,7 @@ export default function AddNovelScreen() {
               data.scraperInfo.selector === 'chapter-text'    ? '🔄 .chapter-text'     :
                                                                 '⚠️ generic fallback';
             addLog(
-              `[LNW] ${selectorLabel} · raw: ${data.scraperInfo.rawCount} · filtered: ${data.scraperInfo.filteredCount}`,
+              `[LNW] ${selectorLabel} · raw: ${data.scraperInfo.rawCount} · filtered: ${data.scraperInfo.filteredCount} · <p>: ${data.scraperInfo.pTagCount} · ${Math.round(data.scraperInfo.htmlLength / 1024)}kb`,
               data.scraperInfo.selector === 'generic-fallback' ? 'warning' : 'info'
             );
           }
