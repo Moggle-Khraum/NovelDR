@@ -227,9 +227,8 @@ const lnwExtractInnerHtml = (html: string): string | null => {
   inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
   // Strip ad containers — use a depth counter rather than a fixed-depth regex.
-  // The real page has 3 levels of nesting inside .chapter-ad-container
-  // (container > ad-unit > pf-XXXXX div), so a 2-closing-tag regex leaves a
-  // dangling </div> that corrupts the subsequent <p> extraction.
+  // Simply remove the entire ad container (matching the Python re.sub that
+  // removes the whole block without injecting extra tags).
   const adMarker = 'class="chapter-ad-container';
   let adSearch = 0;
   while (true) {
@@ -248,7 +247,8 @@ const lnwExtractInnerHtml = (html: string): string | null => {
       if (no !== -1 && no < nc) { adDepth++; ai = no + 4; }
       else { adDepth--; ai = nc + 5; }
     }
-    inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
+    // REMOVED: inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
+    inner = inner.slice(0, adTagStart) + inner.slice(ai);
     adSearch = adTagStart;
   }
   return inner;
@@ -280,7 +280,6 @@ const lnwExtractParagraphs = (html: string): {
 };
 
 // ─── LightNovelWorld: junk filter ────────────────────────────────────────────
-// Mirrors Python filter_paragraphs() + deduplicate().
 const LNW_JUNK_PHRASES = [
   'text-to-speech is here',
   'create a free account',
@@ -300,60 +299,35 @@ const LNW_JUNK_PHRASES = [
   'spam, phishing',
 ];
 
+// Mirrors Python filter_paragraphs() — length check + junk phrase filtering ONLY
 const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   const results: string[] = [];
 
   for (const p of rawParas) {
-    let text = decodeEntities(stripTags(p)).trim();
+    const text = decodeEntities(stripTags(p)).trim();
     const lower = text.toLowerCase();
 
     if (text.length < 20) continue;
     if (LNW_JUNK_PHRASES.some(phrase => lower.includes(phrase))) continue;
 
-    // ── Intra-paragraph sentence dedup ──────────────────────────────────────
-    // LNW injects a duplicate of the surrounding sentence(s) directly inside
-    // the paragraph text (e.g. "...above.Behind them...above."). Split on
-    // sentence boundaries and remove any sentence that already appeared earlier
-    // in the same paragraph.
-    const sentences = text
-      .split(/(?<=[.!?…])\s+/)   // split after terminal punctuation + space
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-
-    if (sentences.length > 1) {
-      const seenSentences = new Set<string>();
-      const cleanSentences: string[] = [];
-      for (const s of sentences) {
-        const key = s.toLowerCase().replace(/\s+/g, ' ');
-        if (!seenSentences.has(key)) {
-          seenSentences.add(key);
-          cleanSentences.push(s);
-        }
-      }
-      text = cleanSentences.join(' ');
-    }
-    // ────────────────────────────────────────────────────────────────────────
-
     results.push(text);
   }
 
-  // Global dedup using a normalized key (collapse whitespace + lowercase).
-  // Consecutive-only dedup isn't enough — LNW injects mirror copies of paragraph
-  // blocks at different DOM positions, so duplicates are non-consecutive.
-  const seen = new Set<string>();
+  return results;
+};
+
+// ─── Consecutive deduplication (same as Python deduplicate()) ────────────────
+const deduplicate = (paras: string[]): string[] => {
   const deduped: string[] = [];
-  for (const p of results) {
-    const key = p.replace(/\s+/g, ' ').toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
+  for (const p of paras) {
+    if (deduped.length === 0 || p !== deduped[deduped.length - 1]) {
       deduped.push(p);
     }
   }
-
   return deduped;
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Novel meta extraction ───────────────────────────────────────────────────
 export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   console.log('[Scraper] Fetching novel meta from:', url);
   
@@ -602,6 +576,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   }
 };
 
+// ─── Chapter fetching ────────────────────────────────────────────────────────
 export const directFetchChapter = async (url: string, chapterNum: number): Promise<ChapterData> => {
   console.log('[Scraper] Fetching chapter:', url);
   
@@ -708,24 +683,19 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     }
 
     // ── LightNovelWorld: run the full Python pipeline on raw HTML directly ──
-    // MUST bypass the generic validParagraphs loop below — that loop strips
-    // tags and decodes entities before lnwFilterParagraphs sees the text,
-    // which breaks junk-phrase matching and causes non-consecutive duplicates
-    // (from LNW's hidden TTS mirror elements) to survive dedup.
-    // The Python script never feeds pre-stripped text into filter_paragraphs;
-    // it always operates on raw inner HTML. We do the same here.
     if (isLightNovelWorld) {
       const { paragraphs: rawParas, selector } = lnwExtractParagraphs(html);
       const filtered = lnwFilterParagraphs(rawParas);
+      const deduped = deduplicate(filtered);
       const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
       return {
         url,
         title: decodeEntities(title),
-        content: filtered.length > 0 ? filtered.join('\n\n') : 'No content available.',
+        content: deduped.length > 0 ? deduped.join('\n\n') : 'No content available.',
         scraperInfo: {
           selector,
           rawCount: rawParas.length,
-          filteredCount: filtered.length,
+          filteredCount: deduped.length,
           htmlLength: html.length,
           pTagCount,
         },
