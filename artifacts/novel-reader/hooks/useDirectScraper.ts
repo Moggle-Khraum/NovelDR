@@ -19,6 +19,8 @@ export interface ChapterData {
     selector: 'chapterText' | 'chapter-text' | 'generic-fallback';
     rawCount: number;
     filteredCount: number;
+    htmlLength: number;
+    pTagCount: number;
   };
 }
 
@@ -134,7 +136,13 @@ const fetchLightNovelWorld = async (url: string): Promise<string> => {
         'DNT': '1',
       },
     });
-    return response.data;
+    const html: string = response.data;
+    // DEBUG: count how many times the chapterText marker and a known duplicate
+    // pattern appear — lets us confirm if the server is sending dirty HTML
+    const chapterTextCount = (html.match(/id="chapterText"/g) || []).length;
+    const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
+    console.log(`[LNW] Raw HTML: ${html.length} chars, #chapterText: ${chapterTextCount}, <p> tags: ${pTagCount}`);
+    return html;
   } catch (err) {
     console.warn('[LNW] Direct fetch failed, trying proxy:', err.message);
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
@@ -211,8 +219,15 @@ const lnwExtractInnerHtml = (html: string): string | null => {
 
   let inner = html.slice(openTagEnd + 1, i);
 
-  // Strip ad containers — use a depth counter again rather than a fixed-depth
-  // regex. The real page has 3 levels of nesting inside .chapter-ad-container
+  // Strip <style> and <script> blocks FIRST — must happen before the ad-strip
+  // loop, because the <style> blocks injected after each ad container contain
+  // the text ".chapter-ad-container" which could confuse the ad search, and
+  // because <p> extraction must not see any CSS or JS content.
+  inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+
+  // Strip ad containers — use a depth counter rather than a fixed-depth regex.
+  // The real page has 3 levels of nesting inside .chapter-ad-container
   // (container > ad-unit > pf-XXXXX div), so a 2-closing-tag regex leaves a
   // dangling </div> that corrupts the subsequent <p> extraction.
   const adMarker = 'class="chapter-ad-container';
@@ -233,13 +248,9 @@ const lnwExtractInnerHtml = (html: string): string | null => {
       if (no !== -1 && no < nc) { adDepth++; ai = no + 4; }
       else { adDepth--; ai = nc + 5; }
     }
-    inner = inner.slice(0, adTagStart) + inner.slice(ai);
+    inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
     adSearch = adTagStart;
   }
-  // Strip <style> and <script> blocks
-  inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-  inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-
   return inner;
 };
 
@@ -293,11 +304,35 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   const results: string[] = [];
 
   for (const p of rawParas) {
-    const text = decodeEntities(stripTags(p)).trim();
+    let text = decodeEntities(stripTags(p)).trim();
     const lower = text.toLowerCase();
 
     if (text.length < 20) continue;
     if (LNW_JUNK_PHRASES.some(phrase => lower.includes(phrase))) continue;
+
+    // ── Intra-paragraph sentence dedup ──────────────────────────────────────
+    // LNW injects a duplicate of the surrounding sentence(s) directly inside
+    // the paragraph text (e.g. "...above.Behind them...above."). Split on
+    // sentence boundaries and remove any sentence that already appeared earlier
+    // in the same paragraph.
+    const sentences = text
+      .split(/(?<=[.!?…])\s+/)   // split after terminal punctuation + space
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    if (sentences.length > 1) {
+      const seenSentences = new Set<string>();
+      const cleanSentences: string[] = [];
+      for (const s of sentences) {
+        const key = s.toLowerCase().replace(/\s+/g, ' ');
+        if (!seenSentences.has(key)) {
+          seenSentences.add(key);
+          cleanSentences.push(s);
+        }
+      }
+      text = cleanSentences.join(' ');
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     results.push(text);
   }
@@ -682,6 +717,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     if (isLightNovelWorld) {
       const { paragraphs: rawParas, selector } = lnwExtractParagraphs(html);
       const filtered = lnwFilterParagraphs(rawParas);
+      const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
       return {
         url,
         title: decodeEntities(title),
@@ -690,6 +726,8 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
           selector,
           rawCount: rawParas.length,
           filteredCount: filtered.length,
+          htmlLength: html.length,
+          pTagCount,
         },
         nextUrl: (() => {
           // Inline next-URL extraction so we still return it
