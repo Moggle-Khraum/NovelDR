@@ -64,6 +64,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("limit")) return "✅";
     if (text.includes("halted")) return "⚠️";
     if (text.includes("No more chapters")) return "🏁";
+    if (text.includes("[LNW]")) return "";  // icon already embedded in the text
     if (text.includes("━━━━")) return "";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter")) return "📖";
@@ -435,6 +436,18 @@ export default function AddNovelScreen() {
           });
 
           downloaded++;
+
+          // LNW-only: show which selector path was used and paragraph counts
+          if (data.scraperInfo) {
+            const selectorLabel =
+              data.scraperInfo.selector === 'chapterText'     ? '🎯 #chapterText'      :
+              data.scraperInfo.selector === 'chapter-text'    ? '🔄 .chapter-text'     :
+                                                                '⚠️ generic fallback';
+            addLog(
+              `[LNW] ${selectorLabel} · raw: ${data.scraperInfo.rawCount} · filtered: ${data.scraperInfo.filteredCount}`,
+              data.scraperInfo.selector === 'generic-fallback' ? 'warning' : 'info'
+            );
+          }
 
           if (downloaded % 10 === 0) {
             addLog(
