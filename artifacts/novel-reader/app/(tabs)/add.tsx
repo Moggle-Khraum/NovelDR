@@ -126,6 +126,21 @@ export default function AddNovelScreen() {
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
 
+  // Detect chapter URL and auto-fill Start Chapter
+  const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
+  const detectedChapterNum = url.match(CHAPTER_URL_PATTERN)?.[1] ?? null;
+  const isChapterUrl = detectedChapterNum !== null;
+
+  const handleUrlChange = (text: string) => {
+    setUrl(text);
+    const match = text.match(CHAPTER_URL_PATTERN);
+    if (match) {
+      setStartChStr(match[1]);
+    } else if (!text.trim()) {
+      setStartChStr("1");
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -251,6 +266,26 @@ export default function AddNovelScreen() {
     const startCh = Math.max(1, parseInt(startChStr) || 1);
     const maxCh = parseInt(maxChStr) || null;
 
+    // ── Detect if a chapter URL was pasted directly ──────────────────────────
+    // Matches patterns like /chapter-942, /chapter/942, /ch-942
+    const chapterUrlPattern = /\/chapter[-/](\d+)/i;
+    const chapterUrlMatch = trimmedUrl.match(chapterUrlPattern);
+    const isChapterUrl = !!chapterUrlMatch;
+
+    // Derive novel homepage URL by stripping everything from /chapter onwards
+    let metaUrl = trimmedUrl;
+    let directChapterUrl: string | null = null;
+    let directChapterNum = startCh;
+
+    if (isChapterUrl) {
+      const chapterIndex = trimmedUrl.search(chapterUrlPattern);
+      metaUrl = trimmedUrl.slice(0, chapterIndex).replace(/\/$/, '');
+      directChapterUrl = trimmedUrl;
+      directChapterNum = parseInt(chapterUrlMatch![1]) || startCh;
+      addLog(`Chapter URL detected — fetching novel info from: ${metaUrl}`, "info");
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     stopRef.current = false;
     setIsDownloading(true);
     setLogs([]);
@@ -258,7 +293,7 @@ export default function AddNovelScreen() {
     startTimer();
 
     try {
-      const meta = await fetchNovelMeta(trimmedUrl);
+      const meta = await fetchNovelMeta(metaUrl);
       
       const existingNovel = novels.find(
         (n) => n.title.toLowerCase() === meta.title.toLowerCase()
@@ -332,11 +367,20 @@ export default function AddNovelScreen() {
         localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
 
-      // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
-      let currentUrl: string | null = meta.firstChapterUrl;
-      let chapterNum = 1;
+      // ── If a chapter URL was pasted, skip directly to it ─────────────────
+      // Override firstChapterUrl with the pasted chapter URL and set chapterNum
+      // to the number extracted from the URL — bypasses the skip/crawl logic.
+      let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
+      let chapterNum = directChapterUrl ? directChapterNum : 1;
 
-      if (startCh > 1) {
+      if (directChapterUrl) {
+        addLog(`Starting directly from chapter ${directChapterNum}`, "success");
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      }
+
+      // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
+      // Only runs when a novel homepage URL was pasted (not a chapter URL)
+      if (!directChapterUrl && startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
 
@@ -577,7 +621,7 @@ export default function AddNovelScreen() {
             <TextInput
               style={inputStyle}
               value={url}
-              onChangeText={setUrl}
+              onChangeText={handleUrlChange}
               placeholder="https://readnovelfull.com/novel-name.html"
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
@@ -589,15 +633,17 @@ export default function AddNovelScreen() {
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Start Chapter</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Start Chapter{isChapterUrl ? ' 🔗' : ''}
+              </Text>
               <TextInput
-                style={inputStyle}
+                style={[inputStyle, isChapterUrl && { opacity: 0.5 }]}
                 value={startChStr}
                 onChangeText={setStartChStr}
                 placeholder="1"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
-                editable={!isDownloading}
+                editable={!isDownloading && !isChapterUrl}
               />
             </View>
             <View style={{ flex: 1 }}>
