@@ -14,13 +14,19 @@ export interface ChapterData {
   title: string;
   content: string;
   nextUrl: string | null;
-  /** Populated only for LNW — shows which selector path was used and paragraph count */
+  /** Populated only for LNW — shows which selector path was used, paragraph counts, and connection diagnostics */
   scraperInfo?: {
     selector: 'chapterText' | 'chapter-text' | 'generic-fallback';
     rawCount: number;
     filteredCount: number;
     htmlLength: number;
     pTagCount: number;
+    // Connection diagnostics
+    fetchMethod: 'fetch' | 'fetch-proxy';
+    httpStatus: number;
+    jsInjected: boolean;        // true if LNW TTS duplicate pattern detected in raw HTML
+    chapterTextCount: number;   // how many times #chapterText appears (should be 1)
+    contentType: string;
   };
 }
 
@@ -116,38 +122,48 @@ const httpClient = axios.create({
   },
 });
 
-// LNW-specific fetch — sends full browser-like headers including Sec-Fetch-*
-// and a Referer. LNW detects non-browser clients and injects duplicate paragraph
-// content via inline JS inside ad containers when it suspects scraping.
-const fetchLightNovelWorld = async (url: string): Promise<string> => {
-  const parsed = new URL(url);
-  const origin = `${parsed.protocol}//${parsed.host}`;
+// LNW-specific fetch — uses native fetch with minimal headers matching the
+// Python requests library. Sending full browser Sec-Fetch-* / Sec-Ch-Ua headers
+// causes LNW to inject duplicate TTS paragraph content server-side.
+interface LnwFetchResult {
+  html: string;
+  fetchMethod: 'fetch' | 'fetch-proxy';
+  httpStatus: number;
+  contentType: string;
+}
+
+const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+  };
+
   try {
-    const response = await httpClient.get(url, {
-      headers: {
-        'Referer': `${origin}/`,
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-User': '?1',
-        'Sec-Ch-Ua': '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'DNT': '1',
-      },
-    });
-    const html: string = response.data;
-    // DEBUG: count how many times the chapterText marker and a known duplicate
-    // pattern appear — lets us confirm if the server is sending dirty HTML
+    const response = await fetch(url, { headers });
+    const html = await response.text();
     const chapterTextCount = (html.match(/id="chapterText"/g) || []).length;
     const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
     console.log(`[LNW] Raw HTML: ${html.length} chars, #chapterText: ${chapterTextCount}, <p> tags: ${pTagCount}`);
-    return html;
+    return {
+      html,
+      fetchMethod: 'fetch',
+      httpStatus: response.status,
+      contentType: response.headers.get('content-type') || 'unknown',
+    };
   } catch (err) {
     console.warn('[LNW] Direct fetch failed, trying proxy:', err.message);
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const proxyResponse = await httpClient.get(proxyUrl);
-    return proxyResponse.data;
+    const proxyRes = await fetch(proxyUrl, { headers });
+    if (!proxyRes.ok) throw new Error(`Proxy HTTP ${proxyRes.status}`);
+    const html = await proxyRes.text();
+    return {
+      html,
+      fetchMethod: 'fetch-proxy',
+      httpStatus: proxyRes.status,
+      contentType: proxyRes.headers.get('content-type') || 'unknown',
+    };
   }
 };
 
@@ -227,8 +243,9 @@ const lnwExtractInnerHtml = (html: string): string | null => {
   inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
   // Strip ad containers — use a depth counter rather than a fixed-depth regex.
-  // Simply remove the entire ad container (matching the Python re.sub that
-  // removes the whole block without injecting extra tags).
+  // The real page has 3 levels of nesting inside .chapter-ad-container
+  // (container > ad-unit > pf-XXXXX div), so a 2-closing-tag regex leaves a
+  // dangling </div> that corrupts the subsequent <p> extraction.
   const adMarker = 'class="chapter-ad-container';
   let adSearch = 0;
   while (true) {
@@ -247,8 +264,7 @@ const lnwExtractInnerHtml = (html: string): string | null => {
       if (no !== -1 && no < nc) { adDepth++; ai = no + 4; }
       else { adDepth--; ai = nc + 5; }
     }
-    // REMOVED: inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
-    inner = inner.slice(0, adTagStart) + inner.slice(ai);
+    inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
     adSearch = adTagStart;
   }
   return inner;
@@ -280,6 +296,7 @@ const lnwExtractParagraphs = (html: string): {
 };
 
 // ─── LightNovelWorld: junk filter ────────────────────────────────────────────
+// Mirrors Python filter_paragraphs() + deduplicate().
 const LNW_JUNK_PHRASES = [
   'text-to-speech is here',
   'create a free account',
@@ -299,35 +316,60 @@ const LNW_JUNK_PHRASES = [
   'spam, phishing',
 ];
 
-// Mirrors Python filter_paragraphs() — length check + junk phrase filtering ONLY
 const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   const results: string[] = [];
 
   for (const p of rawParas) {
-    const text = decodeEntities(stripTags(p)).trim();
+    let text = decodeEntities(stripTags(p)).trim();
     const lower = text.toLowerCase();
 
     if (text.length < 20) continue;
     if (LNW_JUNK_PHRASES.some(phrase => lower.includes(phrase))) continue;
 
+    // ── Intra-paragraph sentence dedup ──────────────────────────────────────
+    // LNW injects a duplicate of the surrounding sentence(s) directly inside
+    // the paragraph text (e.g. "...above.Behind them...above."). Split on
+    // sentence boundaries and remove any sentence that already appeared earlier
+    // in the same paragraph.
+    const sentences = text
+      .split(/(?<=[.!?…])\s+/)   // split after terminal punctuation + space
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    if (sentences.length > 1) {
+      const seenSentences = new Set<string>();
+      const cleanSentences: string[] = [];
+      for (const s of sentences) {
+        const key = s.toLowerCase().replace(/\s+/g, ' ');
+        if (!seenSentences.has(key)) {
+          seenSentences.add(key);
+          cleanSentences.push(s);
+        }
+      }
+      text = cleanSentences.join(' ');
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     results.push(text);
   }
 
-  return results;
-};
-
-// ─── Consecutive deduplication (same as Python deduplicate()) ────────────────
-const deduplicate = (paras: string[]): string[] => {
+  // Global dedup using a normalized key (collapse whitespace + lowercase).
+  // Consecutive-only dedup isn't enough — LNW injects mirror copies of paragraph
+  // blocks at different DOM positions, so duplicates are non-consecutive.
+  const seen = new Set<string>();
   const deduped: string[] = [];
-  for (const p of paras) {
-    if (deduped.length === 0 || p !== deduped[deduped.length - 1]) {
+  for (const p of results) {
+    const key = p.replace(/\s+/g, ' ').toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
       deduped.push(p);
     }
   }
+
   return deduped;
 };
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ─── Novel meta extraction ───────────────────────────────────────────────────
 export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   console.log('[Scraper] Fetching novel meta from:', url);
   
@@ -576,7 +618,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   }
 };
 
-// ─── Chapter fetching ────────────────────────────────────────────────────────
 export const directFetchChapter = async (url: string, chapterNum: number): Promise<ChapterData> => {
   console.log('[Scraper] Fetching chapter:', url);
   
@@ -591,9 +632,9 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isNovelBin = domainLower.includes('novelbin');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     
-    const html = isLightNovelWorld
+    const { html, fetchMethod, httpStatus, contentType } = isLightNovelWorld
       ? await fetchLightNovelWorld(url)
-      : await fetchWithFallback(url, isFreeWebNovel);
+      : { html: await fetchWithFallback(url, isFreeWebNovel), fetchMethod: 'fetch' as const, httpStatus: 200, contentType: 'text/html' };
     
     let title = `Chapter ${chapterNum}`;
     let skipCleanup = false;
@@ -683,21 +724,35 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     }
 
     // ── LightNovelWorld: run the full Python pipeline on raw HTML directly ──
+    // MUST bypass the generic validParagraphs loop below — that loop strips
+    // tags and decodes entities before lnwFilterParagraphs sees the text,
+    // which breaks junk-phrase matching and causes non-consecutive duplicates
+    // (from LNW's hidden TTS mirror elements) to survive dedup.
+    // The Python script never feeds pre-stripped text into filter_paragraphs;
+    // it always operates on raw inner HTML. We do the same here.
     if (isLightNovelWorld) {
       const { paragraphs: rawParas, selector } = lnwExtractParagraphs(html);
       const filtered = lnwFilterParagraphs(rawParas);
-      const deduped = deduplicate(filtered);
       const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
+      const chapterTextCount = (html.match(/id="chapterText"/g) || []).length;
+      // JS injection detection: LNW duplicates a sentence immediately after a period
+      // with no space — pattern is "word.Word" at a sentence boundary inside a <p>.
+      const jsInjected = /[a-z]\.[A-Z]/.test(html);
       return {
         url,
         title: decodeEntities(title),
-        content: deduped.length > 0 ? deduped.join('\n\n') : 'No content available.',
+        content: filtered.length > 0 ? filtered.join('\n\n') : 'No content available.',
         scraperInfo: {
           selector,
           rawCount: rawParas.length,
-          filteredCount: deduped.length,
+          filteredCount: filtered.length,
           htmlLength: html.length,
           pTagCount,
+          fetchMethod,
+          httpStatus,
+          jsInjected,
+          chapterTextCount,
+          contentType,
         },
         nextUrl: (() => {
           // Inline next-URL extraction so we still return it
