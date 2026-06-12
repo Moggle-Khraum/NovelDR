@@ -481,16 +481,25 @@ export default function AddNovelScreen() {
 
           downloaded++;
 
-          // LNW-only: show which selector path was used and paragraph counts
+          // LNW-only: show connection diagnostics and scraper stats
           if (data.scraperInfo) {
+            const si = data.scraperInfo;
             const selectorLabel =
-              data.scraperInfo.selector === 'chapterText'     ? '🎯 #chapterText'      :
-              data.scraperInfo.selector === 'chapter-text'    ? '🔄 .chapter-text'     :
-                                                                '⚠️ generic fallback';
-            addLog(
-              `[LNW] ${selectorLabel} · raw: ${data.scraperInfo.rawCount} · filtered: ${data.scraperInfo.filteredCount} · <p>: ${data.scraperInfo.pTagCount} · ${Math.round(data.scraperInfo.htmlLength / 1024)}kb`,
-              data.scraperInfo.selector === 'generic-fallback' ? 'warning' : 'info'
-            );
+              si.selector === 'chapterText'  ? '🎯 #chapterText'  :
+              si.selector === 'chapter-text' ? '🔄 .chapter-text' :
+                                               '⚠️ generic fallback';
+            const methodLabel = si.fetchMethod === 'fetch-proxy' ? '🔀 fetch (proxy)' : '🌐 fetch (direct)';
+            const injectedLabel = si.jsInjected ? '⚠️ JS injection detected' : '✅ Clean HTML';
+            const idCountLabel = si.chapterTextCount !== 1 ? `  ⚠️ #chapterText x${si.chapterTextCount}` : '';
+            addLog(`[LNW] ── Connection ──────────────────`, 'info');
+            addLog(`[LNW] Method : ${methodLabel}`, 'info');
+            addLog(`[LNW] Status : HTTP ${si.httpStatus}  ${si.contentType}`, 'info');
+            addLog(`[LNW] Server : ${injectedLabel}${idCountLabel}`, si.jsInjected ? 'warning' : 'info');
+            addLog(`[LNW] ── Extraction ─────────────────`, 'info');
+            addLog(`[LNW] Selector  : ${selectorLabel}`, si.selector === 'generic-fallback' ? 'warning' : 'info');
+            addLog(`[LNW] HTML size : ${Math.round(si.htmlLength / 1024)}kb  <p> tags: ${si.pTagCount}`, 'info');
+            addLog(`[LNW] Paragraphs: raw ${si.rawCount} → filtered ${si.filteredCount}`, 'info');
+            addLog(`[LNW] ─────────────────────────────`, 'info');
           }
 
           if (downloaded % 10 === 0) {
