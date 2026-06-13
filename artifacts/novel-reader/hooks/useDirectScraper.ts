@@ -235,38 +235,52 @@ const lnwExtractInnerHtml = (html: string): string | null => {
 
   let inner = html.slice(openTagEnd + 1, i);
 
-  // Strip <style> and <script> blocks FIRST — must happen before the ad-strip
-  // loop, because the <style> blocks injected after each ad container contain
-  // the text ".chapter-ad-container" which could confuse the ad search, and
-  // because <p> extraction must not see any CSS or JS content.
+  // Strip ad containers, style, and script blocks entirely — same intent as
+  // Python extract_inner_html(). Do not inject replacement <p> tags here; doing
+  // so mutates paragraph boundaries and can create duplicate-looking fragments.
+  const removeNestedDivByClass = (source: string, classFragment: string): string => {
+    let output = source;
+    let searchFrom = 0;
+
+    while (true) {
+      const classIndex = output.indexOf(classFragment, searchFrom);
+      if (classIndex === -1) break;
+
+      const tagStart = output.lastIndexOf('<div', classIndex);
+      const tagEnd = output.indexOf('>', classIndex);
+      if (tagStart === -1 || tagEnd === -1) {
+        searchFrom = classIndex + classFragment.length;
+        continue;
+      }
+
+      let divDepth = 1;
+      let cursor = tagEnd + 1;
+
+      while (cursor < output.length && divDepth > 0) {
+        const nextOpen = output.indexOf('<div', cursor);
+        const nextClose = output.indexOf('</div', cursor);
+
+        if (nextClose === -1) break;
+
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          divDepth++;
+          cursor = nextOpen + 4;
+        } else {
+          divDepth--;
+          cursor = nextClose + 5;
+        }
+      }
+
+      output = output.slice(0, tagStart) + output.slice(cursor);
+      searchFrom = tagStart;
+    }
+
+    return output;
+  };
+
+  inner = removeNestedDivByClass(inner, 'chapter-ad-container');
   inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-
-  // Strip ad containers — use a depth counter rather than a fixed-depth regex.
-  // The real page has 3 levels of nesting inside .chapter-ad-container
-  // (container > ad-unit > pf-XXXXX div), so a 2-closing-tag regex leaves a
-  // dangling </div> that corrupts the subsequent <p> extraction.
-  const adMarker = 'class="chapter-ad-container';
-  let adSearch = 0;
-  while (true) {
-    const adStart = inner.indexOf(adMarker, adSearch);
-    if (adStart === -1) break;
-    // Walk back to find the opening < of this div
-    const adTagStart = inner.lastIndexOf('<', adStart);
-    const adTagEnd = inner.indexOf('>', adStart);
-    if (adTagEnd === -1) break;
-    let adDepth = 1;
-    let ai = adTagEnd + 1;
-    while (ai < inner.length && adDepth > 0) {
-      const no = inner.indexOf('<div', ai);
-      const nc = inner.indexOf('</div', ai);
-      if (nc === -1) break;
-      if (no !== -1 && no < nc) { adDepth++; ai = no + 4; }
-      else { adDepth--; ai = nc + 5; }
-    }
-    inner = inner.slice(0, adTagStart) + '</p><p>' + inner.slice(ai);
-    adSearch = adTagStart;
-  }
   return inner;
 };
 
@@ -320,48 +334,21 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   const results: string[] = [];
 
   for (const p of rawParas) {
-    let text = decodeEntities(stripTags(p)).trim();
+    const text = decodeEntities(stripTags(p)).trim();
     const lower = text.toLowerCase();
 
     if (text.length < 20) continue;
     if (LNW_JUNK_PHRASES.some(phrase => lower.includes(phrase))) continue;
 
-    // ── Intra-paragraph sentence dedup ──────────────────────────────────────
-    // LNW injects a duplicate of the surrounding sentence(s) directly inside
-    // the paragraph text (e.g. "...above.Behind them...above."). Split on
-    // sentence boundaries and remove any sentence that already appeared earlier
-    // in the same paragraph.
-    const sentences = text
-      .split(/(?<=[.!?…])\s+/)   // split after terminal punctuation + space
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-
-    if (sentences.length > 1) {
-      const seenSentences = new Set<string>();
-      const cleanSentences: string[] = [];
-      for (const s of sentences) {
-        const key = s.toLowerCase().replace(/\s+/g, ' ');
-        if (!seenSentences.has(key)) {
-          seenSentences.add(key);
-          cleanSentences.push(s);
-        }
-      }
-      text = cleanSentences.join(' ');
-    }
-    // ────────────────────────────────────────────────────────────────────────
-
     results.push(text);
   }
 
-  // Global dedup using a normalized key (collapse whitespace + lowercase).
-  // Consecutive-only dedup isn't enough — LNW injects mirror copies of paragraph
-  // blocks at different DOM positions, so duplicates are non-consecutive.
-  const seen = new Set<string>();
+  // Match Python deduplicate(): remove only consecutive identical paragraphs.
+  // This preserves repeated prose that appears intentionally later in a chapter
+  // while still cleaning accidental adjacent duplicates.
   const deduped: string[] = [];
   for (const p of results) {
-    const key = p.replace(/\s+/g, ' ').toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
+    if (deduped.length === 0 || p !== deduped[deduped.length - 1]) {
       deduped.push(p);
     }
   }
