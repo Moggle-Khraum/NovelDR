@@ -55,6 +55,20 @@ function splitIntoSentences(text: string): string[] {
   return sentences;
 }
 
+function splitIntoReadableParagraphs(text: string): string[] {
+  const normalizedText = text
+    .replace(/\r\n?/g, '\n')
+    .replace(/\t/g, ' ')
+    .trim();
+
+  const paragraphSeparator = /\n\s*\n/.test(normalizedText) ? /\n\s*\n+/ : /\n+/;
+
+  return normalizedText
+    .split(paragraphSeparator)
+    .map(paragraph => paragraph.replace(/\n+/g, ' ').replace(/ {2,}/g, ' ').trim())
+    .filter(Boolean);
+}
+
 export default function ReaderScreen() {
   const { id, chapterIndex: indexParam } = useLocalSearchParams<{ id: string; chapterIndex: string }>();
   const { getNovel, saveReadingProgress, loadChapterContent } = useLibrary();
@@ -476,17 +490,19 @@ export default function ReaderScreen() {
               <ActivityIndicator size="small" color={colors.accent} />
             </View>
           ) : (
-            <Text style={[styles.content, { color: colors.text, fontSize, lineHeight: fontSize * lineSpacing }]}>
-              {chapterContent.split('\n\n').map((paragraph, paraIdx) => {
-                const parts: any[] = [];
+            <View>
+              {splitIntoReadableParagraphs(chapterContent).map((paragraph, paraIdx) => {
+                const parts: Array<{ text: string; isCurrent: boolean }> = [];
                 let lastIndex = 0;
-                const normalizedLine = paragraph
+                const normalizedParagraph = paragraph
+                  .replace(/[""'']/g, '"')
                   .replace(/→|->|=>|→/g, ' to ')
                   .replace(/←|<-|<=/g, ' from ')
                   .replace(/↔|<->/g, ' between ');
+
                 ttsSentences.forEach((sentence, sentIdx) => {
                   const cleanSentence = sentence.replace(/[""'']/g, '"');
-                  const index = normalizedLine.indexOf(cleanSentence);
+                  const index = normalizedParagraph.indexOf(cleanSentence, lastIndex);
                   if (index !== -1) {
                     if (index > lastIndex) {
                       parts.push({ text: paragraph.substring(lastIndex, index), isCurrent: false });
@@ -495,14 +511,27 @@ export default function ReaderScreen() {
                     lastIndex = index + cleanSentence.length;
                   }
                 });
+
                 if (lastIndex < paragraph.length) {
                   parts.push({ text: paragraph.substring(lastIndex), isCurrent: false });
                 }
                 if (parts.length === 0) {
                   parts.push({ text: paragraph, isCurrent: false });
                 }
+
                 return (
-                  <Text key={paraIdx} style={{ marginBottom: fontSize * 0.8 }}>
+                  <Text
+                    key={paraIdx}
+                    style={[
+                      styles.content,
+                      {
+                        color: colors.text,
+                        fontSize,
+                        lineHeight: fontSize * lineSpacing,
+                        marginBottom: fontSize * 0.9,
+                      },
+                    ]}
+                  >
                     {parts.map((part, partIdx) => (
                       <Text
                         key={partIdx}
@@ -517,7 +546,7 @@ export default function ReaderScreen() {
                   </Text>
                 );
               })}
-            </Text>
+            </View>
           )}
         </ScrollView>
 
