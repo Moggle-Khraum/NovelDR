@@ -477,10 +477,10 @@ export default function ReaderScreen() {
             </View>
           ) : (
             <Text style={[styles.content, { color: colors.text, fontSize, lineHeight: fontSize * lineSpacing }]}>
-              {chapterContent.split('\n').map((line, lineIdx) => {
+              {chapterContent.split('\n\n').map((paragraph, paraIdx) => {
                 const parts: any[] = [];
                 let lastIndex = 0;
-                const normalizedLine = line
+                const normalizedLine = paragraph
                   .replace(/→|->|=>|→/g, ' to ')
                   .replace(/←|<-|<=/g, ' from ')
                   .replace(/↔|<->/g, ' between ');
@@ -489,20 +489,20 @@ export default function ReaderScreen() {
                   const index = normalizedLine.indexOf(cleanSentence);
                   if (index !== -1) {
                     if (index > lastIndex) {
-                      parts.push({ text: line.substring(lastIndex, index), isCurrent: false });
+                      parts.push({ text: paragraph.substring(lastIndex, index), isCurrent: false });
                     }
-                    parts.push({ text: line.substring(index, index + cleanSentence.length), isCurrent: sentIdx === ttsIndex });
+                    parts.push({ text: paragraph.substring(index, index + cleanSentence.length), isCurrent: sentIdx === ttsIndex });
                     lastIndex = index + cleanSentence.length;
                   }
                 });
-                if (lastIndex < line.length) {
-                  parts.push({ text: line.substring(lastIndex), isCurrent: false });
+                if (lastIndex < paragraph.length) {
+                  parts.push({ text: paragraph.substring(lastIndex), isCurrent: false });
                 }
                 if (parts.length === 0) {
-                  parts.push({ text: line, isCurrent: false });
+                  parts.push({ text: paragraph, isCurrent: false });
                 }
                 return (
-                  <Text key={lineIdx}>
+                  <Text key={paraIdx} style={{ marginBottom: fontSize * 0.8 }}>
                     {parts.map((part, partIdx) => (
                       <Text
                         key={partIdx}
@@ -514,7 +514,6 @@ export default function ReaderScreen() {
                         {part.text}
                       </Text>
                     ))}
-                    {'\n'}
                   </Text>
                 );
               })}
