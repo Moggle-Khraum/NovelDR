@@ -685,7 +685,7 @@ export default function SettingsScreen() {
                 }
                 await restoreAppData(backup);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Restore Complete ✓", "Data restored. Please restart the app.", [{ text: "OK" }]);
+                Alert.alert("Restore Complete ✓", "Data restored. Please use the [↻] Reload button.", [{ text: "OK" }]);
               } catch (e) {
                 Alert.alert("Import Failed", String(e));
               } finally {
