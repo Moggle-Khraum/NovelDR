@@ -3,7 +3,8 @@ import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,20 +14,156 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  Dimensions,
+  AccessibilityInfo,
+  ImageBackground,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22];
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+
+const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26];
 const LINE_SPACINGS = [1.2, 1.3, 1.5, 1.8, 2.0, 2.5];
 const AUTO_SCROLL_SPEEDS = [0.5, 1, 1.5, 1.8, 2, 2.5];
+const MARGIN_PRESETS = ['Compact', 'Comfortable', 'Spacious'];
+
+// Font presets
+const FONT_PRESETS = [
+  { id: 'system', name: 'System Default', fontFamily: 'Inter_400Regular', fontFamilyBold: 'Inter_700Bold', fontFamilySemi: 'Inter_600SemiBold' },
+  { id: 'opendyslexic', name: 'OpenDyslexic', fontFamily: 'OpenDyslexic', fontFamilyBold: 'OpenDyslexic', fontFamilySemi: 'OpenDyslexic' },
+  { id: 'times', name: 'Times New Roman', fontFamily: 'TimesNewRoman', fontFamilyBold: 'TimesNewRoman-Bold', fontFamilySemi: 'TimesNewRoman-Bold' },
+  { id: 'georgia', name: 'Georgia', fontFamily: 'Georgia', fontFamilyBold: 'Georgia-Bold', fontFamilySemi: 'Georgia-Bold' },
+];
+
+// Background presets with adaptive text colors
+type BgPreset = {
+  id: string;
+  label: string;
+  type: "solid" | "gradient";
+  color: string;
+  color2?: string;
+  textColor: string;        // Primary text color
+  textColorSecondary: string; // Secondary text color
+  accentColor?: string;      // Optional accent color override
+};
+
+const BG_PRESETS: BgPreset[] = [
+  { id: "none", label: "None", type: "solid", color: "transparent", textColor: "#1A1A1A", textColorSecondary: "#666666" },
+  { id: "parchment", label: "Parchment", type: "solid", color: "#F2E8D5", textColor: "#2C1810", textColorSecondary: "#8B6914", accentColor: "#8B4513" },
+  { id: "night", label: "Night", type: "solid", color: "#0D1117", textColor: "#E8EDF2", textColorSecondary: "#8B949E", accentColor: "#58A6FF" },
+  { id: "forest", label: "Forest", type: "solid", color: "#1A2E1A", textColor: "#D4E8D4", textColorSecondary: "#8BA888", accentColor: "#6B8E23" },
+  { id: "ocean", label: "Ocean", type: "solid", color: "#0A1628", textColor: "#B8D4E8", textColorSecondary: "#6B8FB3", accentColor: "#4A90E2" },
+  { id: "rose", label: "Rose", type: "solid", color: "#2A1020", textColor: "#F0D0E0", textColorSecondary: "#C980A0", accentColor: "#E87DA5" },
+  { id: "slate", label: "Slate", type: "solid", color: "#1E2430", textColor: "#D8E0E8", textColorSecondary: "#8B98A8", accentColor: "#7E8A98" },
+  { id: "grad_dusk", label: "Dusk", type: "gradient", color: "#1A0533", color2: "#0A1628", textColor: "#D8C8F0", textColorSecondary: "#A890C8", accentColor: "#9B6BFF" },
+  { id: "grad_dawn", label: "Dawn", type: "gradient", color: "#2A1008", color2: "#1A0520", textColor: "#F0C8B8", textColorSecondary: "#C89878", accentColor: "#E87D5A" },
+  { id: "grad_mist", label: "Mist", type: "gradient", color: "#E8EFF5", color2: "#F5F0E8", textColor: "#2A2A2A", textColorSecondary: "#6B6B6B", accentColor: "#4A6B8A" },
+  { id: "grad_moss", label: "Moss", type: "gradient", color: "#1A2810", color2: "#0F1A18", textColor: "#C8E0B0", textColorSecondary: "#90B080", accentColor: "#7CB842" },
+  { id: "grad_ember", label: "Ember", type: "gradient", color: "#1A0A00", color2: "#2A0800", textColor: "#F0A080", textColorSecondary: "#C87050", accentColor: "#FF6B3D" },
+];
 
 const READER_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/reader_settings.json`;
 const TTS_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/tts_simple_settings.json`;
+const BG_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/reader_bg.json`;
 const TTS_MIN_CHARS = 500;
+
+// Helper function to get dominant color from image and determine text color
+async function getDominantColor(imageUri: string): Promise<{ textColor: string; textColorSecondary: string; accentColor: string }> {
+  // This is a simplified version - in production you'd use a library like 'react-native-image-colors'
+  // For now, we'll use a smart default based on image brightness detection
+  // You can integrate 'react-native-image-colors' for better results
+  
+  // Return adaptive colors based on image brightness
+  // For images, we'll use white text with overlay as default (safe choice)
+  return {
+    textColor: "#F0F0F0",
+    textColorSecondary: "#B0B0B0",
+    accentColor: "#58A6FF"
+  };
+}
+
+// Function to check if a color is light or dark
+function isLightColor(color: string): boolean {
+  // Remove # if present
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128;
+}
+
+// Cache for chapter processing
+interface CachedChapter {
+  content: string;
+  paragraphs: string[];
+  sentences: string[];
+  processedAt: number;
+  wordCount: number;
+}
+
+const chapterCache = new Map<string, CachedChapter>();
+const CACHE_DURATION = 1000 * 60 * 30;
+
+// Intelligent paragraph detection
+function detectParagraphs(text: string): string[] {
+  let normalized = text
+    .replace(/\r\n?/g, '\n')
+    .replace(/\t/g, ' ')
+    .trim();
+
+  normalized = smartQuoteFormatting(normalized);
+  normalized = removeDuplicateSpacing(normalized);
+  
+  const patterns = [
+    /\n\s*\n+/,
+    /\.\n(?=[A-Z])/,
+    /[!?]\n(?=[A-Z])/,
+    /\n(?=["“'‘])/,
+    /\.\s{2,}(?=[A-Z])/,
+  ];
+  
+  for (const pattern of patterns) {
+    if (pattern.test(normalized)) {
+      const paragraphs = normalized.split(pattern);
+      if (paragraphs.length > 1 && paragraphs.every(p => p.trim().length > 0)) {
+        return paragraphs.map(p => p.trim()).filter(Boolean);
+      }
+    }
+  }
+  
+  return normalized
+    .split(/\n\s*\n+/)
+    .map(paragraph => paragraph.replace(/\n+/g, ' ').replace(/ {2,}/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function smartQuoteFormatting(text: string): string {
+  let formatted = text;
+  formatted = formatted.replace(/(\s|^)"/g, '$1“');
+  formatted = formatted.replace(/"(\s|$)/g, '”$1');
+  formatted = formatted.replace(/'(\s|$)/g, '’$1');
+  formatted = formatted.replace(/(\s|^)'/g, '$1‘');
+  formatted = formatted.replace(/(\w)'(\w)/g, '$1’$2');
+  formatted = formatted.replace(/\.{3,}/g, '…');
+  formatted = formatted.replace(/--+/g, '—');
+  return formatted;
+}
+
+function removeDuplicateSpacing(text: string): string {
+  return text
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+(\n)/g, '$1')
+    .replace(/(\n)[ \t]+/g, '$1')
+    .trim();
+}
 
 function splitIntoSentences(text: string): string[] {
   let cleanText = text.replace(/[""'']/g, '"');
@@ -55,35 +192,69 @@ function splitIntoSentences(text: string): string[] {
   return sentences;
 }
 
-function splitIntoReadableParagraphs(text: string): string[] {
-  const normalizedText = text
-    .replace(/\r\n?/g, '\n')
-    .replace(/\t/g, ' ')
-    .trim();
-
-  const paragraphSeparator = /\n\s*\n/.test(normalizedText) ? /\n\s*\n+/ : /\n+/;
-
-  return normalizedText
-    .split(paragraphSeparator)
-    .map(paragraph => paragraph.replace(/\n+/g, ' ').replace(/ {2,}/g, ' ').trim())
-    .filter(Boolean);
+function splitSentencesWithLineBreaks(text: string): string[] {
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“'‘\(\{\[<])/);
+  return sentences.filter(s => s.trim().length > 0);
 }
+
+// ContentWrapper component with adaptive colors
+const ContentWrapper = ({ children, bgImageUri, bgSolidColor, onLayout, customColors }: any) => {
+  if (bgImageUri) {
+    return (
+      <ImageBackground
+        source={{ uri: bgImageUri }}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+        imageStyle={{ width: SCREEN_W, height: SCREEN_H }}
+        onLayout={onLayout}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}>{children}</View>
+      </ImageBackground>
+    );
+  }
+  if (bgSolidColor && bgSolidColor !== "transparent") {
+    return <View style={{ flex: 1, backgroundColor: bgSolidColor }}>{children}</View>;
+  }
+  return <View style={{ flex: 1 }}>{children}</View>;
+};
 
 export default function ReaderScreen() {
   const { id, chapterIndex: indexParam } = useLocalSearchParams<{ id: string; chapterIndex: string }>();
   const { getNovel, saveReadingProgress, loadChapterContent } = useLibrary();
-  const { colors } = useTheme();
+  const { colors: themeColors } = useTheme();
   const insets = useSafeAreaInsets();
 
   // UI state
-  const [fontSizeIdx, setFontSizeIdx] = useState(1);
-  const [lineSpacingIdx, setLineSpacingIdx] = useState(1);
+  const [fontPresetIdx, setFontPresetIdx] = useState(0);
+  const [fontSizeIdx, setFontSizeIdx] = useState(3);
+  const [lineSpacingIdx, setLineSpacingIdx] = useState(2);
+  const [marginPresetIdx, setMarginPresetIdx] = useState(1);
   const [autoScrollSpeedIdx, setAutoScrollSpeedIdx] = useState(1);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [showTOC, setShowTOC] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showBgModal, setShowBgModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Background state
+  const [bgPresetId, setBgPresetId] = useState<string>("none");
+  const [bgCustomUri, setBgCustomUri] = useState<string | null>(null);
+  const [customBgColors, setCustomBgColors] = useState<{ textColor: string; textColorSecondary: string; accentColor: string } | null>(null);
+
+  // Adaptive colors based on background
+  const [adaptiveColors, setAdaptiveColors] = useState({
+    text: themeColors.text,
+    textSecondary: themeColors.textSecondary,
+    accent: themeColors.accent,
+    surface: themeColors.surface,
+    card: themeColors.card,
+    border: themeColors.border,
+  });
 
   const [autoScrollActive, setAutoScrollActive] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
@@ -97,7 +268,10 @@ export default function ReaderScreen() {
   const forceTopRef = useRef(false);
 
   const [chapterContent, setChapterContent] = useState<string>("");
+  const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
+  const [nextChapterPreloaded, setNextChapterPreloaded] = useState(false);
+  const [nextChapterContent, setNextChapterContent] = useState<string>("");
 
   // TTS states
   const [ttsActive, setTtsActive] = useState(false);
@@ -122,7 +296,60 @@ export default function ReaderScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  // Load general settings
+  const getMargins = () => {
+    switch(marginPresetIdx) {
+      case 0: return { horizontal: 12, vertical: 16 };
+      case 1: return { horizontal: 22, vertical: 20 };
+      case 2: return { horizontal: 32, vertical: 28 };
+      default: return { horizontal: 22, vertical: 20 };
+    }
+  };
+
+  const margins = getMargins();
+  const currentFontPreset = FONT_PRESETS[fontPresetIdx];
+
+  // Resolve background and get adaptive colors
+  const activePreset = BG_PRESETS.find(p => p.id === bgPresetId);
+  const bgImageUri = bgCustomUri ?? null;
+  const bgSolidColor = (!bgCustomUri && activePreset && activePreset.id !== "none") ? activePreset.color : null;
+
+  // Update adaptive colors based on background
+  const updateAdaptiveColors = useCallback(async () => {
+    if (bgCustomUri) {
+      // For custom images, try to analyze colors (simplified for now)
+      // In production, use a proper color extraction library
+      setAdaptiveColors({
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
+      });
+    } else if (activePreset && activePreset.id !== "none") {
+      // Use preset colors
+      setAdaptiveColors({
+        text: activePreset.textColor,
+        textSecondary: activePreset.textColorSecondary,
+        accent: activePreset.accentColor || themeColors.accent,
+        surface: isLightColor(activePreset.color) ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.7)",
+        card: isLightColor(activePreset.color) ? "rgba(255, 255, 255, 0.85)" : "rgba(0, 0, 0, 0.6)",
+        border: isLightColor(activePreset.color) ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)",
+      });
+    } else {
+      // Use theme colors
+      setAdaptiveColors({
+        text: themeColors.text,
+        textSecondary: themeColors.textSecondary,
+        accent: themeColors.accent,
+        surface: themeColors.surface,
+        card: themeColors.card,
+        border: themeColors.border,
+      });
+    }
+  }, [bgCustomUri, activePreset, themeColors]);
+
+  // Load settings
   useEffect(() => {
     (async () => {
       try {
@@ -130,28 +357,89 @@ export default function ReaderScreen() {
         if (fileInfo.exists) {
           const content = await FileSystem.readAsStringAsync(READER_SETTINGS_FILE);
           const settings = JSON.parse(content);
+          if (settings.fontPresetIdx !== undefined) setFontPresetIdx(settings.fontPresetIdx);
           if (settings.fontSizeIdx !== undefined) setFontSizeIdx(settings.fontSizeIdx);
           if (settings.lineSpacingIdx !== undefined) setLineSpacingIdx(settings.lineSpacingIdx);
+          if (settings.marginPresetIdx !== undefined) setMarginPresetIdx(settings.marginPresetIdx);
           if (settings.autoScrollSpeedIdx !== undefined) setAutoScrollSpeedIdx(settings.autoScrollSpeedIdx);
         }
       } catch (error) {
         console.error('Failed to load reader settings:', error);
-      } finally {
-        setSettingsLoaded(true);
       }
+      
+      // Load background settings
+      try {
+        const bgInfo = await FileSystem.getInfoAsync(BG_SETTINGS_FILE);
+        if (bgInfo.exists) {
+          const bgContent = await FileSystem.readAsStringAsync(BG_SETTINGS_FILE);
+          const bgSettings = JSON.parse(bgContent);
+          if (bgSettings.presetId) setBgPresetId(bgSettings.presetId);
+          if (bgSettings.customUri) setBgCustomUri(bgSettings.customUri);
+        }
+      } catch (e) {
+        console.warn("Failed to load bg settings:", e);
+      }
+      
+      setSettingsLoaded(true);
     })();
   }, []);
 
-  const saveAllSettings = async (font: number, line: number, scroll: number) => {
+  // Update colors when background changes
+  useEffect(() => {
+    updateAdaptiveColors();
+  }, [bgPresetId, bgCustomUri, updateAdaptiveColors]);
+
+  const saveAllSettings = async (fontPreset: number, fontSize: number, lineSpacing: number, margin: number, scroll: number) => {
     try {
       const dir = `${FileSystem.documentDirectory}NovelDR/`;
       const dirInfo = await FileSystem.getInfoAsync(dir);
       if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       await FileSystem.writeAsStringAsync(
         READER_SETTINGS_FILE,
-        JSON.stringify({ fontSizeIdx: font, lineSpacingIdx: line, autoScrollSpeedIdx: scroll })
+        JSON.stringify({ fontPresetIdx: fontPreset, fontSizeIdx: fontSize, lineSpacingIdx: lineSpacing, marginPresetIdx: margin, autoScrollSpeedIdx: scroll })
       );
     } catch (error) { console.error('Failed to save settings:', error); }
+  };
+
+  const saveBgSettings = async (presetId: string, customUri: string | null) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const di = await FileSystem.getInfoAsync(dir);
+      if (!di.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(BG_SETTINGS_FILE, JSON.stringify({ presetId, customUri }));
+    } catch (e) { console.warn("Failed to save bg settings:", e); }
+  };
+
+  const pickCustomImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setBgCustomUri(uri);
+      setBgPresetId("none");
+      setShowBgModal(false);
+      saveBgSettings("none", uri);
+      // For custom images, we'll use white text with overlay
+      setAdaptiveColors({
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
+      });
+    }
+  };
+
+  const selectPreset = (preset: BgPreset) => {
+    setBgPresetId(preset.id);
+    setBgCustomUri(null);
+    setShowBgModal(false);
+    saveBgSettings(preset.id, null);
+    // Colors will be updated by the useEffect
   };
 
   // Load TTS settings
@@ -183,6 +471,30 @@ export default function ReaderScreen() {
     } catch (e) { console.warn('[TTS] Failed to save settings:', e); }
   };
 
+  // Process chapter content with caching
+  const processChapterContent = useCallback(async (content: string, chapterId: string): Promise<CachedChapter> => {
+    const cacheKey = `${novel?.id}_${chapterId}`;
+    const cached = chapterCache.get(cacheKey);
+    if (cached && Date.now() - cached.processedAt < CACHE_DURATION) {
+      return cached;
+    }
+    
+    const paragraphs = detectParagraphs(content);
+    const sentences = splitIntoSentences(content);
+    const wordCount = content.split(/\s+/).length;
+    
+    const processed: CachedChapter = { content, paragraphs, sentences, processedAt: Date.now(), wordCount };
+    chapterCache.set(cacheKey, processed);
+    
+    for (const [key, value] of chapterCache.entries()) {
+      if (Date.now() - value.processedAt > CACHE_DURATION) {
+        chapterCache.delete(key);
+      }
+    }
+    
+    return processed;
+  }, [novel?.id]);
+
   // Load chapter content
   const loadContent = async () => {
     if (novel && chapter) {
@@ -193,10 +505,26 @@ export default function ReaderScreen() {
           const fileChapter = await loadChapterContent(novel.id, chapterIndex);
           content = fileChapter?.content || "";
         }
-        setChapterContent(content);
-        setTtsSentences(splitIntoSentences(content));
+        
+        const processed = await processChapterContent(content, `${chapterIndex}`);
+        setChapterContent(processed.content);
+        setProcessedParagraphs(processed.paragraphs);
+        setTtsSentences(processed.sentences);
+        
+        if (!nextChapterPreloaded && chapterIndex + 1 < novel.chapters.length) {
+          const nextChapter = novel.chapters[chapterIndex + 1];
+          if (nextChapter && !nextChapter.content) {
+            const nextFileChapter = await loadChapterContent(novel.id, chapterIndex + 1);
+            if (nextFileChapter?.content) {
+              await processChapterContent(nextFileChapter.content, `${chapterIndex + 1}`);
+              setNextChapterContent(nextFileChapter.content);
+              setNextChapterPreloaded(true);
+            }
+          }
+        }
       } catch (error) {
         setChapterContent("Error loading chapter content. Please try again.");
+        setProcessedParagraphs([]);
       } finally {
         setContentLoading(false);
       }
@@ -204,6 +532,29 @@ export default function ReaderScreen() {
   };
 
   useEffect(() => { loadContent(); }, [chapterIndex, novel?.id]);
+
+  const searchChapters = useCallback((query: string) => {
+    if (!novel) return [];
+    const results: number[] = [];
+    const lowerQuery = query.toLowerCase();
+    novel.chapters.forEach((ch, idx) => {
+      if (ch.title.toLowerCase().includes(lowerQuery)) {
+        results.push(idx);
+      }
+    });
+    setSearchResults(results);
+    setCurrentSearchIndex(0);
+    return results;
+  }, [novel]);
+
+  const jumpToSearchResult = (index: number) => {
+    if (searchResults.length > 0 && index < searchResults.length) {
+      handleChapterSelect(searchResults[index]);
+      setShowSearch(false);
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  };
 
   const novelRef = useRef(novel);
   const chapterIndexRef = useRef(chapterIndex);
@@ -219,7 +570,6 @@ export default function ReaderScreen() {
       isMountedRef.current = false;
       Speech.stop();
       if (intervalRef.current) clearInterval(intervalRef.current);
-      // Save progress on unmount (when user closes the reader)
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -244,6 +594,8 @@ export default function ReaderScreen() {
     if (index >= sentences.length || !ttsActiveRef.current) { stopTTS(); return; }
     ttsIndexRef.current = index;
     setTtsIndex(index);
+    AccessibilityInfo.announceForAccessibility(`Reading: ${sentences[index].substring(0, 100)}`);
+    
     try {
       try { Speech.stop(); } catch {}
       Speech.speak(sentences[index], {
@@ -387,6 +739,11 @@ export default function ReaderScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChapterIndex(next);
     setReadingProgress(0);
+    
+    if (dir === 1 && nextChapterContent) {
+      setChapterContent(nextChapterContent);
+      setNextChapterPreloaded(false);
+    }
   };
 
   const handleChapterSelect = (index: number) => {
@@ -400,10 +757,32 @@ export default function ReaderScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const continueReading = useCallback(() => {
+    if (novel?.lastRead && novel.lastRead.chapterIndex !== undefined) {
+      setChapterIndex(novel.lastRead.chapterIndex);
+      setTimeout(() => {
+        if (novel.lastRead.scrollOffset > 0) {
+          scrollRef.current?.scrollTo({ y: novel.lastRead.scrollOffset, animated: true });
+          scrollYRef.current = novel.lastRead.scrollOffset;
+        }
+      }, 100);
+    }
+  }, [novel]);
+
+  const jumpToPercentage = (percentage: number) => {
+    if (contentHeightRef.current > scrollViewHeightRef.current) {
+      const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
+      const targetY = (percentage / 100) * maxScroll;
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+      scrollYRef.current = targetY;
+      updateReadingProgress();
+    }
+  };
+
   if (!novel || !chapter || !settingsLoaded) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.accent} />
+      <View style={[styles.center, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.accent} />
       </View>
     );
   }
@@ -415,325 +794,565 @@ export default function ReaderScreen() {
   const currentSentence = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: topPad + 4, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Pressable style={styles.navBtn} onPress={() => router.back()}>
-          <Ionicons name="close" size={22} color={colors.text} />
-        </Pressable>
-        <Text style={[styles.chapterTitle, { color: colors.text }]} numberOfLines={1}>{chapter.title}</Text>
-        <Pressable style={styles.navBtn} onPress={() => setShowControls(v => !v)}>
-          <Ionicons name="settings-outline" size={20} color={colors.text} />
-        </Pressable>
-      </View>
-
-      {/* Controls panel */}
-      {showControls && (
-        <View style={[styles.controls, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <View style={styles.controlRow}>
-            <Text style={[styles.controlLabel, { color: colors.textSecondary }]}>Font Size</Text>
-            <View style={styles.controlBtns}>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.max(0, fontSizeIdx - 1); setFontSizeIdx(newIdx); saveAllSettings(newIdx, lineSpacingIdx, autoScrollSpeedIdx); }}>
-                <Text style={[styles.controlBtnText, { color: colors.text, fontSize: 12 }]}>A</Text>
-              </Pressable>
-              <Text style={[styles.controlValue, { color: colors.text }]}>{fontSize}pt</Text>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.min(FONT_SIZES.length - 1, fontSizeIdx + 1); setFontSizeIdx(newIdx); saveAllSettings(newIdx, lineSpacingIdx, autoScrollSpeedIdx); }}>
-                <Text style={[styles.controlBtnText, { color: colors.text, fontSize: 18 }]}>A</Text>
-              </Pressable>
-            </View>
-          </View>
-          <View style={styles.controlRow}>
-            <Text style={[styles.controlLabel, { color: colors.textSecondary }]}>Line Spacing</Text>
-            <View style={styles.controlBtns}>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.max(0, lineSpacingIdx - 1); setLineSpacingIdx(newIdx); saveAllSettings(fontSizeIdx, newIdx, autoScrollSpeedIdx); }}>
-                <Ionicons name="remove" size={16} color={colors.text} />
-              </Pressable>
-              <Text style={[styles.controlValue, { color: colors.text }]}>{lineSpacing.toFixed(1)}x</Text>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.min(LINE_SPACINGS.length - 1, lineSpacingIdx + 1); setLineSpacingIdx(newIdx); saveAllSettings(fontSizeIdx, newIdx, autoScrollSpeedIdx); }}>
-                <Ionicons name="add" size={16} color={colors.text} />
-              </Pressable>
-            </View>
-          </View>
-          <View style={styles.controlRow}>
-            <Text style={[styles.controlLabel, { color: colors.textSecondary }]}>AutoScroll</Text>
-            <View style={styles.controlBtns}>
-              <Pressable style={[styles.controlBtn, { backgroundColor: autoScrollActive ? colors.accent : colors.surface, borderColor: colors.border }]} onPress={() => autoScrollActive ? stopAutoScroll() : startAutoScroll()}>
-                <Ionicons name={autoScrollActive ? "pause" : "play"} size={16} color={autoScrollActive ? "#fff" : colors.text} />
-              </Pressable>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.max(0, autoScrollSpeedIdx - 1); setAutoScrollSpeedIdx(newIdx); saveAllSettings(fontSizeIdx, lineSpacingIdx, newIdx); }}>
-                <Ionicons name="remove" size={16} color={colors.text} />
-              </Pressable>
-              <Text style={[styles.controlValue, { color: colors.text }]}>{currentSpeed.toFixed(1)}x</Text>
-              <Pressable style={[styles.controlBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { const newIdx = Math.min(AUTO_SCROLL_SPEEDS.length - 1, autoScrollSpeedIdx + 1); setAutoScrollSpeedIdx(newIdx); saveAllSettings(fontSizeIdx, lineSpacingIdx, newIdx); }}>
-                <Ionicons name="add" size={16} color={colors.text} />
-              </Pressable>
-            </View>
-          </View>
+    <ContentWrapper 
+      bgImageUri={bgImageUri} 
+      bgSolidColor={bgSolidColor} 
+      defaultBgColor={themeColors.background}
+      customColors={adaptiveColors}
+    >
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        {/* Top bar */}
+        <View style={[styles.topBar, { paddingTop: topPad + 4, backgroundColor: adaptiveColors.surface, borderBottomColor: adaptiveColors.border }]}>
+          <Pressable style={styles.navBtn} onPress={() => router.back()} accessibilityLabel="Close reader" accessibilityRole="button">
+            <Ionicons name="close" size={22} color={adaptiveColors.text} />
+          </Pressable>
+          <Pressable style={{ flex: 1 }} onPress={() => setShowControls(false)}>
+            <Text style={[styles.chapterTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]} numberOfLines={1} accessibilityRole="header">{chapter.title}</Text>
+          </Pressable>
+          <Pressable style={styles.navBtn} onPress={() => setShowControls(v => !v)} accessibilityLabel="Reader settings" accessibilityRole="button">
+            <Ionicons name="settings-outline" size={20} color={adaptiveColors.text} />
+          </Pressable>
         </View>
-      )}
 
-      {/* Scrollable content wrapper */}
-      <View style={{ flex: 1, position: 'relative' }}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scrollArea}
-          contentContainerStyle={[styles.textContainer, { paddingBottom: bottomPad + 100 }]}
-          onScroll={handleScroll}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onContentSizeChange={handleContentSizeChange}
-          onLayout={handleScrollViewLayout}
-          scrollEventThrottle={16}
-        >
-          <Text style={[styles.chapterHeader, { color: colors.accent }]}>{chapter.title}</Text>
-          {contentLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={colors.accent} />
+        {/* Enhanced Controls panel */}
+        {showControls && (
+          <View style={[styles.controls, { backgroundColor: adaptiveColors.card, borderBottomColor: adaptiveColors.border }]}>
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>Font</Text>
+              <View style={styles.fontPresetBtns}>
+                {FONT_PRESETS.map((preset, idx) => (
+                  <Pressable
+                    key={preset.id}
+                    style={[styles.fontPresetBtn, { backgroundColor: fontPresetIdx === idx ? adaptiveColors.accent : adaptiveColors.surface, borderColor: adaptiveColors.border }]}
+                    onPress={() => { setFontPresetIdx(idx); saveAllSettings(idx, fontSizeIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx); }}
+                  >
+                    <Text style={[styles.fontPresetBtnText, { color: fontPresetIdx === idx ? '#fff' : adaptiveColors.text, fontFamily: preset.fontFamily }]}>Aa</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          ) : (
-            <View>
-              {splitIntoReadableParagraphs(chapterContent).map((paragraph, paraIdx) => {
-                const parts: Array<{ text: string; isCurrent: boolean }> = [];
-                let lastIndex = 0;
-                const normalizedParagraph = paragraph
-                  .replace(/[""'']/g, '"')
-                  .replace(/→|->|=>|→/g, ' to ')
-                  .replace(/←|<-|<=/g, ' from ')
-                  .replace(/↔|<->/g, ' between ');
+            
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>Font Size</Text>
+              <View style={styles.controlBtns}>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.max(0, fontSizeIdx - 1); setFontSizeIdx(newIdx); saveAllSettings(fontPresetIdx, newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx); }}>
+                  <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 12 }]}>A</Text>
+                </Pressable>
+                <Text style={[styles.controlValue, { color: adaptiveColors.text }]}>{fontSize}pt</Text>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.min(FONT_SIZES.length - 1, fontSizeIdx + 1); setFontSizeIdx(newIdx); saveAllSettings(fontPresetIdx, newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx); }}>
+                  <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 18 }]}>A</Text>
+                </Pressable>
+              </View>
+            </View>
+            
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>Line Spacing</Text>
+              <View style={styles.controlBtns}>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.max(0, lineSpacingIdx - 1); setLineSpacingIdx(newIdx); saveAllSettings(fontPresetIdx, fontSizeIdx, newIdx, marginPresetIdx, autoScrollSpeedIdx); }}>
+                  <Ionicons name="remove" size={16} color={adaptiveColors.text} />
+                </Pressable>
+                <Text style={[styles.controlValue, { color: adaptiveColors.text }]}>{lineSpacing.toFixed(1)}x</Text>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.min(LINE_SPACINGS.length - 1, lineSpacingIdx + 1); setLineSpacingIdx(newIdx); saveAllSettings(fontPresetIdx, fontSizeIdx, newIdx, marginPresetIdx, autoScrollSpeedIdx); }}>
+                  <Ionicons name="add" size={16} color={adaptiveColors.text} />
+                </Pressable>
+              </View>
+            </View>
+            
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>Margins</Text>
+              <View style={styles.controlBtns}>
+                {MARGIN_PRESETS.map((preset, idx) => (
+                  <Pressable
+                    key={preset}
+                    style={[styles.marginPresetBtn, { backgroundColor: marginPresetIdx === idx ? adaptiveColors.accent : adaptiveColors.surface, borderColor: adaptiveColors.border }]}
+                    onPress={() => { setMarginPresetIdx(idx); saveAllSettings(fontPresetIdx, fontSizeIdx, lineSpacingIdx, idx, autoScrollSpeedIdx); }}
+                  >
+                    <Text style={[styles.marginPresetText, { color: marginPresetIdx === idx ? '#fff' : adaptiveColors.text }]}>{preset}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>Background</Text>
+              <Pressable style={[styles.bgButton, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => setShowBgModal(true)}>
+                <Ionicons name="image-outline" size={16} color={adaptiveColors.text} />
+                <Text style={[styles.bgButtonText, { color: adaptiveColors.text }]}>Change</Text>
+              </Pressable>
+            </View>
+            
+            <View style={styles.controlRow}>
+              <Text style={[styles.controlLabel, { color: adaptiveColors.textSecondary }]}>AutoScroll</Text>
+              <View style={styles.controlBtns}>
+                <Pressable style={[styles.controlBtn, { backgroundColor: autoScrollActive ? adaptiveColors.accent : adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => autoScrollActive ? stopAutoScroll() : startAutoScroll()}>
+                  <Ionicons name={autoScrollActive ? "pause" : "play"} size={16} color={autoScrollActive ? "#fff" : adaptiveColors.text} />
+                </Pressable>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.max(0, autoScrollSpeedIdx - 1); setAutoScrollSpeedIdx(newIdx); saveAllSettings(fontPresetIdx, fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx); }}>
+                  <Ionicons name="remove" size={16} color={adaptiveColors.text} />
+                </Pressable>
+                <Text style={[styles.controlValue, { color: adaptiveColors.text }]}>{currentSpeed.toFixed(1)}x</Text>
+                <Pressable style={[styles.controlBtn, { backgroundColor: adaptiveColors.surface, borderColor: adaptiveColors.border }]} onPress={() => { const newIdx = Math.min(AUTO_SCROLL_SPEEDS.length - 1, autoScrollSpeedIdx + 1); setAutoScrollSpeedIdx(newIdx); saveAllSettings(fontPresetIdx, fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx); }}>
+                  <Ionicons name="add" size={16} color={adaptiveColors.text} />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
 
-                ttsSentences.forEach((sentence, sentIdx) => {
-                  const cleanSentence = sentence.replace(/[""'']/g, '"');
-                  const index = normalizedParagraph.indexOf(cleanSentence, lastIndex);
-                  if (index !== -1) {
-                    if (index > lastIndex) {
-                      parts.push({ text: paragraph.substring(lastIndex, index), isCurrent: false });
-                    }
-                    parts.push({ text: paragraph.substring(index, index + cleanSentence.length), isCurrent: sentIdx === ttsIndex });
-                    lastIndex = index + cleanSentence.length;
-                  }
-                });
+        {/* Progress indicator */}
+        <Pressable 
+          style={[styles.progressBarContainer, { backgroundColor: adaptiveColors.border }]}
+          onPress={(e) => {
+            const { locationX } = e.nativeEvent;
+            const percentage = (locationX / SCREEN_W) * 100;
+            jumpToPercentage(percentage);
+          }}
+          accessibilityLabel={`Reading progress ${Math.round(readingProgress)} percent. Tap to jump to position.`}
+          accessibilityRole="adjustable"
+        >
+          <View style={[styles.progressBar, { backgroundColor: adaptiveColors.accent, width: `${readingProgress}%` }]} />
+        </Pressable>
 
-                if (lastIndex < paragraph.length) {
-                  parts.push({ text: paragraph.substring(lastIndex), isCurrent: false });
-                }
-                if (parts.length === 0) {
-                  parts.push({ text: paragraph, isCurrent: false });
-                }
+        {/* Content area */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scrollArea}
+            contentContainerStyle={[styles.textContainer, { paddingHorizontal: margins.horizontal, paddingTop: margins.vertical, paddingBottom: bottomPad + 100 }]}
+            onScroll={handleScroll}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onContentSizeChange={handleContentSizeChange}
+            onLayout={handleScrollViewLayout}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+            accessibilityLabel="Chapter content"
+            accessibilityRole="scrollview"
+          >
+            <Text style={[styles.chapterHeader, { color: adaptiveColors.accent, marginBottom: fontSize * 1.5, fontSize: fontSize + 4, fontFamily: currentFontPreset.fontFamilyBold }]} accessibilityRole="header">{chapter.title}</Text>
+            {contentLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={adaptiveColors.accent} />
+              </View>
+            ) : (
+              <View>
+                {processedParagraphs.map((paragraph, paraIdx) => {
+                  const sentences = splitSentencesWithLineBreaks(paragraph);
+                  const isLastParagraph = paraIdx === processedParagraphs.length - 1;
+                  
+                  return (
+                    <View key={paraIdx} style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}>
+                      {sentences.map((sentence, sentIdx) => {
+                        const trimmed = sentence.trim();
+                        const endsWithPeriod = /[.!?]$/.test(trimmed);
+                        const isExclamation = /[!?]$/.test(trimmed);
+                        const isQuestion = /\?$/.test(trimmed);
+                        
+                        let marginBottom = fontSize * 0.3;
+                        if (isQuestion) marginBottom = fontSize * 0.7;
+                        else if (isExclamation) marginBottom = fontSize * 0.8;
+                        else if (endsWithPeriod) marginBottom = fontSize * 0.5;
+                        
+                        const hasDialogue = /^["'“”‘’]/.test(trimmed);
+                        if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
+                        
+                        let isCurrentSentence = false;
+                        const normalizedSentence = trimmed.replace(/[""'']/g, '"');
+                        if (ttsIndex >= 0 && ttsSentences[ttsIndex]) {
+                          const currentTtsSentence = ttsSentences[ttsIndex].replace(/[""'']/g, '"');
+                          if (normalizedSentence.includes(currentTtsSentence) || currentTtsSentence.includes(normalizedSentence)) {
+                            isCurrentSentence = true;
+                          }
+                        }
+                        
+                        return (
+                          <Text
+                            key={sentIdx}
+                            style={[
+                              styles.content,
+                              {
+                                color: isCurrentSentence ? adaptiveColors.accent : adaptiveColors.text,
+                                backgroundColor: isCurrentSentence ? `${adaptiveColors.accent}20` : 'transparent',
+                                fontSize,
+                                lineHeight: fontSize * lineSpacing,
+                                marginBottom,
+                                paddingVertical: isCurrentSentence ? 2 : 0,
+                                paddingHorizontal: isCurrentSentence ? 6 : 0,
+                                borderRadius: 6,
+                                letterSpacing: 0.2,
+                                fontFamily: currentFontPreset.fontFamily,
+                              },
+                            ]}
+                            accessibilityLabel={isCurrentSentence ? `Currently reading: ${trimmed.substring(0, 100)}` : trimmed.substring(0, 100)}
+                            accessibilityRole="text"
+                          >
+                            {trimmed}
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
 
-                return (
-                  <Text
-                    key={paraIdx}
+          {/* Quick jump buttons */}
+          <Pressable
+            style={[styles.jumpTopBtn, { backgroundColor: adaptiveColors.card + 'CC', borderColor: adaptiveColors.border }]}
+            onPress={() => {
+              scrollRef.current?.scrollTo({ y: 0, animated: true });
+              scrollYRef.current = 0;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            }}
+            accessibilityLabel="Jump to top of chapter"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-up" size={16} color={adaptiveColors.text} />
+          </Pressable>
+
+          {/* TTS Help Button */}
+          {ttsAvailable && (
+            <Pressable
+              style={[styles.ttsHelpBtn, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+              onPress={() => setShowTTSHelp(true)}
+              accessibilityLabel="Text to speech help"
+              accessibilityRole="button"
+            >
+              <Ionicons name="book-outline" size={20} color={adaptiveColors.text} />
+            </Pressable>
+          )}
+
+          {/* TTS Floating Button */}
+          {ttsAvailable && (
+            <Pressable
+              style={[styles.ttsFloatingBtn, { backgroundColor: adaptiveColors.accent }]}
+              onPress={toggleTTS}
+              onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setShowTTSSettings(true); }}
+              delayLongPress={400}
+              accessibilityLabel={ttsActive ? "Pause text to speech" : "Start text to speech"}
+              accessibilityRole="button"
+              accessibilityHint="Long press for settings"
+            >
+              <Ionicons name={ttsActive ? "pause" : "volume-high"} size={22} color="#fff" />
+            </Pressable>
+          )}
+        </View>
+
+        {/* TTS status overlay */}
+        {ttsActive && currentSentence && (
+          <View style={[styles.ttsSentenceBox, { backgroundColor: adaptiveColors.accent + '12', borderColor: adaptiveColors.accent + '40' }]} accessibilityLiveRegion="assertive">
+            <Ionicons name="chatbubble-ellipses-outline" size={14} color={adaptiveColors.accent} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.ttsSentenceLabel, { color: adaptiveColors.accent, fontFamily: currentFontPreset.fontFamilySemi }]}>Now reading</Text>
+              <Text style={[styles.ttsSentenceText, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamily }]} numberOfLines={2} ellipsizeMode="tail">
+                {currentSentence.length > 100 ? currentSentence.substring(0, 100) + '...' : currentSentence}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Bottom navigation */}
+        <View style={[styles.bottomNav, { backgroundColor: adaptiveColors.surface, borderTopColor: adaptiveColors.border, paddingBottom: bottomPad + 8 }]}>
+          <Pressable style={[styles.navChBtn, { backgroundColor: chapterIndex === 0 ? adaptiveColors.border : adaptiveColors.card, borderColor: adaptiveColors.border }]} onPress={() => goChapter(-1)} disabled={chapterIndex === 0}>
+            <Ionicons name="chevron-back" size={18} color={chapterIndex === 0 ? adaptiveColors.textSecondary : adaptiveColors.text} />
+            <Text style={[styles.navChText, { color: chapterIndex === 0 ? adaptiveColors.textSecondary : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>Prev</Text>
+          </Pressable>
+          <Pressable style={[styles.tocButton, { borderColor: adaptiveColors.border }]} onPress={() => setShowTOC(true)}>
+            <Text style={[styles.tocButtonText, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>{chapterIndex + 1} / {novel.chapters.length}</Text>
+            <Text style={[styles.readingPercent, { color: adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>{Math.round(readingProgress)}%</Text>
+          </Pressable>
+          <Pressable style={[styles.navChBtn, { backgroundColor: chapterIndex === novel.chapters.length - 1 ? adaptiveColors.border : adaptiveColors.accent, borderColor: chapterIndex === novel.chapters.length - 1 ? adaptiveColors.border : adaptiveColors.accent }]} onPress={() => goChapter(1)} disabled={chapterIndex === novel.chapters.length - 1}>
+            <Text style={[styles.navChText, { color: chapterIndex === novel.chapters.length - 1 ? adaptiveColors.textSecondary : "#fff", fontFamily: currentFontPreset.fontFamilySemi }]}>Next</Text>
+            <Ionicons name="chevron-forward" size={18} color={chapterIndex === novel.chapters.length - 1 ? adaptiveColors.textSecondary : "#fff"} />
+          </Pressable>
+        </View>
+
+        {/* All Modals with adaptive colors */}
+        <Modal visible={showTOC} animationType="slide" transparent onRequestClose={() => setShowTOC(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.modalContent, { backgroundColor: adaptiveColors.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilyBold }]}>Table of Contents</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Pressable onPress={() => setShowSearch(true)} style={styles.modalCloseBtn}>
+                    <Ionicons name="search" size={24} color={adaptiveColors.text} />
+                  </Pressable>
+                  <Pressable onPress={() => setShowTOC(false)} style={styles.modalCloseBtn}>
+                    <Ionicons name="close" size={24} color={adaptiveColors.text} />
+                  </Pressable>
+                </View>
+              </View>
+              
+              {novel.lastRead && novel.lastRead.chapterIndex !== undefined && (
+                <Pressable 
+                  style={[styles.continueReadingBtn, { backgroundColor: adaptiveColors.accent + '20', borderColor: adaptiveColors.accent }]}
+                  onPress={() => { continueReading(); setShowTOC(false); }}
+                >
+                  <Ionicons name="play-circle" size={20} color={adaptiveColors.accent} />
+                  <Text style={[styles.continueReadingText, { color: adaptiveColors.accent, fontFamily: currentFontPreset.fontFamilySemi }]}>Continue Reading</Text>
+                </Pressable>
+              )}
+              
+              <ScrollView style={styles.modalScrollView}>
+                {novel.chapters.map((ch, idx) => (
+                  <Pressable
+                    key={idx}
+                    style={[styles.tocItem, idx === chapterIndex && [styles.tocItemActive, { backgroundColor: adaptiveColors.accent + '20' }]]}
+                    onPress={() => handleChapterSelect(idx)}
+                  >
+                    <View style={styles.tocItemContent}>
+                      <Text style={[styles.tocChapterNum, { color: idx === chapterIndex ? adaptiveColors.accent : adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>
+                        Chapter {idx + 1}
+                      </Text>
+                      <Text style={[styles.tocChapterTitle, { color: idx === chapterIndex ? adaptiveColors.accent : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>
+                        {ch.title}
+                      </Text>
+                    </View>
+                    {idx === chapterIndex && <Ionicons name="checkmark-circle" size={20} color={adaptiveColors.accent} />}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Search Modal */}
+        <Modal visible={showSearch} animationType="fade" transparent onRequestClose={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>
+          <View style={styles.searchModalOverlay}>
+            <View style={[styles.searchModalContent, { backgroundColor: adaptiveColors.surface }]}>
+              <TextInput
+                style={[styles.searchInput, { color: adaptiveColors.text, borderColor: adaptiveColors.border, backgroundColor: adaptiveColors.background, fontFamily: currentFontPreset.fontFamily }]}
+                placeholder="Search chapters..."
+                placeholderTextColor={adaptiveColors.textSecondary}
+                value={searchQuery}
+                onChangeText={(text) => { setSearchQuery(text); searchChapters(text); }}
+                autoFocus
+              />
+              {searchResults.length > 0 && (
+                <>
+                  <Text style={[styles.searchResultCount, { color: adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>Found {searchResults.length} chapters</Text>
+                  <ScrollView style={{ maxHeight: 300 }}>
+                    {searchResults.map((idx) => (
+                      <Pressable
+                        key={idx}
+                        style={[styles.searchResultItem, { borderBottomColor: adaptiveColors.border }]}
+                        onPress={() => jumpToSearchResult(searchResults.indexOf(idx))}
+                      >
+                        <Text style={[styles.searchResultTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>{novel?.chapters[idx].title}</Text>
+                        <Text style={[styles.searchResultChapter, { color: adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>Chapter {idx + 1}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+              {searchQuery.length > 0 && searchResults.length === 0 && (
+                <Text style={[styles.noResults, { color: adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>No chapters found</Text>
+              )}
+              <Pressable style={[styles.closeSearchBtn, { backgroundColor: adaptiveColors.card }]} onPress={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>
+                <Text style={{ color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Background Modal with adaptive colors */}
+        <Modal visible={showBgModal} animationType="slide" transparent onRequestClose={() => setShowBgModal(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+            <View style={[styles.modalContent, { backgroundColor: adaptiveColors.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilyBold }]}>Background Presets</Text>
+                <Pressable onPress={() => setShowBgModal(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={24} color={adaptiveColors.text} />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={styles.bgPresetsList}>
+                {BG_PRESETS.map(preset => {
+                  const isActive = bgPresetId === preset.id && !bgCustomUri;
+                  const isLight = isLightColor(preset.color);
+                  return (
+                    <Pressable
+                      key={preset.id}
+                      style={[
+                        styles.bgPresetItem,
+                        {
+                          borderColor: isActive ? adaptiveColors.accent : adaptiveColors.border,
+                          borderWidth: isActive ? 2 : 1,
+                        },
+                      ]}
+                      onPress={() => selectPreset(preset)}
+                    >
+                      <View
+                        style={[
+                          styles.bgPresetSwatch,
+                          {
+                            backgroundColor: preset.color,
+                            overflow: "hidden",
+                          },
+                        ]}
+                      >
+                        {preset.type === "gradient" && preset.color2 && (
+                          <View
+                            style={{
+                              position: "absolute",
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: "50%",
+                              backgroundColor: preset.color2,
+                            }}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.bgPresetLabel,
+                          { color: isActive ? adaptiveColors.accent : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi },
+                        ]}
+                      >
+                        {preset.label}
+                      </Text>
+                      {isActive && <Ionicons name="checkmark-circle" size={18} color={adaptiveColors.accent} />}
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  style={[
+                    styles.bgPresetItem,
+                    {
+                      borderColor: bgCustomUri ? adaptiveColors.accent : adaptiveColors.border,
+                      borderWidth: bgCustomUri ? 2 : 1,
+                    },
+                  ]}
+                  onPress={pickCustomImage}
+                >
+                  <View
                     style={[
-                      styles.content,
+                      styles.bgPresetSwatch,
                       {
-                        color: colors.text,
-                        fontSize,
-                        lineHeight: fontSize * lineSpacing,
-                        marginBottom: fontSize * 0.9,
+                        backgroundColor: adaptiveColors.card,
+                        alignItems: "center",
+                        justifyContent: "center",
                       },
                     ]}
                   >
-                    {parts.map((part, partIdx) => (
-                      <Text
-                        key={partIdx}
-                        style={{
-                          backgroundColor: part.isCurrent ? `${colors.accent}30` : 'transparent',
-                          color: part.isCurrent ? colors.accent : colors.text,
-                        }}
-                      >
-                        {part.text}
-                      </Text>
-                    ))}
-                  </Text>
-                );
-              })}
-            </View>
-          )}
-        </ScrollView>
-
-        {/* TTS Help Button */}
-        {ttsAvailable && (
-          <Pressable
-            style={[styles.ttsHelpBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => setShowTTSHelp(true)}
-          >
-            <Ionicons name="book-outline" size={20} color={colors.text} />
-          </Pressable>
-        )}
-
-        {/* TTS Floating Button */}
-        {ttsAvailable && (
-          <Pressable
-            style={[styles.ttsFloatingBtn, { backgroundColor: colors.accent }]}
-            onPress={toggleTTS}
-            onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setShowTTSSettings(true); }}
-            delayLongPress={400}
-          >
-            <Ionicons name={ttsActive ? "pause" : "volume-high"} size={22} color="#fff" />
-          </Pressable>
-        )}
-      </View>
-
-      {/* TTS status overlay */}
-      {ttsActive && (
-        <View style={[styles.ttsSentenceBox, { backgroundColor: colors.accent + '12', borderColor: colors.accent + '40' }]}>
-          <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.accent} style={{ marginTop: 2 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.ttsSentenceLabel, { color: colors.accent }]}>now reading</Text>
-            <Text style={[styles.ttsSentenceText, { color: colors.text }]} numberOfLines={2} ellipsizeMode="tail">
-              {currentSentence ?? "Starting…"}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Progress bar */}
-      <View style={[styles.progressBarContainer, { backgroundColor: colors.border }]}>
-        <View style={[styles.progressBar, { backgroundColor: colors.accent, width: `${readingProgress}%` }]} />
-      </View>
-
-      {/* Bottom navigation */}
-      <View style={[styles.bottomNav, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: bottomPad + 8 }]}>
-        <Pressable style={[styles.navChBtn, { backgroundColor: chapterIndex === 0 ? colors.border : colors.card, borderColor: colors.border }]} onPress={() => goChapter(-1)} disabled={chapterIndex === 0}>
-          <Ionicons name="chevron-back" size={18} color={chapterIndex === 0 ? colors.textMuted : colors.text} />
-          <Text style={[styles.navChText, { color: chapterIndex === 0 ? colors.textMuted : colors.text }]}>Prev</Text>
-        </Pressable>
-        <Pressable style={[styles.tocButton, { borderColor: colors.border }]} onPress={() => setShowTOC(true)}>
-          <Text style={[styles.tocButtonText, { color: colors.text }]}>{chapterIndex + 1} / {novel.chapters.length}</Text>
-        </Pressable>
-        <Pressable style={[styles.navChBtn, { backgroundColor: chapterIndex === novel.chapters.length - 1 ? colors.border : colors.accent, borderColor: chapterIndex === novel.chapters.length - 1 ? colors.border : colors.accent }]} onPress={() => goChapter(1)} disabled={chapterIndex === novel.chapters.length - 1}>
-          <Text style={[styles.navChText, { color: chapterIndex === novel.chapters.length - 1 ? colors.textMuted : "#fff" }]}>Next</Text>
-          <Ionicons name="chevron-forward" size={18} color={chapterIndex === novel.chapters.length - 1 ? colors.textMuted : "#fff"} />
-        </Pressable>
-      </View>
-
-      {/* TOC Modal */}
-      <Modal visible={showTOC} animationType="slide" transparent onRequestClose={() => setShowTOC(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Table of Contents</Text>
-              <Pressable onPress={() => setShowTOC(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalScrollView}>
-              {novel.chapters.map((ch, idx) => (
-                <Pressable
-                  key={idx}
-                  style={[styles.tocItem, idx === chapterIndex && [styles.tocItemActive, { backgroundColor: colors.accent + '20' }]]}
-                  onPress={() => handleChapterSelect(idx)}
-                >
-                  <View style={styles.tocItemContent}>
-                    <Text style={[styles.tocChapterNum, { color: idx === chapterIndex ? colors.accent : colors.textSecondary }]}>
-                      Chapter {idx + 1}
-                    </Text>
-                    <Text style={[styles.tocChapterTitle, { color: idx === chapterIndex ? colors.accent : colors.text }]}>
-                      {ch.title}
-                    </Text>
+                    {bgCustomUri ? (
+                      <Image
+                        source={{ uri: bgCustomUri }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons name="add" size={22} color={adaptiveColors.textSecondary} />
+                    )}
                   </View>
-                  {idx === chapterIndex && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
+                  <Text
+                    style={[
+                      styles.bgPresetLabel,
+                      { color: bgCustomUri ? adaptiveColors.accent : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi },
+                    ]}
+                  >
+                    {bgCustomUri ? "Custom (tap to change)" : "Pick from Gallery"}
+                  </Text>
+                  {bgCustomUri && <Ionicons name="checkmark-circle" size={18} color={adaptiveColors.accent} />}
                 </Pressable>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* TTS Help Modal */}
+        <Modal visible={showTTSHelp} animationType="fade" transparent onRequestClose={() => setShowTTSHelp(false)}>
+          <Pressable style={styles.ttsModalOverlay} onPress={() => setShowTTSHelp(false)}>
+            <Pressable style={[styles.ttsHelpModal, { backgroundColor: adaptiveColors.surface }]} onPress={() => {}}>
+              <View style={[styles.ttsModalHandle, { backgroundColor: adaptiveColors.border }]} />
+              <Text style={[styles.ttsModalTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilyBold }]}>How to Use Text-to-Speech</Text>
+              {[
+                { icon: "volume-high", title: "Start / Pause Reading", desc: "Tap the speaker button to start TTS. Tap again to pause." },
+                { icon: "settings-outline", title: "Open TTS Settings", desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
+                { icon: "refresh", title: "Load More Voices", desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
+                { icon: "musical-note", title: "Change Voice & Speed", desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
+                { icon: "close-circle-outline", title: "Close Settings", desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
+              ].map(({ icon, title, desc }) => (
+                <View key={title} style={styles.ttsHelpItem}>
+                  <View style={[styles.ttsHelpIconWrap, { backgroundColor: adaptiveColors.accent + '20' }]}>
+                    <Ionicons name={icon as any} size={18} color={adaptiveColors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.ttsHelpTitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>{title}</Text>
+                    <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>{desc}</Text>
+                  </View>
+                </View>
               ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* TTS Help Modal */}
-      <Modal visible={showTTSHelp} animationType="fade" transparent onRequestClose={() => setShowTTSHelp(false)}>
-        <Pressable style={styles.ttsModalOverlay} onPress={() => setShowTTSHelp(false)}>
-          <Pressable style={[styles.ttsHelpModal, { backgroundColor: colors.surface }]} onPress={() => {}}>
-            <View style={[styles.ttsModalHandle, { backgroundColor: colors.border }]} />
-            <Text style={[styles.ttsModalTitle, { color: colors.text }]}>How to Use Text-to-Speech</Text>
-            {[
-              { icon: "volume-high",         title: "Start / Pause Reading",  desc: "Tap the speaker button to start TTS. Tap again to pause." },
-              { icon: "settings-outline",    title: "Open TTS Settings",       desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
-              { icon: "refresh",             title: "Load More Voices",        desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
-              { icon: "musical-note",        title: "Change Voice & Speed",    desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
-              { icon: "close-circle-outline",title: "Close Settings",          desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
-            ].map(({ icon, title, desc }) => (
-              <View key={title} style={styles.ttsHelpItem}>
-                <View style={[styles.ttsHelpIconWrap, { backgroundColor: colors.accent + '20' }]}>
-                  <Ionicons name={icon as any} size={18} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.ttsHelpTitle, { color: colors.text }]}>{title}</Text>
-                  <Text style={[styles.ttsHelpDesc, { color: colors.textSecondary }]}>{desc}</Text>
-                </View>
-              </View>
-            ))}
-            {/*<Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent, marginTop: 20 }]} onPress={() => setShowTTSHelp(false)}>
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Got it!</Text>
-            </Pressable>*/}
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </Modal>
 
-      {/* TTS Settings Modal */}
-      <Modal visible={showTTSSettings} animationType="slide" transparent statusBarTranslucent onRequestClose={() => setShowTTSSettings(false)}>
-        <View style={styles.ttsModalOverlay}>
-          <Pressable style={styles.ttsModalDismiss} onPress={() => setShowTTSSettings(false)} />
-          <View style={[styles.ttsModalSheet, { backgroundColor: colors.surface }]}>
-            <View style={[styles.ttsModalHandle, { backgroundColor: colors.border }]} />
-            {ttsVoices.length === 0 ? (
-              <>
-                <Text style={[styles.ttsModalTitle, { color: colors.text, textAlign: 'center' }]}>No Engines Found</Text>
-                <Pressable style={[styles.ttsReloadBtn, { backgroundColor: colors.accent }]} onPress={async () => {
-                  try {
-                    const voices = await Speech.getAvailableVoicesAsync();
-                    const english = voices.filter(v => v.language?.toLowerCase().startsWith('en'));
-                    setTtsVoices(english.length > 0 ? english : voices);
-                  } catch (e) { console.warn(e); }
-                }}>
-                  <Ionicons name="refresh" size={20} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 8 }}>Reload Engines</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.ttsModalSubtitle, { color: colors.text }]}>Voice Speed</Text>
-                <View style={styles.speedButtonsRow}>
-                  {[0.5, 1.0, 1.5, 2.0, 2.5].map(rate => (
-                    <Pressable
-                      key={rate}
-                      style={[styles.speedButton, { backgroundColor: Math.abs(ttsRate - rate) < 0.01 ? colors.accent : colors.card, borderColor: colors.border }]}
-                      onPress={() => { setTtsRate(rate); ttsRateRef.current = rate; saveTtsSettings(ttsVoiceId, rate); }}
-                    >
-                      <Text style={[styles.speedButtonText, { color: Math.abs(ttsRate - rate) < 0.01 ? '#fff' : colors.text }]}>{rate}x</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={[styles.ttsModalSubtitle, { color: colors.text, marginTop: 16 }]}>Voices</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
-                  {ttsVoices.map((voice) => {
-                    const isSelected = ttsVoiceId === voice.identifier;
-                    return (
+        {/* TTS Settings Modal */}
+        <Modal visible={showTTSSettings} animationType="slide" transparent statusBarTranslucent onRequestClose={() => setShowTTSSettings(false)}>
+          <View style={styles.ttsModalOverlay}>
+            <Pressable style={styles.ttsModalDismiss} onPress={() => setShowTTSSettings(false)} />
+            <View style={[styles.ttsModalSheet, { backgroundColor: adaptiveColors.surface }]}>
+              <View style={[styles.ttsModalHandle, { backgroundColor: adaptiveColors.border }]} />
+              {ttsVoices.length === 0 ? (
+                <>
+                  <Text style={[styles.ttsModalTitle, { color: adaptiveColors.text, textAlign: 'center', fontFamily: currentFontPreset.fontFamilyBold }]}>No Engines Found</Text>
+                  <Pressable style={[styles.ttsReloadBtn, { backgroundColor: adaptiveColors.accent }]} onPress={async () => {
+                    try {
+                      const voices = await Speech.getAvailableVoicesAsync();
+                      const english = voices.filter(v => v.language?.toLowerCase().startsWith('en'));
+                      setTtsVoices(english.length > 0 ? english : voices);
+                    } catch (e) { console.warn(e); }
+                  }}>
+                    <Ionicons name="refresh" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 8, fontFamily: currentFontPreset.fontFamilySemi }}>Reload Engines</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.ttsModalSubtitle, { color: adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>Voice Speed</Text>
+                  <View style={styles.speedButtonsRow}>
+                    {[0.5, 1.0, 1.5, 2.0, 2.5].map(rate => (
                       <Pressable
-                        key={voice.identifier}
-                        style={[styles.ttsVoiceChip, { backgroundColor: isSelected ? colors.accent : colors.card, borderColor: isSelected ? colors.accent : colors.border }]}
-                        onPress={() => { setTtsVoiceId(voice.identifier); ttsVoiceIdRef.current = voice.identifier; saveTtsSettings(voice.identifier, ttsRate); }}
+                        key={rate}
+                        style={[styles.speedButton, { backgroundColor: Math.abs(ttsRate - rate) < 0.01 ? adaptiveColors.accent : adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                        onPress={() => { setTtsRate(rate); ttsRateRef.current = rate; saveTtsSettings(ttsVoiceId, rate); }}
                       >
-                        <Text style={[styles.ttsVoiceChipText, { color: isSelected ? '#fff' : colors.text }]}>{voice.name ?? voice.identifier}</Text>
-                        <Text style={[styles.ttsVoiceChipLang, { color: isSelected ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>{voice.language}</Text>
+                        <Text style={[styles.speedButtonText, { color: Math.abs(ttsRate - rate) < 0.01 ? '#fff' : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>{rate}x</Text>
                       </Pressable>
-                    );
-                  })}
-                </ScrollView>
-                <View style={styles.ttsButtonsRow}>
-                  <Pressable style={[styles.ttsPreviewBtn, { borderColor: colors.accent }]} onPress={previewTts}>
-                    <Ionicons name="play-circle-outline" size={20} color={colors.accent} />
-                    <Text style={{ color: colors.accent, marginLeft: 6 }}>Preview Voice</Text>
-                  </Pressable>
-                  <Pressable style={[styles.ttsSaveBtn, { backgroundColor: colors.accent }]} onPress={() => setShowTTSSettings(false)}>
-                    <Text style={{ color: '#fff', fontWeight: '600' }}>Save Values</Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
+                    ))}
+                  </View>
+                  <Text style={[styles.ttsModalSubtitle, { color: adaptiveColors.text, marginTop: 16, fontFamily: currentFontPreset.fontFamilySemi }]}>Voices</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
+                    {ttsVoices.map((voice) => {
+                      const isSelected = ttsVoiceId === voice.identifier;
+                      return (
+                        <Pressable
+                          key={voice.identifier}
+                          style={[styles.ttsVoiceChip, { backgroundColor: isSelected ? adaptiveColors.accent : adaptiveColors.card, borderColor: isSelected ? adaptiveColors.accent : adaptiveColors.border }]}
+                          onPress={() => { setTtsVoiceId(voice.identifier); ttsVoiceIdRef.current = voice.identifier; saveTtsSettings(voice.identifier, ttsRate); }}
+                        >
+                          <Text style={[styles.ttsVoiceChipText, { color: isSelected ? '#fff' : adaptiveColors.text, fontFamily: currentFontPreset.fontFamilySemi }]}>{voice.name ?? voice.identifier}</Text>
+                          <Text style={[styles.ttsVoiceChipLang, { color: isSelected ? 'rgba(255,255,255,0.7)' : adaptiveColors.textSecondary, fontFamily: currentFontPreset.fontFamily }]}>{voice.language}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <View style={styles.ttsButtonsRow}>
+                    <Pressable style={[styles.ttsPreviewBtn, { borderColor: adaptiveColors.accent }]} onPress={previewTts}>
+                      <Ionicons name="play-circle-outline" size={20} color={adaptiveColors.accent} />
+                      <Text style={{ color: adaptiveColors.accent, marginLeft: 6, fontFamily: currentFontPreset.fontFamilySemi }}>Preview Voice</Text>
+                    </Pressable>
+                    <Pressable style={[styles.ttsSaveBtn, { backgroundColor: adaptiveColors.accent }]} onPress={() => setShowTTSSettings(false)}>
+                      <Text style={{ color: '#fff', fontWeight: '600', fontFamily: currentFontPreset.fontFamilySemi }}>Save Values</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </ContentWrapper>
   );
 }
 
@@ -742,61 +1361,85 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 4 },
   navBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  chapterTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, flex: 1, textAlign: "center" },
-  progressBarContainer: { height: 3, width: '100%', overflow: 'hidden' },
+  chapterTitle: { fontSize: 14, flex: 1, textAlign: "center" },
+  progressBarContainer: { height: 4, width: '100%', overflow: 'hidden' },
   progressBar: { height: '100%', width: '0%' },
-  controls: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
+  controls: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
   controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  controlLabel: { fontFamily: "Inter_500Medium", fontSize: 13, width: 80 },
+  controlLabel: { fontSize: 13, width: 95 },
   controlBtns: { flexDirection: "row", alignItems: "center", gap: 12 },
   controlBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1 },
-  controlBtnText: { fontFamily: "Inter_700Bold" },
-  controlValue: { fontFamily: "Inter_500Medium", fontSize: 13, width: 40, textAlign: "center" },
+  controlBtnText: { fontSize: 12 },
+  controlValue: { fontSize: 13, width: 40, textAlign: "center" },
+  fontPresetBtns: { flexDirection: "row", gap: 8 },
+  fontPresetBtn: { width: 44, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1 },
+  fontPresetBtnText: { fontSize: 18 },
+  marginPresetBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, borderWidth: 1, marginHorizontal: 2 },
+  marginPresetText: { fontSize: 12 },
+  bgButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  bgButtonText: { fontSize: 13 },
   scrollArea: { flex: 1 },
-  textContainer: { paddingHorizontal: 22, paddingTop: 20 },
-  chapterHeader: { fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 20, lineHeight: 26 },
-  content: { fontFamily: "Inter_400Regular" },
+  textContainer: { paddingTop: 20 },
+  chapterHeader: { lineHeight: 32, marginBottom: 24 },
+  content: {},
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  jumpTopBtn: { position: 'absolute', bottom: 74, left: 18, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 3 },
   ttsHelpBtn: { position: 'absolute', bottom: 74, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 3 },
   ttsFloatingBtn: { position: 'absolute', bottom: 20, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', elevation: 4 },
   ttsHelpModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12, marginBottom: 11 },
   ttsHelpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
   ttsHelpIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  ttsHelpTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13, marginBottom: 3 },
-  ttsHelpDesc: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17 },
-  ttsSentenceBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 20, borderRadius: 10, borderWidth: 2, paddingHorizontal: 12, paddingVertical: 8 },
-  ttsSentenceLabel: { fontFamily: "Inter_600SemiBold", fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-  ttsSentenceText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
+  ttsHelpTitle: { fontSize: 13, marginBottom: 3 },
+  ttsHelpDesc: { fontSize: 12, lineHeight: 17 },
+  ttsSentenceBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 20, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  ttsSentenceLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+  ttsSentenceText: { fontSize: 13, lineHeight: 19 },
   bottomNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 12 },
   navChBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
-  navChText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  tocButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, minWidth: 70, alignItems: "center" },
-  tocButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  navChText: { fontSize: 13 },
+  tocButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, minWidth: 85, alignItems: "center" },
+  tocButtonText: { fontSize: 14 },
+  readingPercent: { fontSize: 10, marginTop: 2 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', minHeight: '50%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e0e0e0' },
-  modalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  modalTitle: { fontSize: 18 },
   modalCloseBtn: { padding: 4 },
   modalScrollView: { paddingHorizontal: 20, paddingVertical: 12 },
+  continueReadingBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginVertical: 12, padding: 12, borderRadius: 10, borderWidth: 1 },
+  continueReadingText: { fontSize: 14 },
   tocItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e0e0e0' },
   tocItemActive: { borderRadius: 8 },
   tocItemContent: { flex: 1 },
-  tocChapterNum: { fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 4 },
-  tocChapterTitle: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  tocChapterNum: { fontSize: 12, marginBottom: 4 },
+  tocChapterTitle: { fontSize: 14 },
+  bgPresetsList: { paddingHorizontal: 20, paddingVertical: 12, gap: 10 },
+  bgPresetItem: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 10, padding: 10 },
+  bgPresetSwatch: { width: 48, height: 48, borderRadius: 8, overflow: "hidden" },
+  bgPresetLabel: { fontSize: 14, flex: 1 },
+  searchModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  searchModalContent: { width: '90%', maxHeight: '80%', borderRadius: 12, padding: 20 },
+  searchInput: { borderWidth: 1, borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 16 },
+  searchResultCount: { fontSize: 12, marginBottom: 12, textAlign: 'center' },
+  searchResultItem: { paddingVertical: 12, borderBottomWidth: 1 },
+  searchResultTitle: { fontSize: 14, marginBottom: 4 },
+  searchResultChapter: { fontSize: 12 },
+  noResults: { textAlign: 'center', paddingVertical: 20 },
+  closeSearchBtn: { marginTop: 16, padding: 12, borderRadius: 8, alignItems: 'center' },
   ttsModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   ttsModalDismiss: { flex: 1 },
   ttsModalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12, marginBottom: 11 },
   ttsModalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  ttsModalTitle: { fontFamily: "Inter_700Bold", fontSize: 17, marginBottom: 20 },
-  ttsModalSubtitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 },
+  ttsModalTitle: { fontSize: 17, marginBottom: 20 },
+  ttsModalSubtitle: { fontSize: 14, marginBottom: 12 },
   speedButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
   speedButton: { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-  speedButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  speedButtonText: { fontSize: 13 },
   ttsButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 24 },
   ttsPreviewBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10, borderWidth: 1 },
   ttsSaveBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10 },
   ttsReloadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginHorizontal: 20, borderRadius: 10 },
   ttsVoiceChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignItems: 'center', minWidth: 80 },
-  ttsVoiceChipText: { fontFamily: "Inter_500Medium", fontSize: 12 },
-  ttsVoiceChipLang: { fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 },
+  ttsVoiceChipText: { fontSize: 12 },
+  ttsVoiceChipLang: { fontSize: 10, marginTop: 2 },
 });
