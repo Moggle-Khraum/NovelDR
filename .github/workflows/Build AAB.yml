@@ -1,0 +1,86 @@
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Expo packages
+        working-directory: artifacts/novel-reader
+        run: pnpm add expo-file-system expo-sharing && pnpm install --no-frozen-lockfile
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Initialize EAS project
+        working-directory: artifacts/novel-reader
+        run: eas init --non-interactive --force
+
+      - name: Configure EAS to build AAB
+        working-directory: artifacts/novel-reader
+        run: |
+          cat > eas.json << 'EOF'
+          {
+            "cli": {
+              "version": ">= 10.0.0"
+            },
+            "build": {
+              "preview": {
+                "android": {
+                  "buildType": "apk"
+                }
+              },
+              "bundle": {
+                "android": {
+                  "buildType": "app-bundle"
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Build Android AAB
+        working-directory: artifacts/novel-reader
+        run: eas build --platform android --profile bundle --non-interactive --local
+        env:
+          APP_BUILD_NUMBER: ${{ github.run_number }}
+
+      - name: Rename and Move AAB
+        working-directory: artifacts/novel-reader
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          REV=${{ github.run_number }}
+          mkdir -p ../../dist
+          AAB_FILE=$(find . -maxdepth 1 -name "*.aab" -type f | head -n 1)
+          cp "$AAB_FILE" "../../dist/NovelDR v${VERSION}rev${REV}.aab"
+          echo "Build Complete: NovelDR v${VERSION}rev${REV}.aab"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovelDR-Bundle-${{ github.run_number }}
+          path: dist/*.aab
+          if-no-files-found: error
