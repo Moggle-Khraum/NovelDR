@@ -64,7 +64,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("limit")) return "✅";
     if (text.includes("halted")) return "⚠️";
     if (text.includes("No more chapters")) return "🏁";
-    if (text.includes("[LNW]")) return "";  // icon already embedded in the text
+    if (text.includes("[LNW]")) return "";
     if (text.includes("━━━━")) return "";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter")) return "📖";
@@ -126,19 +126,8 @@ export default function AddNovelScreen() {
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
 
-  // Detect chapter URL and auto-fill Start Chapter
-  const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
-  const detectedChapterNum = url.match(CHAPTER_URL_PATTERN)?.[1] ?? null;
-  const isChapterUrl = detectedChapterNum !== null;
-
   const handleUrlChange = (text: string) => {
     setUrl(text);
-    const match = text.match(CHAPTER_URL_PATTERN);
-    if (match) {
-      setStartChStr(match[1]);
-    } else if (!text.trim()) {
-      setStartChStr("1");
-    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -230,6 +219,28 @@ export default function AddNovelScreen() {
     }
   };
 
+  // Convert any URL (including chapter links) to a clean novel homepage URL
+  const normalizeToNovelUrl = (inputUrl: string): string => {
+    // Strip everything after /chapter/ or /chapter- or /ch-
+    const patterns = [
+      /\/chapter\//i,
+      /\/chapter-/i,
+      /\/ch-/i,
+    ];
+    let normalized = inputUrl;
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        const index = normalized.search(pattern);
+        normalized = normalized.slice(0, index);
+        break;
+      }
+    }
+    // Remove trailing slash and any extra query/hash
+    normalized = normalized.replace(/\/$/, '').split('?')[0].split('#')[0];
+    return normalized;
+  };
+
   const handleDownload = async () => {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
@@ -244,25 +255,11 @@ export default function AddNovelScreen() {
     const startCh = Math.max(1, parseInt(startChStr) || 1);
     const maxCh = parseInt(maxChStr) || null;
 
-    // ── Detect if a chapter URL was pasted directly ──────────────────────────
-    // Matches patterns like /chapter-942, /chapter/942, /ch-942
-    const chapterUrlPattern = /\/chapter[-/](\d+)/i;
-    const chapterUrlMatch = trimmedUrl.match(chapterUrlPattern);
-    const isChapterUrl = !!chapterUrlMatch;
-
-    // Derive novel homepage URL by stripping everything from /chapter onwards
-    let metaUrl = trimmedUrl;
-    let directChapterUrl: string | null = null;
-    let directChapterNum = startCh;
-
-    if (isChapterUrl) {
-      const chapterIndex = trimmedUrl.search(chapterUrlPattern);
-      metaUrl = trimmedUrl.slice(0, chapterIndex).replace(/\/$/, '');
-      directChapterUrl = trimmedUrl;
-      directChapterNum = parseInt(chapterUrlMatch![1]) || startCh;
-      addLog(`Chapter URL detected — fetching novel info from: ${metaUrl}`, "info");
+    // Convert any URL to a clean novel homepage URL (no chapter detection)
+    const metaUrl = normalizeToNovelUrl(trimmedUrl);
+    if (metaUrl !== trimmedUrl) {
+      addLog(`Normalized URL to: ${metaUrl}`, "info");
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     stopRef.current = false;
     setIsDownloading(true);
@@ -301,7 +298,7 @@ export default function AddNovelScreen() {
 
       let domain = "";
       try {
-        domain = new URL(trimmedUrl).hostname;
+        domain = new URL(metaUrl).hostname;
       } catch {
         domain = "Unknown";
       }
@@ -345,20 +342,12 @@ export default function AddNovelScreen() {
         localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
 
-      // ── If a chapter URL was pasted, skip directly to it ─────────────────
-      // Override firstChapterUrl with the pasted chapter URL and set chapterNum
-      // to the number extracted from the URL — bypasses the skip/crawl logic.
-      let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
-      let chapterNum = directChapterUrl ? directChapterNum : 1;
-
-      if (directChapterUrl) {
-        addLog(`Starting directly from chapter ${directChapterNum}`, "success");
-        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      }
+      // Always start from the true first chapter URL
+      let currentUrl: string | null = meta.firstChapterUrl;
+      let chapterNum = 1;
 
       // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
-      // Only runs when a novel homepage URL was pasted (not a chapter URL)
-      if (!directChapterUrl && startCh > 1) {
+      if (startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
         addLog(`Crawling to chapter ${startCh} (sequential via nextUrl)`, "warning");
@@ -374,7 +363,6 @@ export default function AddNovelScreen() {
             chapterNum++;
             skippedCount++;
 
-            // Log at every 20% milestone
             const percent = Math.floor((skippedCount / totalToSkip) * 100);
             const nextMilestone = lastLoggedMilestone + 20;
             if (percent >= nextMilestone && nextMilestone <= 80) {
@@ -396,7 +384,6 @@ export default function AddNovelScreen() {
               break;
             }
           }
-          // 35ms between skipped chapters — fast but courteous to the server
           await new Promise((r) => setTimeout(r, 35));
         }
 
@@ -450,7 +437,6 @@ export default function AddNovelScreen() {
 
           downloaded++;
 
-          // LNW-only: show connection diagnostics and scraper stats
           if (data.scraperInfo) {
             const si = data.scraperInfo;
             const selectorLabel =
@@ -538,7 +524,7 @@ export default function AddNovelScreen() {
         author: meta.author,
         synopsis: meta.synopsis,
         coverUrl: localCoverUrl || meta.coverUrl,
-        sourceUrl: trimmedUrl,
+        sourceUrl: metaUrl,  // store the normalized URL (novel homepage)
         chapters: finalChapters,
         dateAdded: Date.now(),
         status: "unread",
@@ -607,21 +593,22 @@ export default function AddNovelScreen() {
               keyboardType="url"
               editable={!isDownloading}
             />
+            <Text style={[styles.helperText, { color: colors.textMuted }]}>
+              Paste any novel homepage or chapter URL – will always start from chapter 1
+            </Text>
           </View>
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Start Chapter{isChapterUrl ? ' 🔗' : ''}
-              </Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Start Chapter</Text>
               <TextInput
-                style={[inputStyle, isChapterUrl && { opacity: 0.5 }]}
+                style={inputStyle}
                 value={startChStr}
                 onChangeText={setStartChStr}
                 placeholder="1"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
-                editable={!isDownloading && !isChapterUrl}
+                editable={!isDownloading}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -805,6 +792,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     marginBottom: 6,
+  },
+  helperText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 4,
+    marginLeft: 4,
   },
   input: {
     borderRadius: 10,
