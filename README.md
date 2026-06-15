@@ -11,7 +11,7 @@
 **Total Download Counts:**
 
 ![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads&cacheSeconds=3600)
-[![MediaFire Downloads](https://img.shields.io/badge/Downloads-272-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
+[![MediaFire Downloads](https://img.shields.io/badge/Downloads-275-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
 
 **Download webnovels. Read anywhere. No ads, no login, just pure offline reading.**
 
