@@ -184,28 +184,6 @@ export default function AddNovelScreen() {
     }
   };
 
-  // Attempt to directly construct URL for skipping chapters
-  const tryDirectSkip = (firstUrl: string, targetChapter: number): string | null => {
-    // Try to detect pattern: .../chapter-1 -> .../chapter-X
-    const chapterPattern = /(chapter[-_]?)(\d+)/i;
-    const match = firstUrl.match(chapterPattern);
-    if (match) {
-      const prefix = match[1];
-      const newUrl = firstUrl.replace(chapterPattern, `${prefix}${targetChapter}`);
-      if (newUrl !== firstUrl) return newUrl;
-    }
-    
-    // Try to detect pattern: .../1/ -> .../X/
-    const slashPattern = /\/(\d+)\//;
-    const slashMatch = firstUrl.match(slashPattern);
-    if (slashMatch) {
-      const newUrl = firstUrl.replace(slashPattern, `/${targetChapter}/`);
-      if (newUrl !== firstUrl) return newUrl;
-    }
-    
-    return null;
-  };
-
   // Lightweight helper — fetches only next URL and title, no full content processing
   const getChapterMetadata = async (
     url: string,
@@ -383,66 +361,57 @@ export default function AddNovelScreen() {
       if (!directChapterUrl && startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
+        addLog(`Crawling to chapter ${startCh} (sequential via nextUrl)`, "warning");
 
-        // Attempt direct URL construction first (instant, no network calls)
-        const directUrl = tryDirectSkip(meta.firstChapterUrl!, startCh);
-        if (directUrl) {
-          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
-          currentUrl = directUrl;
-          chapterNum = startCh;
-        } else {
-          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
+        let skippedCount = 0;
+        let lastLoggedMilestone = 0;
+        const totalToSkip = startCh - 1;
 
-          let skippedCount = 0;
-          let lastLoggedMilestone = 0;
-          const totalToSkip = startCh - 1;
+        while (currentUrl && chapterNum < startCh && !stopRef.current) {
+          try {
+            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+            currentUrl = nextUrl;
+            chapterNum++;
+            skippedCount++;
 
-          while (currentUrl && chapterNum < startCh && !stopRef.current) {
+            // Log at every 20% milestone
+            const percent = Math.floor((skippedCount / totalToSkip) * 100);
+            const nextMilestone = lastLoggedMilestone + 20;
+            if (percent >= nextMilestone && nextMilestone <= 80) {
+              addLog(
+                `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
+                "warning"
+              );
+              lastLoggedMilestone = nextMilestone;
+            }
+          } catch {
+            addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
               currentUrl = nextUrl;
               chapterNum++;
               skippedCount++;
-
-              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, and final)
-              const percent = Math.floor((skippedCount / totalToSkip) * 100);
-              const nextMilestone = lastLoggedMilestone + 20;
-              if (percent >= nextMilestone && nextMilestone <= 80) {
-                addLog(
-                  `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
-                  "warning"
-                );
-                lastLoggedMilestone = nextMilestone;
-              }
             } catch {
-              addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
-              try {
-                const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
-                currentUrl = nextUrl;
-                chapterNum++;
-                skippedCount++;
-              } catch {
-                addLog(`Skip aborted at chapter ${chapterNum}`, "error");
-                break;
-              }
+              addLog(`Skip aborted at chapter ${chapterNum}`, "error");
+              break;
             }
-            // 35ms between skipped chapters — fast but courteous to the server
-            await new Promise((r) => setTimeout(r, 35));
           }
+          // 35ms between skipped chapters — fast but courteous to the server
+          await new Promise((r) => setTimeout(r, 35));
+        }
 
-          if (skippedCount > 0) {
-            addLog(
-              `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
-              "success"
-            );
-          }
+        if (skippedCount > 0) {
+          addLog(
+            `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
+            "success"
+          );
+        }
 
-          if (!currentUrl) {
-            addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
-            stopTimer();
-            setIsDownloading(false);
-            return;
-          }
+        if (!currentUrl) {
+          addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
+          stopTimer();
+          setIsDownloading(false);
+          return;
         }
 
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -452,7 +421,7 @@ export default function AddNovelScreen() {
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
 
-      addLog(`Starting from chapter ${startCh}...`, "downloading");
+      addLog(`Starting from chapter ${chapterNum}...`, "downloading");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       while (currentUrl && !stopRef.current) {
