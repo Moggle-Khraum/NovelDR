@@ -64,6 +64,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("Starting from chapter")) return "📍";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter number")) return "🔢";
+    if (text.includes("Direct skip")) return "⚡";
     return "";
   };
 
@@ -173,6 +174,14 @@ export default function UpdatesScreen() {
     return 0;
   };
 
+  // ─── Get the highest real chapter number from saved chapters ────────────────
+  const getLastChapterNumber = (novel: Novel): number => {
+    const nums = novel.chapters
+      .map((c) => extractChapterNumber(c.title))
+      .filter((n) => n > 0);
+    return nums.length > 0 ? Math.max(...nums) : novel.chapters.length;
+  };
+
   // ─── Download cover ──────────────────────────────────────────────────────────
   const downloadAndSaveCover = async (coverUrl: string, novelId: string): Promise<string> => {
     if (!coverUrl) return "";
@@ -253,7 +262,28 @@ export default function UpdatesScreen() {
     }
   };
 
-  // ─── Main update handler (direct skip removed) ──────────────────────────────
+  // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
+  // Handles LightNovelWorld (/chapter/1/), FreeWebNovel/NovelBin (/chapter-1), etc.
+  const tryDirectSkip = (firstChapterUrl: string, targetChapter: number): string | null => {
+    const patterns = [
+      { regex: /(\/chapter\/)(\d+)(\/?)$/ },
+      { regex: /(\/chapter-)(\d+)(\/?)$/ },
+      { regex: /(\/chapter-)(\d+)(\.html)$/ },
+      { regex: /(_chapter_)(\d+)()$/ },
+    ];
+    for (const { regex } of patterns) {
+      if (regex.test(firstChapterUrl)) {
+        return firstChapterUrl.replace(
+          regex,
+          (_: string, prefix: string, _num: string, suffix: string) =>
+            `${prefix}${targetChapter}${suffix}`
+        );
+      }
+    }
+    return null;
+  };
+
+  // ─── Main update handler ─────────────────────────────────────────────────────
   const handleUpdate = async () => {
     if (!selectedNovel) {
       addLog("Please select a novel first", "error");
@@ -262,7 +292,8 @@ export default function UpdatesScreen() {
 
     const existingChapters = [...selectedNovel.chapters];
     const existingCount = existingChapters.length;
-    const startCh = Math.max(1, parseInt(startChStr) || existingCount + 1);
+    const lastChNum = getLastChapterNumber(selectedNovel);
+    const startCh = Math.max(1, parseInt(startChStr) || lastChNum + 1);
     const maxCh = parseInt(maxChStr) || null;
 
     stopRef.current = false;
@@ -318,64 +349,75 @@ export default function UpdatesScreen() {
         addLog(`Author updated: ${meta.author}`, "info");
       }
 
-      // ========== SKIP TO START CHAPTER (always crawl sequentially) ==========
+      // ========== SKIP TO START CHAPTER ==========
       let currentUrl: string | null = meta.firstChapterUrl;
       let chapterNum = 1;
 
       if (startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
-        addLog(`Crawling to chapter ${startCh} (sequential via nextUrl)`, "warning");
 
-        let skippedCount = 0;
-        let lastLoggedMilestone = 0;
-        const totalToSkip = startCh - 1;
+        // Try instant URL construction first
+        const directUrl = tryDirectSkip(meta.firstChapterUrl, startCh);
+        if (directUrl) {
+          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+          currentUrl = directUrl;
+          chapterNum = startCh;
+        } else {
+          // Crawl chapter-by-chapter
+          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
 
-        while (currentUrl && chapterNum < startCh && !stopRef.current) {
-          try {
-            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
-            currentUrl = nextUrl;
-            chapterNum++;
-            skippedCount++;
+          let skippedCount = 0;
+          let lastLoggedMilestone = 0;
+          const totalToSkip = startCh - 1;
 
-            // Log at every 20% milestone
-            const percent = Math.floor((skippedCount / totalToSkip) * 100);
-            const nextMilestone = lastLoggedMilestone + 20;
-            if (percent >= nextMilestone && nextMilestone <= 80) {
-              addLog(
-                `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
-                "warning"
-              );
-              lastLoggedMilestone = nextMilestone;
-            }
-          } catch {
-            addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+          while (currentUrl && chapterNum < startCh && !stopRef.current) {
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
               currentUrl = nextUrl;
               chapterNum++;
               skippedCount++;
+
+              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, + final)
+              const percent = Math.floor((skippedCount / totalToSkip) * 100);
+              const nextMilestone = lastLoggedMilestone + 20;
+              if (percent >= nextMilestone && nextMilestone <= 80) {
+                addLog(
+                  `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
+                  "warning"
+                );
+                lastLoggedMilestone = nextMilestone;
+              }
             } catch {
-              addLog(`Skip aborted at chapter ${chapterNum}`, "error");
-              break;
+              addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+              try {
+                const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+                currentUrl = nextUrl;
+                chapterNum++;
+                skippedCount++;
+              } catch {
+                addLog(`Skip aborted at chapter ${chapterNum}`, "error");
+                break;
+              }
             }
+            // 35ms — fast but courteous; yield every 20 chapters to keep UI responsive
+            await new Promise((r) => setTimeout(r, 35));
+            if (skippedCount % 20 === 0) await new Promise((r) => setTimeout(r, 0));
           }
-          await new Promise((r) => setTimeout(r, 35));
-          if (skippedCount % 20 === 0) await new Promise((r) => setTimeout(r, 0));
-        }
 
-        if (skippedCount > 0) {
-          addLog(
-            `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
-            "success"
-          );
-        }
+          if (skippedCount > 0) {
+            addLog(
+              `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
+              "success"
+            );
+          }
 
-        if (!currentUrl) {
-          addLog(`Could not reach chapter ${startCh}. Update aborted.`, "error");
-          stopTimer();
-          setIsUpdating(false);
-          return;
+          if (!currentUrl) {
+            addLog(`Could not reach chapter ${startCh}. Update aborted.`, "error");
+            stopTimer();
+            setIsUpdating(false);
+            return;
+          }
         }
 
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -551,7 +593,7 @@ export default function UpdatesScreen() {
         setSelectedNovel(novel);
         setShowNovelSearch(false);
         setNovelSearchQuery("");
-        setStartChStr((novel.chapters.length + 1).toString());
+        setStartChStr((getLastChapterNumber(novel) + 1).toString());
       }}
     >
       <View style={styles.novelItemContent}>
@@ -677,7 +719,7 @@ export default function UpdatesScreen() {
                 style={inputStyle}
                 value={startChStr}
                 onChangeText={setStartChStr}
-                placeholder={selectedNovel ? `${selectedNovel.chapters.length + 1}` : "Auto"}
+                placeholder={selectedNovel ? `${getLastChapterNumber(selectedNovel) + 1}` : "Auto"}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 editable={!isUpdating}

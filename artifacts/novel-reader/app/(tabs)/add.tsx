@@ -64,7 +64,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("limit")) return "✅";
     if (text.includes("halted")) return "⚠️";
     if (text.includes("No more chapters")) return "🏁";
-    if (text.includes("[LNW]")) return "";
+    if (text.includes("[LNW]")) return "";  // icon already embedded in the text
     if (text.includes("━━━━")) return "";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter")) return "📖";
@@ -126,8 +126,20 @@ export default function AddNovelScreen() {
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
 
+  // Detect chapter URL and auto-fill Start Chapter
+  const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
+  const detectedChapterNum = url.match(CHAPTER_URL_PATTERN)?.[1] ?? null;
+  const isChapterUrl = detectedChapterNum !== null;
+
   const handleUrlChange = (text: string) => {
-    setUrl(text);
+    const filtered = text.replace(/[0-9]/g, "");
+    setUrl(filtered);
+    const match = filtered.match(CHAPTER_URL_PATTERN);
+    if (match) {
+      setStartChStr(match[1]);
+    } else if (!filtered.trim()) {
+      setStartChStr("1");
+    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -171,6 +183,28 @@ export default function AddNovelScreen() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+  };
+
+  // Attempt to directly construct URL for skipping chapters
+  const tryDirectSkip = (firstUrl: string, targetChapter: number): string | null => {
+    // Try to detect pattern: .../chapter-1 -> .../chapter-X
+    const chapterPattern = /(chapter[-_]?)(\d+)/i;
+    const match = firstUrl.match(chapterPattern);
+    if (match) {
+      const prefix = match[1];
+      const newUrl = firstUrl.replace(chapterPattern, `${prefix}${targetChapter}`);
+      if (newUrl !== firstUrl) return newUrl;
+    }
+    
+    // Try to detect pattern: .../1/ -> .../X/
+    const slashPattern = /\/(\d+)\//;
+    const slashMatch = firstUrl.match(slashPattern);
+    if (slashMatch) {
+      const newUrl = firstUrl.replace(slashPattern, `/${targetChapter}/`);
+      if (newUrl !== firstUrl) return newUrl;
+    }
+    
+    return null;
   };
 
   // Lightweight helper — fetches only next URL and title, no full content processing
@@ -219,28 +253,6 @@ export default function AddNovelScreen() {
     }
   };
 
-  // Convert any URL (including chapter links) to a clean novel homepage URL
-  const normalizeToNovelUrl = (inputUrl: string): string => {
-    // Strip everything after /chapter/ or /chapter- or /ch-
-    const patterns = [
-      /\/chapter\//i,
-      /\/chapter-/i,
-      /\/ch-/i,
-    ];
-    let normalized = inputUrl;
-    for (const pattern of patterns) {
-      const match = normalized.match(pattern);
-      if (match) {
-        const index = normalized.search(pattern);
-        normalized = normalized.slice(0, index);
-        break;
-      }
-    }
-    // Remove trailing slash and any extra query/hash
-    normalized = normalized.replace(/\/$/, '').split('?')[0].split('#')[0];
-    return normalized;
-  };
-
   const handleDownload = async () => {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
@@ -255,11 +267,25 @@ export default function AddNovelScreen() {
     const startCh = Math.max(1, parseInt(startChStr) || 1);
     const maxCh = parseInt(maxChStr) || null;
 
-    // Convert any URL to a clean novel homepage URL (no chapter detection)
-    const metaUrl = normalizeToNovelUrl(trimmedUrl);
-    if (metaUrl !== trimmedUrl) {
-      addLog(`Normalized URL to: ${metaUrl}`, "info");
+    // ── Detect if a chapter URL was pasted directly ──────────────────────────
+    // Matches patterns like /chapter-942, /chapter/942, /ch-942
+    const chapterUrlPattern = /\/chapter[-/](\d+)/i;
+    const chapterUrlMatch = trimmedUrl.match(chapterUrlPattern);
+    const isChapterUrl = !!chapterUrlMatch;
+
+    // Derive novel homepage URL by stripping everything from /chapter onwards
+    let metaUrl = trimmedUrl;
+    let directChapterUrl: string | null = null;
+    let directChapterNum = startCh;
+
+    if (isChapterUrl) {
+      const chapterIndex = trimmedUrl.search(chapterUrlPattern);
+      metaUrl = trimmedUrl.slice(0, chapterIndex).replace(/\/$/, '');
+      directChapterUrl = trimmedUrl;
+      directChapterNum = parseInt(chapterUrlMatch![1]) || startCh;
+      addLog(`Chapter URL detected — fetching novel info from: ${metaUrl}`, "info");
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
     stopRef.current = false;
     setIsDownloading(true);
@@ -298,7 +324,7 @@ export default function AddNovelScreen() {
 
       let domain = "";
       try {
-        domain = new URL(metaUrl).hostname;
+        domain = new URL(trimmedUrl).hostname;
       } catch {
         domain = "Unknown";
       }
@@ -342,63 +368,82 @@ export default function AddNovelScreen() {
         localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
 
-      // Always start from the true first chapter URL
-      let currentUrl: string | null = meta.firstChapterUrl;
-      let chapterNum = 1;
+      // ── If a chapter URL was pasted, skip directly to it ─────────────────
+      // Override firstChapterUrl with the pasted chapter URL and set chapterNum
+      // to the number extracted from the URL — bypasses the skip/crawl logic.
+      let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
+      let chapterNum = directChapterUrl ? directChapterNum : 1;
+
+      if (directChapterUrl) {
+        addLog(`Starting directly from chapter ${directChapterNum}`, "success");
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      }
 
       // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
-      if (startCh > 1) {
+      // Only runs when a novel homepage URL was pasted (not a chapter URL)
+      if (!directChapterUrl && startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
-        addLog(`Crawling to chapter ${startCh} (sequential via nextUrl)`, "warning");
 
-        let skippedCount = 0;
-        let lastLoggedMilestone = 0;
-        const totalToSkip = startCh - 1;
+        // Attempt direct URL construction first (instant, no network calls)
+        const directUrl = tryDirectSkip(meta.firstChapterUrl!, startCh);
+        if (directUrl) {
+          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+          currentUrl = directUrl;
+          chapterNum = startCh;
+        } else {
+          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
 
-        while (currentUrl && chapterNum < startCh && !stopRef.current) {
-          try {
-            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
-            currentUrl = nextUrl;
-            chapterNum++;
-            skippedCount++;
+          let skippedCount = 0;
+          let lastLoggedMilestone = 0;
+          const totalToSkip = startCh - 1;
 
-            const percent = Math.floor((skippedCount / totalToSkip) * 100);
-            const nextMilestone = lastLoggedMilestone + 20;
-            if (percent >= nextMilestone && nextMilestone <= 80) {
-              addLog(
-                `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
-                "warning"
-              );
-              lastLoggedMilestone = nextMilestone;
-            }
-          } catch {
-            addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+          while (currentUrl && chapterNum < startCh && !stopRef.current) {
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
               currentUrl = nextUrl;
               chapterNum++;
               skippedCount++;
+
+              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, and final)
+              const percent = Math.floor((skippedCount / totalToSkip) * 100);
+              const nextMilestone = lastLoggedMilestone + 20;
+              if (percent >= nextMilestone && nextMilestone <= 80) {
+                addLog(
+                  `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
+                  "warning"
+                );
+                lastLoggedMilestone = nextMilestone;
+              }
             } catch {
-              addLog(`Skip aborted at chapter ${chapterNum}`, "error");
-              break;
+              addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+              try {
+                const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+                currentUrl = nextUrl;
+                chapterNum++;
+                skippedCount++;
+              } catch {
+                addLog(`Skip aborted at chapter ${chapterNum}`, "error");
+                break;
+              }
             }
+            // 35ms between skipped chapters — fast but courteous to the server
+            await new Promise((r) => setTimeout(r, 35));
           }
-          await new Promise((r) => setTimeout(r, 35));
-        }
 
-        if (skippedCount > 0) {
-          addLog(
-            `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
-            "success"
-          );
-        }
+          if (skippedCount > 0) {
+            addLog(
+              `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
+              "success"
+            );
+          }
 
-        if (!currentUrl) {
-          addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
-          stopTimer();
-          setIsDownloading(false);
-          return;
+          if (!currentUrl) {
+            addLog(`Could not reach chapter ${startCh}. Download aborted.`, "error");
+            stopTimer();
+            setIsDownloading(false);
+            return;
+          }
         }
 
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -408,7 +453,7 @@ export default function AddNovelScreen() {
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
 
-      addLog(`Starting from chapter ${chapterNum}...`, "downloading");
+      addLog(`Starting from chapter ${startCh}...`, "downloading");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       while (currentUrl && !stopRef.current) {
@@ -437,6 +482,7 @@ export default function AddNovelScreen() {
 
           downloaded++;
 
+          // LNW-only: show connection diagnostics and scraper stats
           if (data.scraperInfo) {
             const si = data.scraperInfo;
             const selectorLabel =
@@ -524,7 +570,7 @@ export default function AddNovelScreen() {
         author: meta.author,
         synopsis: meta.synopsis,
         coverUrl: localCoverUrl || meta.coverUrl,
-        sourceUrl: metaUrl,  // store the normalized URL (novel homepage)
+        sourceUrl: trimmedUrl,
         chapters: finalChapters,
         dateAdded: Date.now(),
         status: "unread",
@@ -593,22 +639,21 @@ export default function AddNovelScreen() {
               keyboardType="url"
               editable={!isDownloading}
             />
-            <Text style={[styles.helperText, { color: colors.textMuted }]}>
-              Paste any novel homepage or chapter URL – will always start from chapter 1
-            </Text>
           </View>
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Start Chapter</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Start Chapter{isChapterUrl ? ' 🔗' : ''}
+              </Text>
               <TextInput
-                style={inputStyle}
+                style={[inputStyle, isChapterUrl && { opacity: 0.5 }]}
                 value={startChStr}
                 onChangeText={setStartChStr}
                 placeholder="1"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
-                editable={!isDownloading}
+                editable={!isDownloading && !isChapterUrl}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -792,12 +837,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     marginBottom: 6,
-  },
-  helperText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 4,
   },
   input: {
     borderRadius: 10,
