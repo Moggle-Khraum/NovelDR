@@ -19,6 +19,11 @@ import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import Colors from "@/constants/colors";
 
+// Detects when a saved novel's sourceUrl is actually a chapter page rather than
+// the novel's info/homepage page (can happen with novels added via a pasted
+// chapter link before add.tsx started normalizing sourceUrl to the homepage).
+const NOVEL_SOURCE_CHAPTER_PATTERN = /\/chapter[-/](\d+)/i;
+
 type LogEntry = {
   id: string;
   text: string;
@@ -65,6 +70,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter number")) return "🔢";
     if (text.includes("Direct skip")) return "⚡";
+    if (text.includes("Chapter URL detected")) return "🔗";
     return "";
   };
 
@@ -174,12 +180,15 @@ export default function UpdatesScreen() {
     return 0;
   };
 
-  // ─── Get the highest real chapter number from saved chapters ────────────────
-  const getLastChapterNumber = (novel: Novel): number => {
-    const nums = novel.chapters
-      .map((c) => extractChapterNumber(c.title))
-      .filter((n) => n > 0);
-    return nums.length > 0 ? Math.max(...nums) : novel.chapters.length;
+  // ─── Determine next Start Chapter from saved chapters ───────────────────────
+  // Parses the chapter number out of the *last* saved chapter's title rather
+  // than just using array length, since gaps or untitled entries can throw off
+  // a simple count (e.g. last saved chapter title is "Chapter 972" -> next is 973).
+  const getNextStartChapter = (novel: Novel): number => {
+    if (novel.chapters.length === 0) return 1;
+    const lastChapter = novel.chapters[novel.chapters.length - 1];
+    const lastNum = extractChapterNumber(lastChapter.title);
+    return lastNum > 0 ? lastNum + 1 : novel.chapters.length + 1;
   };
 
   // ─── Download cover ──────────────────────────────────────────────────────────
@@ -263,19 +272,60 @@ export default function UpdatesScreen() {
   };
 
   // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
-  // Handles LightNovelWorld (/chapter/1/), FreeWebNovel/NovelBin (/chapter-1), etc.
+  // LightNovelWorld's /chapter/N/ scheme is reliable enough for an aggressive,
+  // broad-match direct skip. Every other source (FreeWebNovel, NovelBin,
+  // NovelFull, ReadNovelFull, etc.) uses the old, narrow, exact-suffix patterns
+  // only — these never match generic numeric path segments (like novel IDs),
+  // so a non-match safely falls through to the chapter-by-chapter crawl below,
+  // which is what actually works for homepage-only saved novels on those sites.
+  const isLightNovelWorld = (url: string): boolean =>
+    url.toLowerCase().includes("lightnovelworld");
+
+  // Narrow, source-specific patterns (safe for FreeWebNovel/NovelBin/NovelFull/etc.)
+  const CHAPTER_SKIP_PATTERNS: { regex: RegExp }[] = [
+    { regex: /(\/chapter-)(\d+)(\.html)$/ },
+    { regex: /(\/chapter-)(\d+)(\/?)$/ },
+    { regex: /(_chapter_)(\d+)()$/ },
+  ];
+
+  // Broader patterns, only ever applied to LightNovelWorld URLs.
+  const LNW_SKIP_PATTERNS: { regex: RegExp }[] = [
+    { regex: /(\/chapter\/)(\d+)(\/?)$/ },
+    { regex: /(chapter[-_]?)(\d+)()/i },
+  ];
+
   const tryDirectSkip = (firstChapterUrl: string, targetChapter: number): string | null => {
-    const patterns = [
-      { regex: /(\/chapter\/)(\d+)(\/?)$/ },
-      { regex: /(\/chapter-)(\d+)(\/?)$/ },
-      { regex: /(\/chapter-)(\d+)(\.html)$/ },
-      { regex: /(_chapter_)(\d+)()$/ },
-    ];
-    for (const { regex } of patterns) {
+    if (isLightNovelWorld(firstChapterUrl)) {
+      for (const { regex } of LNW_SKIP_PATTERNS) {
+        if (regex.test(firstChapterUrl)) {
+          return firstChapterUrl.replace(
+            regex,
+            (_m: string, prefix: string, _num: string, suffix: string) =>
+              `${prefix}${targetChapter}${suffix}`
+          );
+        }
+      }
+      // Last resort for LNW only: bare trailing-number replace.
+      if (/chapter/i.test(firstChapterUrl)) {
+        const slashPattern = /\/(\d+)(\/?)$/;
+        if (slashPattern.test(firstChapterUrl)) {
+          return firstChapterUrl.replace(
+            slashPattern,
+            (_m: string, _num: string, trailingSlash: string) => `/${targetChapter}${trailingSlash}`
+          );
+        }
+      }
+      return null;
+    }
+
+    // Non-LNW sources: only the narrow, exact-suffix patterns. No generic
+    // fallback — if none of these match, return null and let the caller
+    // crawl chapter-by-chapter instead (the old, working behavior).
+    for (const { regex } of CHAPTER_SKIP_PATTERNS) {
       if (regex.test(firstChapterUrl)) {
         return firstChapterUrl.replace(
           regex,
-          (_: string, prefix: string, _num: string, suffix: string) =>
+          (_m: string, prefix: string, _num: string, suffix: string) =>
             `${prefix}${targetChapter}${suffix}`
         );
       }
@@ -292,8 +342,7 @@ export default function UpdatesScreen() {
 
     const existingChapters = [...selectedNovel.chapters];
     const existingCount = existingChapters.length;
-    const lastChNum = getLastChapterNumber(selectedNovel);
-    const startCh = Math.max(1, parseInt(startChStr) || lastChNum + 1);
+    const startCh = Math.max(1, parseInt(startChStr) || getNextStartChapter(selectedNovel));
     const maxCh = parseInt(maxChStr) || null;
 
     stopRef.current = false;
@@ -312,12 +361,26 @@ export default function UpdatesScreen() {
         domain = "Unknown";
       }
 
+      // Older novels (or ones added by pasting a chapter URL directly, before
+      // add.tsx started normalizing sourceUrl to the homepage) may have a
+      // chapter page stored as sourceUrl instead of the novel's info page.
+      // Detect that here and derive the homepage URL the same way add.tsx does.
+      let metaUrl = selectedNovel.sourceUrl;
+      const sourceIsChapterUrl = NOVEL_SOURCE_CHAPTER_PATTERN.test(selectedNovel.sourceUrl);
+      if (sourceIsChapterUrl) {
+        const chapterIndex = selectedNovel.sourceUrl.search(NOVEL_SOURCE_CHAPTER_PATTERN);
+        metaUrl = selectedNovel.sourceUrl.slice(0, chapterIndex).replace(/\/$/, "");
+      }
+
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`CONNECTING TO SOURCE...`, "downloading");
       addLog(`Source Domain: ${domain}`, "info");
+      if (sourceIsChapterUrl) {
+        addLog(`Chapter URL detected in saved source — using novel info page: ${metaUrl}`, "info");
+      }
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
-      const meta = await fetchNovelMeta(selectedNovel.sourceUrl);
+      const meta = await fetchNovelMeta(metaUrl);
 
       addLog(`Connection successful!`, "success");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -532,16 +595,23 @@ export default function UpdatesScreen() {
           );
         }
 
+        // Once we've successfully resolved sourceUrl to a working homepage URL,
+        // persist the corrected value so future updates skip the detection step.
         await updateNovel(selectedNovel.id, {
           chapters: allChapters,
           coverUrl: updatedCoverUrl,
           author: meta.author,
           synopsis: meta.synopsis,
+          sourceUrl: metaUrl,
         });
 
         if (downloaded > 0) {
           addLog(`Novel updated with ${downloaded} new chapters!`, "success");
         }
+      } else if (sourceIsChapterUrl) {
+        // No new chapters, but still worth fixing the stored sourceUrl so
+        // future updates don't need to re-detect/re-derive it every time.
+        await updateNovel(selectedNovel.id, { sourceUrl: metaUrl });
       }
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -593,7 +663,7 @@ export default function UpdatesScreen() {
         setSelectedNovel(novel);
         setShowNovelSearch(false);
         setNovelSearchQuery("");
-        setStartChStr((getLastChapterNumber(novel) + 1).toString());
+        setStartChStr(getNextStartChapter(novel).toString());
       }}
     >
       <View style={styles.novelItemContent}>
@@ -719,7 +789,7 @@ export default function UpdatesScreen() {
                 style={inputStyle}
                 value={startChStr}
                 onChangeText={setStartChStr}
-                placeholder={selectedNovel ? `${getLastChapterNumber(selectedNovel) + 1}` : "Auto"}
+                placeholder={selectedNovel ? `${getNextStartChapter(selectedNovel)}` : "Auto"}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 editable={!isUpdating}
