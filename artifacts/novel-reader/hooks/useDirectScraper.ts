@@ -828,7 +828,7 @@ export async function downloadNovelByCrawling(
   novelId: string,
   saveChapter: (novelId: string, chapterIndex: number, title: string, content: string) => Promise<void>,
   onProgress?: (chapterNumber: number, title: string) => void,
-  delayMs: number = 500
+  delayMs: number = 1800
 ): Promise<void> {
   let currentUrl: string | null = startUrl;
   let chapterNumber = 1;
