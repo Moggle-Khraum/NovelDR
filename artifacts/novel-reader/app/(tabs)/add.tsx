@@ -117,7 +117,7 @@ function SourceListModalCell({ name }: { name: string }) {
   return (
     <View
       style={[
-        styles.modalSourceCell,
+        styles.siteCell,
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
@@ -125,8 +125,10 @@ function SourceListModalCell({ name }: { name: string }) {
       ]}
     >
       <Text
-        style={[styles.modalSourceName, { color: colors.text }]}
+        style={[styles.siteName, { color: colors.text }]}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
       >
         {name}
       </Text>
@@ -140,18 +142,17 @@ interface SourceListModalProps {
   sites: typeof SUPPORTED_SITES;
 }
 
-function SourceListModal({ visible, onClose, sites }: SourceListModalProps) {
+function SourceListModal({
+  visible,
+  onClose,
+  sites,
+}: SourceListModalProps) {
   const { colors } = useTheme();
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={[styles.modalOverlay, { backgroundColor: "rgba(0, 0, 0, 0.5)" }]}>
-        <View
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable
           style={[
             styles.modalContent,
             {
@@ -159,38 +160,29 @@ function SourceListModal({ visible, onClose, sites }: SourceListModalProps) {
               borderColor: colors.border,
             },
           ]}
+          onPress={() => {}}
         >
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              📚 All Sources
-            </Text>
-          </View>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            Source List
+          </Text>
 
-          {/* Scrollable Source List */}
-          <FlatList
-            data={sites}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => <SourceListModalCell name={item.name} />}
-            contentContainerStyle={styles.modalListContent}
-            scrollEnabled={true}
-            nestedScrollEnabled={true}
-            style={styles.modalList}
+          <View
+            style={[
+              styles.modalSeparator,
+              { backgroundColor: colors.border },
+            ]}
           />
 
-          {/* Close Button */}
-          <Pressable
-            style={[
-              styles.modalCloseBtn,
-              { backgroundColor: colors.accent },
-            ]}
-            onPress={onClose}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalGrid}
           >
-            <Ionicons name="close" size={18} color="#fff" />
-            <Text style={styles.modalCloseBtnText}>Close</Text>
-          </Pressable>
-        </View>
-      </View>
+            {sites.map((site) => (
+              <SourceListModalCell key={site.name} name={site.name} />
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -711,24 +703,21 @@ export default function AddNovelScreen() {
             <Text style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}>SUPPORTED SITES</Text>
           </View>
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {SUPPORTED_SITES.slice(0, 5).map((site) => (
+            {SUPPORTED_SITES.slice(0, 8).map((site) => (
               <SiteCell key={site.name} name={site.name} />
             ))}
-            {/* Source List Modal Button */}
             <Pressable
               style={[
                 styles.siteCell,
-                styles.sourceListCell,
                 {
-                  backgroundColor: colors.accent,
-                  borderColor: colors.accent,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
                 },
               ]}
               onPress={() => setSourceListModalVisible(true)}
             >
-              <Ionicons name="list" size={16} color="#fff" style={{ marginBottom: 4 }} />
               <Text
-                style={[styles.siteName, { color: "#fff" }]}
+                style={[styles.siteName, { color: colors.text }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
@@ -736,7 +725,7 @@ export default function AddNovelScreen() {
                 Source List
               </Text>
             </Pressable>
-          </View>
+</View>
         </View>
 
         {/* Form Section */}
@@ -939,16 +928,14 @@ const styles = StyleSheet.create({
   },
   siteCell: {
     width: "31%",
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
     paddingHorizontal: 8,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  sourceListCell: {
-    flexDirection: "column",
-  },
+  
   siteName: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
@@ -1075,16 +1062,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 20,
   },
   modalContent: {
     width: "100%",
-    maxWidth: 400,
-    maxHeight: "80%",
-    borderRadius: 16,
+    maxWidth: 420,
+    maxHeight: "75%",
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-    flexDirection: "column",
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
   modalHeader: {
     paddingHorizontal: 20,
@@ -1093,9 +1081,24 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   modalTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
     textAlign: "center",
+  },
+
+  modalSeparator: {
+    height: StyleSheet.hairlineWidth,
+    width: "100%",
+    marginTop: 14,
+    marginBottom: 16,
+  },
+
+  modalGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-start",
+    paddingBottom: 10,
   },
   modalList: {
     flex: 1,
