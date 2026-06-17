@@ -39,16 +39,16 @@ const getSourceDisplayName = (sourceUrl: string): string => {
     const domain = new URL(sourceUrl).hostname;
     const clean = domain.replace("www.", "");
     const siteNames: Record<string, string> = {
-      "freewebnovel.com": "FreeWebNovel",
-      "freewebnovel.org": "FreeWebNovel",
-      "bednovel.com": "BedNovel",
+      "freewebnovel.com": "FreeWebNovelCom",
+      "freewebnovel.org": "FreeWebNovelOrg",
+      "bednovel.com": "BedNovelCom",
       "readnovelfull.com": "ReadNovelFull",
-      "novelfull.net": "NovelFull",
-      "novelfull.com": "NovelFull",
+      "novelfull.net": "NovelFullNet",
+      "novelfull.com": "NovelFullCom",
       "allnovel.org": "AllNovel",
-      "novgo.net": "NovGo",
-      "novelbin.com": "NovelBin",
-      "novelbin.me": "NovelBin",
+      "novgo.net": "NovGoNet",
+      "novelbin.com": "NovelBinCom",
+      "novelbin.me": "NovelBinMe",
       "lightnovelworld.org": "LightNovelWorld",
     };
     return siteNames[clean] || clean.split(".")[0];
