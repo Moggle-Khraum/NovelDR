@@ -4,7 +4,9 @@ import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -28,7 +30,6 @@ const SUPPORTED_SITES = [
   { name: "FreeWebNovel.org" },
   { name: "NovelBin.com" },
   { name: "NovelBin.me" },
-  
   { name: "AllNovel.org" },
   { name: "NovGo.net" },
   { name: "LightNovelWorld.org" },
@@ -110,6 +111,90 @@ function SiteCell({ name }: { name: string }) {
   );
 }
 
+function SourceListModalCell({ name }: { name: string }) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.modalSourceCell,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <Text
+        style={[styles.modalSourceName, { color: colors.text }]}
+        numberOfLines={1}
+      >
+        {name}
+      </Text>
+    </View>
+  );
+}
+
+interface SourceListModalProps {
+  visible: boolean;
+  onClose: () => void;
+  sites: typeof SUPPORTED_SITES;
+}
+
+function SourceListModal({ visible, onClose, sites }: SourceListModalProps) {
+  const { colors } = useTheme();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={[styles.modalOverlay, { backgroundColor: "rgba(0, 0, 0, 0.5)" }]}>
+        <View
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              📚 All Sources
+            </Text>
+          </View>
+
+          {/* Scrollable Source List */}
+          <FlatList
+            data={sites}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => <SourceListModalCell name={item.name} />}
+            contentContainerStyle={styles.modalListContent}
+            scrollEnabled={true}
+            nestedScrollEnabled={true}
+            style={styles.modalList}
+          />
+
+          {/* Close Button */}
+          <Pressable
+            style={[
+              styles.modalCloseBtn,
+              { backgroundColor: colors.accent },
+            ]}
+            onPress={onClose}
+          >
+            <Ionicons name="close" size={18} color="#fff" />
+            <Text style={styles.modalCloseBtnText}>Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function AddNovelScreen() {
   const { colors } = useTheme();
   const { addNovel, novels } = useLibrary();
@@ -125,6 +210,7 @@ export default function AddNovelScreen() {
   const [progressLabel, setProgressLabel] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopRef = useRef(false);
@@ -625,9 +711,31 @@ export default function AddNovelScreen() {
             <Text style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}>SUPPORTED SITES</Text>
           </View>
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {SUPPORTED_SITES.map((site) => (
+            {SUPPORTED_SITES.slice(0, 5).map((site) => (
               <SiteCell key={site.name} name={site.name} />
             ))}
+            {/* Source List Modal Button */}
+            <Pressable
+              style={[
+                styles.siteCell,
+                styles.sourceListCell,
+                {
+                  backgroundColor: colors.accent,
+                  borderColor: colors.accent,
+                },
+              ]}
+              onPress={() => setSourceListModalVisible(true)}
+            >
+              <Ionicons name="list" size={16} color="#fff" style={{ marginBottom: 4 }} />
+              <Text
+                style={[styles.siteName, { color: "#fff" }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                Source List
+              </Text>
+            </Pressable>
           </View>
         </View>
 
@@ -778,6 +886,13 @@ export default function AddNovelScreen() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Source List Modal */}
+      <SourceListModal
+        visible={sourceListModalVisible}
+        onClose={() => setSourceListModalVisible(false)}
+        sites={SUPPORTED_SITES}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -830,6 +945,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  sourceListCell: {
+    flexDirection: "column",
   },
   siteName: {
     fontFamily: "Inter_500Medium",
@@ -950,5 +1068,69 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 20,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "80%",
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+    flexDirection: "column",
+  },
+  modalHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  modalTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  modalList: {
+    flex: 1,
+    minHeight: 200,
+  },
+  modalListContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  modalSourceCell: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+  },
+  modalSourceName: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  modalCloseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  modalCloseBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#fff",
   },
 });
