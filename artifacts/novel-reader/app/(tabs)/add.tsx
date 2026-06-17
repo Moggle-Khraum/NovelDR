@@ -22,14 +22,18 @@ import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import Colors from "@/constants/colors";
 
 const SUPPORTED_SITES = [
-  { name: "ReadNovelFull" },
   { name: "NovelFullNet" },
-  { name: "FreeWebNovel" },
-  { name: "NovelBin" },
-  { name: "LightNovelWorld" },
+  { name: "NovelFullCom" },
+  { name: "FreeWebNovelCom" },
+  { name: "FreeWebNovelOrg" },
+  { name: "NovelBinCom" },
+  { name: "NovelBinMe" },
+  
   { name: "AllNovelOrg" },
   { name: "NovGoNet" },
-  { name: "NovelFullCom" },
+  { name: "LightNovelWorld" },
+  { name: "ReadNovelFull" },
+  { name: "BedNovel" }
 ];
 
 type LogEntry = {
