@@ -928,11 +928,11 @@ const styles = StyleSheet.create({
   },
   siteCell: {
     width: "31%",
-    minHeight: 56,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
   },
   
