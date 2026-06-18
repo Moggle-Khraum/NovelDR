@@ -18,6 +18,7 @@
 
 </div>
 
+##
 
 ## 📖 About
 
@@ -25,9 +26,19 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ## 🖼️ App Screenshots
 
-| Library Tab | Download Tab | Updates Tab | Settings Tab |
+<div align="center">
+
+| Library | Download | Updates | Settings |
 | ----------- | ------------ | ----------- | ------------- |
-| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Library.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Download.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Updates.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Settings.png?raw=true" width="200"> |
+| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Library.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Download.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Updates.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Settings.jpg?raw=true" width="200"> |
+
+| Novel Index | Novel Export| Reader | Reader Settings |
+|-------------|-------------|--------|-----------------|
+| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Index.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Export.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader.jpg?raw=true"  width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader%20Settings.jpg?raw=true"  width="200">                 |
+
+</div>
+
+##
 
 ## 🌐 Supported Sources
 
