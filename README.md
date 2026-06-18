@@ -24,29 +24,11 @@
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
 
-## 📝 TO DO - BUGFIX/PATCHES/IMPROVEMENTS
-- [ ] Add RoyalRoad domain support
-- [ ] Add multilingual domain sources
-- [ ] Add localization to the app.
-- [ ] and if there's anything comes to mind..
-
 ## 🖼️ App Screenshots
 
-### **Main Screens**
 | Library Tab | Download Tab | Updates Tab | Settings Tab |
 | ----------- | ------------ | ----------- | ------------- |
 | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Library.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Download.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Updates.png?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Settings.png?raw=true" width="200"> |
-
-### **Library Features**
-| Search Function | Reload by Pull/Button | Batch Deletion | Swipe Gesture |
-| ----------- | ------------ | ----------- | ------------- |
-| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/search.gif?raw=true" width="195"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/pullReload.gif?raw=true" width="195"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/batchDelete.gif?raw=true" width="195"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/swipe.gif?raw=true" width="195"> |
-
-### **Novel Reader & App Theme**
-
-| Novel Detail | Export Novel | Reader | App Theme |
-| ----------- | ------------- | ------------ | ----------- |
-| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/novelView.gif?raw=true" width="195"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/export.gif?raw=true" width="195"> |  <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/reader.gif?raw=true" width="195"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/gifs/theme.gif?raw=true" width="195"> |
 
 ## 🌐 Supported Sources
 
@@ -55,30 +37,15 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | ReadNovelFull | https://readnovelfull.com/ | ✅ Full support |    | NovelFull.com | https://novelfull.com/ | ✅ Full support |
 | NovelFull.net | https://novelfull.net/ | ✅ Full support |     | AllNovel | https://allnovel.org/ | ✅ Full support |
 | FreeWebNovel | https://freewebnovel.com/ | ✅ Full support |   | NovGo | https://novgo.net/ | ✅ Full support |
-| NovelBin | https://novelbin.com/ | ✅ Full support |     |
+| NovelBin | https://novelbin.com/ | ✅ Full support |     | BedNovel | https://bednovel.com | ✅ Full support |
 | LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support |    |
 
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs via Issues
-- Suggest features
-
-## ☕ Sponsor the Project
-Leave a Tip or Sponsor the Project!:
-
-Wise
-Gcash
-
-<!--[Wise](https://wise.com/pay/me/davea261) -->
-
-## Sponsors:
-- [Wise] Derek Townswell (50$)
-- 
+## 🌟 Appreciation
+If this project helps you somehow, please dont forget to Star the Repo~!
 
 ## 📜 License
-
 This project is licensed under the MIT License
+
 ## ⚠️ Disclaimer
 
 NovelDR is a tool for downloading publicly available web content. Users are responsible for ensuring their downloads comply with applicable copyright laws. We encourage supporting authors by purchasing official releases when available.
