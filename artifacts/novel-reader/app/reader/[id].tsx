@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Modal,
   Platform,
   Pressable,
@@ -519,6 +520,8 @@ export default function ReaderScreen() {
   const novelRef = useRef(novel);
   const chapterIndexRef = useRef(chapterIndex);
   const chapterRef = useRef(chapter);
+  const chapterContentRef = useRef<string>("");
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     novelRef.current = novel;
@@ -529,7 +532,11 @@ export default function ReaderScreen() {
   useEffect(() => {
     chapterRef.current = chapter;
   }, [chapter]);
+  useEffect(() => {
+    chapterContentRef.current = chapterContent;
+  }, [chapterContent]);
 
+  // ─ OPTION B: Fallback sentinel - save on cleanup if unmount happens ─
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -540,9 +547,31 @@ export default function ReaderScreen() {
       const ch = chapterRef.current;
       if (n && ch) {
         saveReadingProgress(n.id, chapterIndexRef.current, ch.title, scrollYRef.current);
+        // Fallback sentinel: save chapter content if unmounting
+        persistChapterContent();
       }
     };
-  }, []);
+  }, [persistChapterContent, saveReadingProgress]);
+
+  // ─ OPTION A: Primary - AppState listener to save content on background ─
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (
+        (appStateRef.current === 'active' && nextAppState.match(/inactive|background/)) ||
+        nextAppState === 'background'
+      ) {
+        console.log('[Reader] App backgrounding - saving chapter content...');
+        await persistChapterContent();
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [persistChapterContent]);
 
   const stopTTS = useCallback(() => {
     ttsActiveRef.current = false;
@@ -553,6 +582,30 @@ export default function ReaderScreen() {
     try {
       Speech.stop();
     } catch {}
+  }, []);
+
+  // ─ Save chapter content to disk (used by both Option A and B) ─
+  const persistChapterContent = useCallback(async () => {
+    const n = novelRef.current;
+    const ch = chapterRef.current;
+    const content = chapterContentRef.current;
+    
+    if (!n || !ch || !content) return;
+    
+    try {
+      const { saveChapterContent: save } = useLibrary();
+      await save(
+        n.id,
+        chapterIndexRef.current,
+        ch.title,
+        ch.url,
+        content,
+        ch.chapterNumber
+      );
+      console.log(`[Reader] Chapter content persisted: ${n.title} - Chapter ${chapterIndexRef.current}`);
+    } catch (error) {
+      console.warn(`[Reader] Failed to persist chapter content:`, error);
+    }
   }, []);
 
   useEffect(() => {
