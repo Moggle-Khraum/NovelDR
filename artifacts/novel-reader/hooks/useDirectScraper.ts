@@ -370,6 +370,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isFreeWebNovel = domainLower.includes('freewebnovel') || domainLower.includes('bednovel');
     const isNovelBin = domainLower.includes('novelbin');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
+    const isRoyalRoad = domainLower.includes('royalroad');
+    const isWuxiaworld = domainLower.includes('wuxiaworld.site');
     
     const html = await fetchWithFallback(url, isFreeWebNovel);
     
@@ -589,6 +591,68 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       firstChapterUrl = `${baseNovelUrl}/chapter/1/`;
       console.log('[Scraper] Constructed first chapter URL:', firstChapterUrl);
     }
+
+    // --- ROYALROAD ---
+    if (isRoyalRoad) {
+      console.log('[Scraper] RoyalRoad detected');
+      
+      const titleMatch = safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch) title = decodeEntities(titleMatch);
+      
+      const authorMatch = safeMatch(html, /<h4[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) author = decodeEntities(authorMatch);
+      
+      const descMatch = safeMatch(html, /<div[^>]*class="description"[^>]*>([\s\S]*?)<\/div>/i);
+      if (descMatch) {
+        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
+        } else {
+          synopsis = decodeEntities(stripTags(descMatch));
+        }
+      }
+      
+      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
+      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      
+      // Extract first chapter URL from chapter list
+      const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
+      if (chapterMatch) {
+        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+      }
+    }
+
+    // --- WUXIAWORLD.SITE ---
+    if (isWuxiaworld) {
+      console.log('[Scraper] Wuxiaworld.site detected');
+      
+      const titleMatch = safeMatch(html, /<div[^>]*class="post-title"[^>]*>([\s\S]*?)<\/div>/i);
+      if (titleMatch) title = decodeEntities(stripTags(titleMatch));
+      
+      const authorMatch = safeMatch(html, /<div[^>]*class="author-content"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) author = decodeEntities(authorMatch);
+      
+      const descMatch = safeMatch(html, /<div[^>]*class="summary__content"[^>]*>([\s\S]*?)<\/div>/i);
+      if (descMatch) {
+        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
+        } else {
+          synopsis = decodeEntities(stripTags(descMatch));
+        }
+      }
+      
+      // Wuxiaworld uses lazy loading with data-src, fallback to src
+      const coverMatch = safeMatch(html, /<div[^>]*class="summary_image"[^>]*>[\s\S]*?<img[^>]*data-src="([^"]+)"/i) ||
+                         safeMatch(html, /<div[^>]*class="summary_image"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i);
+      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      
+      // Extract first chapter URL from chapter list
+      const chapterMatch = safeMatch(html, /<div[^>]*class="listing-chapters_wrap"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"/i);
+      if (chapterMatch) {
+        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+      }
+    }
     
     console.log('[Scraper] Found first chapter:', firstChapterUrl);
     
@@ -618,6 +682,8 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isFreeWebNovel = domainLower.includes('freewebnovel') || domainLower.includes('bednovel');
     const isNovelBin = domainLower.includes('novelbin');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
+    const isRoyalRoad = domainLower.includes('royalroad');
+    const isWuxiaworld = domainLower.includes('wuxiaworld.site');
     
     const { html, fetchMethod, httpStatus, contentType } = isLightNovelWorld
       ? await fetchLightNovelWorld(url)
@@ -652,97 +718,66 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
         skipCleanup = true;
       }
     }
-
+    
     if (isNovelBin) {
-      const titleMatch = safeMatch(html, /<span[^>]*class="chr-text"[^>]*>([^<]+)<\/span>/i) ||
-                         safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ||
-                         safeMatch(html, /<h3[^>]*class="title"[^>]*>([^<]+)<\/h3>/i) ||
-                         safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i) ||
-                         safeMatch(html, /<a[^>]*class="chr-title"[^>]*>([^<]+)<\/a>/i);
+      const titleMatch = safeMatch(html, /<h1[^>]*class="title"[^>]*itemprop="headline"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h1[^>]*itemprop="headline"[^>]*class="title"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
-        rawTitle = rawTitle.replace(/^.*Chapter\s+\d+(\s+\d+)?\s*[:.\-–—]?\s*/i, '').trim();
+        rawTitle = rawTitle.replace(/Chapter\s+\d+/gi, '').trim();
+        title = `Chapter ${chapterNum}: ${rawTitle}`;
+        skipCleanup = true;
+      }
+    }
+    
+    if (isLightNovelWorld) {
+      const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ||
+                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
+      if (titleMatch) {
+        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+        rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
       }
     }
 
-    if (isLightNovelWorld) {
-      const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<h2[^>]*class="chapter-title"[^>]*>([^<]+)<\/h2>/i) ||
-                         safeMatch(html, /<h1[^>]*>([^<]*Chapter[^<]*)<\/h1>/i) ||
-                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
-      if (titleMatch) title = decodeEntities(titleMatch.trim());
-    }
-    
-    if (title === `Chapter ${chapterNum}`) {
-      const genericMatch = safeMatch(html, /<(?:h1|h2|h3)[^>]*>([^<]*(?:Chapter|Ch\.|Volume|Vol\.|Part|Book)[^<]*)<\/(?:h1|h2|h3)>/i);
-      if (genericMatch) title = decodeEntities(genericMatch.trim());
-    }
-    
-    if (!skipCleanup) {
-      title = title
-        .replace(/\s+/g, ' ')
-        .replace(/^\s*Chapter\s+(\d+)\s*[:.-]?\s*/i, 'Chapter $1: ')
-        .trim();
-    }
-    
-    if (title === `Chapter ${chapterNum}` || title.match(/^Chapter\s+\d+$/i)) {
-      const firstLineMatch = html.match(/<p[^>]*>([^<]*Chapter[^<]*)<\/p>/i);
-      if (firstLineMatch) {
-        const extractedTitle = decodeEntities(stripTags(firstLineMatch[1])).trim();
-        if (extractedTitle.length > 0 && extractedTitle.length < 100) {
-          title = extractedTitle;
-        }
-      }
-    }
-    
-    console.log('[Scraper] Extracted title:', title);
-    
-    // ── Content extraction ──────────────────────────────────────────────────
-    let paragraphMatches: string[] | null = null;
-    
-    if (isFreeWebNovel) {
-      const containerMatch = html.match(/<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
-                             html.match(/<div[^>]*id="chapter-container"[^>]*>([\s\S]*?)<\/div>/i);
-      if (containerMatch) {
-        paragraphMatches = containerMatch[1].match(/<p[^>]*>([\s\S]*?)<\/p>/gis);
+    if (isRoyalRoad) {
+      const titleMatch = safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
+      if (titleMatch) {
+        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+        rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
+        title = `Chapter ${chapterNum}: ${rawTitle}`;
+        skipCleanup = true;
       }
     }
 
-    // ── LightNovelWorld: run the full Python pipeline on raw HTML directly ──
-    // MUST bypass the generic validParagraphs loop below — that loop strips
-    // tags and decodes entities before lnwFilterParagraphs sees the text,
-    // which breaks junk-phrase matching and causes non-consecutive duplicates
-    // (from LNW's hidden TTS mirror elements) to survive dedup.
-    // The Python script never feeds pre-stripped text into filter_paragraphs;
-    // it always operates on raw inner HTML. We do the same here.
+    if (isWuxiaworld) {
+      const titleMatch = safeMatch(html, /<h1[^>]*class="post-title"[^>]*>([\s\S]*?)<\/h1>/i) ||
+                         safeMatch(html, /<div[^>]*class="post-title"[^>]*>([\s\S]*?)<\/div>/i) ||
+                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
+      if (titleMatch) {
+        let rawTitle = decodeEntities(stripTags(titleMatch)).trim().replace(/\s+/g, ' ').trim();
+        rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
+        title = `Chapter ${chapterNum}: ${rawTitle}`;
+        skipCleanup = true;
+      }
+    }
+    
+    let paragraphMatches = null;
+    
     if (isLightNovelWorld) {
-      const { paragraphs: rawParas, selector } = lnwExtractParagraphs(html);
-      const filtered = lnwFilterParagraphs(rawParas);
-      const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
-      const chapterTextCount = (html.match(/id="chapterText"/g) || []).length;
-      // JS injection detection: LNW duplicates a sentence immediately after a period
-      // with no space — pattern is "word.Word" at a sentence boundary inside a <p>.
-      const jsInjected = /[a-z]\.[A-Z]/.test(html);
+      const { paragraphs, selector } = lnwExtractParagraphs(html);
+      const filtered = lnwFilterParagraphs(paragraphs);
+      console.log(`[LNW] Extracted ${paragraphs.length}, kept ${filtered.length} after filtering`);
+      
       return {
         url,
         title: decodeEntities(title),
-        content: filtered.length > 0 ? filtered.join('\n\n') : 'No content available.',
-        scraperInfo: {
-          selector,
-          rawCount: rawParas.length,
-          filteredCount: filtered.length,
-          htmlLength: html.length,
-          pTagCount,
-          fetchMethod,
-          httpStatus,
-          jsInjected,
-          chapterTextCount,
-          contentType,
-        },
+        content: filtered.join('\n\n') || 'No content available.',
         nextUrl: (() => {
-          // Inline next-URL extraction so we still return it
           const linkRegex2 = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
           let lm2: RegExpExecArray | null;
           while ((lm2 = linkRegex2.exec(html)) !== null) {
@@ -860,6 +895,16 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
         return !junkPhrases.some(phrase => lower.includes(phrase));
       });
       content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+    } else if (isWuxiaworld && validParagraphs.length > 0) {
+      const junkPhrases = [
+        'ad',
+        'advertisement',
+      ];
+      const filtered = validParagraphs.filter(text => {
+        const lower = text.toLowerCase();
+        return !junkPhrases.some(phrase => lower.includes(phrase));
+      });
+      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
     } else {
       content = validParagraphs.join('\n\n');
     }
@@ -868,7 +913,8 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       const contentMatch = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
                            safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
                            safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
-                           safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i);
+                           safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i) ||
+                           safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
       if (contentMatch) {
         const innerParagraphs = contentMatch.match(/<p[^>]*>(.*?)<\/p>/gis);
         if (innerParagraphs) {
