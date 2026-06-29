@@ -635,11 +635,22 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       // Wuxiaworld uses class="summary__content show-more", need to match flexible class attribute
       const descMatch = safeMatch(html, /<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
-        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        let summaryHtml = descMatch;
+        // Replace <br> tags with newlines BEFORE stripping other tags
+        summaryHtml = summaryHtml.replace(/<br\s*\/?>/gi, '\n');
+        
+        const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
-          synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              text = decodeEntities(stripTags(text));
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          synopsis = cleanedParagraphs.join('\n\n');
         } else {
-          synopsis = decodeEntities(stripTags(descMatch));
+          synopsis = decodeEntities(stripTags(summaryHtml));
         }
       }
       
