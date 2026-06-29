@@ -632,7 +632,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const authorMatch = safeMatch(html, /<div[^>]*class="author-content"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      const descMatch = safeMatch(html, /<div[^>]*class="summary__content"[^>]*>([\s\S]*?)<\/div>/i);
+      // Wuxiaworld uses class="summary__content show-more", need to match flexible class attribute
+      const descMatch = safeMatch(html, /<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
         const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
