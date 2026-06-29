@@ -372,6 +372,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
+    const isAsianovel = domainLower.includes('asianovel.net');
     
     const html = await fetchWithFallback(url, isFreeWebNovel);
     
@@ -612,28 +613,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      // --- IMPROVED ROYALROAD COVER FETCHING ---
-      let coverMatch: string | null = null;
-      
-      // Strategy 1: Look inside the new cover-art-container
-      const coverContainerMatch = safeMatch(html, /<div[^>]*class="[^"]*cover-art-container[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-      if (coverContainerMatch) {
-        // Find the image tag INSIDE the container
-        const imgMatch = coverContainerMatch.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
-        if (imgMatch) {
-          coverMatch = imgMatch[1];
-        }
-      }
-      
-      // Strategy 2: Fallback to original thumbnail class (if Strategy 1 fails)
-      if (!coverMatch) {
-        coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
-      }
-      
-      if (coverMatch) {
-        coverUrl = makeAbsoluteUrl(coverMatch, url);
-      }
-      // --------------------------------------------------
+      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
+      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
       
       // Extract first chapter URL from chapter list
       const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
@@ -725,6 +706,66 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
     }
+
+    // --- ASIANOVEL.NET ---
+    if (isAsianovel) {
+      console.log('[Scraper] Asianovel.net detected');
+      
+      // Title: uses class="story__identity-title"
+      const titleMatch = safeMatch(html, /<h1[^>]*class="story__identity-title"[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch) title = decodeEntities(titleMatch);
+      
+      // Author: uses class="author" inside <a> tag
+      const authorMatch = safeMatch(html, /<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) author = decodeEntities(authorMatch);
+      
+      // Cover: Located inside <figure class="story__thumbnail">, using an <img> with src
+      const coverMatch = safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i);
+      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      
+      // Synopsis: Asianovel uses actual <p> tags for their paragraphs, not <br>
+      const descMatch = safeMatch(html, /<section[^>]*class="story__summary content-section"[^>]*>([\s\S]*?)<\/section>/i);
+      if (descMatch) {
+        // Extract all <p> tags inside the summary
+        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              // Strip the <p> tags
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              // Decode entities (like &#8217; for smart quotes)
+              text = decodeEntities(text);
+              // Strip any leftover HTML tags
+              text = stripTags(text);
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          
+          // Join with double newline for perfect spacing
+          synopsis = cleanedParagraphs.join('\n\n');
+        } else {
+          synopsis = decodeEntities(stripTags(descMatch));
+        }
+      }
+      
+      // Construct First Chapter URL
+      // Pattern: /story/3377/ -> /chapter/chapter-{number}/
+      // Asianovel uses "chapter-{number}" (e.g., chapter-773154)
+      const baseNovelUrl = url.replace(/\/$/, '');
+      firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}1/`;
+      console.log('[Scraper] Asianovel constructed first chapter URL:', firstChapterUrl);
+      
+      // OPTIONAL: Extract the actual first chapter number from the HTML for perfection
+      const chapterListMatch = safeMatch(html, /<ol[^>]*class="chapter-group__list"[^>]*>([\s\S]*?)<\/ol>/i);
+      if (chapterListMatch) {
+        const firstLinkMatch = chapterListMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
+        if (firstLinkMatch && firstLinkMatch[2]) {
+          // Override with the actual first chapter number found in the list
+          firstChapterUrl = makeAbsoluteUrl(firstLinkMatch[1], url);
+          console.log('[Scraper] Asianovel exact first chapter URL from HTML:', firstChapterUrl);
+        }
+      }
+    }
     
     console.log('[Scraper] Found first chapter:', firstChapterUrl);
     
@@ -756,10 +797,22 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
+    const isAsianovel = domainLower.includes('asianovel.net');
     
-    const { html, fetchMethod, httpStatus, contentType } = isLightNovelWorld
-      ? await fetchLightNovelWorld(url)
-      : { html: await fetchWithFallback(url, isFreeWebNovel), fetchMethod: 'fetch' as const, httpStatus: 200, contentType: 'text/html' };
+    let html: string;
+    let fetchMethod: 'fetch' | 'fetch-proxy' = 'fetch';
+    let httpStatus = 200;
+    let contentType = 'text/html';
+
+    if (isLightNovelWorld) {
+      const result = await fetchLightNovelWorld(url);
+      html = result.html;
+      fetchMethod = result.fetchMethod;
+      httpStatus = result.httpStatus;
+      contentType = result.contentType;
+    } else {
+      html = await fetchWithFallback(url, isFreeWebNovel);
+    }
     
     let title = `Chapter ${chapterNum}`;
     let skipCleanup = false;
@@ -833,6 +886,18 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       if (titleMatch) {
         let rawTitle = decodeEntities(stripTags(titleMatch)).trim().replace(/\s+/g, ' ').trim();
         rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
+        title = `Chapter ${chapterNum}: ${rawTitle}`;
+        skipCleanup = true;
+      }
+    }
+
+    // --- ASIANOVEL CHAPTER TITLE EXTRACTION ---
+    if (isAsianovel) {
+      const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
+      if (titleMatch) {
+        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+        rawTitle = rawTitle.replace(/^Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
       }
