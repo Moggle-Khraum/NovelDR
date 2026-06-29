@@ -38,7 +38,8 @@ const SUPPORTED_SITES = [
   { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com" },
   { name: "BedNovelCom", baseUrl: "https://bednovel.com" },
   { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site" },
-  { name: "RoyalRoad", baseUrl: "https://royalroad.com" }
+  { name: "RoyalRoad", baseUrl: "https://royalroad.com" },
+  { name: "AsiaNovel", baseUrl: "https://www.asianovel.net/" },
 ];
 
 type LogEntry = {
