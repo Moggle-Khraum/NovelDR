@@ -36,7 +36,7 @@ const SUPPORTED_SITES = [
   { name: "ReadNovelFullCom" },
   { name: "BedNovelCom" },
   { name: "WuxiaWorldSite" },
-  { name: "LightNovelPubMe }
+  { name: "LightNovelPubMe" }
 ];
 
 type LogEntry = {
