@@ -612,8 +612,28 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      // --- IMPROVED ROYALROAD COVER FETCHING ---
+      let coverMatch: string | null = null;
+      
+      // Strategy 1: Look inside the new cover-art-container
+      const coverContainerMatch = safeMatch(html, /<div[^>]*class="[^"]*cover-art-container[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      if (coverContainerMatch) {
+        // Find the image tag INSIDE the container
+        const imgMatch = coverContainerMatch.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
+        if (imgMatch) {
+          coverMatch = imgMatch[1];
+        }
+      }
+      
+      // Strategy 2: Fallback to original thumbnail class (if Strategy 1 fails)
+      if (!coverMatch) {
+        coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
+      }
+      
+      if (coverMatch) {
+        coverUrl = makeAbsoluteUrl(coverMatch, url);
+      }
+      // --------------------------------------------------
       
       // Extract first chapter URL from chapter list
       const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
