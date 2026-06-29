@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
@@ -44,14 +44,12 @@ async function loadFullNovelContent(
 ): Promise<{ title: string; content: string }[]> {
   const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novelId}/`;
   
-  // ── Helper: Check if content has enough words to be real ─────────
   const hasRealContent = (text: string | null | undefined): boolean => {
     if (!text || !text.trim()) return false;
     const wordCount = text.trim().split(/\s+/).length;
-    return wordCount >= 100; // At least 100 words to be considered real content
+    return wordCount >= 100;
   };
   
-  // ── DEDUPLICATE: Keep only one entry per chapter number, prefer ones with real content ─
   const seenNumbers = new Map<number, { title: string; url: string; content?: string }>();
   
   for (const ch of chapters) {
@@ -63,7 +61,6 @@ async function loadFullNovelContent(
     }
   }
   
-  // Sort by chapter number
   const sortedChapters = Array.from(seenNumbers.values()).sort((a, b) => {
     const numA = extractChapterNumber(a.title, a.url);
     const numB = extractChapterNumber(b.title, b.url);
@@ -72,7 +69,6 @@ async function loadFullNovelContent(
 
   const result: { title: string; content: string }[] = [];
 
-  // Pre-load AsyncStorage data once
   let legacyNovel: any = null;
   try {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -88,7 +84,6 @@ async function loadFullNovelContent(
     let title = ch.title || `Chapter ${i + 1}`;
     let content: string | null = null;
 
-    // Check file system
     try {
       const chapterPath = `${chaptersDir}chapter_${i}.json`;
       const fileInfo = await FileSystem.getInfoAsync(chapterPath);
@@ -102,7 +97,6 @@ async function loadFullNovelContent(
       }
     } catch (e) {}
 
-    // Fallback to AsyncStorage (only if real content exists)
     if (!content && legacyNovel?.chapters) {
       const urlMatch = legacyNovel.chapters.find(
         (lc: any) => lc.url === ch.url && hasRealContent(lc.content)
@@ -113,7 +107,6 @@ async function loadFullNovelContent(
       }
     }
 
-    // Fallback to in-memory
     if (!content && hasRealContent(ch.content)) {
       content = ch.content;
     }
@@ -127,7 +120,6 @@ async function loadFullNovelContent(
   return result;
 }
 
-// Helper to extract chapter number
 function extractChapterNumber(title: string, url: string): number {
   const titleMatch = (title || '').match(/chapter\s*(\d+)/i);
   if (titleMatch) return parseInt(titleMatch[1]);
@@ -136,120 +128,99 @@ function extractChapterNumber(title: string, url: string): number {
   return 9999;
 }
 
-
-function generateTXT(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  let txt = `${novelTitle}\n`;
-  txt += `by ${author}\n`;
-  txt += `${"=".repeat(50)}\n\n`;
-
-  for (const ch of chapters) {
-    txt += `${ch.title}\n`;
-    txt += `${"-".repeat(30)}\n\n`;
-    txt += `${ch.content}\n\n\n`;
-  }
-
-  return txt;
-}
-
-function generateEPUB(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  let epub = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  epub += `<!DOCTYPE html>\n`;
-  epub += `<html xmlns="http://www.w3.org/1999/xhtml">\n`;
-  epub += `<head><title>${escapeXML(novelTitle)}</title>\n`;
-  epub += `<style>body { font-family: serif; line-height: 1.6; } p { margin: 0 0 0.5em 0; }</style></head>\n`;
-  epub += `<body>\n`;
-  epub += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  epub += `<p><em>by ${escapeXML(author)}</em></p>\n`;
-  epub += `<hr/>\n`;
-
-  for (const ch of chapters) {
-    epub += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
-    for (const p of paragraphs) {
-      epub += `<p>${escapeXML(p.trim())}</p>\n`;
+// Generate formats
+const generators: { [key in ExportFormat]: (title: string, author: string, chapters: { title: string; content: string }[]) => Promise<string> } = {
+  txt: async (title, author, chapters) => {
+    let txt = `${title}\nby ${author}\n${"=".repeat(50)}\n\n`;
+    for (const ch of chapters) {
+      txt += `${ch.title}\n${"-".repeat(30)}\n\n${ch.content}\n\n\n`;
     }
-    epub += `<hr/>\n`;
-  }
-
-  epub += `</body>\n</html>`;
-  return epub;
-}
-
-function generatePDF(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  let html = `<html><head><title>${escapeHTML(novelTitle)}</title></head><body style="font-family: serif; line-height: 1.6;">`;
-  html += `<h1>${escapeHTML(novelTitle)}</h1>`;
-  html += `<p><em>by ${escapeHTML(author)}</em></p>`;
-  html += `<hr/>`;
-
-  for (const ch of chapters) {
-    html += `<h2>${escapeHTML(ch.title)}</h2>`;
-    const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
-    for (const p of paragraphs) {
-      html += `<p>${escapeHTML(p.trim())}</p>`;
+    return txt;
+  },
+  epub: async (title, author, chapters) => {
+    let epub = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml">\n<head><title>${escapeXML(title)}</title>\n<style>body { font-family: serif; line-height: 1.6; } p { margin: 0 0 0.5em 0; }</style></head>\n<body>\n<h1>${escapeXML(title)}</h1>\n<p><em>by ${escapeXML(author)}</em></p>\n<hr/>\n`;
+    for (const ch of chapters) {
+      epub += `<h2>${escapeXML(ch.title)}</h2>\n`;
+      const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
+      for (const p of paragraphs) {
+        epub += `<p>${escapeXML(p.trim())}</p>\n`;
+      }
+      epub += `<hr/>\n`;
     }
-    html += `<hr/>`;
-  }
-
-  html += `</body></html>`;
-  return html;
-}
-
-function generateDOCX(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  let docx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  docx += `<document xmlns="http://schemas.openxmlformats.org/wordprocessingml/2006/main">\n`;
-  docx += `<body>\n`;
-  docx += `<p><r><rPr><b/><sz val="48"/></rPr><t>${escapeXML(novelTitle)}</t></r></p>\n`;
-  docx += `<p><r><t>by ${escapeXML(author)}</t></r></p>\n`;
-
-  for (const ch of chapters) {
-    docx += `<p><r><rPr><b/><sz val="32"/></rPr><t>${escapeXML(ch.title)}</t></r></p>\n`;
-    const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
-    for (const p of paragraphs) {
-      docx += `<p><r><t>${escapeXML(p.trim())}</t></r></p>\n`;
+    epub += `</body>\n</html>`;
+    return epub;
+  },
+  pdf: async (title, author, chapters) => {
+    let html = `<html><head><title>${escapeHTML(title)}</title></head><body style="font-family: serif; line-height: 1.6;">`;
+    html += `<h1>${escapeHTML(title)}</h1><p><em>by ${escapeHTML(author)}</em></p><hr/>`;
+    for (const ch of chapters) {
+      html += `<h2>${escapeHTML(ch.title)}</h2>`;
+      const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
+      for (const p of paragraphs) {
+        html += `<p>${escapeHTML(p.trim())}</p>`;
+      }
+      html += `<hr/>`;
     }
-  }
-
-  docx += `</body>\n</document>`;
-  return docx;
-}
-
-function generateRTF(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  let rtf = `{\\rtf1\\ansi\\ansicpg1252\\deff0 {\\fonttbl {\\f0 Times New Roman;}}{\\colortbl;\\red0\\green0\\blue0;}\\f0\\fs24\n`;
-  rtf += `\\b ${escapeRTF(novelTitle)}\\b0\\par\n`;
-  rtf += `by ${escapeRTF(author)}\\par\\par\n`;
-
-  for (const ch of chapters) {
-    rtf += `\\b ${escapeRTF(ch.title)}\\b0\\par\n`;
-    const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
-    for (const p of paragraphs) {
-      rtf += `${escapeRTF(p.trim())}\\par\n`;
+    html += `</body></html>`;
+    return html;
+  },
+  docx: async (title, author, chapters) => {
+    let docx = `<?xml version="1.0" encoding="UTF-8"?>\n<document xmlns="http://schemas.openxmlformats.org/wordprocessingml/2006/main">\n<body>\n<p><r><rPr><b/><sz val="48"/></rPr><t>${escapeXML(title)}</t></r></p>\n<p><r><t>by ${escapeXML(author)}</t></r></p>\n`;
+    for (const ch of chapters) {
+      docx += `<p><r><rPr><b/><sz val="32"/></rPr><t>${escapeXML(ch.title)}</t></r></p>\n`;
+      const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
+      for (const p of paragraphs) {
+        docx += `<p><r><t>${escapeXML(p.trim())}</t></r></p>\n`;
+      }
     }
-    rtf += `\\par\n`;
-  }
-
-  rtf += `}`;
-  return rtf;
-}
-
-function generateMOBI(novelTitle: string, author: string, chapters: { title: string; content: string }[]): string {
-  // MOBI is complex; for simplicity, we'll generate an HTML-like format
-  let mobi = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  mobi += `<html>\n<head><title>${escapeXML(novelTitle)}</title></head>\n`;
-  mobi += `<body>\n`;
-  mobi += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  mobi += `<p>by ${escapeXML(author)}</p>\n`;
-
-  for (const ch of chapters) {
-    mobi += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
-    for (const p of paragraphs) {
-      mobi += `<p>${escapeXML(p.trim())}</p>\n`;
+    docx += `</body>\n</document>`;
+    return docx;
+  },
+  rtf: async (title, author, chapters) => {
+    let rtf = `{\\rtf1\\ansi\\ansicpg1252\\deff0 {\\fonttbl {\\f0 Times New Roman;}}{\\colortbl;\\red0\\green0\\blue0;}\\f0\\fs24\n`;
+    rtf += `\\b ${escapeRTF(title)}\\b0\\par\nby ${escapeRTF(author)}\\par\\par\n`;
+    for (const ch of chapters) {
+      rtf += `\\b ${escapeRTF(ch.title)}\\b0\\par\n`;
+      const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
+      for (const p of paragraphs) {
+        rtf += `${escapeRTF(p.trim())}\\par\n`;
+      }
+      rtf += `\\par\n`;
     }
-  }
+    rtf += `}`;
+    return rtf;
+  },
+  mobi: async (title, author, chapters) => {
+    let mobi = `<?xml version="1.0" encoding="UTF-8"?>\n<html>\n<head><title>${escapeXML(title)}</title></head>\n<body>\n<h1>${escapeXML(title)}</h1>\n<p>by ${escapeXML(author)}</p>\n`;
+    for (const ch of chapters) {
+      mobi += `<h2>${escapeXML(ch.title)}</h2>\n`;
+      const paragraphs = ch.content.split('\n\n').filter(p => p.trim());
+      for (const p of paragraphs) {
+        mobi += `<p>${escapeXML(p.trim())}</p>\n`;
+      }
+    }
+    mobi += `</body>\n</html>`;
+    return mobi;
+  },
+};
 
-  mobi += `</body>\n</html>`;
-  return mobi;
-}
+const extensions: { [key in ExportFormat]: string } = {
+  txt: '.txt',
+  epub: '.epub',
+  pdf: '.pdf',
+  docx: '.docx',
+  rtf: '.rtf',
+  mobi: '.mobi',
+};
+
+const mimeTypes: { [key in ExportFormat]: string } = {
+  txt: 'text/plain',
+  epub: 'application/epub+zip',
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  rtf: 'application/rtf',
+  mobi: 'application/x-mobipocket-ebook',
+};
 
 function escapeXML(str: string): string {
   return str.replace(/[<>&'"]/g, (c) => {
@@ -274,26 +245,22 @@ function escapeRTF(str: string): string {
   return str.replace(/[\\{}]/g, (c) => '\\' + c).replace(/[\n]/g, '\\par\n');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function NovelScreen() {
   const { id: novelId } = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
+  const { top: topPad, bottom: bottomPad } = useSafeAreaInsets();
   const { colors } = useTheme();
   const { library, deleteChapters } = useLibrary();
 
-  // ── Find novel ──────────────────────────────────────────────────────────────
   const novel = library.find((n) => n.id === novelId);
 
-  // ── State ───────────────────────────────────────────────────────────────────
+  // State
   const [sortOrder, setSortOrder] = useState<"ascending" | "descending">("ascending");
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("Preparing...");
 
-  // ── Batch Delete State ──────────────────────────────────────────────────────
+  // Batch Delete State
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
@@ -306,23 +273,21 @@ export default function NovelScreen() {
     );
   }
 
-  // ── Sort chapters ───────────────────────────────────────────────────────────
+  // Sort chapters
   const sortedChapters = [...novel.chapters].sort((a, b) => {
     const numA = extractChapterNumber(a.title, a.url);
     const numB = extractChapterNumber(b.title, b.url);
     return sortOrder === "ascending" ? numA - numB : numB - numA;
   });
 
-  // ── Toggle sort ─────────────────────────────────────────────────────────────
   const toggleSortOrder = () => {
     setSortOrder(sortOrder === "ascending" ? "descending" : "ascending");
   };
 
-  // ── Chapter selection handlers ──────────────────────────────────────────────
-  const handleChapterLongPress = (chapterUrl: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectionMode(true);
-    toggleChapterSelection(chapterUrl);
+  // ── Batch Delete Handlers ────────────────────────────────────────────────
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedChapters(new Set());
   };
 
   const toggleChapterSelection = (chapterUrl: string) => {
@@ -335,11 +300,6 @@ export default function NovelScreen() {
       }
       return next;
     });
-  };
-
-  const exitSelectionMode = () => {
-    setSelectionMode(false);
-    setSelectedChapters(new Set());
   };
 
   const performBatchDelete = async () => {
@@ -355,121 +315,136 @@ export default function NovelScreen() {
     }
   };
 
-  // ── Export handler ──────────────────────────────────────────────────────────
+  // ── Export Handler ───────────────────────────────────────────────────────
   const handleExport = async (format: ExportFormat) => {
     try {
       setShowExportModal(false);
       setExporting(true);
       setExportProgress("Loading chapters...");
 
-      const fullContent = await loadFullNovelContent(novel.id, novel.chapters);
-
+      const chapters = await loadFullNovelContent(novel.id, novel.chapters);
       setExportProgress(`Generating ${format.toUpperCase()}...`);
 
-      let fileContent: string;
-      let fileName: string;
-
-      switch (format) {
-        case "txt":
-          fileContent = generateTXT(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.txt`;
-          break;
-        case "epub":
-          fileContent = generateEPUB(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.epub`;
-          break;
-        case "pdf":
-          fileContent = generatePDF(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.pdf`;
-          break;
-        case "docx":
-          fileContent = generateDOCX(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.docx`;
-          break;
-        case "rtf":
-          fileContent = generateRTF(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.rtf`;
-          break;
-        case "mobi":
-          fileContent = generateMOBI(novel.title, novel.author, fullContent);
-          fileName = `${novel.title}.mobi`;
-          break;
-        default:
-          throw new Error("Unsupported format");
+      const generator = generators[format];
+      const content = await generator(novel.title, novel.author, chapters);
+      
+      const exportDir = `${FileSystem.documentDirectory}exports/`;
+      const dirInfo = await FileSystem.getInfoAsync(exportDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
       }
+      
+      const safeTitle = novel.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_").substring(0, 50);
+      const filename = `${safeTitle}${extensions[format]}`;
+      const filePath = `${exportDir}${filename}`;
 
-      setExportProgress("Saving file...");
-
-      // Save to temporary directory and share
-      const tempPath = `${FileSystem.cacheDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(tempPath, fileContent);
-
-      await Sharing.shareAsync(tempPath, {
-        mimeType: format === "pdf" ? "application/pdf" : "application/octet-stream",
-        dialogTitle: `Export ${novel.title}`,
+      await FileSystem.writeAsStringAsync(filePath, content as string, {
+        encoding: FileSystem.EncodingType.UTF8,
       });
 
-      setExporting(false);
+      setExportProgress("Opening share dialog...");
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: mimeTypes[format],
+          dialogTitle: `Export ${novel.title}`,
+        });
+      } else {
+        Alert.alert("Export Complete", `File saved to:\n${filename}`);
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.error("Export failed:", error);
+    } catch (error: any) {
+      Alert.alert("Export Failed", error.message || "An error occurred during export.");
+    } finally {
       setExporting(false);
-      Alert.alert("Export Failed", "Could not export the novel. Please try again.");
+      setExportProgress("");
     }
   };
 
-  // ── Render chapter item ─────────────────────────────────────────────────────
-  const renderChapterItem = ({ item: chapter }: any) => {
-    const isSelected = selectedChapters.has(chapter.url);
+  // ── Render chapter item ──────────────────────────────────────────────────
+  const renderChapterItem = useCallback(({ item: ch, index: i }: { item: typeof sortedChapters[0], index: number }) => {
+    const originalIndex = novel.chapters.findIndex(c => c.url === ch.url);
+    const isCurrent = novel.lastRead?.chapterIndex === originalIndex;
+    const isSelected = selectedChapters.has(ch.url);
+
     return (
       <Pressable
+        style={[
+          styles.chapterRow,
+          {
+            backgroundColor: isSelected ? colors.accent + "20" : (isCurrent ? colors.accent + "18" : colors.card),
+            borderColor: isSelected ? colors.accent : (isCurrent ? colors.accent : colors.border),
+          },
+        ]}
         onPress={() => {
           if (selectionMode) {
-            toggleChapterSelection(chapter.url);
+            toggleChapterSelection(ch.url);
           } else {
+            Haptics.selectionAsync();
             router.push({
               pathname: "/reader/[id]",
-              params: { id: novel.id, chapterUrl: chapter.url },
+              params: { id: novel.id, chapterIndex: originalIndex.toString() },
             });
           }
         }}
-        onLongPress={() => handleChapterLongPress(chapter.url)}
+        onLongPress={() => {
+          if (!selectionMode) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setSelectionMode(true);
+            toggleChapterSelection(ch.url);
+          }
+        }}
         delayLongPress={300}
       >
-        <View style={[styles.chapterRow, { backgroundColor: isSelected ? colors.accent + "20" : colors.card, borderColor: isSelected ? colors.accent : colors.border }]}>
-          {selectionMode && (
-            <View style={styles.chapterCheckbox}>
-              <Ionicons
-                name={isSelected ? "checkbox" : "square-outline"}
-                size={20}
-                color={isSelected ? colors.accent : colors.textSecondary}
-              />
-            </View>
-          )}
-          <Text style={[styles.chapterTitle, { color: colors.text }]} numberOfLines={2}>
-            {chapter.title}
-          </Text>
-          {!selectionMode && (
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          )}
-        </View>
+        {/* Checkbox */}
+        {selectionMode && (
+          <View style={{ marginRight: 10 }}>
+            <Ionicons
+              name={isSelected ? "checkbox" : "square-outline"}
+              size={20}
+              color={isSelected ? colors.accent : colors.textMuted}
+            />
+          </View>
+        )}
+        
+        {/* Chapter Title */}
+        <Text 
+          style={[
+            styles.chapterTitle, 
+            { color: isCurrent ? colors.accent : colors.text }
+          ]} 
+          numberOfLines={1}
+        >
+          {isCurrent ? "► " : ""}{ch.title}
+        </Text>
+        
+        {/* Forward arrow (only when not in selection mode) */}
+        {!selectionMode && (
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        )}
       </Pressable>
     );
-  };
+  }, [novel.chapters, novel.lastRead?.chapterIndex, novel.id, colors, selectionMode, selectedChapters]);
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-  const keyExtractor = (item: any, index: number) => `${item.url}-${index}`;
-  const getItemLayout = (data: any, index: number) => ({
-    length: 60,
-    offset: 60 * index,
+  const keyExtractor = useCallback((item: typeof sortedChapters[0], index: number) => {
+    return `${item.url}-${index}`;
+  }, []);
+
+  const getItemLayout = useCallback((_data: any, index: number) => ({
+    length: 48,
+    offset: 48 * index,
     index,
-  });
+  }), []);
 
   const firstParagraph = novel.synopsis.split("\n\n")[0] || "";
+  const progress = `${novel.lastRead ? novel.lastRead.chapterIndex + 1 : 0} / ${novel.chapters.length}`;
+  const progressPct = novel.lastRead ? (novel.lastRead.chapterIndex + 1) / novel.chapters.length : 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Selection Header (shown when in selection mode) */}
+      {/* Selection Mode Header */}
       {selectionMode && (
         <View style={[styles.selectionHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <Text style={[styles.selectionTitle, { color: colors.text }]}>
@@ -478,23 +453,15 @@ export default function NovelScreen() {
           <View style={styles.selectionActions}>
             <Pressable
               onPress={() => setConfirmDeleteVisible(true)}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.6 : 1,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
               <Ionicons name="trash-outline" size={20} color="#FF4444" />
             </Pressable>
             <Pressable
               onPress={exitSelectionMode}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.6 : 1,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginLeft: 12 })}
             >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
         </View>
@@ -502,96 +469,91 @@ export default function NovelScreen() {
 
       {/* Normal Header */}
       {!selectionMode && (
-        <View style={[styles.navBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={20} color={colors.accent} />
-            <Text style={[styles.backLabel, { color: colors.accent }]}>Back</Text>
+        <View style={[styles.navBar, { paddingTop: topPad + 4, borderBottomColor: colors.border }]}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.accent} />
+            <Text style={[styles.backLabel, { color: colors.accent }]}>Library</Text>
           </Pressable>
           <Text style={[styles.navTitle, { color: colors.text }]} numberOfLines={1}>
             {novel.title}
           </Text>
-          <Pressable style={styles.menuBtn} onPress={() => setShowMenu(true)}>
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.accent} />
+          <Pressable
+            style={styles.menuBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowExportModal(true);
+            }}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
           </Pressable>
         </View>
       )}
 
       <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomPad + 20 }}
+        nestedScrollEnabled={true}
       >
         <View style={styles.hero}>
-          <View style={[styles.coverWrap, { shadowColor: colors.shadow }]}>
+          <View style={styles.coverWrap}>
             {novel.coverUrl ? (
               <Image source={{ uri: novel.coverUrl }} style={styles.cover} contentFit="cover" />
             ) : (
-              <View style={[styles.coverPlaceholder, { backgroundColor: colors.surface }]}>
-                <Ionicons name="book" size={40} color={colors.accent} />
+              <View style={[styles.coverPlaceholder, { backgroundColor: colors.card }]}>
+                <Ionicons name="book" size={48} color={colors.accent} />
               </View>
             )}
           </View>
-
           <View style={styles.heroInfo}>
-            <Text style={[styles.heroTitle, { color: colors.text }]} numberOfLines={2}>
-              {novel.title}
-            </Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>{novel.title}</Text>
             <Text style={[styles.heroAuthor, { color: colors.textSecondary }]}>{novel.author}</Text>
 
-            {novel.lastRead && (
-              <View style={styles.progressCard}>
-                <View style={styles.progressTop}>
-                  <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>Progress</Text>
-                  <Text style={[styles.progressCount, { color: colors.accent }]}>
-                    {novel.lastRead.chapterIndex + 1} / {novel.chapters.length}
-                  </Text>
-                </View>
-                <View style={[styles.progressBar, { backgroundColor: colors.surface }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${((novel.lastRead.chapterIndex + 1) / novel.chapters.length) * 100}%`,
-                        backgroundColor: colors.accent,
-                      },
-                    ]}
-                  />
-                </View>
-                {novel.lastRead.scrollProgress && (
-                  <Text style={[styles.lastReadLabel, { color: colors.textSecondary }]}>
-                    Last read: Chapter {novel.lastRead.chapterIndex + 1}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            <Pressable
-              onPress={() => {
-                if (novel.chapters.length > 0) {
-                  const startIdx = novel.lastRead?.chapterIndex || 0;
+            <View style={styles.heroButtons}>
+              <Pressable
+                style={[styles.readBtn, { backgroundColor: colors.accent }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  const startIndex = novel.lastRead?.chapterIndex ?? 0;
                   router.push({
                     pathname: "/reader/[id]",
-                    params: {
-                      id: novel.id,
-                      chapterUrl: novel.chapters[startIdx].url,
-                    },
+                    params: { id: novel.id, chapterIndex: startIndex.toString() },
                   });
-                }
-              }}
-              style={({ pressed }) => [
-                styles.readBtn,
-                { backgroundColor: colors.accent, opacity: pressed ? 0.8 : 1 },
-              ]}
-            >
-              <Ionicons name="book" size={16} color="#fff" />
-              <Text style={styles.readBtnText}>
-                {novel.lastRead ? "Continue" : "Start Reading"}
-              </Text>
-            </Pressable>
+                }}
+              >
+                <Ionicons name={novel.lastRead ? "play" : "book-outline"} size={16} color="#fff" />
+                <Text style={styles.readBtnText}>
+                  {novel.lastRead ? "Continue" : "Start Reading"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
         <View style={styles.content}>
+          {novel.lastRead && (
+            <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.progressTop}>
+                <Text style={[styles.progressLabel, { color: colors.text }]}>Reading Progress</Text>
+                <Text style={[styles.progressCount, { color: colors.accent }]}>{progress}</Text>
+              </View>
+              <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: colors.accent, width: `${progressPct * 100}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.lastReadLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+                Last: {novel.lastRead.chapterTitle}
+              </Text>
+            </View>
+          )}
+
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Synopsis</Text>
           <Pressable
             style={[styles.synopsisCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => setSynopsisExpanded((e) => !e)}
@@ -655,7 +617,43 @@ export default function NovelScreen() {
         </View>
       </ScrollView>
 
-      {/* Batch Delete Confirmation Modal */}
+      {/* ── Floating Buttons (Batch Delete + Export) ────────────────────── */}
+      {/* Batch Delete Button (Guidebook position) */}
+      <Pressable
+        style={[
+          styles.batchDeleteBtn,
+          { 
+            backgroundColor: colors.card, 
+            borderColor: colors.border,
+            shadowColor: colors.shadow,
+          }
+        ]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          setSelectionMode(true);
+        }}
+      >
+        <MaterialCommunityIcons name="checklist" size={20} color={colors.accent} />
+      </Pressable>
+
+      {/* Export Button (TTS position) */}
+      <Pressable
+        style={[
+          styles.exportBtn,
+          { 
+            backgroundColor: colors.accent,
+            shadowColor: colors.shadow,
+          }
+        ]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          setShowExportModal(true);
+        }}
+      >
+        <MaterialCommunityIcons name="share-variant" size={20} color="#fff" />
+      </Pressable>
+
+      {/* ── Batch Delete Confirmation Modal ──────────────────────────────── */}
       <Modal
         visible={confirmDeleteVisible}
         transparent={true}
@@ -680,7 +678,7 @@ export default function NovelScreen() {
                 <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalButton, styles.modalDeleteButton, { backgroundColor: "#FF4444" }]}
+                style={[styles.modalButton, styles.modalDeleteButton]}
                 onPress={performBatchDelete}
               >
                 <Text style={[styles.modalButtonText, { color: "#fff" }]}>DELETE</Text>
@@ -690,25 +688,7 @@ export default function NovelScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
-        <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
-          <View style={[styles.menuContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.menuTitle, { color: colors.text }]} numberOfLines={1}>{novel.title}</Text>
-            <Pressable style={[styles.menuItem, { borderColor: colors.border }]} onPress={() => { setShowMenu(false); setShowExportModal(true); }}>
-              <Ionicons name="download-outline" size={20} color={colors.accent} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Export Novel</Text>
-            </Pressable>
-            <Pressable style={[styles.menuItem, { borderColor: colors.border }]} onPress={() => setShowMenu(false)}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Novel Info</Text>
-            </Pressable>
-            <Pressable style={[styles.menuCancelBtn, { borderColor: colors.border }]} onPress={() => setShowMenu(false)}>
-              <Text style={[styles.menuCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
+      {/* ── Export Modal ────────────────────────────────────────────────── */}
       <Modal visible={showExportModal} transparent animationType="slide" onRequestClose={() => setShowExportModal(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setShowExportModal(false)}>
           <View style={[styles.exportContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -726,6 +706,7 @@ export default function NovelScreen() {
         </Pressable>
       </Modal>
 
+      {/* ── Export Progress Modal ──────────────────────────────────────── */}
       <Modal visible={exporting} transparent animationType="fade">
         <View style={styles.menuOverlay}>
           <View style={[styles.progressModal, { backgroundColor: colors.card }]}>
@@ -758,7 +739,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   selectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18 },
-  selectionActions: { flexDirection: "row", gap: 4 },
+  selectionActions: { flexDirection: "row", gap: 16 },
 
   hero: { flexDirection: "row", padding: 20, gap: 16, alignItems: "flex-start" },
   coverWrap: { width: 100, height: 140, borderRadius: 12, overflow: "hidden", flexShrink: 0, shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
@@ -788,10 +769,42 @@ const styles = StyleSheet.create({
   sortBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   chapterListContainer: { minHeight: 200 },
   chapterRow: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, marginBottom: 6 },
-  chapterCheckbox: { marginRight: 10 },
   chapterTitle: { fontFamily: "Inter_500Medium", fontSize: 14, flex: 1 },
   emptyChapters: { padding: 20, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: 'center' },
+
+  // Floating buttons
+  batchDeleteBtn: {
+    position: "absolute",
+    bottom: 74,
+    right: 18,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  exportBtn: {
+    position: "absolute",
+    bottom: 20,
+    right: 18,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+
+  // Modals
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   menuContainer: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20, gap: 4 },
   menuTitle: { fontFamily: "Inter_700Bold", fontSize: 17, marginBottom: 12, textAlign: 'center' },
@@ -814,6 +827,6 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 16, width: "100%" },
   modalButton: { flex: 1, height: 44, borderRadius: 8, justifyContent: "center", alignItems: "center" },
   modalCancelButton: { borderWidth: 1 },
-  modalDeleteButton: { backgroundColor: "#ff4444" },
+  modalDeleteButton: { backgroundColor: "#FF4444" },
   modalButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });
