@@ -372,7 +372,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
-    const isLightNovelPub = domainLower.includes('lightnovelpub.me');
     
     const html = await fetchWithFallback(url, isFreeWebNovel);
     
@@ -633,25 +632,38 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const authorMatch = safeMatch(html, /<div[^>]*class="author-content"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Wuxiaworld uses class="summary__content show-more", need to match flexible class attribute
+      // Wuxiaworld uses class="summary__content show-more"
       const descMatch = safeMatch(html, /<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
         let summaryHtml = descMatch;
-        // Replace <br> tags with newlines BEFORE stripping other tags
+        
+        // STEP 1: Remove the boilerplate header text
+        summaryHtml = summaryHtml.replace(/You’re Reading.*?on WuxiaWorld\.Site/i, '').trim();
+        
+        // STEP 2: Convert <br> to actual newlines before stripping other tags
         summaryHtml = summaryHtml.replace(/<br\s*\/?>/gi, '\n');
         
+        // STEP 3: Extract paragraphs safely, preserving the newlines from <br> tags
         const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
             .map(p => {
+              // Remove <p> tags, but DO NOT strip internal <br> tags yet
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              text = decodeEntities(stripTags(text));
+              // Decode entities first
+              text = decodeEntities(text);
+              // Now strip ALL tags (this will turn any remaining <br> into spaces, which is fine since we already created \n above)
+              text = stripTags(text);
               return text.trim();
             })
             .filter(t => t.length > 0);
+          
+          // Join with double newline to ensure proper paragraph spacing
           synopsis = cleanedParagraphs.join('\n\n');
         } else {
-          synopsis = decodeEntities(stripTags(summaryHtml));
+          // Fallback if no <p> tags are found
+          let fallbackText = decodeEntities(stripTags(summaryHtml));
+          synopsis = fallbackText;
         }
       }
       
@@ -693,44 +705,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
     }
-
-    // --- LIGHTNOVELPUB.ME ---
-    if (isLightNovelPub) {
-      console.log('[Scraper] LightNovelPub.me detected');
-      
-      // Use meta tags for quick extraction
-      const titleMetaMatch = safeMatch(html, /<meta\s+property="og:novel:novel_name"\s+content="([^"]+)"/i);
-      if (titleMetaMatch) title = decodeEntities(titleMetaMatch);
-      
-      const authorMetaMatch = safeMatch(html, /<meta\s+property="og:novel:author"\s+content="([^"]+)"/i);
-      if (authorMetaMatch) author = decodeEntities(authorMetaMatch);
-      
-      // Cover from meta tag
-      const coverMetaMatch = safeMatch(html, /<meta\s+property="og:image"\s+content="([^"]+)"/i);
-      if (coverMetaMatch) coverUrl = makeAbsoluteUrl(coverMetaMatch, url);
-      
-      // Synopsis from the novel description div
-      const synopsisMatch = safeMatch(html, /<div\s+class="txt">\s*<div\s+class="inner">([\s\S]*?)<\/div>\s*<\/div>/i);
-      if (synopsisMatch) {
-        synopsis = decodeEntities(stripTags(synopsisMatch)).trim();
-      } else {
-        // Fallback to meta description
-        const descMetaMatch = safeMatch(html, /<meta\s+property="og:description"\s+content="([^"]+)"/i);
-        if (descMetaMatch) synopsis = decodeEntities(descMetaMatch);
-      }
-      
-      // First chapter from meta tag
-      const firstChapterMetaMatch = safeMatch(html, /<meta\s+property="og:novel:read_url"\s+content="([^"]+)"/i);
-      if (firstChapterMetaMatch) {
-        firstChapterUrl = makeAbsoluteUrl(firstChapterMetaMatch, url);
-      } else {
-        // Fallback to first chapter link in list
-        const chapterMatch = safeMatch(html, /<div\s+class="m-newest2"[\s\S]*?<a\s+href="([^"]*)"[^>]*class="con"/i);
-        if (chapterMatch) {
-          firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
-        }
-      }
-    }
     
     console.log('[Scraper] Found first chapter:', firstChapterUrl);
     
@@ -762,7 +736,6 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
-    const isLightNovelPub = domainLower.includes('lightnovelpub.me');
     
     const { html, fetchMethod, httpStatus, contentType } = isLightNovelWorld
       ? await fetchLightNovelWorld(url)
