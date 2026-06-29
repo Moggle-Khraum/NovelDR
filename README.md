@@ -48,7 +48,13 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | NovelFull.net | https://novelfull.net/ | ✅ Full support |     | AllNovel | https://allnovel.org/ | ✅ Full support |
 | FreeWebNovel | https://freewebnovel.com/ | ✅ Full support |   | NovGo | https://novgo.net/ | ✅ Full support |
 | NovelBin | https://novelbin.com/ | ✅ Full support |     | BedNovel | https://bednovel.com | ✅ Full support |
-| LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support |    |
+| LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support |    | WuxiaWorld.site | https://wuxiaworld.site/ | ✅ Full support |
+| LightNovelPub | https://lightnovelpub.me/ | ✅ Full support |    |  |  | ✅ Full support |
+|  |  | ✅ Full support |     |  |  | ✅ Full support |
+|  |  | ✅ Full support |   |  |  | ✅ Full support |
+|  |  | ✅ Full support |     |  |  | ✅ Full support |
+|  |  | ✅ Full support |    |  |  | ✅ Full support |
+
 
 ## 🌟 Appreciation
 If this project helps you somehow, please dont forget to Star the Repo~!
