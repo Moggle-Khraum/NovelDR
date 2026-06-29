@@ -372,6 +372,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
+    const isLightNovelPub = domainLower.includes('lightnovelpub.me');
     
     const html = await fetchWithFallback(url, isFreeWebNovel);
     
@@ -692,6 +693,44 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
     }
+
+    // --- LIGHTNOVELPUB.ME ---
+    if (isLightNovelPub) {
+      console.log('[Scraper] LightNovelPub.me detected');
+      
+      // Use meta tags for quick extraction
+      const titleMetaMatch = safeMatch(html, /<meta\s+property="og:novel:novel_name"\s+content="([^"]+)"/i);
+      if (titleMetaMatch) title = decodeEntities(titleMetaMatch);
+      
+      const authorMetaMatch = safeMatch(html, /<meta\s+property="og:novel:author"\s+content="([^"]+)"/i);
+      if (authorMetaMatch) author = decodeEntities(authorMetaMatch);
+      
+      // Cover from meta tag
+      const coverMetaMatch = safeMatch(html, /<meta\s+property="og:image"\s+content="([^"]+)"/i);
+      if (coverMetaMatch) coverUrl = makeAbsoluteUrl(coverMetaMatch, url);
+      
+      // Synopsis from the novel description div
+      const synopsisMatch = safeMatch(html, /<div\s+class="txt">\s*<div\s+class="inner">([\s\S]*?)<\/div>\s*<\/div>/i);
+      if (synopsisMatch) {
+        synopsis = decodeEntities(stripTags(synopsisMatch)).trim();
+      } else {
+        // Fallback to meta description
+        const descMetaMatch = safeMatch(html, /<meta\s+property="og:description"\s+content="([^"]+)"/i);
+        if (descMetaMatch) synopsis = decodeEntities(descMetaMatch);
+      }
+      
+      // First chapter from meta tag
+      const firstChapterMetaMatch = safeMatch(html, /<meta\s+property="og:novel:read_url"\s+content="([^"]+)"/i);
+      if (firstChapterMetaMatch) {
+        firstChapterUrl = makeAbsoluteUrl(firstChapterMetaMatch, url);
+      } else {
+        // Fallback to first chapter link in list
+        const chapterMatch = safeMatch(html, /<div\s+class="m-newest2"[\s\S]*?<a\s+href="([^"]*)"[^>]*class="con"/i);
+        if (chapterMatch) {
+          firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+        }
+      }
+    }
     
     console.log('[Scraper] Found first chapter:', firstChapterUrl);
     
@@ -723,6 +762,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
+    const isLightNovelPub = domainLower.includes('lightnovelpub.me');
     
     const { html, fetchMethod, httpStatus, contentType } = isLightNovelWorld
       ? await fetchLightNovelWorld(url)
@@ -866,6 +906,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
         'please try again later',
         'total responses',
         'load comments',
+        '~Novelⅈght~',
         'login to comment',
         'post a comment',
         'report error',
@@ -942,6 +983,18 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       const filtered = validParagraphs.filter(text => {
         const lower = text.toLowerCase();
         return !junkPhrases.some(phrase => lower.includes(phrase));
+      });
+      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+    } else if (isLightNovelPub && validParagraphs.length > 0) {
+      // LightNovelPub is clean, minimal filtering needed
+      const junkPhrases = [
+        'light novel pub',
+        'lightnovelpub',
+        'read novel free',
+      ];
+      const filtered = validParagraphs.filter(text => {
+        const lower = text.toLowerCase();
+        return !junkPhrases.some(phrase => lower.includes(phrase)) && text.length > 20;
       });
       content = filtered.join('\n\n') || validParagraphs.join('\n\n');
     } else {
