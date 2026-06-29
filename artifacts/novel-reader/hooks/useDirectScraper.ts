@@ -647,10 +647,37 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
                          safeMatch(html, /<div[^>]*class="summary_image"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i);
       if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
       
-      // Extract first chapter URL from chapter list
-      const chapterMatch = safeMatch(html, /<div[^>]*class="listing-chapters_wrap"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"/i);
-      if (chapterMatch) {
-        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+      // Wuxiaworld loads chapters via AJAX — extract manga_id and fetch via AJAX
+      const mangaIdMatch = safeMatch(html, /var\s+manga\s*=\s*\{[^}]*"manga_id"\s*:\s*"(\d+)"/i) ||
+                           safeMatch(html, /"manga_id"\s*:\s*"(\d+)"/i);
+      if (mangaIdMatch) {
+        try {
+          console.log('[Scraper] Wuxiaworld: Found manga_id', mangaIdMatch, ', fetching chapters via AJAX...');
+          const ajaxUrl = 'https://wuxiaworld.site/wp-admin/admin-ajax.php';
+          const formData = new URLSearchParams();
+          formData.append('action', 'manga_get_chapters');
+          formData.append('manga_id', mangaIdMatch);
+          
+          const ajaxResponse = await httpClient.post(ajaxUrl, formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+          });
+          
+          const chapterHtml = ajaxResponse.data;
+          console.log('[Scraper] Wuxiaworld AJAX response received, length:', chapterHtml.length);
+          
+          // Parse chapter links from AJAX response
+          const chapterMatch = safeMatch(chapterHtml, /<a[^>]*href="([^"]*\/chapter[^"]*)"[^>]*>/i);
+          if (chapterMatch) {
+            firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+            console.log('[Scraper] Extracted first chapter from AJAX:', firstChapterUrl);
+          }
+        } catch (ajaxError) {
+          console.warn('[Scraper] Wuxiaworld AJAX fetch failed:', ajaxError.message);
+          // Fallback to constructing first chapter URL
+          const baseNovelUrl = url.replace(/\/$/, '');
+          firstChapterUrl = `${baseNovelUrl}/chapter-1/`;
+          console.log('[Scraper] Using constructed first chapter URL:', firstChapterUrl);
+        }
       }
     }
     
