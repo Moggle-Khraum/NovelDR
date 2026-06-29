@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,25 +18,27 @@ import {
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
-import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
+import { fetchNovelMeta, fetchChapter, checkSiteHealth } from "@/hooks/useApi";
 import Colors from "@/constants/colors";
 
+// --- Added 'baseUrl' to perform health checks ---
 const SUPPORTED_SITES = [
-  { name: "NovelFullNet" },
-  { name: "NovelFullCom" },
-  { name: "FreeWebNovelCom" },
-  { name: "FreeWebNovelOrg" },
-  { name: "NovelBinCom" },
-  { name: "NovelBinMe" },
-  { name: "AllNovelOrg" },
-  { name: "NovGoNet" },
-  { name: "LightNovelWorldOrg" },
-  { name: "ReadNovelFullCom" },
-  { name: "BedNovelCom" },
-  { name: "WuxiaWorldSite" },
-  { name: "RoyalRoad" }
+  { name: "NovelFullNet", baseUrl: "https://novelfull.net" },
+  { name: "NovelFullCom", baseUrl: "https://novelfull.com" },
+  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com" },
+  { name: "FreeWebNovelOrg", baseUrl: "https://freewebnovel.org" },
+  { name: "NovelBinCom", baseUrl: "https://novelbin.com" },
+  { name: "NovelBinMe", baseUrl: "https://novelbin.me" },
+  { name: "AllNovelOrg", baseUrl: "https://allnovel.org" },
+  { name: "NovGoNet", baseUrl: "https://novgo.net" },
+  { name: "LightNovelWorldOrg", baseUrl: "https://www.lightnovelworld.org" },
+  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com" },
+  { name: "BedNovelCom", baseUrl: "https://bednovel.com" },
+  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site" },
+  { name: "RoyalRoad", baseUrl: "https://royalroad.com" }
 ];
 
 type LogEntry = {
@@ -45,6 +47,9 @@ type LogEntry = {
   type: "info" | "downloading" | "success" | "error" | "warning";
 };
 
+type SiteStatus = 'idle' | 'checking' | 'online' | 'offline';
+
+// --- Reusable Log Line Component ---
 function LogLine({ entry }: { entry: LogEntry }) {
   const { colors } = useTheme();
   const colorMap = {
@@ -71,7 +76,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("limit")) return "✅";
     if (text.includes("halted")) return "⚠️";
     if (text.includes("No more chapters")) return "🏁";
-    if (text.includes("[LNW]")) return "";  // icon already embedded in the text
+    if (text.includes("[LNW]")) return ""; 
     if (text.includes("━━━━")) return "";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter")) return "📖";
@@ -88,8 +93,19 @@ function LogLine({ entry }: { entry: LogEntry }) {
   );
 }
 
-function SiteCell({ name }: { name: string }) {
+// --- Reusable Site Cell with Status Indicator ---
+function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
   const { colors } = useTheme();
+
+  const getStatusDot = () => {
+    if (status === 'checking') return { color: colors.textMuted, symbol: '⏳' };
+    if (status === 'online') return { color: Colors.success, symbol: '🟢' };
+    if (status === 'offline') return { color: Colors.error, symbol: '🔴' };
+    return { color: colors.textMuted, symbol: '?' };
+  };
+
+  const statusInfo = getStatusDot();
+  const isOffline = status === 'offline';
 
   return (
     <Pressable
@@ -97,24 +113,40 @@ function SiteCell({ name }: { name: string }) {
         styles.siteCell,
         {
           backgroundColor: colors.surface,
-          borderColor: colors.border,
+          borderColor: isOffline ? Colors.error : colors.border,
+          opacity: isOffline ? 0.6 : 1,
         },
       ]}
+      disabled={true} // Disable interaction if you don't want them clickable
     >
-      <Text
-        style={[styles.siteName, { color: colors.text }]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.7}
-      >
-        {name}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={{ color: statusInfo.color, fontSize: 14 }}>{statusInfo.symbol}</Text>
+        <Text
+          style={[styles.siteName, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {name}
+        </Text>
+      </View>
     </Pressable>
   );
 }
 
-function SourceListModalCell({ name }: { name: string }) {
+// --- Modal Cell (Mirrors SiteCell but inside the Modal) ---
+function SourceListModalCell({ name, status }: { name: string; status: SiteStatus }) {
   const { colors } = useTheme();
+  const isOffline = status === 'offline';
+
+  const getStatusIndicator = () => {
+    if (status === 'checking') return { color: colors.textMuted, symbol: '⏳' };
+    if (status === 'online') return { color: Colors.success, symbol: '🟢' };
+    if (status === 'offline') return { color: Colors.error, symbol: '⛔' };
+    return { color: colors.textMuted, symbol: '?' };
+  };
+
+  const statusInfo = getStatusIndicator();
 
   return (
     <View
@@ -122,18 +154,22 @@ function SourceListModalCell({ name }: { name: string }) {
         styles.siteCell,
         {
           backgroundColor: colors.surface,
-          borderColor: colors.border,
+          borderColor: isOffline ? Colors.error : colors.border,
+          opacity: isOffline ? 0.6 : 1,
         },
       ]}
     >
-      <Text
-        style={[styles.siteName, { color: colors.text }]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.7}
-      >
-        {name}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={{ color: statusInfo.color, fontSize: 12 }}>{statusInfo.symbol}</Text>
+        <Text
+          style={[styles.siteName, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {name}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -142,12 +178,14 @@ interface SourceListModalProps {
   visible: boolean;
   onClose: () => void;
   sites: typeof SUPPORTED_SITES;
+  siteStatuses: Record<string, SiteStatus>;
 }
 
 function SourceListModal({
   visible,
   onClose,
   sites,
+  siteStatuses,
 }: SourceListModalProps) {
   const { colors } = useTheme();
 
@@ -180,7 +218,7 @@ function SourceListModal({
             contentContainerStyle={styles.modalGrid}
           >
             {sites.map((site) => (
-              <SourceListModalCell key={site.name} name={site.name} />
+              <SourceListModalCell key={site.name} name={site.name} status={siteStatuses[site.name] || 'idle'} />
             ))}
           </ScrollView>
         </Pressable>
@@ -205,10 +243,38 @@ export default function AddNovelScreen() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
+  
+  // --- NEW: Site Health Check States ---
+  const [siteStatuses, setSiteStatuses] = useState<Record<string, SiteStatus>>({});
+
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
+
+  // --- NEW: Run health checks on mount ---
+  useEffect(() => {
+    const checkAllSites = async () => {
+      const initialStatus: Record<string, SiteStatus> = {};
+      SUPPORTED_SITES.forEach(site => {
+        initialStatus[site.name] = 'checking';
+      });
+      setSiteStatuses(initialStatus);
+
+      // Check all sites in parallel
+      await Promise.all(
+        SUPPORTED_SITES.map(async (site) => {
+          const isUp = await checkSiteHealth(site.baseUrl);
+          setSiteStatuses(prev => ({
+            ...prev,
+            [site.name]: isUp ? 'online' : 'offline'
+          }));
+        })
+      );
+    };
+
+    checkAllSites();
+  }, []);
 
   // Detect chapter URL and auto-fill Start Chapter
   const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
@@ -269,9 +335,7 @@ export default function AddNovelScreen() {
   };
 
   // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
-  // Restored to the proven, simpler logic from the old version.
   const tryDirectSkip = (firstUrl: string, targetChapter: number): string | null => {
-    // Try to detect pattern: .../chapter-1 -> .../chapter-X
     const chapterPattern = /(chapter[-_]?)(\d+)/i;
     const match = firstUrl.match(chapterPattern);
     if (match) {
@@ -280,7 +344,6 @@ export default function AddNovelScreen() {
       if (newUrl !== firstUrl) return newUrl;
     }
 
-    // Try to detect pattern: .../1/ -> .../X/
     const slashPattern = /\/(\d+)\//;
     const slashMatch = firstUrl.match(slashPattern);
     if (slashMatch) {
@@ -352,12 +415,10 @@ export default function AddNovelScreen() {
     const maxCh = parseInt(maxChStr) || null;
 
     // ── Detect if a chapter URL was pasted directly ──────────────────────────
-    // Matches patterns like /chapter-942, /chapter/942, /ch-942
     const chapterUrlPattern = /\/chapter[-/](\d+)/i;
     const chapterUrlMatch = trimmedUrl.match(chapterUrlPattern);
     const isChapterUrl = !!chapterUrlMatch;
 
-    // Derive novel homepage URL by stripping everything from /chapter onwards
     let metaUrl = trimmedUrl;
     let directChapterUrl: string | null = null;
     let directChapterNum = startCh;
@@ -453,8 +514,6 @@ export default function AddNovelScreen() {
       }
 
       // ── If a chapter URL was pasted, skip directly to it ─────────────────
-      // Override firstChapterUrl with the pasted chapter URL and set chapterNum
-      // to the number extracted from the URL — bypasses the skip/crawl logic.
       let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
       let chapterNum = directChapterUrl ? directChapterNum : 1;
 
@@ -464,12 +523,10 @@ export default function AddNovelScreen() {
       }
 
       // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
-      // Only runs when a novel homepage URL was pasted (not a chapter URL)
       if (!directChapterUrl && startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
 
-        // Attempt direct URL construction first (instant, no network calls)
         const directUrl = tryDirectSkip(meta.firstChapterUrl!, startCh);
         if (directUrl) {
           addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
@@ -489,7 +546,6 @@ export default function AddNovelScreen() {
               chapterNum++;
               skippedCount++;
 
-              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, and final)
               const percent = Math.floor((skippedCount / totalToSkip) * 100);
               const nextMilestone = lastLoggedMilestone + 20;
               if (percent >= nextMilestone && nextMilestone <= 80) {
@@ -511,7 +567,6 @@ export default function AddNovelScreen() {
                 break;
               }
             }
-            // 35ms between skipped chapters — fast but courteous to the server
             await new Promise((r) => setTimeout(r, 35));
           }
 
@@ -648,9 +703,6 @@ export default function AddNovelScreen() {
 
       const finalChapters = newChapters.map(({ chapterNumber, ...ch }) => ch);
 
-      // NOTE: sourceUrl is always the novel's *info/homepage* page (metaUrl),
-      // never a raw chapter URL — even if the user pasted a chapter link.
-      // This guarantees Updates can always re-fetch novel metadata correctly.
       const novel: Novel = {
         id: safeId,
         title: meta.title,
@@ -706,7 +758,7 @@ export default function AddNovelScreen() {
           </View>
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {SUPPORTED_SITES.slice(0, 8).map((site) => (
-              <SiteCell key={site.name} name={site.name} />
+              <SiteCell key={site.name} name={site.name} status={siteStatuses[site.name] || 'idle'} />
             ))}
             <Pressable
               style={[
@@ -727,7 +779,7 @@ export default function AddNovelScreen() {
                 Source List
               </Text>
             </Pressable>
-</View>
+          </View>
         </View>
 
         {/* Form Section */}
@@ -878,11 +930,12 @@ export default function AddNovelScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Source List Modal */}
+      {/* Source List Modal - Pass siteStatuses prop */}
       <SourceListModal
         visible={sourceListModalVisible}
         onClose={() => setSourceListModalVisible(false)}
         sites={SUPPORTED_SITES}
+        siteStatuses={siteStatuses}
       />
     </KeyboardAvoidingView>
   );
@@ -937,7 +990,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  
   siteName: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
@@ -1058,8 +1110,6 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 20,
   },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
@@ -1076,66 +1126,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 18,
   },
-  modalHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
-  },
   modalTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 20,
     textAlign: "center",
   },
-
   modalSeparator: {
     height: StyleSheet.hairlineWidth,
     width: "100%",
     marginTop: 14,
     marginBottom: 16,
   },
-
   modalGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     justifyContent: "flex-start",
     paddingBottom: 10,
-  },
-  modalList: {
-    flex: 1,
-    minHeight: 200,
-  },
-  modalListContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  modalSourceCell: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: "center",
-  },
-  modalSourceName: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  modalCloseBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  modalCloseBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: "#fff",
   },
 });
