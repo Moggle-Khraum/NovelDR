@@ -262,7 +262,7 @@ export default function AddNovelScreen() {
   const checkAllSites = async (showLogs: boolean = false) => {
     if (isCheckingSites) return;
     
-    setIsCheckingSites(true);
+    setIsCheckingSites(false);
     
     // Set all sites to 'checking' status
     const initialStatus: Record<string, SiteStatus> = {};
