@@ -673,7 +673,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
     }
 
-    // --- WUXIAWORLD.SITE ---
+    // --- WUXIAWORLD.SITE (IMPROVED) ---
     if (isWuxiaworld) {
       console.log('[Scraper] Wuxiaworld.site detected');
       
@@ -683,37 +683,49 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const authorMatch = safeMatch(html, /<div[^>]*class="author-content"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Wuxiaworld uses class="summary__content show-more"
-      const descMatch = safeMatch(html, /<div[^>]*class="[^"]*summary__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      // Wuxiaworld uses class="summary_content show-more"
+      const descMatch = safeMatch(html, /<div[^>]*class="summary_content show-more[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
+                         safeMatch(html, /<div[^>]*class="[^"]*summary_content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
         let summaryHtml = descMatch;
         
-        // STEP 1: Remove the boilerplate header text
+        // STEP 1: Remove the boilerplate header text (the bold/emphasized line)
+        summaryHtml = summaryHtml.replace(/<b><em>You’re Reading.*?on WuxiaWorld\.Site<\/em><\/b>/i, '').trim();
+        // Also remove any variations with different formatting
         summaryHtml = summaryHtml.replace(/You’re Reading.*?on WuxiaWorld\.Site/i, '').trim();
         
-        // STEP 2: Convert <br> to actual newlines before stripping other tags
-        summaryHtml = summaryHtml.replace(/<br\s*\/?>/gi, '\n');
-        
-        // STEP 3: Extract paragraphs safely, preserving the newlines from <br> tags
+        // STEP 2: Extract all <p> tags
         const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
             .map(p => {
-              // Remove <p> tags, but DO NOT strip internal <br> tags yet
+              // Remove the <p> tags
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              // Decode entities first
+              
+              // STEP 3: Convert <br> tags to double newlines (\n\n)
+              text = text.replace(/<br\s*\/?>/gi, '\n\n');
+              
+              // Decode entities
               text = decodeEntities(text);
-              // Now strip ALL tags (this will turn any remaining <br> into spaces, which is fine since we already created \n above)
+              
+              // Strip any remaining HTML tags (like <b>, <em>, etc.)
               text = stripTags(text);
-              return text.trim();
+              
+              // Clean up extra whitespace but preserve paragraph breaks
+              // Split by newlines, trim each line, then join with double newlines
+              const lines = text.split('\n\n').map(line => line.trim()).filter(line => line.length > 0);
+              return lines.join('\n\n');
             })
             .filter(t => t.length > 0);
           
-          // Join with double newline to ensure proper paragraph spacing
+          // Join paragraphs with double newline to ensure proper spacing between paragraphs
           synopsis = cleanedParagraphs.join('\n\n');
+          
+          console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
-          // Fallback if no <p> tags are found
-          let fallbackText = decodeEntities(stripTags(summaryHtml));
+          // Fallback: just strip tags and decode entities
+          let fallbackText = summaryHtml.replace(/<br\s*\/?>/gi, '\n\n');
+          fallbackText = decodeEntities(stripTags(fallbackText));
           synopsis = fallbackText;
         }
       }
@@ -954,15 +966,60 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
 
+    // --- WUXIAWORLD CHAPTER TITLE AND CONTENT EXTRACTION (IMPROVED) ---
     if (isWuxiaworld) {
+      // Title: uses class="post-title" or similar
       const titleMatch = safeMatch(html, /<h1[^>]*class="post-title"[^>]*>([\s\S]*?)<\/h1>/i) ||
                          safeMatch(html, /<div[^>]*class="post-title"[^>]*>([\s\S]*?)<\/div>/i) ||
-                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
+                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i) ||
+                         safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(stripTags(titleMatch)).trim().replace(/\s+/g, ' ').trim();
         rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
+      }
+      
+      // Content: Wuxiaworld uses <div class="chapter-content"> or similar
+      let contentHtml = null;
+      
+      // Try multiple selectors for Wuxiaworld content
+      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch4 = safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch5 = safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch6 = safeMatch(html, /<article[^>]*class="chapter"[^>]*>([\s\S]*?)<\/article>/i);
+      
+      contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4 || contentMatch5 || contentMatch6;
+      
+      if (contentHtml) {
+        // Extract paragraphs from the content
+        const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              // Convert <br> tags to double newlines
+              text = text.replace(/<br\s*\/?>/gi, '\n\n');
+              text = decodeEntities(text);
+              text = stripTags(text);
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          
+          // Join paragraphs with double newlines
+          const extractedContent = cleanedParagraphs.join('\n\n');
+          if (extractedContent.length > 0) {
+            // Store for later use
+          }
+        } else {
+          // No <p> tags found, try to extract text with <br> handling
+          let text = decodeEntities(stripTags(contentHtml));
+          // Replace any remaining <br> tags with newlines
+          text = text.replace(/<br\s*\/?>/gi, '\n\n');
+          // Store for later use
+        }
       }
     }
 
@@ -1124,6 +1181,38 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
     
+    // For Wuxiaworld, extract content using specific selectors
+    if (isWuxiaworld && !content) {
+      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch4 = safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch5 = safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      
+      const contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4 || contentMatch5;
+      
+      if (contentHtml) {
+        const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              text = text.replace(/<br\s*\/?>/gi, '\n\n');
+              text = decodeEntities(text);
+              text = stripTags(text);
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          
+          content = cleanedParagraphs.join('\n\n');
+        } else {
+          let text = decodeEntities(stripTags(contentHtml));
+          text = text.replace(/<br\s*\/?>/gi, '\n\n');
+          content = text;
+        }
+      }
+    }
+    
     // If no content yet, use the general extraction
     if (!content) {
       if (isNovelBin && validParagraphs.length > 0) {
@@ -1195,16 +1284,6 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
           'readnovelfull.com',
           'allnovel.org',
           'novgo.net',
-        ];
-        const filtered = validParagraphs.filter(text => {
-          const lower = text.toLowerCase();
-          return !junkPhrases.some(phrase => lower.includes(phrase));
-        });
-        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-      } else if (isWuxiaworld && validParagraphs.length > 0) {
-        const junkPhrases = [
-          'ad',
-          'advertisement',
         ];
         const filtered = validParagraphs.filter(text => {
           const lower = text.toLowerCase();
