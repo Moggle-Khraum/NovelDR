@@ -26,19 +26,20 @@ import Colors from "@/constants/colors";
 
 // --- Added 'baseUrl' to perform health checks ---
 const SUPPORTED_SITES = [
-  { name: "NovelFullNet", baseUrl: "https://novelfull.net" },
-  { name: "NovelFullCom", baseUrl: "https://novelfull.com" },
-  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com" },
-  { name: "FreeWebNovelOrg", baseUrl: "https://freewebnovel.org" },
-  { name: "NovelBinCom", baseUrl: "https://novelbin.com" },
-  { name: "NovelBinMe", baseUrl: "https://novelbin.me" },
-  { name: "AllNovelOrg", baseUrl: "https://allnovel.org" },
-  { name: "NovGoNet", baseUrl: "https://novgo.net" },
-  { name: "LightNovelWorldOrg", baseUrl: "https://www.lightnovelworld.org" },
-  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com" },
-  { name: "BedNovelCom", baseUrl: "https://bednovel.com" },
-  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site" },
-  { name: "RoyalRoad", baseUrl: "https://royalroad.com" },
+  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
+  { name: "NovelFullCom", baseUrl: "https://novelfull.com/" },
+  { name: "NovelFullNet", baseUrl: "https://novelfull.net/" },
+  { name: "AllNovelOrg", baseUrl: "https://allnovel.org/" },
+  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
+  { name: "NovGoNet", baseUrl: "https://novgo.net/" },
+  { name: "NovelBinCom", baseUrl: "https://novelbin.com/" },
+  { name: "BedNovelCom", baseUrl: "https://bednovel.com/" },
+  { name: "LightNovelWorldOrg", baseUrl: "https://www.lightnovelworld.org/" },
+  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
+  { name: "LightNovelPubMe", baseUrl: "https://lightnovelpub.me/" },
+  { name: "FreeWebNovelOrg", baseUrl: "https://freewebnovel.org/" },
+  { name: "NovelBinMe", baseUrl: "https://novelbin.me/" },
+  { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://www.asianovel.net/" },
 ];
 
@@ -118,7 +119,7 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
           opacity: isOffline ? 0.6 : 1,
         },
       ]}
-      disabled={true} // Disable interaction if you don't want them clickable
+      disabled={true}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text style={{ color: statusInfo.color, fontSize: 14 }}>{statusInfo.symbol}</Text>
@@ -255,7 +256,7 @@ export default function AddNovelScreen() {
   const logScrollRef = useRef<ScrollView>(null);
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- Site Health Check Function ---
+  // --- Site Health Check Function (Updated to match Python version) ---
   const checkAllSites = async (showLogs: boolean = false) => {
     if (isCheckingSites) return;
     
@@ -271,22 +272,70 @@ export default function AddNovelScreen() {
     if (showLogs) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`🔍 Checking site health...`, "downloading");
+      addLog(`📡 Checking ${SUPPORTED_SITES.length} sites...`, "info");
     }
 
-    // Check all sites in parallel
-    await Promise.all(
-      SUPPORTED_SITES.map(async (site) => {
-        const isUp = await checkSiteHealth(site.baseUrl);
-        setSiteStatuses(prev => ({
-          ...prev,
-          [site.name]: isUp ? 'online' : 'offline'
-        }));
-      })
-    );
+    // Check all sites in parallel with concurrency limit
+    const concurrencyLimit = 5;
+    const results: Array<{ name: string; status: SiteStatus }> = [];
+    
+    // Process sites in batches
+    for (let i = 0; i < SUPPORTED_SITES.length; i += concurrencyLimit) {
+      const batch = SUPPORTED_SITES.slice(i, i + concurrencyLimit);
+      
+      const batchPromises = batch.map(async (site) => {
+        try {
+          const isUp = await checkSiteHealth(site.baseUrl);
+          return { name: site.name, status: isUp ? 'online' : 'offline' };
+        } catch (error) {
+          return { name: site.name, status: 'offline' as SiteStatus };
+        }
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+      
+      // Update statuses progressively
+      const newStatuses: Record<string, SiteStatus> = {};
+      results.forEach((r) => {
+        newStatuses[r.name] = r.status;
+      });
+      
+      // Preserve any sites not yet checked
+      SUPPORTED_SITES.forEach((site) => {
+        if (!newStatuses[site.name]) {
+          newStatuses[site.name] = 'checking';
+        }
+      });
+      
+      setSiteStatuses(newStatuses);
+    }
 
+    // Final count
+    const onlineCount = Object.values(siteStatuses).filter(s => s === 'online').length;
+    
     if (showLogs) {
-      const onlineCount = Object.values(siteStatuses).filter(s => s === 'online').length;
-      addLog(`✅ Health check complete: ${onlineCount}/${SUPPORTED_SITES.length} sites online`, "success");
+      const downCount = SUPPORTED_SITES.length - onlineCount;
+      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      addLog(`✅ Health check complete: ${onlineCount} UP, ${downCount} DOWN`, 
+        downCount === 0 ? "success" : "warning");
+      
+      if (downCount > 0) {
+        addLog(`⚠️  ${downCount} site(s) are currently unreachable!`, "warning");
+        // Find offline sites
+        const offlineSites = Object.keys(siteStatuses).filter(
+          key => siteStatuses[key] === 'offline'
+        );
+        if (offlineSites.length > 0 && offlineSites.length <= 5) {
+          offlineSites.forEach(name => {
+            addLog(`   ❌ ${name}`, "error");
+          });
+        } else if (offlineSites.length > 5) {
+          addLog(`   ❌ ${offlineSites.length} sites offline (check modal for details)`, "error");
+        }
+      } else {
+        addLog(`✅ All sites are up and running!`, "success");
+      }
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
     }
     
@@ -300,10 +349,10 @@ export default function AddNovelScreen() {
       checkAllSites(true);
     }, 2000);
 
-    // Set up periodic checks every 12 hours (12 * 60 * 60 * 1000 = 43,200,000 ms)
+    // Set up periodic checks every 5 minutes (like Python version but adjusted for mobile)
     healthCheckIntervalRef.current = setInterval(() => {
       checkAllSites(false); // Silent check
-    }, 12 * 60 * 60 * 1000); // 12 hours in milliseconds
+    }, 5 * 60 * 1000); // 5 minutes in milliseconds
 
     return () => {
       clearTimeout(initialTimeout);
@@ -816,7 +865,7 @@ export default function AddNovelScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
               >
-                Source List
+                +{SUPPORTED_SITES.length - 8} more
               </Text>
             </Pressable>
           </View>
