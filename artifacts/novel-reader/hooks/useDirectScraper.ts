@@ -108,7 +108,7 @@ const makeAbsoluteUrl = (relativeUrl: string, baseUrl: string): string => {
   }
 };
 
-// Create axios instance with HTTP/1.1 preference via headers
+// Create axios instance with HTTP/1.1 preference via headers - IMPROVED for Asianovel
 const httpClient = axios.create({
   timeout: 15000,
   headers: {
@@ -119,6 +119,10 @@ const httpClient = axios.create({
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Cache-Control': 'max-age=0',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
   },
 });
 
@@ -167,8 +171,67 @@ const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
   }
 };
 
+// Special fetch function for Asianovel with better headers
+const fetchAsianovel = async (url: string): Promise<string> => {
+  console.log('[Scraper] Fetching Asianovel with special headers...');
+  
+  // Try with a more browser-like User-Agent and additional headers
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Cache-Control': 'max-age=0',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+  };
+
+  try {
+    // First try with axios
+    const response = await axios.get(url, {
+      headers: headers,
+      timeout: 15000,
+      maxRedirects: 5,
+    });
+    return response.data;
+  } catch (error: any) {
+    console.warn('[Scraper] Asianovel direct fetch failed:', error.message);
+    
+    // Try with fetch API
+    try {
+      const response = await fetch(url, {
+        headers: headers,
+        redirect: 'follow',
+      });
+      const html = await response.text();
+      return html;
+    } catch (fetchError: any) {
+      console.warn('[Scraper] Asianovel fetch API failed:', fetchError.message);
+      
+      // Final fallback: try with proxy
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const proxyResponse = await axios.get(proxyUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        timeout: 15000,
+      });
+      return proxyResponse.data;
+    }
+  }
+};
+
 // Fetch with fallback to proxy for FreeWebNovel
-const fetchWithFallback = async (url: string, isFreeWebNovel: boolean): Promise<string> => {
+const fetchWithFallback = async (url: string, isFreeWebNovel: boolean, isAsianovel: boolean = false): Promise<string> => {
+  // Special handling for Asianovel
+  if (isAsianovel) {
+    return await fetchAsianovel(url);
+  }
+  
   if (isFreeWebNovel) {
     console.log('[Scraper] FreeWebNovel - using proxy for HTTP/1.1');
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
@@ -374,7 +437,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
     const isAsianovel = domainLower.includes('asianovel.net');
     
-    const html = await fetchWithFallback(url, isFreeWebNovel);
+    const html = await fetchWithFallback(url, isFreeWebNovel, isAsianovel);
     
     let title = extractTitleFromUrl(url);
     let author = 'Unknown Author';
@@ -673,7 +736,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
     }
 
-    // --- WUXIAWORLD.SITE (IMPROVED) ---
+    // --- WUXIAWORLD.SITE (FIXED) ---
     if (isWuxiaworld) {
       console.log('[Scraper] Wuxiaworld.site detected');
       
@@ -683,9 +746,16 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const authorMatch = safeMatch(html, /<div[^>]*class="author-content"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Wuxiaworld uses class="summary_content show-more"
-      const descMatch = safeMatch(html, /<div[^>]*class="summary_content show-more[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
-                         safeMatch(html, /<div[^>]*class="[^"]*summary_content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      // Wuxiaworld uses class="summary_content show-more" or "description-summary"
+      // Try multiple selectors for the summary
+      let descMatch = safeMatch(html, /<div[^>]*class="description-summary"[^>]*>([\s\S]*?)<\/div>/i);
+      if (!descMatch) {
+        descMatch = safeMatch(html, /<div[^>]*class="summary_content show-more[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      }
+      if (!descMatch) {
+        descMatch = safeMatch(html, /<div[^>]*class="[^"]*summary_content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      }
+      
       if (descMatch) {
         let summaryHtml = descMatch;
         
@@ -895,7 +965,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       httpStatus = result.httpStatus;
       contentType = result.contentType;
     } else {
-      html = await fetchWithFallback(url, isFreeWebNovel);
+      html = await fetchWithFallback(url, isFreeWebNovel, isAsianovel);
     }
     
     let title = `Chapter ${chapterNum}`;
