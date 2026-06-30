@@ -245,36 +245,72 @@ export default function AddNovelScreen() {
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
   
-  // --- NEW: Site Health Check States ---
+  // --- Site Health Check States ---
   const [siteStatuses, setSiteStatuses] = useState<Record<string, SiteStatus>>({});
+  const [isCheckingSites, setIsCheckingSites] = useState(false);
 
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
+  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- NEW: Run health checks on mount ---
+  // --- Site Health Check Function ---
+  const checkAllSites = async (showLogs: boolean = false) => {
+    if (isCheckingSites) return;
+    
+    setIsCheckingSites(true);
+    
+    // Set all sites to 'checking' status
+    const initialStatus: Record<string, SiteStatus> = {};
+    SUPPORTED_SITES.forEach(site => {
+      initialStatus[site.name] = 'checking';
+    });
+    setSiteStatuses(initialStatus);
+
+    if (showLogs) {
+      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      addLog(`🔍 Checking site health...`, "downloading");
+    }
+
+    // Check all sites in parallel
+    await Promise.all(
+      SUPPORTED_SITES.map(async (site) => {
+        const isUp = await checkSiteHealth(site.baseUrl);
+        setSiteStatuses(prev => ({
+          ...prev,
+          [site.name]: isUp ? 'online' : 'offline'
+        }));
+      })
+    );
+
+    if (showLogs) {
+      const onlineCount = Object.values(siteStatuses).filter(s => s === 'online').length;
+      addLog(`✅ Health check complete: ${onlineCount}/${SUPPORTED_SITES.length} sites online`, "success");
+      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+    }
+    
+    setIsCheckingSites(false);
+  };
+
+  // --- Setup automatic health checks ---
   useEffect(() => {
-    const checkAllSites = async () => {
-      const initialStatus: Record<string, SiteStatus> = {};
-      SUPPORTED_SITES.forEach(site => {
-        initialStatus[site.name] = 'checking';
-      });
-      setSiteStatuses(initialStatus);
+    // Initial check with a 2-second delay to let the UI render
+    const initialTimeout = setTimeout(() => {
+      checkAllSites(true);
+    }, 2000);
 
-      // Check all sites in parallel
-      await Promise.all(
-        SUPPORTED_SITES.map(async (site) => {
-          const isUp = await checkSiteHealth(site.baseUrl);
-          setSiteStatuses(prev => ({
-            ...prev,
-            [site.name]: isUp ? 'online' : 'offline'
-          }));
-        })
-      );
+    // Set up periodic checks every 12 hours (12 * 60 * 60 * 1000 = 43,200,000 ms)
+    healthCheckIntervalRef.current = setInterval(() => {
+      checkAllSites(false); // Silent check
+    }, 12 * 60 * 60 * 1000); // 12 hours in milliseconds
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current);
+      }
     };
-
-    checkAllSites();
   }, []);
 
   // Detect chapter URL and auto-fill Start Chapter
@@ -756,6 +792,9 @@ export default function AddNovelScreen() {
           <View style={styles.sitesHeader}>
             <Ionicons name="globe" size={16} color={colors.accent} />
             <Text style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}>SUPPORTED SITES</Text>
+            {isCheckingSites && (
+              <ActivityIndicator size="small" color={colors.accent} style={{ marginLeft: 'auto' }} />
+            )}
           </View>
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {SUPPORTED_SITES.slice(0, 8).map((site) => (
