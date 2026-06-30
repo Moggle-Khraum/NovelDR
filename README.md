@@ -37,18 +37,18 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ## 🌐 Supported Sources
 
-| Source | Domain | Status |    | Source | Domain | Status |
-|--------|--------|--------|----|--------|--------|--------|
-| ReadNovelFull | https://readnovelfull.com/ | ✅ Full support |    | NovelFull.com | https://novelfull.com/ | ✅ Full support |
-| NovelFull.net | https://novelfull.net/ | ✅ Full support |     | AllNovel | https://allnovel.org/ | ✅ Full support |
-| FreeWebNovel | https://freewebnovel.com/ | ✅ Full support |   | NovGo | https://novgo.net/ | ✅ Full support |
-| NovelBin.me | https://novelbin.me/ | ✅ Full support |     | BedNovel | https://bednovel.com | ✅ Full support |
-| LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support |    | WuxiaWorld.site | https://wuxiaworld.site/ | ✅ Full support |
-| RoyalRoad | https://www.royalroad.com/ | ✅ Full support |    |  |  | ✅ Full support |
-|  |  | ✅ Full support |     |  |  | ✅ Full support |
-|  |  | ✅ Full support |   |  |  | ✅ Full support |
-|  |  | ✅ Full support |     |  |  | ✅ Full support |
-|  |  | ✅ Full support |    |  |  | ✅ Full support |
+| Source | Domain | Status | Source | Domain | Status |
+|--------|--------|--------|-------|--------|--------|
+| ReadNovelFull | https://readnovelfull.com/ | ✅ Full support     | NovelFull.com | https://novelfull.com/ | ✅ Full support |
+| NovelFull.net | https://novelfull.net/ | ✅ Full support      | AllNovel | https://allnovel.org/ | ✅ Full support |
+| FreeWebNovel | https://freewebnovel.com/ | ✅ Full support   | NovGo | https://novgo.net/ | ✅ Full support |
+| NovelBin.me | https://novelbin.me/ | ✅ Full support      | BedNovel | https://bednovel.com | ✅ Full support |
+| LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support     | WuxiaWorld.site | https://wuxiaworld.site/ | ✅ Full support |
+| RoyalRoad | https://www.royalroad.com/ | ✅ Full support     | AsiaNovel | https://www.asianovel.net/  | ✅ Full support |
+|  |  | ✅ Full support |     |    | ✅ Full support |
+|  |  | ✅ Full support |   |    | ✅ Full support |
+|  |  | ✅ Full support |       |  | ✅ Full support |
+|  |  | ✅ Full support |    |    | ✅ Full support |
 
 
 ## 🌟 Appreciation
