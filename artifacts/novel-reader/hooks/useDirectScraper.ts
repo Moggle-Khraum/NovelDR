@@ -152,7 +152,7 @@ const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
       httpStatus: response.status,
       contentType: response.headers.get('content-type') || 'unknown',
     };
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[LNW] Direct fetch failed, trying proxy:', err.message);
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const proxyRes = await fetch(proxyUrl, { headers });
@@ -175,7 +175,7 @@ const fetchWithFallback = async (url: string, isFreeWebNovel: boolean): Promise<
     try {
       const response = await httpClient.get(proxyUrl);
       return response.data;
-    } catch (proxyError) {
+    } catch (proxyError: any) {
       console.warn('[Scraper] Proxy failed, trying direct:', proxyError.message);
       const directResponse = await httpClient.get(url);
       return directResponse.data;
@@ -185,7 +185,7 @@ const fetchWithFallback = async (url: string, isFreeWebNovel: boolean): Promise<
   try {
     const response = await httpClient.get(url);
     return response.data;
-  } catch (directError) {
+  } catch (directError: any) {
     console.warn('[Scraper] Direct fetch failed, trying proxy:', directError.message);
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const proxyResponse = await httpClient.get(proxyUrl);
@@ -747,7 +747,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
             firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
             console.log('[Scraper] Extracted first chapter from AJAX:', firstChapterUrl);
           }
-        } catch (ajaxError) {
+        } catch (ajaxError: any) {
           console.warn('[Scraper] Wuxiaworld AJAX fetch failed:', ajaxError.message);
           // Fallback to constructing first chapter URL
           const baseNovelUrl = url.replace(/\/$/, '');
@@ -765,15 +765,16 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const titleMatch = safeMatch(html, /<h1[^>]*class="story__identity-title"[^>]*>([^<]+)<\/h1>/i);
       if (titleMatch) title = decodeEntities(titleMatch);
       
-      // Author: uses class="author" inside <a> tag
-      const authorMatch = safeMatch(html, /<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
+      // Author: uses class="author" inside <div class="story__identity-meta">
+      const authorMatch = safeMatch(html, /<div[^>]*class="story__identity-meta"[^>]*>[\s\S]*?<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Cover: Located inside <figure class="story__thumbnail">, using an <img> with src
-      const coverMatch = safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i);
+      // Cover: Located inside <figure class="story__thumbnail">, using an <img> with class="story__thumbnail-image"
+      const coverMatch = safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*class="[^"]*story__thumbnail-image[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
+                         safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*class="[^"]*story__thumbnail-image[^"]*"[^>]*>/i);
       if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
       
-      // Synopsis: Asianovel uses actual <p> tags for their paragraphs, not <br>
+      // Synopsis: Asianovel uses <section class="story__summary content-section">
       const descMatch = safeMatch(html, /<section[^>]*class="story__summary content-section"[^>]*>([\s\S]*?)<\/section>/i);
       if (descMatch) {
         // Extract all <p> tags inside the summary
@@ -781,38 +782,59 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
             .map(p => {
-              // Strip the <p> tags
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              // Decode entities (like &#8217; for smart quotes)
               text = decodeEntities(text);
-              // Strip any leftover HTML tags
               text = stripTags(text);
               return text.trim();
             })
             .filter(t => t.length > 0);
           
-          // Join with double newline for perfect spacing
           synopsis = cleanedParagraphs.join('\n\n');
         } else {
           synopsis = decodeEntities(stripTags(descMatch));
         }
       }
       
-      // Construct First Chapter URL
-      // Pattern: /story/3377/ -> /chapter/chapter-{number}/
-      // Asianovel uses "chapter-{number}" (e.g., chapter-773154)
-      const baseNovelUrl = url.replace(/\/$/, '');
-      firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}1/`;
-      console.log('[Scraper] Asianovel constructed first chapter URL:', firstChapterUrl);
-      
-      // OPTIONAL: Extract the actual first chapter number from the HTML for perfection
-      const chapterListMatch = safeMatch(html, /<ol[^>]*class="chapter-group__list"[^>]*>([\s\S]*?)<\/ol>/i);
-      if (chapterListMatch) {
-        const firstLinkMatch = chapterListMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
-        if (firstLinkMatch && firstLinkMatch[2]) {
-          // Override with the actual first chapter number found in the list
+      // Extract the actual first chapter URL from the chapter list
+      // The chapter list is in <section class="story__tab-target _current story__chapters">
+      // with <ol class="chapter-group__list">
+      const chapterSectionMatch = safeMatch(html, /<section[^>]*class="story__tab-target _current story__chapters"[^>]*>([\s\S]*?)<\/section>/i);
+      if (chapterSectionMatch) {
+        // Find the first chapter link in the list
+        const firstLinkMatch = chapterSectionMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
+        if (firstLinkMatch && firstLinkMatch[1]) {
+          // Use the exact URL from the HTML
           firstChapterUrl = makeAbsoluteUrl(firstLinkMatch[1], url);
           console.log('[Scraper] Asianovel exact first chapter URL from HTML:', firstChapterUrl);
+        }
+      }
+      
+      // Fallback: Try to find chapter list using class="chapter-group__list"
+      if (!firstChapterUrl) {
+        const chapterListMatch = safeMatch(html, /<ol[^>]*class="chapter-group__list"[^>]*>([\s\S]*?)<\/ol>/i);
+        if (chapterListMatch) {
+          const firstLinkMatch = chapterListMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
+          if (firstLinkMatch && firstLinkMatch[1]) {
+            firstChapterUrl = makeAbsoluteUrl(firstLinkMatch[1], url);
+            console.log('[Scraper] Asianovel exact first chapter URL from HTML (fallback):', firstChapterUrl);
+          }
+        }
+      }
+      
+      // Final fallback: Construct first chapter URL
+      if (!firstChapterUrl) {
+        // Try to find the first chapter number from the HTML
+        const chapterNumMatch = html.match(/chapter-(\d+)\//);
+        if (chapterNumMatch) {
+          const baseNovelUrl = url.replace(/\/$/, '');
+          // Asianovel uses /chapter/chapter-{number}/ format
+          firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}${chapterNumMatch[1]}/`;
+          console.log('[Scraper] Asianovel constructed first chapter URL from found number:', firstChapterUrl);
+        } else {
+          // If we can't find a chapter number, use the story ID to construct a reasonable URL
+          const baseNovelUrl = url.replace(/\/$/, '');
+          firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}1/`;
+          console.log('[Scraper] Asianovel constructed first chapter URL (fallback):', firstChapterUrl);
         }
       }
     }
@@ -944,15 +966,63 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
 
-    // --- ASIANOVEL CHAPTER TITLE EXTRACTION ---
+    // --- ASIANOVEL CHAPTER TITLE AND CONTENT EXTRACTION ---
     if (isAsianovel) {
+      // Title: uses class="chapter-title"
       const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
+                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ||
+                         safeMatch(html, /<h1[^>]*itemprop="headline"[^>]*>([^<]+)<\/h1>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
+        // Remove "Chapter X" prefix if present
         rawTitle = rawTitle.replace(/^Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
+      }
+      
+      // Content: Asianovel uses <div class="chapter-content"> or similar
+      // Let's try multiple selectors
+      let contentHtml = null;
+      
+      // Try to find content in various possible containers
+      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch4 = safeMatch(html, /<div[^>]*class="story__content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch5 = safeMatch(html, /<article[^>]*class="chapter"[^>]*>([\s\S]*?)<\/article>/i);
+      
+      contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4 || contentMatch5;
+      
+      if (contentHtml) {
+        // Extract paragraphs from the content
+        const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              // Handle <br> tags - convert to newlines
+              text = text.replace(/<br\s*\/?>/gi, '\n');
+              text = decodeEntities(text);
+              text = stripTags(text);
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          
+          // If we have content from a content div, use it directly
+          const contentText = cleanedParagraphs.join('\n\n');
+          if (contentText.length > 0) {
+            // We'll assign this to content later
+            // Store in a variable to use later
+            const extractedContent = contentText;
+            // We'll handle this after the main paragraph extraction
+          }
+        } else {
+          // Fallback: extract all text from the content div
+          const extractedContent = decodeEntities(stripTags(contentHtml));
+          if (extractedContent.length > 0) {
+            // Store for later use
+          }
+        }
       }
     }
     
@@ -986,6 +1056,18 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
           console.log('[Scraper] No next chapter found.');
           return null;
         })(),
+        scraperInfo: {
+          selector: selector,
+          rawCount: paragraphs.length,
+          filteredCount: filtered.length,
+          htmlLength: html.length,
+          pTagCount: (html.match(/<p[\s>]/gi) || []).length,
+          fetchMethod: fetchMethod,
+          httpStatus: httpStatus,
+          jsInjected: false,
+          chapterTextCount: (html.match(/id="chapterText"/g) || []).length,
+          contentType: contentType,
+        }
       };
     }
     
@@ -1011,95 +1093,130 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     
     let content = '';
     
-    if (isNovelBin && validParagraphs.length > 0) {
-      const junkPhrases = [
-        'error loading comments',
-        'please try again later',
-        'total responses',
-        'load comments',
-        '~Novelⅈght~',
-        'login to comment',
-        'post a comment',
-        'report error',
-        'novelbin.com',
-        'novelbin.me',
-        'Community',
-        'Share your thoughts',
-        'react to the',
-        'latest chapter',
-        'or reply',
-        'to other readers',
-        'Thoughful comments',
-        'make this page',
-        'more useful',
-        'for everyone.'
-      ];
-      const filtered = validParagraphs.filter(text => {
-        const lower = text.toLowerCase();
-        return !junkPhrases.some(phrase => lower.includes(phrase));
-      });
-      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-    } else if (isFreeWebNovel && validParagraphs.length > 0) {
-      const junkPhrases = [
-        'panda',
-        'novɐ1',
-        'com',
-        'freewebnovel.com',
-        'freewebnovel',
-        '𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞',
-        'bednovel.com',
-        'bednovel',
-        'please visit',
-        'for a better experience',
-        'click here',
-        'download the app',
-        'read latest chapters',
-        'follow on',
-        'facebook',
-        'twitter',
-        'instagram',
-        'discord',
-        'support the author',
-        'donate',
-        'patreon',
-      ];
-      const filtered = validParagraphs.filter(text => {
-        const lower = text.toLowerCase();
-        return !junkPhrases.some(phrase => lower.includes(phrase));
-      });
-      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-    } else if ((isNovelFullNet || isReadNovelFull || isNovelFullCom || isAllNovel || isNovgo) && validParagraphs.length > 0) {
-      const junkPhrases = [
-        'we are offering free books',
-        'read novel updated daily',
-        'light novel translations',
-        'web novel, chinese novel',
-        'japanese novel, korean novel',
-        'other novel online',
-        'novelfull.com',
-        'readnovelfull.com',
-        'allnovel.org',
-        'novgo.net',
-      ];
-      const filtered = validParagraphs.filter(text => {
-        const lower = text.toLowerCase();
-        return !junkPhrases.some(phrase => lower.includes(phrase));
-      });
-      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-    } else if (isWuxiaworld && validParagraphs.length > 0) {
-      const junkPhrases = [
-        'ad',
-        'advertisement',
-      ];
-      const filtered = validParagraphs.filter(text => {
-        const lower = text.toLowerCase();
-        return !junkPhrases.some(phrase => lower.includes(phrase));
-      });
-      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-    } else {
-      content = validParagraphs.join('\n\n');
+    // For Asianovel, we already extracted content earlier
+    if (isAsianovel) {
+      // Check if we have content from the Asianovel-specific extraction
+      // We'll re-extract here to be safe
+      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+      const contentMatch4 = safeMatch(html, /<div[^>]*class="story__content"[^>]*>([\s\S]*?)<\/div>/i);
+      
+      const contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4;
+      
+      if (contentHtml) {
+        const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        if (paragraphs) {
+          const cleanedParagraphs = paragraphs
+            .map(p => {
+              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
+              text = text.replace(/<br\s*\/?>/gi, '\n');
+              text = decodeEntities(text);
+              text = stripTags(text);
+              return text.trim();
+            })
+            .filter(t => t.length > 0);
+          
+          content = cleanedParagraphs.join('\n\n');
+        } else {
+          content = decodeEntities(stripTags(contentHtml));
+        }
+      }
     }
     
+    // If no content yet, use the general extraction
+    if (!content) {
+      if (isNovelBin && validParagraphs.length > 0) {
+        const junkPhrases = [
+          'error loading comments',
+          'please try again later',
+          'total responses',
+          'load comments',
+          '~Novelⅈght~',
+          'login to comment',
+          'post a comment',
+          'report error',
+          'novelbin.com',
+          'novelbin.me',
+          'Community',
+          'Share your thoughts',
+          'react to the',
+          'latest chapter',
+          'or reply',
+          'to other readers',
+          'Thoughful comments',
+          'make this page',
+          'more useful',
+          'for everyone.'
+        ];
+        const filtered = validParagraphs.filter(text => {
+          const lower = text.toLowerCase();
+          return !junkPhrases.some(phrase => lower.includes(phrase));
+        });
+        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+      } else if (isFreeWebNovel && validParagraphs.length > 0) {
+        const junkPhrases = [
+          'panda',
+          'novɐ1',
+          'com',
+          'freewebnovel.com',
+          'freewebnovel',
+          '𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞',
+          'bednovel.com',
+          'bednovel',
+          'please visit',
+          'for a better experience',
+          'click here',
+          'download the app',
+          'read latest chapters',
+          'follow on',
+          'facebook',
+          'twitter',
+          'instagram',
+          'discord',
+          'support the author',
+          'donate',
+          'patreon',
+        ];
+        const filtered = validParagraphs.filter(text => {
+          const lower = text.toLowerCase();
+          return !junkPhrases.some(phrase => lower.includes(phrase));
+        });
+        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+      } else if ((isNovelFullNet || isReadNovelFull || isNovelFullCom || isAllNovel || isNovgo) && validParagraphs.length > 0) {
+        const junkPhrases = [
+          'we are offering free books',
+          'read novel updated daily',
+          'light novel translations',
+          'web novel, chinese novel',
+          'japanese novel, korean novel',
+          'other novel online',
+          'novelfull.com',
+          'readnovelfull.com',
+          'allnovel.org',
+          'novgo.net',
+        ];
+        const filtered = validParagraphs.filter(text => {
+          const lower = text.toLowerCase();
+          return !junkPhrases.some(phrase => lower.includes(phrase));
+        });
+        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+      } else if (isWuxiaworld && validParagraphs.length > 0) {
+        const junkPhrases = [
+          'ad',
+          'advertisement',
+        ];
+        const filtered = validParagraphs.filter(text => {
+          const lower = text.toLowerCase();
+          return !junkPhrases.some(phrase => lower.includes(phrase));
+        });
+        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
+      } else if (validParagraphs.length > 0) {
+        content = validParagraphs.join('\n\n');
+      }
+    }
+    
+    // If still no content, try fallback content extraction
     if (!content) {
       const contentMatch = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
                            safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
