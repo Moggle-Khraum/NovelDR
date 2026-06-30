@@ -24,7 +24,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter, checkSiteHealth } from "@/hooks/useApi";
 import Colors from "@/constants/colors";
 
-// --- Added 'baseUrl' to perform health checks ---
+// --- SUPPORTED SITES ---
 const SUPPORTED_SITES = [
   { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
   { name: "NovelFullCom", baseUrl: "https://novelfull.com/" },
@@ -34,12 +34,10 @@ const SUPPORTED_SITES = [
   { name: "NovGoNet", baseUrl: "https://novgo.net/" },
   { name: "NovelBinCom", baseUrl: "https://novelbin.com/" },
   { name: "BedNovelCom", baseUrl: "https://bednovel.com/" },
-  { name: "LightNovelWorldOrg", baseUrl: "https://www.lightnovelworld.org/" },
+  { name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
   { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
-  { name: "FreeWebNovelOrg", baseUrl: "https://freewebnovel.org/" },
-  { name: "NovelBinMe", baseUrl: "https://novelbin.me/" },
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
-  { name: "AsiaNovel", baseUrl: "https://www.asianovel.net/" },
+  { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
 ];
 
 type LogEntry = {
@@ -77,10 +75,13 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("limit")) return "✅";
     if (text.includes("halted")) return "⚠️";
     if (text.includes("No more chapters")) return "🏁";
-    if (text.includes("[LNW]")) return ""; 
+    if (text.includes("[LNW]")) return "";
     if (text.includes("━━━━")) return "";
     if (text.includes("Chapters sorted")) return "📚";
     if (text.includes("Chapter")) return "📖";
+    if (text.includes("health check")) return "🏥";
+    if (text.includes("unreachable")) return "⚠️";
+    if (text.includes("All sites are up")) return "✅";
     return "";
   };
 
@@ -135,7 +136,7 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
   );
 }
 
-// --- Modal Cell (Mirrors SiteCell but inside the Modal) ---
+// --- Modal Cell ---
 function SourceListModalCell({ name, status }: { name: string; status: SiteStatus }) {
   const { colors } = useTheme();
   const isOffline = status === 'offline';
@@ -175,6 +176,7 @@ function SourceListModalCell({ name, status }: { name: string; status: SiteStatu
   );
 }
 
+// --- Source List Modal ---
 interface SourceListModalProps {
   visible: boolean;
   onClose: () => void;
@@ -228,6 +230,7 @@ function SourceListModal({
   );
 }
 
+// --- Main Component ---
 export default function AddNovelScreen() {
   const { colors } = useTheme();
   const { addNovel, novels } = useLibrary();
@@ -255,7 +258,7 @@ export default function AddNovelScreen() {
   const logScrollRef = useRef<ScrollView>(null);
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- Site Health Check Function (Updated to match Python version) ---
+  // --- Site Health Check Function (Translates Python script behavior) ---
   const checkAllSites = async (showLogs: boolean = false) => {
     if (isCheckingSites) return;
     
@@ -274,7 +277,7 @@ export default function AddNovelScreen() {
       addLog(`📡 Checking ${SUPPORTED_SITES.length} sites...`, "info");
     }
 
-    // Check all sites in parallel with concurrency limit
+    // Check all sites in parallel with concurrency limit (5 at a time like Python)
     const concurrencyLimit = 5;
     const results: Array<{ name: string; status: SiteStatus }> = [];
     
@@ -284,6 +287,7 @@ export default function AddNovelScreen() {
       
       const batchPromises = batch.map(async (site) => {
         try {
+          // Using the checkSiteHealth from useApi
           const isUp = await checkSiteHealth(site.baseUrl);
           return { name: site.name, status: isUp ? 'online' : 'offline' };
         } catch (error) {
@@ -310,27 +314,25 @@ export default function AddNovelScreen() {
       setSiteStatuses(newStatuses);
     }
 
-    // Final count
+    // Count results
     const onlineCount = Object.values(siteStatuses).filter(s => s === 'online').length;
+    const downCount = SUPPORTED_SITES.length - onlineCount;
     
     if (showLogs) {
-      const downCount = SUPPORTED_SITES.length - onlineCount;
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`✅ Health check complete: ${onlineCount} UP, ${downCount} DOWN`, 
         downCount === 0 ? "success" : "warning");
       
       if (downCount > 0) {
         addLog(`⚠️  ${downCount} site(s) are currently unreachable!`, "warning");
-        // Find offline sites
+        // Find offline sites and show them
         const offlineSites = Object.keys(siteStatuses).filter(
           key => siteStatuses[key] === 'offline'
         );
-        if (offlineSites.length > 0 && offlineSites.length <= 5) {
+        if (offlineSites.length > 0) {
           offlineSites.forEach(name => {
             addLog(`   ❌ ${name}`, "error");
           });
-        } else if (offlineSites.length > 5) {
-          addLog(`   ❌ ${offlineSites.length} sites offline (check modal for details)`, "error");
         }
       } else {
         addLog(`✅ All sites are up and running!`, "success");
@@ -341,17 +343,19 @@ export default function AddNovelScreen() {
     setIsCheckingSites(false);
   };
 
-  // --- Setup automatic health checks ---
+  // --- Setup automatic health checks (matches Python script behavior) ---
   useEffect(() => {
-    // Initial check with a 2-second delay to let the UI render
+    // Initial check: Wait 5 seconds, then show results (like Python script)
     const initialTimeout = setTimeout(() => {
-      checkAllSites(true);
-    }, 2000);
+      checkAllSites(true);  // showLogs = true for initial check
+    }, 5000); // 5 seconds delay
 
-    // Set up periodic checks every 5 minutes (like Python version but adjusted for mobile)
+    // Periodic checks every 12 hours (like Python script)
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+    
     healthCheckIntervalRef.current = setInterval(() => {
-      checkAllSites(false); // Silent check
-    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+      checkAllSites(false); // Silent check - no logs displayed (like Python's background check)
+    }, TWELVE_HOURS);
 
     return () => {
       clearTimeout(initialTimeout);
@@ -1018,7 +1022,7 @@ export default function AddNovelScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Source List Modal - Pass siteStatuses prop */}
+      {/* Source List Modal */}
       <SourceListModal
         visible={sourceListModalVisible}
         onClose={() => setSourceListModalVisible(false)}
