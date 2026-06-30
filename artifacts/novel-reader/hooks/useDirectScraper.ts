@@ -597,29 +597,79 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     if (isRoyalRoad) {
       console.log('[Scraper] RoyalRoad detected');
       
-      const titleMatch = safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i);
-      if (titleMatch) title = decodeEntities(titleMatch);
+      // Extract title - RoyalRoad uses h1 with itemprop="name" or just h1
+      const titleMatch = safeMatch(html, /<h1[^>]*itemprop="name"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h1[^>]*class="fiction-title"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch) title = decodeEntities(titleMatch.trim());
       
-      const authorMatch = safeMatch(html, /<h4[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
-      if (authorMatch) author = decodeEntities(authorMatch);
+      // Extract author - RoyalRoad uses itemprop="author"
+      const authorMatch = safeMatch(html, /<span[^>]*itemprop="author"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i) ||
+                          safeMatch(html, /<a[^>]*itemprop="author"[^>]*>([^<]+)<\/a>/i) ||
+                          safeMatch(html, /<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) {
+        author = decodeEntities(authorMatch.trim());
+      }
       
-      const descMatch = safeMatch(html, /<div[^>]*class="description"[^>]*>([\s\S]*?)<\/div>/i);
+      // Extract description/synopsis
+      const descMatch = safeMatch(html, /<div[^>]*class="description"[^>]*itemprop="description"[^>]*>([\s\S]*?)<\/div>/i) ||
+                        safeMatch(html, /<div[^>]*class="description"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
-        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        // Remove the "Synopsis" header if present
+        let descText = descMatch.replace(/<h2[^>]*>Synopsis<\/h2>/i, '');
+        const paragraphs = descText.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
-          synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
+          synopsis = paragraphs
+            .map(p => decodeEntities(stripTags(p)))
+            .filter(t => t.length > 0)
+            .join('\n\n');
         } else {
-          synopsis = decodeEntities(stripTags(descMatch));
+          synopsis = decodeEntities(stripTags(descText));
         }
       }
       
-      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      // Extract cover image - RoyalRoad uses img with class="thumbnail" or in a figure
+      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i) ||
+                         safeMatch(html, /<figure[^>]*class="cover-art"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i) ||
+                         safeMatch(html, /<img[^>]*class="cover"[^>]*src="([^"]+)"/i);
+      if (coverMatch) {
+        coverUrl = makeAbsoluteUrl(coverMatch, url);
+      }
       
-      // Extract first chapter URL from chapter list
-      const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
-      if (chapterMatch) {
-        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+      // Extract first chapter URL - RoyalRoad has a chapters table
+      // Look for the first chapter link in the chapter list
+      const chapterListMatch = safeMatch(html, /<table[^>]*class="chapters"[^>]*>([\s\S]*?)<\/table>/i) ||
+                               safeMatch(html, /<div[^>]*class="chapter-list"[^>]*>([\s\S]*?)<\/div>/i) ||
+                               safeMatch(html, /<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+      
+      if (chapterListMatch) {
+        // Look for the first chapter link - usually the first <a> in the list
+        const firstChapterMatch = safeMatch(chapterListMatch, /<a[^>]*href="([^"]*\/chapter[^"]*)"[^>]*>/i) ||
+                                  safeMatch(chapterListMatch, /<a[^>]*href="([^"]*\/chapters[^"]*)"[^>]*>/i);
+        if (firstChapterMatch) {
+          firstChapterUrl = makeAbsoluteUrl(firstChapterMatch, url);
+          console.log('[Scraper] Found first chapter from chapter list:', firstChapterUrl);
+        }
+      }
+      
+      // If no chapter list found, try direct construction
+      if (!firstChapterUrl) {
+        const baseNovelUrl = url.replace(/\/$/, '');
+        // RoyalRoad typically uses /chapters/ or /chapter/ in the URL structure
+        if (url.includes('/fiction/')) {
+          // Extract the fiction ID from the URL
+          const fictionIdMatch = url.match(/\/fiction\/(\d+)/i);
+          if (fictionIdMatch) {
+            firstChapterUrl = `${baseNovelUrl}/chapters/1`;
+            console.log('[Scraper] Constructed first chapter URL with fiction ID:', firstChapterUrl);
+          }
+        }
+        
+        // Final fallback
+        if (!firstChapterUrl) {
+          firstChapterUrl = `${baseNovelUrl}/chapter/1/`;
+          console.log('[Scraper] Constructed first chapter URL (fallback):', firstChapterUrl);
+        }
       }
     }
 
@@ -868,9 +918,12 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
 
+    // --- ROYALROAD CHAPTER TITLE EXTRACTION ---
     if (isRoyalRoad) {
-      const titleMatch = safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
+      const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h1[^>]*itemprop="headline"[^>]*>([^<]+)<\/h1>/i) ||
+                         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i) ||
+                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
         rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
@@ -1041,18 +1094,6 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       const filtered = validParagraphs.filter(text => {
         const lower = text.toLowerCase();
         return !junkPhrases.some(phrase => lower.includes(phrase));
-      });
-      content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-    } else if (isLightNovelPub && validParagraphs.length > 0) {
-      // LightNovelPub is clean, minimal filtering needed
-      const junkPhrases = [
-        'light novel pub',
-        'lightnovelpub',
-        'read novel free',
-      ];
-      const filtered = validParagraphs.filter(text => {
-        const lower = text.toLowerCase();
-        return !junkPhrases.some(phrase => lower.includes(phrase)) && text.length > 20;
       });
       content = filtered.join('\n\n') || validParagraphs.join('\n\n');
     } else {
