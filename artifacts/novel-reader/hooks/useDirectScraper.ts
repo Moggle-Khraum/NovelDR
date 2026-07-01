@@ -505,7 +505,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isFreeWebNovel = domainLower.includes('freewebnovel') || domainLower.includes('bednovel');
     const isNovelBin = domainLower.includes('novelbin');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
-    const isRoyalRoad = domainLower.includes('royalroad');
+    const isRoyalRoad = domainLower.includes('royalroad.com');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
     const isAsianovel = domainLower.includes('asianovel.net');
     
