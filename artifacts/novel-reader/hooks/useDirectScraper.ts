@@ -418,6 +418,39 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
 
   return deduped;
 };
+
+// ─── Synopsis cleaning ─────────────────────────────────────────────────────────
+// Clean synopsis by removing boilerplate text (especially for Wuxiaworld)
+const cleanSynopsis = (text: string): string => {
+  if (!text) return '';
+  
+  // List of boilerplate patterns to remove
+  const boilerplatePatterns = [
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/i,
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld/i,
+    /Read\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/i,
+    /This\s+novel\s+is\s+available\s+on\s+WuxiaWorld\.?Site/i,
+    /For\s+more\s+chapters,\s+visit\s+WuxiaWorld\.?Site/i,
+    /Visit\s+WuxiaWorld\.?Site\s+for\s+more/i,
+    /WuxiaWorld\.?Site\s+is\s+the\s+source/i,
+    /Source:\s+WuxiaWorld\.?Site/i,
+    /www\.wuxiaworld\.site/i,
+    /wuxiaworld\.site/i,
+  ];
+  
+  let cleaned = text;
+  
+  // Remove each boilerplate pattern
+  for (const pattern of boilerplatePatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  // Clean up extra whitespace and newlines
+  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n'); // Remove excessive newlines
+  cleaned = cleaned.trim();
+  
+  return cleaned;
+};
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
@@ -736,7 +769,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
     }
 
-    // --- WUXIAWORLD.SITE (FIXED) ---
+    // --- WUXIAWORLD.SITE (FIXED WITH cleanSynopsis) ---
     if (isWuxiaworld) {
       console.log('[Scraper] Wuxiaworld.site detected');
       
@@ -759,10 +792,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       if (descMatch) {
         let summaryHtml = descMatch;
         
-        // STEP 1: Remove the boilerplate header text (the bold/emphasized line)
-        summaryHtml = summaryHtml.replace(/<b><em>You’re Reading.*?on WuxiaWorld\.Site<\/em><\/b>/i, '').trim();
-        // Also remove any variations with different formatting
-        summaryHtml = summaryHtml.replace(/You’re Reading.*?on WuxiaWorld\.Site/i, '').trim();
+        // STEP 1: Remove the boilerplate header text using cleanSynopsis
+        summaryHtml = cleanSynopsis(summaryHtml);
         
         // STEP 2: Extract all <p> tags
         const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
@@ -791,12 +822,15 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
           // Join paragraphs with double newline to ensure proper spacing between paragraphs
           synopsis = cleanedParagraphs.join('\n\n');
           
+          // Final cleanup of any remaining boilerplate
+          synopsis = cleanSynopsis(synopsis);
+          
           console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
           // Fallback: just strip tags and decode entities
           let fallbackText = summaryHtml.replace(/<br\s*\/?>/gi, '\n\n');
           fallbackText = decodeEntities(stripTags(fallbackText));
-          synopsis = fallbackText;
+          synopsis = cleanSynopsis(fallbackText);
         }
       }
       
