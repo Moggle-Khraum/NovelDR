@@ -258,11 +258,11 @@ export default function AddNovelScreen() {
   const logScrollRef = useRef<ScrollView>(null);
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- Site Health Check Function (Translates Python script behavior) ---
-  const checkAllSites = async (showLogs: boolean = false) => {
+  // --- Site Health Check Function (Simplified - No Logs) ---
+  const checkAllSites = async () => {
     if (isCheckingSites) return;
     
-    setIsCheckingSites(false);
+    setIsCheckingSites(true);
     
     // Set all sites to 'checking' status
     const initialStatus: Record<string, SiteStatus> = {};
@@ -271,14 +271,8 @@ export default function AddNovelScreen() {
     });
     setSiteStatuses(initialStatus);
 
-    if (showLogs) {
-      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      addLog(`🔍 Checking site health...`, "downloading");
-      addLog(`📡 Checking ${SUPPORTED_SITES.length} sites...`, "info");
-    }
-
-    // Check all sites in parallel with concurrency limit (5 at a time like Python)
-    const concurrencyLimit = 5;
+    // Check all sites in parallel with concurrency limit (8 at a time)
+    const concurrencyLimit = 8;
     const results: Array<{ name: string; status: SiteStatus }> = [];
     
     // Process sites in batches
@@ -287,7 +281,6 @@ export default function AddNovelScreen() {
       
       const batchPromises = batch.map(async (site) => {
         try {
-          // Using the checkSiteHealth from useApi
           const isUp = await checkSiteHealth(site.baseUrl);
           return { name: site.name, status: isUp ? 'online' : 'offline' };
         } catch (error) {
@@ -313,48 +306,22 @@ export default function AddNovelScreen() {
       
       setSiteStatuses(newStatuses);
     }
-
-    // Count results
-    const onlineCount = Object.values(siteStatuses).filter(s => s === 'online').length;
-    const downCount = SUPPORTED_SITES.length - onlineCount;
-    
-    if (showLogs) {
-      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      addLog(`✅ Health check complete: ${onlineCount} UP, ${downCount} DOWN`, 
-        downCount === 0 ? "success" : "warning");
-      
-      if (downCount > 0) {
-        addLog(`⚠️  ${downCount} site(s) are currently unreachable!`, "warning");
-        // Find offline sites and show them
-        const offlineSites = Object.keys(siteStatuses).filter(
-          key => siteStatuses[key] === 'offline'
-        );
-        if (offlineSites.length > 0) {
-          offlineSites.forEach(name => {
-            addLog(`   ❌ ${name}`, "error");
-          });
-        }
-      } else {
-        addLog(`✅ All sites are up and running!`, "success");
-      }
-      addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-    }
     
     setIsCheckingSites(false);
   };
 
-  // --- Setup automatic health checks (matches Python script behavior) ---
+  // --- Setup automatic health checks ---
   useEffect(() => {
-    // Initial check: Wait 5 seconds, then show results (like Python script)
+    // Initial check: Wait 5 seconds
     const initialTimeout = setTimeout(() => {
-      checkAllSites(true);  // showLogs = true for initial check
-    }, 5000); // 5 seconds delay
+      checkAllSites();
+    }, 5000);
 
-    // Periodic checks every 12 hours (like Python script)
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+    // Periodic checks every 12 hours
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
     
     healthCheckIntervalRef.current = setInterval(() => {
-      checkAllSites(false); // Silent check - no logs displayed (like Python's background check)
+      checkAllSites();
     }, TWELVE_HOURS);
 
     return () => {
@@ -848,6 +815,27 @@ export default function AddNovelScreen() {
               <ActivityIndicator size="small" color={colors.accent} style={{ marginLeft: 'auto' }} />
             )}
           </View>
+          
+          {/* Legend */}
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.success }}>🟢</Text>
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>UP</Text>
+            </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.error }}>🔴</Text>
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>DOWN</Text>
+            </View>
+          </View>
+          
+          {/* Subtitle */}
+          <Text style={[styles.legendSubtitle, { color: colors.textMuted }]}>
+            *Downed source more than a month will be removed
+          </Text>
+          
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {SUPPORTED_SITES.slice(0, 8).map((site) => (
               <SiteCell key={site.name} name={site.name} status={siteStatuses[site.name] || 'idle'} />
@@ -1058,12 +1046,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   sitesHeaderLabel: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 0.8,
+  },
+  legendContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  legendText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+  },
+  legendSeparator: {
+    marginHorizontal: 2,
+  },
+  legendSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    fontStyle: "italic",
+    marginBottom: 8,
   },
   sitesGrid: {
     flexDirection: "row",
