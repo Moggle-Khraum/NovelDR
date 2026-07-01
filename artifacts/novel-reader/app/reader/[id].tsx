@@ -46,18 +46,22 @@ type BgPreset = {
 };
 
 const BG_PRESETS: BgPreset[] = [
-  { id: "none", label: "None", type: "solid", color: "transparent", textColor: "#1A1A1A", textColorSecondary: "#666666" },
-  { id: "parchment", label: "Parchment", type: "solid", color: "#F2E8D5", textColor: "#2C1810", textColorSecondary: "#8B6914", accentColor: "#8B4513" },
-  { id: "night", label: "Night", type: "solid", color: "#0D1117", textColor: "#E8EDF2", textColorSecondary: "#8B949E", accentColor: "#58A6FF" },
-  { id: "forest", label: "Forest", type: "solid", color: "#1A2E1A", textColor: "#D4E8D4", textColorSecondary: "#8BA888", accentColor: "#6B8E23" },
-  { id: "ocean", label: "Ocean", type: "solid", color: "#0A1628", textColor: "#B8D4E8", textColorSecondary: "#6B8FB3", accentColor: "#4A90E2" },
-  { id: "rose", label: "Rose", type: "solid", color: "#2A1020", textColor: "#F0D0E0", textColorSecondary: "#C980A0", accentColor: "#E87DA5" },
-  { id: "slate", label: "Slate", type: "solid", color: "#1E2430", textColor: "#D8E0E8", textColorSecondary: "#8B98A8", accentColor: "#7E8A98" },
-  { id: "grad_dusk", label: "Dusk", type: "gradient", color: "#1A0533", color2: "#0A1628", textColor: "#D8C8F0", textColorSecondary: "#A890C8", accentColor: "#9B6BFF" },
-  { id: "grad_dawn", label: "Dawn", type: "gradient", color: "#2A1008", color2: "#1A0520", textColor: "#F0C8B8", textColorSecondary: "#C89878", accentColor: "#E87D5A" },
-  { id: "grad_mist", label: "Mist", type: "gradient", color: "#E8EFF5", color2: "#F5F0E8", textColor: "#2A2A2A", textColorSecondary: "#6B6B6B", accentColor: "#4A6B8A" },
-  { id: "grad_moss", label: "Moss", type: "gradient", color: "#1A2810", color2: "#0F1A18", textColor: "#C8E0B0", textColorSecondary: "#90B080", accentColor: "#7CB842" },
-  { id: "grad_ember", label: "Ember", type: "gradient", color: "#1A0A00", color2: "#2A0800", textColor: "#F0A080", textColorSecondary: "#C87050", accentColor: "#FF6B3D" },
+  // ─── NONE (Special - uses app theme) ───
+  { id: "none", label: "None", type: "solid", color: "transparent", textColor: "", textColorSecondary: "", accentColor: "" },
+  
+  // ─── 5 LIGHT PRESETS ───
+  { id: "light_warm", label: "Warm", type: "solid", color: "#FDF6EE", textColor: "#2C1810", textColorSecondary: "#8B6914", accentColor: "#E87D3D" },
+  { id: "light_blue", label: "Sky", type: "solid", color: "#F0F8FF", textColor: "#1A2A4A", textColorSecondary: "#6B8FB3", accentColor: "#4A90E2" },
+  { id: "light_green", label: "Mint", type: "solid", color: "#F0FFF4", textColor: "#1A3A2A", textColorSecondary: "#6BA88B", accentColor: "#3BA876" },
+  { id: "light_rose", label: "Rose", type: "solid", color: "#FFF5F7", textColor: "#3A1A2A", textColorSecondary: "#C980A0", accentColor: "#E87DA5" },
+  { id: "light_lavender", label: "Lavender", type: "solid", color: "#F8F0FF", textColor: "#2A1A3A", textColorSecondary: "#A080C8", accentColor: "#9B6BFF" },
+  
+  // ─── 5 DARK PRESETS ───
+  { id: "dark_default", label: "Dark", type: "solid", color: "#0D1117", textColor: "#E8EDF2", textColorSecondary: "#8B949E", accentColor: "#58A6FF" },
+  { id: "dark_ocean", label: "Ocean", type: "solid", color: "#0A1628", textColor: "#B8D4E8", textColorSecondary: "#6B8FB3", accentColor: "#4A90E2" },
+  { id: "dark_forest", label: "Forest", type: "solid", color: "#1A2E1A", textColor: "#D4E8D4", textColorSecondary: "#8BA888", accentColor: "#6B8E23" },
+  { id: "dark_ember", label: "Ember", type: "solid", color: "#1A0A00", textColor: "#F0A080", textColorSecondary: "#C87050", accentColor: "#FF6B3D" },
+  { id: "dark_plum", label: "Plum", type: "solid", color: "#1A0A1A", textColor: "#E8D0E8", textColorSecondary: "#B080A8", accentColor: "#B86BB8" },
 ];
 
 const READER_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/reader_settings.json`;
@@ -295,6 +299,7 @@ export default function ReaderScreen() {
         border: isLightColor(activePreset.color) ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)",
       });
     } else {
+      // NONE selected - use app theme colors
       setAdaptiveColors({
         text: themeColors.text,
         textSecondary: themeColors.textSecondary,
@@ -1093,69 +1098,64 @@ export default function ReaderScreen() {
             >
               <View style={[styles.sheetHandle, { backgroundColor: adaptiveColors.border }]} />
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-                
-                {/* 1. FONT SIZE - Centered Value between A buttons */}
-                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary }]}>FONT SIZE</Text>
-                <View style={styles.controlRowCentered}>
+                {/* Font Size */}
+                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary }]}>Font Size</Text>
+                <View style={styles.controlRow}>
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtn, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.max(0, fontSizeIdx - 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 16 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 12 }]}>A</Text>
                   </Pressable>
-                  
-                  <Text style={[styles.controlValueCentered, { color: adaptiveColors.text }]}>{fontSize}PT</Text>
-                  
+                  <Text style={[styles.controlValue, { color: adaptiveColors.text }]}>{fontSize}pt</Text>
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtn, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.min(FONT_SIZES.length - 1, fontSizeIdx + 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 22 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 18 }]}>A</Text>
                   </Pressable>
                 </View>
 
-                {/* 2. LINE SPACING - Left label, Button, Value, Button */}
-                <View style={styles.rowGroup}>
-                  <Text style={[styles.rowGroupLabel, { color: adaptiveColors.textSecondary }]}>LINE SPACING</Text>
-                  
+                {/* Line Spacing */}
+                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary, marginTop: 12 }]}>Line Spacing</Text>
+                <View style={styles.controlRow}>
                   <Pressable
-                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtn, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.max(0, lineSpacingIdx - 1);
                       setLineSpacingIdx(newIdx);
                       saveAllSettings(fontSizeIdx, newIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Ionicons name="remove" size={18} color={adaptiveColors.text} />
+                    <Ionicons name="remove" size={16} color={adaptiveColors.text} />
                   </Pressable>
-                  
-                  <Text style={[styles.controlValueCenteredSmall, { color: adaptiveColors.text }]}>{lineSpacing.toFixed(1)}X</Text>
-                  
+                  <Text style={[styles.controlValue, { color: adaptiveColors.text }]}>{lineSpacing.toFixed(1)}x</Text>
                   <Pressable
-                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtn, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.min(LINE_SPACINGS.length - 1, lineSpacingIdx + 1);
                       setLineSpacingIdx(newIdx);
                       saveAllSettings(fontSizeIdx, newIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Ionicons name="add" size={18} color={adaptiveColors.text} />
+                    <Ionicons name="add" size={16} color={adaptiveColors.text} />
                   </Pressable>
                 </View>
 
-                {/* 3. AUTO-SCROLL - Left play btn, then Button, Value, Button */}
-                <View style={styles.rowGroup}>
+                {/* Auto-Scroll */}
+                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary, marginTop: 12 }]}>Auto‑Scroll</Text>
+                <View style={styles.autoScrollRow}>
                   <Pressable
                     style={[
-                      styles.autoScrollPlayBtnSmall,
+                      styles.autoScrollPlayBtn,
                       {
                         backgroundColor: autoScrollActive ? adaptiveColors.accent : adaptiveColors.card,
                         borderColor: adaptiveColors.border,
@@ -1164,35 +1164,62 @@ export default function ReaderScreen() {
                     onPress={() => (autoScrollActive ? stopAutoScroll() : startAutoScroll())}
                   >
                     <Ionicons name={autoScrollActive ? "pause" : "play"} size={16} color={autoScrollActive ? "#fff" : adaptiveColors.text} />
+                    <Text style={[styles.autoScrollText, { color: autoScrollActive ? "#fff" : adaptiveColors.text }]}>
+                      {autoScrollActive ? "Pause" : "Start"}
+                    </Text>
                   </Pressable>
-                  
-                  <Pressable
-                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
-                    onPress={() => {
-                      const newIdx = Math.max(0, autoScrollSpeedIdx - 1);
-                      setAutoScrollSpeedIdx(newIdx);
-                      saveAllSettings(fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx);
-                    }}
-                  >
-                    <Ionicons name="remove" size={18} color={adaptiveColors.text} />
-                  </Pressable>
-                  
-                  <Text style={[styles.controlValueCenteredSmall, { color: adaptiveColors.text }]}>{currentSpeed.toFixed(1)}X</Text>
-                  
-                  <Pressable
-                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
-                    onPress={() => {
-                      const newIdx = Math.min(AUTO_SCROLL_SPEEDS.length - 1, autoScrollSpeedIdx + 1);
-                      setAutoScrollSpeedIdx(newIdx);
-                      saveAllSettings(fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx);
-                    }}
-                  >
-                    <Ionicons name="add" size={18} color={adaptiveColors.text} />
-                  </Pressable>
+                  <View style={styles.speedControl}>
+                    <Pressable
+                      style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                      onPress={() => {
+                        const newIdx = Math.max(0, autoScrollSpeedIdx - 1);
+                        setAutoScrollSpeedIdx(newIdx);
+                        saveAllSettings(fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx);
+                      }}
+                    >
+                      <Ionicons name="remove" size={14} color={adaptiveColors.text} />
+                    </Pressable>
+                    <Text style={[styles.controlValueSmall, { color: adaptiveColors.text }]}>{currentSpeed.toFixed(1)}x</Text>
+                    <Pressable
+                      style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                      onPress={() => {
+                        const newIdx = Math.min(AUTO_SCROLL_SPEEDS.length - 1, autoScrollSpeedIdx + 1);
+                        setAutoScrollSpeedIdx(newIdx);
+                        saveAllSettings(fontSizeIdx, lineSpacingIdx, marginPresetIdx, newIdx);
+                      }}
+                    >
+                      <Ionicons name="add" size={14} color={adaptiveColors.text} />
+                    </Pressable>
+                  </View>
                 </View>
 
-                {/* 4. BACKGROUND - Reverted to your old layout */}
-                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary, marginTop: 12 }]}>BACKGROUND</Text>
+                {/* Margins */}
+                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary, marginTop: 12 }]}>Margins</Text>
+                <View style={styles.marginRow}>
+                  {MARGIN_PRESETS.map((preset, idx) => (
+                    <Pressable
+                      key={preset}
+                      style={[
+                        styles.marginPresetBtn,
+                        {
+                          backgroundColor: marginPresetIdx === idx ? adaptiveColors.accent : adaptiveColors.card,
+                          borderColor: adaptiveColors.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setMarginPresetIdx(idx);
+                        saveAllSettings(fontSizeIdx, lineSpacingIdx, idx, autoScrollSpeedIdx);
+                      }}
+                    >
+                      <Text style={[styles.marginPresetText, { color: marginPresetIdx === idx ? "#fff" : adaptiveColors.text }]}>
+                        {preset}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Background */}
+                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary, marginTop: 12 }]}>Background</Text>
                 <View style={styles.bgRow}>
                   <Pressable
                     style={[styles.bgCurrentBtn, { borderColor: adaptiveColors.border, backgroundColor: adaptiveColors.card }]}
@@ -1215,14 +1242,13 @@ export default function ReaderScreen() {
                     onPress={() => setShowBgModal(true)}
                   >
                     <View style={styles.bgPresetsGrid}>
-                      {BG_PRESETS.slice(1, 5).map((p) => (
+                      {BG_PRESETS.slice(1, 6).map((p) => (
                         <View key={p.id} style={[styles.bgPresetsGridCell, { backgroundColor: p.color }]} />
                       ))}
                     </View>
                     <Text style={[styles.bgBtnLabel, { color: adaptiveColors.textSecondary }]}>Presets</Text>
                   </Pressable>
                 </View>
-
               </ScrollView>
             </Pressable>
           </Pressable>
@@ -1698,22 +1724,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderRightWidth: StyleSheet.hairlineWidth,
-    maxHeight: "80%",
+    maxHeight: "125%",
   },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
   sectionLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
-  
-  // NEW LAYOUT STYLES
-  controlRowCentered: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 16 },
-  controlBtnPill: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 22, borderWidth: 1 },
-  controlValueCentered: { fontSize: 16, fontWeight: "600", minWidth: 50, textAlign: "center" },
-  rowGroup: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingHorizontal: 4 },
-  rowGroupLabel: { fontSize: 13, fontWeight: "600", flex: 1 },
-  controlValueCenteredSmall: { fontSize: 15, fontWeight: "600", minWidth: 40, textAlign: "center" },
-  controlBtnSmall: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, borderWidth: 1 },
-  autoScrollPlayBtnSmall: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, borderWidth: 1, marginRight: 8 },
-
-  // OLD BACKGROUND LAYOUT STYLES
   controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   controlBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1 },
   controlBtnText: { fontWeight: "600" },
@@ -1730,7 +1744,6 @@ const styles = StyleSheet.create({
   bgPresetsBtn: { flex: 1, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   bgPresetsGrid: { flexDirection: "row", flexWrap: "wrap", height: 60 },
   bgPresetsGridCell: { width: "50%", height: "50%" },
-  
   autoScrollRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 },
   autoScrollPlayBtn: {
     flexDirection: "row",
@@ -1744,6 +1757,7 @@ const styles = StyleSheet.create({
   },
   autoScrollText: { fontSize: 13, fontWeight: "500" },
   speedControl: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: "auto" },
+  controlBtnSmall: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1 },
   controlValueSmall: { fontSize: 14, width: 40, textAlign: "center" },
   bgPresetsList: { paddingHorizontal: 20, paddingVertical: 12, gap: 10 },
   bgPresetItem: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 10, padding: 10 },
