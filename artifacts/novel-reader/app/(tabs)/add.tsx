@@ -48,6 +48,9 @@ type LogEntry = {
 
 type SiteStatus = 'idle' | 'checking' | 'online' | 'offline';
 
+// Storage keys for persistent site status
+const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
+
 // --- Reusable Log Line Component ---
 function LogLine({ entry }: { entry: LogEntry }) {
   const { colors } = useTheme();
@@ -258,10 +261,55 @@ export default function AddNovelScreen() {
   const logScrollRef = useRef<ScrollView>(null);
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- Site Health Check Function (Simplified - No Logs) ---
-  const checkAllSites = async () => {
+  // --- Load saved site status from storage ---
+  const loadSavedSiteStatus = async (): Promise<Record<string, SiteStatus> | null> => {
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(SITE_STATUS_STORAGE);
+      if (fileInfo.exists) {
+        const content = await FileSystem.readAsStringAsync(SITE_STATUS_STORAGE);
+        const data = JSON.parse(content);
+        // Check if data is still valid (not older than 12 hours)
+        if (data.timestamp && Date.now() - data.timestamp < 12 * 60 * 60 * 1000) {
+          return data.statuses;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.warn("Failed to load site status:", error);
+      return null;
+    }
+  };
+
+  // --- Save site status to storage ---
+  const saveSiteStatus = async (statuses: Record<string, SiteStatus>) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const dirInfo = await FileSystem.getInfoAsync(dir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      }
+      await FileSystem.writeAsStringAsync(
+        SITE_STATUS_STORAGE,
+        JSON.stringify({ statuses, timestamp: Date.now() })
+      );
+    } catch (error) {
+      console.warn("Failed to save site status:", error);
+    }
+  };
+
+  // --- Simple Site Health Check (Individual, Immediate Updates) ---
+  const checkAllSites = async (forceRecheck: boolean = false) => {
     if (isCheckingSites) return;
     
+    // Check if we have saved status that's still valid
+    if (!forceRecheck) {
+      const savedStatus = await loadSavedSiteStatus();
+      if (savedStatus) {
+        setSiteStatuses(savedStatus);
+        return;
+      }
+    }
+
     setIsCheckingSites(true);
     
     // Set all sites to 'checking' status
@@ -271,40 +319,27 @@ export default function AddNovelScreen() {
     });
     setSiteStatuses(initialStatus);
 
-    // Check all sites in parallel with concurrency limit (8 at a time)
-    const concurrencyLimit = 8;
-    const results: Array<{ name: string; status: SiteStatus }> = [];
+    // Check each site individually and update immediately
+    const updatedStatuses: Record<string, SiteStatus> = { ...initialStatus };
     
-    // Process sites in batches
-    for (let i = 0; i < SUPPORTED_SITES.length; i += concurrencyLimit) {
-      const batch = SUPPORTED_SITES.slice(i, i + concurrencyLimit);
+    for (const site of SUPPORTED_SITES) {
+      try {
+        const isUp = await checkSiteHealth(site.baseUrl);
+        updatedStatuses[site.name] = isUp ? 'online' : 'offline';
+        
+        // Update immediately after each site check
+        setSiteStatuses({ ...updatedStatuses });
+        
+        // Save progress
+        await saveSiteStatus(updatedStatuses);
+      } catch (error) {
+        updatedStatuses[site.name] = 'offline';
+        setSiteStatuses({ ...updatedStatuses });
+        await saveSiteStatus(updatedStatuses);
+      }
       
-      const batchPromises = batch.map(async (site) => {
-        try {
-          const isUp = await checkSiteHealth(site.baseUrl);
-          return { name: site.name, status: isUp ? 'online' : 'offline' };
-        } catch (error) {
-          return { name: site.name, status: 'offline' as SiteStatus };
-        }
-      });
-      
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
-      
-      // Update statuses progressively
-      const newStatuses: Record<string, SiteStatus> = {};
-      results.forEach((r) => {
-        newStatuses[r.name] = r.status;
-      });
-      
-      // Preserve any sites not yet checked
-      SUPPORTED_SITES.forEach((site) => {
-        if (!newStatuses[site.name]) {
-          newStatuses[site.name] = 'checking';
-        }
-      });
-      
-      setSiteStatuses(newStatuses);
+      // Small delay to avoid overwhelming servers
+      await new Promise(r => setTimeout(r, 200));
     }
     
     setIsCheckingSites(false);
@@ -312,16 +347,21 @@ export default function AddNovelScreen() {
 
   // --- Setup automatic health checks ---
   useEffect(() => {
-    // Initial check: Wait 5 seconds
-    const initialTimeout = setTimeout(() => {
-      checkAllSites();
-    }, 5000);
+    // Initial check: Wait 2 seconds, then load saved or check
+    const initialTimeout = setTimeout(async () => {
+      const savedStatus = await loadSavedSiteStatus();
+      if (savedStatus) {
+        setSiteStatuses(savedStatus);
+      } else {
+        checkAllSites(false);
+      }
+    }, 2000);
 
-    // Periodic checks every 12 hours
+    // Periodic recheck every 12 hours
     const TWELVE_HOURS = 12 * 60 * 60 * 1000;
     
     healthCheckIntervalRef.current = setInterval(() => {
-      checkAllSites();
+      checkAllSites(true);
     }, TWELVE_HOURS);
 
     return () => {
