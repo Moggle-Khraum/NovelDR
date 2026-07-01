@@ -749,32 +749,22 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      // Even more robust - handles any attribute order and class variations
-      const coverMatch = safeMatch(html, /<img[^>]*class="[^"]*thumbnail[^"]*"[^>]*src="([^"]+)"/i);
-      if (coverMatch) {
-          coverUrl = makeAbsoluteUrl(coverMatch, url);
-      } else {
-          // Fallback: look for any cover image with src
-          const fallbackMatch = safeMatch(html, /<img[^>]*src="([^"]+)"[^>]*class="[^"]*thumbnail[^"]*"/i);
-          if (fallbackMatch) coverUrl = makeAbsoluteUrl(fallbackMatch, url);
-      }
+      // More flexible regex that handles multiple classes and attribute order
+      const coverMatch = 
+        // Look for image inside cover-art-container with class containing "thumbnail"
+        safeMatch(html, /<div[^>]*class="[^"]*cover-art-container[^"]*"[^>]*>[\s\S]*?<img[^>]*class="[^"]*thumbnail[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
+        // Or just any image with class containing "thumbnail"
+        safeMatch(html, /<img[^>]*class="[^"]*thumbnail[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
+        // Or by data-type="cover" attribute (most specific for RoyalRoad)
+        safeMatch(html, /<img[^>]*data-type="cover"[^>]*src="([^"]+)"[^>]*>/i) ||
+        // Fallback: figure with cover-art class
+        safeMatch(html, /<figure[^>]*class="[^"]*cover-art[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i) ||
+        // Or any image with class containing "cover"
+        safeMatch(html, /<img[^>]*class="[^"]*cover[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
+        // Meta tags as last resort
+        safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*>/i) ||
+        safeMatch(html, /<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"[^>]*>/i);
       
-      // Extract first chapter URL from chapter list
-      const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
-      if (chapterMatch) {
-        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
-      }
-    }
-      
-      // Extract cover image - RoyalRoad uses img with class="thumbnail" in cover-art-container
-      // The image is inside <div class="cover-art-container"> with <img class="thumbnail">
-      const coverMatch = safeMatch(html, /<div[^>]*class="cover-art-container"[^>]*>[\s\S]*?<img[^>]*class="thumbnail"[^>]*src="([^"]+)"[^>]*>/i) ||
-                         safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"[^>]*>/i) ||
-                         safeMatch(html, /<figure[^>]*class="cover-art"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i) ||
-                         safeMatch(html, /<img[^>]*class="cover"[^>]*src="([^"]+)"[^>]*>/i) ||
-                         // Also try to get it from the meta tags
-                         safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*>/i) ||
-                         safeMatch(html, /<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"[^>]*>/i);
       if (coverMatch) {
         coverUrl = makeAbsoluteUrl(coverMatch, url);
         console.log('[Scraper] RoyalRoad cover found:', coverUrl);
