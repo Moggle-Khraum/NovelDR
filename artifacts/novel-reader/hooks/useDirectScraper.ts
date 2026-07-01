@@ -729,39 +729,35 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     }
 
     // --- ROYALROAD ---
+    // --- ROYALROAD ---
     if (isRoyalRoad) {
       console.log('[Scraper] RoyalRoad detected');
       
-      // Extract title - RoyalRoad uses h1 with itemprop="name" or just h1
-      const titleMatch = safeMatch(html, /<h1[^>]*itemprop="name"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<h1[^>]*class="fiction-title"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i);
-      if (titleMatch) title = decodeEntities(titleMatch.trim());
+      const titleMatch = safeMatch(html, /<h1[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch) title = decodeEntities(titleMatch);
       
-      // Extract author - RoyalRoad uses itemprop="author"
-      const authorMatch = safeMatch(html, /<span[^>]*itemprop="author"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i) ||
-                          safeMatch(html, /<a[^>]*itemprop="author"[^>]*>([^<]+)<\/a>/i) ||
-                          safeMatch(html, /<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
-      if (authorMatch) {
-        author = decodeEntities(authorMatch.trim());
-      }
+      const authorMatch = safeMatch(html, /<h4[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Extract description/synopsis
-      const descMatch = safeMatch(html, /<div[^>]*class="description"[^>]*itemprop="description"[^>]*>([\s\S]*?)<\/div>/i) ||
-                        safeMatch(html, /<div[^>]*class="description"[^>]*>([\s\S]*?)<\/div>/i);
+      const descMatch = safeMatch(html, /<div[^>]*class="description"[^>]*>([\s\S]*?)<\/div>/i);
       if (descMatch) {
-        // Remove the "Synopsis" header if present
-        let descText = descMatch.replace(/<h2[^>]*>Synopsis<\/h2>/i, '');
-        const paragraphs = descText.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+        const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
-          synopsis = paragraphs
-            .map(p => decodeEntities(stripTags(p)))
-            .filter(t => t.length > 0)
-            .join('\n\n');
+          synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
         } else {
-          synopsis = decodeEntities(stripTags(descText));
+          synopsis = decodeEntities(stripTags(descMatch));
         }
       }
+      
+      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
+      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      
+      // Extract first chapter URL from chapter list
+      const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
+      if (chapterMatch) {
+        firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
+      }
+    }
       
       // Extract cover image - RoyalRoad uses img with class="thumbnail" in cover-art-container
       // The image is inside <div class="cover-art-container"> with <img class="thumbnail">
