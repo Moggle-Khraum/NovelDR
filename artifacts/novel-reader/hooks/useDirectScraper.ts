@@ -420,22 +420,25 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
 };
 
 // ─── Synopsis cleaning ─────────────────────────────────────────────────────────
-// Clean synopsis by removing boilerplate text (especially for Wuxiaworld)
+// Clean synopsis by removing boilerplate text and formatting paragraphs (especially for Wuxiaworld)
 const cleanSynopsis = (text: string): string => {
   if (!text) return '';
   
-  // List of boilerplate patterns to remove
+  // List of boilerplate patterns to remove - more comprehensive
   const boilerplatePatterns = [
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/i,
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld/i,
-    /Read\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/i,
-    /This\s+novel\s+is\s+available\s+on\s+WuxiaWorld\.?Site/i,
-    /For\s+more\s+chapters,\s+visit\s+WuxiaWorld\.?Site/i,
-    /Visit\s+WuxiaWorld\.?Site\s+for\s+more/i,
-    /WuxiaWorld\.?Site\s+is\s+the\s+source/i,
-    /Source:\s+WuxiaWorld\.?Site/i,
-    /www\.wuxiaworld\.site/i,
-    /wuxiaworld\.site/i,
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld/gi,
+    /You'?re\s+Reading\s+[“"](.+?)[”"]/gi,  // Remove "You're Reading 'Title'" entirely
+    /Read\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
+    /This\s+novel\s+is\s+available\s+on\s+WuxiaWorld\.?Site/gi,
+    /For\s+more\s+chapters,\s+visit\s+WuxiaWorld\.?Site/gi,
+    /Visit\s+WuxiaWorld\.?Site\s+for\s+more/gi,
+    /WuxiaWorld\.?Site\s+is\s+the\s+source/gi,
+    /Source:\s+WuxiaWorld\.?Site/gi,
+    /www\.wuxiaworld\.site/gi,
+    /wuxiaworld\.site/gi,
+    /^[“"](.+?)[”"]\s+on\s+/gi,  // Remove quoted title at start
+    /^[“"](.+?)[”"]\s*$/gi,      // Remove standalone quoted text
   ];
   
   let cleaned = text;
@@ -445,11 +448,57 @@ const cleanSynopsis = (text: string): string => {
     cleaned = cleaned.replace(pattern, '');
   }
   
-  // Clean up extra whitespace and newlines
-  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n'); // Remove excessive newlines
-  cleaned = cleaned.trim();
+  // Remove any leading punctuation or spaces after cleaning
+  cleaned = cleaned.replace(/^[,.:;!?\s]+/, '');
   
-  return cleaned;
+  // Fix paragraph formatting - split on common paragraph separators
+  // First, replace multiple newlines with a single newline
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  // Split by periods followed by space and capital letter (sentence boundaries)
+  // but keep the period
+  const sentences = cleaned.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 1) {
+    // Group sentences into paragraphs (every 2-3 sentences)
+    const paragraphs: string[] = [];
+    let currentParagraph: string[] = [];
+    let sentenceCount = 0;
+    
+    for (const sentence of sentences) {
+      currentParagraph.push(sentence.trim());
+      sentenceCount++;
+      
+      // Start a new paragraph after 2-3 sentences or if it's a short sentence
+      if (sentenceCount >= 3 || sentence.length < 50) {
+        paragraphs.push(currentParagraph.join(' '));
+        currentParagraph = [];
+        sentenceCount = 0;
+      }
+    }
+    
+    // Add any remaining sentences
+    if (currentParagraph.length > 0) {
+      paragraphs.push(currentParagraph.join(' '));
+    }
+    
+    cleaned = paragraphs.join('\n\n');
+  } else {
+    // If no sentence boundaries found, try splitting by common paragraph markers
+    cleaned = cleaned.replace(/\.\s+(?=[A-Z])/g, '.\n\n');
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  }
+  
+  // Clean up extra whitespace
+  cleaned = cleaned.replace(/[ \t]+/g, ' ').trim();
+  
+  // Remove any remaining boilerplate
+  for (const pattern of boilerplatePatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  cleaned = cleaned.replace(/^[,.:;!?\s]+/, '').trim();
+  
+  return cleaned || text; // Return original if cleaning removed everything
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -769,7 +818,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
     }
 
-    // --- WUXIAWORLD.SITE (FIXED WITH cleanSynopsis) ---
+    // --- WUXIAWORLD.SITE (FIXED WITH ENHANCED cleanSynopsis) ---
     if (isWuxiaworld) {
       console.log('[Scraper] Wuxiaworld.site detected');
       
@@ -792,10 +841,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       if (descMatch) {
         let summaryHtml = descMatch;
         
-        // STEP 1: Remove the boilerplate header text using cleanSynopsis
-        summaryHtml = cleanSynopsis(summaryHtml);
-        
-        // STEP 2: Extract all <p> tags
+        // Extract all <p> tags first
         const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
@@ -803,8 +849,8 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
               // Remove the <p> tags
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
               
-              // STEP 3: Convert <br> tags to double newlines (\n\n)
-              text = text.replace(/<br\s*\/?>/gi, '\n\n');
+              // Convert <br> tags to spaces (not newlines for synopsis)
+              text = text.replace(/<br\s*\/?>/gi, ' ');
               
               // Decode entities
               text = decodeEntities(text);
@@ -812,24 +858,25 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
               // Strip any remaining HTML tags (like <b>, <em>, etc.)
               text = stripTags(text);
               
-              // Clean up extra whitespace but preserve paragraph breaks
-              // Split by newlines, trim each line, then join with double newlines
-              const lines = text.split('\n\n').map(line => line.trim()).filter(line => line.length > 0);
-              return lines.join('\n\n');
+              // Clean up extra whitespace
+              text = text.replace(/\s+/g, ' ').trim();
+              
+              return text;
             })
             .filter(t => t.length > 0);
           
-          // Join paragraphs with double newline to ensure proper spacing between paragraphs
-          synopsis = cleanedParagraphs.join('\n\n');
+          // Join all paragraphs with a space, then clean the entire text
+          let fullText = cleanedParagraphs.join(' ');
           
-          // Final cleanup of any remaining boilerplate
-          synopsis = cleanSynopsis(synopsis);
+          // Apply the enhanced cleanSynopsis
+          synopsis = cleanSynopsis(fullText);
           
           console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
-          // Fallback: just strip tags and decode entities
-          let fallbackText = summaryHtml.replace(/<br\s*\/?>/gi, '\n\n');
+          // Fallback: strip tags and clean
+          let fallbackText = summaryHtml.replace(/<br\s*\/?>/gi, ' ');
           fallbackText = decodeEntities(stripTags(fallbackText));
+          fallbackText = fallbackText.replace(/\s+/g, ' ').trim();
           synopsis = cleanSynopsis(fallbackText);
         }
       }
