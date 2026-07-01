@@ -433,7 +433,7 @@ const cleanSynopsis = (text: string): string => {
   let cleaned = text;
   
   // Remove each boilerplate pattern
-  for (const pattern of boilerplatePatterns) {
+  for (const pattern of boilerplatePattern) {
     cleaned = cleaned.replace(pattern, '');
   }
   
