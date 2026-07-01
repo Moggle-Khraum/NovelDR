@@ -773,12 +773,20 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      // Extract cover image - RoyalRoad uses img with class="thumbnail" or in a figure
-      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i) ||
-                         safeMatch(html, /<figure[^>]*class="cover-art"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i) ||
-                         safeMatch(html, /<img[^>]*class="cover"[^>]*src="([^"]+)"/i);
+      // Extract cover image - RoyalRoad uses img with class="thumbnail" in cover-art-container
+      // The image is inside <div class="cover-art-container"> with <img class="thumbnail">
+      const coverMatch = safeMatch(html, /<div[^>]*class="cover-art-container"[^>]*>[\s\S]*?<img[^>]*class="thumbnail"[^>]*src="([^"]+)"[^>]*>/i) ||
+                         safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"[^>]*>/i) ||
+                         safeMatch(html, /<figure[^>]*class="cover-art"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i) ||
+                         safeMatch(html, /<img[^>]*class="cover"[^>]*src="([^"]+)"[^>]*>/i) ||
+                         // Also try to get it from the meta tags
+                         safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*>/i) ||
+                         safeMatch(html, /<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"[^>]*>/i);
       if (coverMatch) {
         coverUrl = makeAbsoluteUrl(coverMatch, url);
+        console.log('[Scraper] RoyalRoad cover found:', coverUrl);
+      } else {
+        console.log('[Scraper] RoyalRoad cover not found');
       }
       
       // Extract first chapter URL - RoyalRoad has a chapters table
@@ -1003,6 +1011,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     }
     
     console.log('[Scraper] Found first chapter:', firstChapterUrl);
+    console.log('[Scraper] Found cover URL:', coverUrl);
     
     return {
       title: decodeEntities(title),
