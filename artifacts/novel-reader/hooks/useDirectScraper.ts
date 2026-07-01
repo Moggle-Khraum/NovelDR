@@ -749,8 +749,15 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      const coverMatch = safeMatch(html, /<img[^>]*class="thumbnail"[^>]*src="([^"]+)"/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      // Even more robust - handles any attribute order and class variations
+      const coverMatch = safeMatch(html, /<img[^>]*class="[^"]*thumbnail[^"]*"[^>]*src="([^"]+)"/i);
+      if (coverMatch) {
+          coverUrl = makeAbsoluteUrl(coverMatch, url);
+      } else {
+          // Fallback: look for any cover image with src
+          const fallbackMatch = safeMatch(html, /<img[^>]*src="([^"]+)"[^>]*class="[^"]*thumbnail[^"]*"/i);
+          if (fallbackMatch) coverUrl = makeAbsoluteUrl(fallbackMatch, url);
+      }
       
       // Extract first chapter URL from chapter list
       const chapterMatch = safeMatch(html, /<td[^>]*(?!class)>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>/i);
