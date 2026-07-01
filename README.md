@@ -42,10 +42,10 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | ReadNovelFull | https://readnovelfull.com/ | ✅ Full support     | NovelFull.com | https://novelfull.com/ | ✅ Full support |
 | NovelFull.net | https://novelfull.net/ | ✅ Full support      | AllNovel | https://allnovel.org/ | ✅ Full support |
 | FreeWebNovel | https://freewebnovel.com/ | ✅ Full support   | NovGo | https://novgo.net/ | ✅ Full support |
-| NovelBin.me | https://novelbin.me/ | ❌ DEAD SITE      | BedNovel | https://bednovel.com | ✅ Full support |
+| NovelBin.me | https://novelbin.me/ | ❌ Dead Site  | BedNovel | https://bednovel.com | ✅ Full support |
 | LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support     | WuxiaWorld.site | https://wuxiaworld.site/ | ✅ Full support |
 | RoyalRoad | https://www.royalroad.com/ | ✅ Full support     | AsiaNovel | https://www.asianovel.net/  | 🔘 Not Yet |
-| NovelBin.com  | https://nocelbin.com | ❌ DEAD SITE |     |    | ✅ Full support |
+| NovelBin.com  | https://nocelbin.com | ❌ Dead Site |     |    | ✅ Full support |
 |  |  | ✅ Full support |   |    | ✅ Full support |
 |  |  | ✅ Full support |       |  | ✅ Full support |
 |  |  | ✅ Full support |    |    | ✅ Full support |
