@@ -421,25 +421,14 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
 
 // ─── Synopsis cleaning ─────────────────────────────────────────────────────────
 // Clean synopsis by removing boilerplate text and formatting paragraphs (especially for Wuxiaworld)
+// ─── Synopsis cleaning ─────────────────────────────────────────────────────────
+// Clean synopsis by removing boilerplate text and formatting paragraphs (especially for Wuxiaworld)
 const cleanSynopsis = (text: string): string => {
   if (!text) return '';
   
   // List of boilerplate patterns to remove - more comprehensive
-  const boilerplatePatterns = [
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld/gi,
-    /You'?re\s+Reading\s+[“"](.+?)[”"]/gi,  // Remove "You're Reading 'Title'" entirely
-    /Read\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
-    /This\s+novel\s+is\s+available\s+on\s+WuxiaWorld\.?Site/gi,
-    /For\s+more\s+chapters,\s+visit\s+WuxiaWorld\.?Site/gi,
-    /Visit\s+WuxiaWorld\.?Site\s+for\s+more/gi,
-    /WuxiaWorld\.?Site\s+is\s+the\s+source/gi,
-    /Source:\s+WuxiaWorld\.?Site/gi,
-    /www\.wuxiaworld\.site/gi,
-    /wuxiaworld\.site/gi,
-    /^[“"](.+?)[”"]\s+on\s+/gi,  // Remove quoted title at start
-    /^[“"](.+?)[”"]\s*$/gi,      // Remove standalone quoted text
-  ];
+  // Single boilerplate pattern to remove - matches both with and without "on WuxiaWorld.Site"
+  const boilerplatePattern = /You'?re\s+Reading\s+[“"](.+?)[”"]\s*(?:on\s+WuxiaWorld\.?Site)?/gi;
   
   let cleaned = text;
   
@@ -500,6 +489,7 @@ const cleanSynopsis = (text: string): string => {
   
   return cleaned || text; // Return original if cleaning removed everything
 };
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
