@@ -466,6 +466,7 @@ export default function ReaderScreen() {
   // ─── Load effect with AbortController and request ID ──────────────────
   const loadIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const preloadedIndexRef = useRef<number>(-1);
 
   useEffect(() => {
     // Create a new AbortController for this load
@@ -513,8 +514,9 @@ export default function ReaderScreen() {
         setProcessedParagraphs(processed.paragraphs);
         setTtsSentences(processed.sentences);
 
-        // Preload the next chapter if not already preloaded
-        if (!nextChapterPreloaded && chapterIndex + 1 < novel.chapters.length) {
+        // Preload the next chapter if not already preloaded for this chapterIndex
+        if (preloadedIndexRef.current !== chapterIndex && chapterIndex + 1 < novel.chapters.length) {
+          preloadedIndexRef.current = chapterIndex; // mark before awaiting so it can't re-enter
           const nextChapter = novel.chapters[chapterIndex + 1];
           if (nextChapter && !nextChapter.content) {
             const nextFileChapter = await loadChapterContent(novel.id, chapterIndex + 1);
@@ -546,7 +548,7 @@ export default function ReaderScreen() {
     return () => {
       abortController.abort();
     };
-  }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent, nextChapterPreloaded, chapter]);
+  }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
 
   // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
