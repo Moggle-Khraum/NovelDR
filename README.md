@@ -9,7 +9,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 <div align="center">
 
-**Total Download Counts: 780+**
+**Total Download Counts: 830+**
 
 [![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads)](https://github.com/Moggle-Khraum/NovelDR-site/releases) [![MediaFire Downloads](https://img.shields.io/badge/Downloads-355-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
 
