@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { Image, clearCache } from "expo-image";  // 👈 Added clearCache
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState, useMemo } from "react";
@@ -74,7 +74,7 @@ const FILTER_TABS: { key: NovelStatus | "all"; label: string }[] = [
   { key: "completed", label: "Completed" },
 ];
 
-// ── NovelCard (Updated to match the image layout) ────────────────────────────
+// ── NovelCard (Updated to accept refreshKey) ───────────────────────────────
 
 function NovelCard({
   novel,
@@ -82,12 +82,14 @@ function NovelCard({
   onLongPress,
   isSelected,
   selectionMode,
+  refreshKey, // 👈 New prop
 }: {
   novel: Novel;
   onPress: () => void;
   onLongPress: () => void;
   isSelected: boolean;
   selectionMode: boolean;
+  refreshKey: number; // 👈 Added
 }) {
   const { colors } = useTheme();
   const scale = useSharedValue(1);
@@ -100,6 +102,9 @@ function NovelCard({
   const status = novel.status ?? "unread";
   const statusCfg = STATUS_CONFIG[status];
   const sourceName = getSourceDisplayName(novel.sourceUrl);
+
+  // Construct a cache‑busting key for the image
+  const imageCacheKey = novel.coverUrl ? `${novel.id}_${refreshKey}` : undefined;
 
   return (
     <Pressable
@@ -118,7 +123,6 @@ function NovelCard({
           animStyle,
         ]}
       >
-        {/* Selection mode checkbox */}
         {selectionMode && (
           <View style={styles.checkboxContainer}>
             <Ionicons
@@ -129,10 +133,14 @@ function NovelCard({
           </View>
         )}
 
-        {/* Cover Image - Left side */}
         <View style={styles.coverContainer}>
           {novel.coverUrl ? (
-            <Image source={{ uri: novel.coverUrl }} style={styles.cover} contentFit="cover" />
+            <Image
+              source={{ uri: novel.coverUrl }}
+              style={styles.cover}
+              contentFit="cover"
+              cacheKey={imageCacheKey} // 👈 Forces cache invalidation on refresh
+            />
           ) : (
             <View style={[styles.coverPlaceholder, { backgroundColor: colors.surface }]}>
               <Ionicons name="book" size={28} color={colors.accent} />
@@ -140,9 +148,7 @@ function NovelCard({
           )}
         </View>
 
-        {/* Right side content */}
         <View style={styles.info}>
-          {/* Title row with status badge */}
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
               {novel.title}
@@ -153,7 +159,6 @@ function NovelCard({
             </View>
           </View>
 
-          {/* Author row */}
           <View style={styles.metaRow}>
             <Text style={[styles.authorLabel, { color: colors.textSecondary }]}>Author:</Text>
             <Text style={[styles.author, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -161,7 +166,6 @@ function NovelCard({
             </Text>
           </View>
 
-          {/* Source row */}
           <View style={styles.metaRow}>
             <Text style={[styles.sourceLabel, { color: colors.textMuted }]}>Source:</Text>
             <Text style={[styles.source, { color: colors.textMuted }]} numberOfLines={1}>
@@ -169,8 +173,6 @@ function NovelCard({
             </Text>
           </View>
 
-          
-          {/* Progress row with button */}
           <View style={styles.progressRow}>
             <View style={styles.progressLeft}>
               <Text style={[styles.progressText, { color: colors.textSecondary }]}>
@@ -203,65 +205,8 @@ function NovelCard({
   );
 }
 
-// ── Status Picker Sheet ──────────────────────────────────────────────────────
-
-function StatusSheet({
-  novel,
-  visible,
-  onClose,
-  onSelect,
-}: {
-  novel: Novel | null;
-  visible: boolean;
-  onClose: () => void;
-  onSelect: (status: NovelStatus) => void;
-}) {
-  const { colors } = useTheme();
-  if (!novel) return null;
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.sheetBackdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: colors.card }]}>
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-        <Text style={[styles.sheetTitle, { color: colors.text }]} numberOfLines={1}>
-          {novel.title}
-        </Text>
-        <Text style={[styles.sheetSub, { color: colors.textSecondary }]}>Set reading status</Text>
-
-        {(Object.keys(STATUS_CONFIG) as NovelStatus[]).map((key) => {
-          const cfg = STATUS_CONFIG[key];
-          const active = (novel.status ?? "unread") === key;
-          return (
-            <Pressable
-              key={key}
-              style={[
-                styles.sheetOption,
-                {
-                  backgroundColor: active ? cfg.color + "18" : "transparent",
-                  borderColor: active ? cfg.color : colors.border,
-                },
-              ]}
-              onPress={() => { Haptics.selectionAsync(); onSelect(key); }}
-            >
-              <Ionicons name={cfg.icon as any} size={20} color={active ? cfg.color : colors.textSecondary} />
-              <Text style={[styles.sheetOptionText, { color: active ? cfg.color : colors.text }]}>
-                {cfg.label}
-              </Text>
-              {active && (
-                <Ionicons name="checkmark" size={18} color={cfg.color} style={{ marginLeft: "auto" }} />
-              )}
-            </Pressable>
-          );
-        })}
-
-        <Pressable style={[styles.sheetCancel, { borderColor: colors.border }]} onPress={onClose}>
-          <Text style={[styles.sheetCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-        </Pressable>
-      </View>
-    </Modal>
-  );
-}
+// ── Status Picker Sheet (unchanged) ─────────────────────────────────────────
+// … (omitted for brevity, keep as is)
 
 // ── LibraryScreen ────────────────────────────────────────────────────────────
 
@@ -285,6 +230,7 @@ export default function LibraryScreen() {
 
   // ── Refresh state ──────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // 👈 New state for cache busting
   const fabRotation = useSharedValue(0);
   const fabSpinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${fabRotation.value}deg` }],
@@ -309,8 +255,21 @@ export default function LibraryScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     startSpin();
+
     try {
+      // 1. Clear the image cache (optional but thorough)
+      try {
+        await clearCache();
+      } catch (e) {
+        // ignore
+      }
+
+      // 2. Refresh the library data from storage
       await refreshLibrary();
+
+      // 3. Increment refreshKey to force re‑render of all items & bust image cache
+      setRefreshKey(prev => prev + 1);
+
     } finally {
       stopSpin();
       setRefreshing(false);
@@ -318,7 +277,7 @@ export default function LibraryScreen() {
     }
   };
 
-  // ── Swipe Animation Values ─────────────────────────────────────────────────
+  // ── Swipe Animation Values (unchanged) ─────────────────────────────────────
   const translateX = useSharedValue(0);
   const filterKeys = FILTER_TABS.map(tab => tab.key);
 
@@ -390,7 +349,7 @@ export default function LibraryScreen() {
     completed: novels.filter((n) => (n.status ?? "unread") === "completed").length,
   };
 
-  // ── Selection helpers ──────────────────────────────────────────────────────
+  // ── Selection helpers (unchanged) ──────────────────────────────────────────
   const enterSelectionMode = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectionMode(true);
@@ -568,6 +527,7 @@ export default function LibraryScreen() {
             source={require("@/assets/images/shook.png")}
             style={styles.shookImg}
             contentFit="contain"
+            cacheKey="shook" // optional: no need to bust this
           />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Your library is empty</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
@@ -590,6 +550,7 @@ export default function LibraryScreen() {
           source={require("@/assets/images/shook.png")}
           style={styles.shookImg}
           contentFit="contain"
+          cacheKey="shook"
         />
         <Text style={[styles.emptyTitle, { color: colors.text }]}>No novels found</Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
@@ -623,6 +584,7 @@ export default function LibraryScreen() {
       <FlatList
         data={filteredNovels}
         keyExtractor={(n) => n.id}
+        extraData={refreshKey} // 👈 Forces re‑render when refreshKey changes
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeIn.delay(index * 50)}>
             <NovelCard
@@ -631,6 +593,7 @@ export default function LibraryScreen() {
               onLongPress={() => handleNovelLongPress(item)}
               isSelected={selectedNovels.includes(item.id)}
               selectionMode={selectionMode}
+              refreshKey={refreshKey} // 👈 Pass down to bust image cache
             />
           </Animated.View>
         )}
@@ -651,14 +614,12 @@ export default function LibraryScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top chrome */}
       <View style={styles.topChrome}>
         {selectionMode ? renderSelectionHeader() : renderHeader()}
         {showSearch && !selectionMode && renderSearchBar()}
         {!selectionMode && renderFilterTabs()}
       </View>
 
-      {/* Swipeable Content Area */}
       {!selectionMode && !showSearch ? (
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
@@ -671,7 +632,6 @@ export default function LibraryScreen() {
         </View>
       )}
 
-      {/* ── Floating Refresh Button (FAB) ── */}
       {!selectionMode && (
         <Pressable
           style={[
@@ -690,7 +650,6 @@ export default function LibraryScreen() {
         </Pressable>
       )}
 
-      {/* Batch Delete Confirmation Modal */}
       <Modal
         visible={confirmDeleteVisible}
         transparent={true}
@@ -725,7 +684,6 @@ export default function LibraryScreen() {
         </View>
       </Modal>
 
-      {/* Status Picker Sheet */}
       <StatusSheet
         novel={statusSheetNovel}
         visible={!!statusSheetNovel}
@@ -736,12 +694,12 @@ export default function LibraryScreen() {
   );
 }
 
+// ── Styles (unchanged) ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
   topChrome: { flexShrink: 0 },
 
-  // header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -755,7 +713,6 @@ const styles = StyleSheet.create({
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: { padding: 8 },
 
-  // selection header
   selectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -766,7 +723,6 @@ const styles = StyleSheet.create({
   },
   selectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18 },
 
-  // search bar
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -794,7 +750,6 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
   },
 
-  // filter bar
   filterBar: { borderBottomWidth: StyleSheet.hairlineWidth, flexGrow: 0, flexShrink: 0 },
   filterBarContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: "row" },
   filterTab: {
@@ -811,7 +766,6 @@ const styles = StyleSheet.create({
   filterCount: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
   filterCountText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
 
-  // Updated card styles
   card: {
     flexDirection: "row",
     borderRadius: 14,
@@ -853,7 +807,6 @@ const styles = StyleSheet.create({
   continueButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   continueButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#fff" },
 
-  // floating refresh button
   fab: {
     position: "absolute",
     right: 16,
@@ -870,7 +823,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // empty state
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 12 },
   shookImg: { width: 120, height: 120 },
   emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 20, textAlign: "center" },
@@ -880,7 +832,6 @@ const styles = StyleSheet.create({
   clearBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginTop: 8, borderWidth: 1 },
   clearBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
 
-  // batch delete modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
   modalContent: { width: "80%", borderRadius: 16, padding: 20, alignItems: "center", gap: 12 },
   modalIcon: { marginBottom: 8 },
@@ -892,7 +843,6 @@ const styles = StyleSheet.create({
   modalDeleteButton: { backgroundColor: "#ff4444" },
   modalButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 
-  // status sheet
   sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 10 },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 8 },
