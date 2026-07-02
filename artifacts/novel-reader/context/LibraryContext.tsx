@@ -334,7 +334,6 @@ type LibraryContextType = {
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
-  deleteChapters: (novelId: string, chapterUrls: string[]) => Promise<void>;
   refreshLibrary: () => Promise<void>;
   library: Novel[];
 };
@@ -582,43 +581,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     return await loadChapterFromFile(novelId, chapterIndex);
   }, []);
 
-  // ── Delete specific chapters from a novel ─────────────────────────────────
-  const deleteChapters = useCallback(async (novelId: string, chapterUrls: string[]) => {
-    setNovels(current => {
-      const idx = current.findIndex(n => n.id === novelId);
-      if (idx === -1) return current;
-
-      const novel = { ...current[idx] };
-      const urlsToDelete = new Set(chapterUrls);
-      
-      // Filter out chapters with URLs to delete
-      const filteredChapters = novel.chapters.filter(ch => !urlsToDelete.has(ch.url));
-      
-      // Update the novel with filtered chapters
-      novel.chapters = filteredChapters;
-      
-      const updated = [...current];
-      updated[idx] = novel;
-      
-      // Save to file and delete chapter files
-      saveLibraryToFile(updated);
-      
-      // Delete individual chapter files from disk
-      (async () => {
-        for (let i = 0; i < filteredChapters.length; i++) {
-          const oldFile = getChapterFilePath(novelId, i);
-          try {
-            await deleteFile(oldFile);
-          } catch (err) {
-            console.error(`Failed to delete chapter file ${i}:`, err);
-          }
-        }
-      })();
-      
-      return updated;
-    });
-  }, []);
-
   // ── Refresh library from disk ────────────────────────────────────────────
 
   const refreshLibrary = useCallback(async () => {
@@ -650,7 +612,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         getSortedChapters,
         saveChapterContent,
         loadChapterContent,
-        deleteChapters,
         refreshLibrary,
         library: novels,
       }}
