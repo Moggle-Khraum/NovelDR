@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -593,29 +594,50 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const contextValue = useMemo(
+    () => ({
+      novels,
+      loading,
+      initSteps,
+      initComplete,
+      addNovel,
+      updateNovel,
+      removeNovel,
+      removeNovels,
+      getNovel,
+      saveReadingProgress,
+      setNovelStatus,
+      sortOrder,
+      toggleSortOrder,
+      getSortedChapters,
+      saveChapterContent,
+      loadChapterContent,
+      refreshLibrary,
+      library: novels,
+    }),
+    [
+      novels,
+      loading,
+      initSteps,
+      initComplete,
+      addNovel,
+      updateNovel,
+      removeNovel,
+      removeNovels,
+      getNovel,
+      saveReadingProgress,
+      setNovelStatus,
+      sortOrder,
+      toggleSortOrder,
+      getSortedChapters,
+      saveChapterContent,
+      loadChapterContent,
+      refreshLibrary,
+    ]
+  );
+
   return (
-    <LibraryContext.Provider
-      value={{
-        novels,
-        loading,
-        initSteps,
-        initComplete,
-        addNovel,
-        updateNovel,
-        removeNovel,
-        removeNovels,
-        getNovel,
-        saveReadingProgress,
-        setNovelStatus,
-        sortOrder,
-        toggleSortOrder,
-        getSortedChapters,
-        saveChapterContent,
-        loadChapterContent,
-        refreshLibrary,
-        library: novels,
-      }}
-    >
+    <LibraryContext.Provider value={contextValue}>
       {children}
     </LibraryContext.Provider>
   );
