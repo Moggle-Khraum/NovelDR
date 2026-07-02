@@ -187,7 +187,7 @@ const ContentWrapper = ({ children, bgImageUri, bgSolidColor, defaultBgColor }: 
 
 export default function ReaderScreen() {
   const { id, chapterIndex: indexParam } = useLocalSearchParams<{ id: string; chapterIndex: string }>();
-  const { getNovel, saveReadingProgress, loadChapterContent } = useLibrary();
+  const { getNovel, saveReadingProgress, loadChapterContent, saveChapterContent } = useLibrary();
   const { colors: themeColors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -443,11 +443,18 @@ export default function ReaderScreen() {
       const cached = chapterCache.get(cacheKey);
       if (cached && Date.now() - cached.processedAt < CACHE_DURATION) return cached;
 
+      // If content is empty, don't cache it — return a default empty object
+      if (!content.trim()) {
+        const empty: CachedChapter = { content: "", paragraphs: [], sentences: [], processedAt: Date.now(), wordCount: 0 };
+        return empty;
+      }
+
       const paragraphs = detectParagraphs(content);
       const sentences = splitIntoSentences(content);
       const wordCount = content.split(/\s+/).length;
       const processed: CachedChapter = { content, paragraphs, sentences, processedAt: Date.now(), wordCount };
       chapterCache.set(cacheKey, processed);
+      // Cleanup old cache entries
       for (const [key, value] of chapterCache.entries()) {
         if (Date.now() - value.processedAt > CACHE_DURATION) chapterCache.delete(key);
       }
@@ -456,44 +463,92 @@ export default function ReaderScreen() {
     [novel?.id]
   );
 
-  const loadContent = async () => {
-    if (novel && chapter) {
-      setContentLoading(true);
+  // ─── Load effect with AbortController and request ID ──────────────────
+  const loadIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    // Create a new AbortController for this load
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    const signal = abortController.signal;
+
+    // Increment the request ID
+    const currentLoadId = ++loadIdRef.current;
+
+    // If the novel or chapter is missing, clear content and stop loading
+    if (!novel || !chapter) {
+      setChapterContent("");
+      setProcessedParagraphs([]);
+      setTtsSentences([]);
+      setContentLoading(false);
+      return;
+    }
+
+    // Reset content and show loading spinner immediately
+    setChapterContent("");
+    setProcessedParagraphs([]);
+    setTtsSentences([]);
+    setContentLoading(true);
+
+    const load = async () => {
       try {
+        // Check abort signal before any async work
+        if (signal.aborted || currentLoadId !== loadIdRef.current) return;
+
+        // Attempt to load chapter content from the novel object or from disk
         let content = chapter.content || "";
         if (!content && loadChapterContent) {
           const fileChapter = await loadChapterContent(novel.id, chapterIndex);
+          if (signal.aborted || currentLoadId !== loadIdRef.current) return;
           content = fileChapter?.content || "";
         }
+
+        // Process the content (cached or fresh)
         const processed = await processChapterContent(content, `${chapterIndex}`);
+        if (signal.aborted || currentLoadId !== loadIdRef.current) return;
+
+        // Update state with the processed content
         setChapterContent(processed.content);
         setProcessedParagraphs(processed.paragraphs);
         setTtsSentences(processed.sentences);
 
+        // Preload the next chapter if not already preloaded
         if (!nextChapterPreloaded && chapterIndex + 1 < novel.chapters.length) {
           const nextChapter = novel.chapters[chapterIndex + 1];
           if (nextChapter && !nextChapter.content) {
             const nextFileChapter = await loadChapterContent(novel.id, chapterIndex + 1);
+            if (signal.aborted || currentLoadId !== loadIdRef.current) return;
             if (nextFileChapter?.content) {
+              // Process and cache the next chapter (no need to store paragraphs)
               await processChapterContent(nextFileChapter.content, `${chapterIndex + 1}`);
+              if (signal.aborted || currentLoadId !== loadIdRef.current) return;
               setNextChapterContent(nextFileChapter.content);
               setNextChapterPreloaded(true);
             }
           }
         }
       } catch (error) {
-        setChapterContent("Error loading chapter content. Please try again.");
-        setProcessedParagraphs([]);
+        if (!signal.aborted && currentLoadId === loadIdRef.current) {
+          setChapterContent("Error loading chapter content. Please try again.");
+          setProcessedParagraphs([]);
+        }
       } finally {
-        setContentLoading(false);
+        if (!signal.aborted && currentLoadId === loadIdRef.current) {
+          setContentLoading(false);
+        }
       }
-    }
-  };
+    };
 
-  useEffect(() => {
-    loadContent();
-  }, [chapterIndex, novel?.id]);
+    load();
 
+    // Cleanup: abort the current request and mark as cancelled
+    return () => {
+      abortController.abort();
+    };
+  }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent, nextChapterPreloaded, chapter]);
+
+  // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
     (query: string) => {
       if (!novel) return [];
@@ -522,6 +577,7 @@ export default function ReaderScreen() {
   const chapterRef = useRef(chapter);
   const chapterContentRef = useRef<string>("");
   const appStateRef = useRef(AppState.currentState);
+  const persistSnapshotRef = useRef({ index: chapterIndex, content: "" });
 
   useEffect(() => {
     novelRef.current = novel;
@@ -535,8 +591,28 @@ export default function ReaderScreen() {
   useEffect(() => {
     chapterContentRef.current = chapterContent;
   }, [chapterContent]);
+  useEffect(() => {
+    persistSnapshotRef.current = { index: chapterIndex, content: chapterContent };
+  }, [chapterIndex, chapterContent]);
 
-  // ─ OPTION B: Fallback sentinel - save on cleanup if unmount happens ─
+  // ─── Save chapter content to disk ────────────────────────────────────
+  const persistChapterContent = useCallback(async () => {
+    const n = novelRef.current;
+    const ch = chapterRef.current;
+    const { index, content } = persistSnapshotRef.current;
+
+    if (!n || !ch || !content) return;
+    if (index !== chapterIndexRef.current) return; // stale pairing guard
+
+    try {
+      await saveChapterContent(n.id, index, ch.title, ch.url, content, ch.chapterNumber);
+      console.log(`[Reader] Chapter content persisted: ${n.title} - Chapter ${index}`);
+    } catch (error) {
+      console.warn(`[Reader] Failed to persist chapter content:`, error);
+    }
+  }, [saveChapterContent]);
+
+  // ─── Persist on unmount and background ──────────────────────────────
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -547,13 +623,11 @@ export default function ReaderScreen() {
       const ch = chapterRef.current;
       if (n && ch) {
         saveReadingProgress(n.id, chapterIndexRef.current, ch.title, scrollYRef.current);
-        // Fallback sentinel: save chapter content if unmounting
         persistChapterContent();
       }
     };
   }, [persistChapterContent, saveReadingProgress]);
 
-  // ─ OPTION A: Primary - AppState listener to save content on background ─
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: string) => {
       if (
@@ -567,12 +641,12 @@ export default function ReaderScreen() {
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-
     return () => {
       subscription.remove();
     };
   }, [persistChapterContent]);
 
+  // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
     ttsActiveRef.current = false;
     ttsIndexRef.current = -1;
@@ -582,30 +656,6 @@ export default function ReaderScreen() {
     try {
       Speech.stop();
     } catch {}
-  }, []);
-
-  // ─ Save chapter content to disk (used by both Option A and B) ─
-  const persistChapterContent = useCallback(async () => {
-    const n = novelRef.current;
-    const ch = chapterRef.current;
-    const content = chapterContentRef.current;
-    
-    if (!n || !ch || !content) return;
-    
-    try {
-      const { saveChapterContent: save } = useLibrary();
-      await save(
-        n.id,
-        chapterIndexRef.current,
-        ch.title,
-        ch.url,
-        content,
-        ch.chapterNumber
-      );
-      console.log(`[Reader] Chapter content persisted: ${n.title} - Chapter ${chapterIndexRef.current}`);
-    } catch (error) {
-      console.warn(`[Reader] Failed to persist chapter content:`, error);
-    }
   }, []);
 
   useEffect(() => {
@@ -702,6 +752,7 @@ export default function ReaderScreen() {
     }, 200);
   }, [stopTTS]);
 
+  // ─── Scrolling / progress ─────────────────────────────────────────────
   const updateReadingProgress = useCallback(() => {
     if (contentHeightRef.current > scrollViewHeightRef.current) {
       const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
@@ -771,6 +822,7 @@ export default function ReaderScreen() {
     updateReadingProgress();
   };
 
+  // ─── Navigation helpers ──────────────────────────────────────────────
   const goChapter = (dir: 1 | -1) => {
     const next = chapterIndex + dir;
     if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
@@ -778,21 +830,44 @@ export default function ReaderScreen() {
       return;
     }
     if (novel && chapter) saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollYRef.current);
+
+    // Abort any pending load
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     stopAutoScroll();
     stopTTS();
+
+    // Clear content and show loading immediately
+    setChapterContent("");
+    setProcessedParagraphs([]);
+    setTtsSentences([]);
+    setContentLoading(true);
+
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChapterIndex(next);
     setReadingProgress(0);
-    if (dir === 1 && nextChapterContent) {
-      setChapterContent(nextChapterContent);
-      setNextChapterPreloaded(false);
-    }
   };
 
   const handleChapterSelect = (index: number) => {
     if (novel && chapter) saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollYRef.current);
+
+    // Abort any pending load
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Clear content and show loading
+    setChapterContent("");
+    setProcessedParagraphs([]);
+    setTtsSentences([]);
+    setContentLoading(true);
+
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -823,6 +898,7 @@ export default function ReaderScreen() {
     }
   };
 
+  // ─── Initial loading state ────────────────────────────────────────────
   if (!novel || !chapter || !settingsLoaded) {
     return (
       <View style={[styles.center, { backgroundColor: themeColors.background }]}>
