@@ -288,6 +288,7 @@ export default function LibraryScreen() {
 
   // ── Refresh state ──────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
+  // The FAB rotation logic is kept but not used – we keep it dormant in case we re-enable the FAB.
   const fabRotation = useSharedValue(0);
   const fabSpinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${fabRotation.value}deg` }],
@@ -311,7 +312,7 @@ export default function LibraryScreen() {
     if (refreshing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    startSpin();
+    startSpin(); // still starts spin but the FAB is hidden; can keep as dormant
     try {
       await refreshLibrary();
     } finally {
@@ -678,24 +679,8 @@ export default function LibraryScreen() {
         </View>
       )}
 
-      {/* ── Floating Refresh Button (FAB) ── */}
-      {!selectionMode && (
-        <Pressable
-          style={[
-            styles.fab,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.accent,
-              bottom: bottomPad + 90,
-            },
-          ]}
-          onPress={handleRefresh}
-        >
-          <Animated.View style={fabSpinStyle}>
-            <Ionicons name="refresh" size={22} color={colors.text} />
-          </Animated.View>
-        </Pressable>
-      )}
+      {/* ── Floating Refresh Button (FAB) – REMOVED ── */}
+      {/* The FAB is no longer rendered; pull-to-refresh is the only way to refresh. */}
 
       {/* Batch Delete Confirmation Modal */}
       <Modal
@@ -865,7 +850,7 @@ const styles = StyleSheet.create({
   continueButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   continueButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#fff" },
 
-  // floating refresh button
+  // floating refresh button – styles are kept but not used (can be removed later)
   fab: {
     position: "absolute",
     right: 16,
