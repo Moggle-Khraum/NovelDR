@@ -335,6 +335,7 @@ type LibraryContextType = {
   toggleSortOrder: () => void;
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
+  saveAllChaptersToFile: (novelId: string, chapters: Chapter[]) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
   refreshLibrary: () => Promise<void>;
   library: Novel[];
@@ -614,6 +615,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       toggleSortOrder,
       getSortedChapters,
       saveChapterContent,
+      saveAllChaptersToFile,
       loadChapterContent,
       refreshLibrary,
       library: novels,
