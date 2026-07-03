@@ -782,22 +782,38 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     if (isAsianovel) {
       console.log('[Scraper] Asianovel.net detected');
       
-      const titleMatch = safeMatch(html, /<h1[^>]*class="story__identity-title"[^>]*>([^<]+)<\/h1>/i);
-      if (titleMatch) title = decodeEntities(titleMatch);
+      const titleMatch = safeMatch(html, /<h1[^>]*class="[^"]*story__identity-title[^"]*"[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch) title = decodeEntities(titleMatch.trim());
       
-      const authorMatch = safeMatch(html, /<div[^>]*class="story__identity-meta"[^>]*>[\s\S]*?<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
-      if (authorMatch) author = decodeEntities(authorMatch);
+      const authorMatch = safeMatch(html, /<div[^>]*class="[^"]*story__identity-meta[^"]*"[^>]*>[\s\S]*?<a[^>]*class="[^"]*author[^"]*"[^>]*>([^<]+)<\/a>/i);
+      if (authorMatch) author = decodeEntities(authorMatch.trim());
       
       const thumbFigureMatch = safeMatch(html, /<figure[^>]*class="[^"]*story__thumbnail[^"]*"[^>]*>([\s\S]*?)<\/figure>/i);
       if (thumbFigureMatch) {
-        const imgTagMatch = thumbFigureMatch.match(/<img\b[^>]*>/i);
-        if (imgTagMatch) {
-          const imgTag = imgTagMatch[0];
-          const srcMatch = imgTag.match(/\bsrc="([^"]+)"/i);
-          const dataSrcMatch = imgTag.match(/\bdata-src="([^"]+)"/i);
-          const rawCover = (srcMatch && srcMatch[1]) || (dataSrcMatch && dataSrcMatch[1]);
-          if (rawCover) coverUrl = makeAbsoluteUrl(rawCover, url);
+        let rawCover: string | undefined;
+
+        // Prefer the <a href="..."> wrapping the thumbnail — it points directly
+        // to the full-size image file (e.g. .../uploads/2025/06/xxxxx_300_420.jpg)
+        const anchorTagMatch = thumbFigureMatch.match(/<a\b[^>]*>/i);
+        if (anchorTagMatch) {
+          const hrefMatch = anchorTagMatch[0].match(/\bhref="([^"]+)"/i);
+          if (hrefMatch && /\.(jpe?g|png|webp)(\?.*)?$/i.test(hrefMatch[1])) {
+            rawCover = hrefMatch[1];
+          }
         }
+
+        // Fall back to the <img> tag's src/data-src if no valid anchor href found
+        if (!rawCover) {
+          const imgTagMatch = thumbFigureMatch.match(/<img\b[^>]*>/i);
+          if (imgTagMatch) {
+            const imgTag = imgTagMatch[0];
+            const srcMatch = imgTag.match(/\bsrc="([^"]+)"/i);
+            const dataSrcMatch = imgTag.match(/\bdata-src="([^"]+)"/i);
+            rawCover = (srcMatch && srcMatch[1]) || (dataSrcMatch && dataSrcMatch[1]);
+          }
+        }
+
+        if (rawCover) coverUrl = makeAbsoluteUrl(rawCover, url);
       }
       
       const descMatch = safeMatch(html, /<section[^>]*class="[^"]*story__summary[^"]*"[^>]*>([\s\S]*?)<\/section>/i);
