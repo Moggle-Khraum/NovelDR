@@ -419,17 +419,21 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   return deduped;
 };
 
-// ─── Synopsis cleaning ─────────────────────────────────────────────────────────
-// Clean synopsis by removing boilerplate text and formatting paragraphs (especially for Wuxiaworld)
+// ─── Synopsis cleaning (UPDATED to fully remove "You're reading 'Title' on") ──
 const cleanSynopsis = (text: string): string => {
   if (!text) return '';
-  
-  // List of boilerplate patterns to remove - more comprehensive
+
+  // Boilerplate patterns – more comprehensive and ordered to remove
+  // the "You're reading "Title" on ..." line completely.
   const boilerplatePatterns = [
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
-    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld/gi,
-    /You'?re\s+Reading\s+[“"](.+?)[”"]/gi,  // Remove "You're Reading 'Title'" entirely
-    /Read\s+[“"](.+?)[”"]\s+on\s+WuxiaWorld\.?Site/gi,
+    // Catch the exact "You're reading "Title" on ..." line, with various quote styles.
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s*(?:WuxiaWorld\.?Site|wuxiaworld\.site|www\.wuxiaworld\.site)?/gi,
+    // Fallback: remove the quoted title and the "on" part even if site is missing.
+    /You'?re\s+Reading\s+[“"](.+?)[”"]\s+on\s*/gi,
+    // Also remove standalone "You're Reading" without quotes (rare).
+    /You'?re\s+Reading\s+[“"]?(.+?)[”"]?\s+on\s*(?:WuxiaWorld\.?Site)?/gi,
+    // Remove leftover "Read ... on WuxiaWorld.Site" variants.
+    /Read\s+[“"](.+?)[”"]\s+on\s*WuxiaWorld\.?Site/gi,
     /This\s+novel\s+is\s+available\s+on\s+WuxiaWorld\.?Site/gi,
     /For\s+more\s+chapters,\s+visit\s+WuxiaWorld\.?Site/gi,
     /Visit\s+WuxiaWorld\.?Site\s+for\s+more/gi,
@@ -437,69 +441,69 @@ const cleanSynopsis = (text: string): string => {
     /Source:\s+WuxiaWorld\.?Site/gi,
     /www\.wuxiaworld\.site/gi,
     /wuxiaworld\.site/gi,
-    /^[“"](.+?)[”"]\s+on\s+/gi,  // Remove quoted title at start
-    /^[“"](.+?)[”"]\s*$/gi,      // Remove standalone quoted text
+    // Remove any remaining quoted title at the start.
+    /^[“"](.+?)[”"]\s+on\s*/gi,
+    /^[“"](.+?)[”"]\s*$/gi,
   ];
-  
+
   let cleaned = text;
-  
-  // Remove each boilerplate pattern
+
+  // Apply each pattern repeatedly to catch nested occurrences.
   for (const pattern of boilerplatePatterns) {
     cleaned = cleaned.replace(pattern, '');
   }
-  
-  // Remove any leading punctuation or spaces after cleaning
+
+  // Remove any leftover standalone "on" that might remain after the above.
+  cleaned = cleaned.replace(/^\s*on\s+/i, '');
+  cleaned = cleaned.replace(/\s+on\s*$/i, '');
+
+  // Remove any leading punctuation or spaces after cleaning.
   cleaned = cleaned.replace(/^[,.:;!?\s]+/, '');
-  
-  // Fix paragraph formatting - split on common paragraph separators
-  // First, replace multiple newlines with a single newline
+
+  // Fix paragraph formatting – split on sentence boundaries.
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  
-  // Split by periods followed by space and capital letter (sentence boundaries)
-  // but keep the period
+
   const sentences = cleaned.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 1) {
-    // Group sentences into paragraphs (every 2-3 sentences)
     const paragraphs: string[] = [];
     let currentParagraph: string[] = [];
     let sentenceCount = 0;
-    
+
     for (const sentence of sentences) {
       currentParagraph.push(sentence.trim());
       sentenceCount++;
-      
-      // Start a new paragraph after 2-3 sentences or if it's a short sentence
+
       if (sentenceCount >= 3 || sentence.length < 50) {
         paragraphs.push(currentParagraph.join(' '));
         currentParagraph = [];
         sentenceCount = 0;
       }
     }
-    
-    // Add any remaining sentences
+
     if (currentParagraph.length > 0) {
       paragraphs.push(currentParagraph.join(' '));
     }
-    
+
     cleaned = paragraphs.join('\n\n');
   } else {
-    // If no sentence boundaries found, try splitting by common paragraph markers
+    // Fallback splitting.
     cleaned = cleaned.replace(/\.\s+(?=[A-Z])/g, '.\n\n');
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   }
-  
-  // Clean up extra whitespace
+
+  // Clean up extra whitespace.
   cleaned = cleaned.replace(/[ \t]+/g, ' ').trim();
-  
-  // Remove any remaining boilerplate
+
+  // One final pass to remove any leftover boilerplate.
   for (const pattern of boilerplatePatterns) {
     cleaned = cleaned.replace(pattern, '');
   }
-  
+
   cleaned = cleaned.replace(/^[,.:;!?\s]+/, '').trim();
-  
-  return cleaned || text; // Return original if cleaning removed everything
+
+  return cleaned || text; // Return original if cleaning removed everything.
 };
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
