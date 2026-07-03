@@ -739,7 +739,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     }
 
     // --- ROYALROAD ---
-    // --- ROYALROAD ---
     if (isRoyalRoad) {
       console.log('[Scraper] RoyalRoad detected');
       
@@ -921,7 +920,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
     }
 
-    // --- ASIANOVEL.NET ---
+    // --- ASIANOVEL.NET (enhanced with newAsian improvements) ---
     if (isAsianovel) {
       console.log('[Scraper] Asianovel.net detected');
       
@@ -933,13 +932,24 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const authorMatch = safeMatch(html, /<div[^>]*class="story__identity-meta"[^>]*>[\s\S]*?<a[^>]*class="author"[^>]*>([^<]+)<\/a>/i);
       if (authorMatch) author = decodeEntities(authorMatch);
       
-      // Cover: Located inside <figure class="story__thumbnail">, using an <img> with class="story__thumbnail-image"
-      const coverMatch = safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*class="[^"]*story__thumbnail-image[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
-                         safeMatch(html, /<figure[^>]*class="story__thumbnail"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*class="[^"]*story__thumbnail-image[^"]*"[^>]*>/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
+      // Cover: Located inside <figure class="story__thumbnail">, any <img> inside it
+      // (Python: figure.story__thumbnail img -> get("src") or get("data-src")).
+      // Attribute-order independent: don't assume class comes before src.
+      const thumbFigureMatch = safeMatch(html, /<figure[^>]*class="[^"]*story__thumbnail[^"]*"[^>]*>([\s\S]*?)<\/figure>/i);
+      if (thumbFigureMatch) {
+        const imgTagMatch = thumbFigureMatch.match(/<img\b[^>]*>/i);
+        if (imgTagMatch) {
+          const imgTag = imgTagMatch[0];
+          const srcMatch = imgTag.match(/\bsrc="([^"]+)"/i);
+          const dataSrcMatch = imgTag.match(/\bdata-src="([^"]+)"/i);
+          const rawCover = (srcMatch && srcMatch[1]) || (dataSrcMatch && dataSrcMatch[1]);
+          if (rawCover) coverUrl = makeAbsoluteUrl(rawCover, url);
+        }
+      }
       
-      // Synopsis: Asianovel uses <section class="story__summary content-section">
-      const descMatch = safeMatch(html, /<section[^>]*class="story__summary content-section"[^>]*>([\s\S]*?)<\/section>/i);
+      // Synopsis: Asianovel uses <section class="story__summary ..."> (Fictioneer theme;
+      // don't match the full class string exactly since other classes may be appended).
+      const descMatch = safeMatch(html, /<section[^>]*class="[^"]*story__summary[^"]*"[^>]*>([\s\S]*?)<\/section>/i);
       if (descMatch) {
         // Extract all <p> tags inside the summary
         const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
@@ -959,28 +969,49 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
         }
       }
       
-      // Extract the actual first chapter URL from the chapter list
-      // The chapter list is in <section class="story__tab-target _current story__chapters">
-      // with <ol class="chapter-group__list">
-      const chapterSectionMatch = safeMatch(html, /<section[^>]*class="story__tab-target _current story__chapters"[^>]*>([\s\S]*?)<\/section>/i);
-      if (chapterSectionMatch) {
-        // Find the first chapter link in the list
-        const firstLinkMatch = chapterSectionMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
-        if (firstLinkMatch && firstLinkMatch[1]) {
-          // Use the exact URL from the HTML
-          firstChapterUrl = makeAbsoluteUrl(firstLinkMatch[1], url);
-          console.log('[Scraper] Asianovel exact first chapter URL from HTML:', firstChapterUrl);
+      // Extract the actual first chapter URL from the chapter list.
+      // Ported from the Python scraper's extract_chapters(): chapters are listed as
+      // <a class="chapter-group__list-item-link" href="..."> — this also picks up
+      // chapters collapsed behind a "show more" fold, since they're already in the
+      // HTML (just hidden via CSS/JS). Attribute-order independent (class/href can
+      // appear in either order in the tag).
+      const asianovelChapterLinkRegex = /<a\b[^>]*>/gi;
+      let chapterLinkTagMatch: RegExpExecArray | null;
+      while ((chapterLinkTagMatch = asianovelChapterLinkRegex.exec(html)) !== null) {
+        const tag = chapterLinkTagMatch[0];
+        if (!/class="[^"]*chapter-group__list-item-link[^"]*"/i.test(tag)) continue;
+        const hrefMatch = tag.match(/\bhref="([^"]+)"/i);
+        if (hrefMatch && hrefMatch[1]) {
+          firstChapterUrl = makeAbsoluteUrl(hrefMatch[1], url);
+          console.log('[Scraper] Asianovel first chapter URL (chapter-group__list-item-link):', firstChapterUrl);
         }
+        break; // first match in document order is chapter 1
       }
       
-      // Fallback: Try to find chapter list using class="chapter-group__list"
+      // Fallback: JSON-LD ItemList of chapters (Python's extract_chapters_from_jsonld
+      // fallback, used if the theme markup changes and nothing is found above).
       if (!firstChapterUrl) {
-        const chapterListMatch = safeMatch(html, /<ol[^>]*class="chapter-group__list"[^>]*>([\s\S]*?)<\/ol>/i);
-        if (chapterListMatch) {
-          const firstLinkMatch = chapterListMatch.match(/<a[^>]*href="([^"]*\/chapter\/chapter-(\d+)\/)"[^>]*>/i);
-          if (firstLinkMatch && firstLinkMatch[1]) {
-            firstChapterUrl = makeAbsoluteUrl(firstLinkMatch[1], url);
-            console.log('[Scraper] Asianovel exact first chapter URL from HTML (fallback):', firstChapterUrl);
+        const jsonLdBlocks = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+        if (jsonLdBlocks) {
+          for (const block of jsonLdBlocks) {
+            const inner = safeMatch(block, /<script[^>]*>([\s\S]*?)<\/script>/i);
+            if (!inner) continue;
+            try {
+              const data = JSON.parse(inner);
+              const graph = Array.isArray(data) ? data : (data['@graph'] || [data]);
+              for (const node of graph) {
+                if (node && node['@type'] === 'ItemList' && node['name'] === 'Chapters') {
+                  const items = node.itemListElement || [];
+                  if (items.length > 0 && items[0].url) {
+                    firstChapterUrl = makeAbsoluteUrl(items[0].url, url);
+                    console.log('[Scraper] Asianovel first chapter URL (JSON-LD fallback):', firstChapterUrl);
+                  }
+                }
+              }
+            } catch {
+              // malformed JSON-LD block, skip it
+            }
+            if (firstChapterUrl) break;
           }
         }
       }
@@ -1176,62 +1207,20 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       }
     }
 
-    // --- ASIANOVEL CHAPTER TITLE AND CONTENT EXTRACTION ---
+    // --- ASIANOVEL CHAPTER TITLE EXTRACTION (enhanced) ---
+    // Ported from Python's get_chapter_title(): tries h1.chapter__title, then any h1,
+    // then .chapter-formatting h1. (Content extraction happens below, after `content`
+    // is declared, using the verified CHAPTER_CONTENT_SELECTORS from the Python scraper.)
     if (isAsianovel) {
-      // Title: uses class="chapter-title"
-      const titleMatch = safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ||
-                         safeMatch(html, /<h1[^>]*itemprop="headline"[^>]*>([^<]+)<\/h1>/i);
+      const titleMatch = safeMatch(html, /<h1[^>]*class="[^"]*chapter__title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
+                         safeMatch(html, /<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
       if (titleMatch) {
-        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
-        // Remove "Chapter X" prefix if present
+        let rawTitle = decodeEntities(stripTags(titleMatch)).replace(/\s+/g, ' ').trim();
+        // Remove "Chapter X" prefix if present, matching this hook's "Chapter N: Title" convention
         rawTitle = rawTitle.replace(/^Chapter\s+\d+\s*[:.\-–—]?\s*/gi, '').trim();
-        title = `Chapter ${chapterNum}: ${rawTitle}`;
-        skipCleanup = true;
-      }
-      
-      // Content: Asianovel uses <div class="chapter-content"> or similar
-      // Let's try multiple selectors
-      let contentHtml = null;
-      
-      // Try to find content in various possible containers
-      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch4 = safeMatch(html, /<div[^>]*class="story__content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch5 = safeMatch(html, /<article[^>]*class="chapter"[^>]*>([\s\S]*?)<\/article>/i);
-      
-      contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4 || contentMatch5;
-      
-      if (contentHtml) {
-        // Extract paragraphs from the content
-        const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-        if (paragraphs) {
-          const cleanedParagraphs = paragraphs
-            .map(p => {
-              let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              // Handle <br> tags - convert to newlines
-              text = text.replace(/<br\s*\/?>/gi, '\n');
-              text = decodeEntities(text);
-              text = stripTags(text);
-              return text.trim();
-            })
-            .filter(t => t.length > 0);
-          
-          // If we have content from a content div, use it directly
-          const contentText = cleanedParagraphs.join('\n\n');
-          if (contentText.length > 0) {
-            // We'll assign this to content later
-            // Store in a variable to use later
-            const extractedContent = contentText;
-            // We'll handle this after the main paragraph extraction
-          }
-        } else {
-          // Fallback: extract all text from the content div
-          const extractedContent = decodeEntities(stripTags(contentHtml));
-          if (extractedContent.length > 0) {
-            // Store for later use
-          }
+        if (rawTitle) {
+          title = `Chapter ${chapterNum}: ${rawTitle}`;
+          skipCleanup = true;
         }
       }
     }
@@ -1303,18 +1292,39 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     
     let content = '';
     
-    // For Asianovel, we already extracted content earlier
+    // --- ASIANOVEL CONTENT EXTRACTION (enhanced) ---
+    // Ported from Python's parse_chapter_page().
+    // Fictioneer-theme pages wrap the readable text in one of these containers,
+    // tried in order until one yields content. Matched by class/id substring so
+    // attribute order and extra classes on the tag don't break the match.
     if (isAsianovel) {
-      // Check if we have content from the Asianovel-specific extraction
-      // We'll re-extract here to be safe
-      const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch3 = safeMatch(html, /<div[^>]*class="content"[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
-      const contentMatch4 = safeMatch(html, /<div[^>]*class="story__content"[^>]*>([\s\S]*?)<\/div>/i);
+      const ASIANOVEL_CONTENT_SELECTORS: RegExp[] = [
+        /<section[^>]*class="[^"]*chapter-formatting[^"]*"[^>]*>([\s\S]*?)<\/section>/i,
+        /<div[^>]*class="[^"]*chapter-formatting[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+        /<[^>]*\bid="chapter-content"[^>]*>([\s\S]*?)<\/(?:div|section|article)>/i,
+        /<div[^>]*class="[^"]*chapter__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+        /<[^>]*class="[^"]*content-section[^"]*"[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
+      ];
       
-      const contentHtml = contentMatch1 || contentMatch2 || contentMatch3 || contentMatch4;
+      let contentHtml: string | null = null;
+      for (const selector of ASIANOVEL_CONTENT_SELECTORS) {
+        const match = safeMatch(html, selector);
+        if (match) {
+          contentHtml = match;
+          break;
+        }
+      }
       
       if (contentHtml) {
+        // Strip script/style/ad/nav noise that sometimes sits inside the container
+        contentHtml = contentHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+          .replace(/<[^>]*class="[^"]*\b(?:ad|adsbygoogle)\b[^"]*"[^>]*>[\s\S]*?<\/[a-z]+>/gi, '');
+        
+        // Python collects text from both <p> and <br> tags; approximate by extracting
+        // <p> tags and treating stray <br>-separated text as paragraph breaks.
         const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
@@ -1326,15 +1336,20 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
               return text.trim();
             })
             .filter(t => t.length > 0);
-          
           content = cleanedParagraphs.join('\n\n');
-        } else {
-          content = decodeEntities(stripTags(contentHtml));
+        }
+        
+        // No <p> tags found (or they yielded nothing) — fall back to raw text of the
+        // container, matching Python's "text = clean_text(container.get_text(...))".
+        if (!content) {
+          let text = decodeEntities(stripTags(contentHtml));
+          text = text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*\n+/g, '\n\n').trim();
+          if (text) content = text;
         }
       }
     }
     
-    // For Wuxiaworld, extract content using specific selectors
+    // For Wuxiaworld, extract content using specific selectors (if not already set)
     if (isWuxiaworld && !content) {
       const contentMatch1 = safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
       const contentMatch2 = safeMatch(html, /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i);
