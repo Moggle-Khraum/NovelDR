@@ -463,49 +463,53 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addNovel = useCallback(async (novel: Novel) => {
+    let updatedNovels: Novel[] = [];
+    let newChaptersToSave: Chapter[] = [];
     setNovels(current => {
       const existing = current.find(n => n.id === novel.id);
       if (existing) {
         const existingUrls = new Set(existing.chapters.map(ch => ch.url));
         const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
         const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
-        const updated = current.map(n => n.id === novel.id ? merged : n);
-        saveAllChaptersToFile(novel.id, newChapters);
-        saveLibraryToFile(updated);
-        return updated;
+        updatedNovels = current.map(n => n.id === novel.id ? merged : n);
+        newChaptersToSave = newChapters;
       } else {
-        const updated = [novel, ...current];
-        saveAllChaptersToFile(novel.id, novel.chapters);
-        saveLibraryToFile(updated);
-        return updated;
+        updatedNovels = [novel, ...current];
+        newChaptersToSave = novel.chapters;
       }
+      return updatedNovels;
     });
+    await saveAllChaptersToFile(novel.id, newChaptersToSave);
+    await saveLibraryToFile(updatedNovels);
   }, []);
 
   const updateNovel = useCallback(async (id: string, updates: Partial<Novel>) => {
+    let updatedNovels: Novel[] = [];
     setNovels(current => {
-      const updated = current.map(n => n.id === id ? { ...n, ...updates } : n);
-      saveLibraryToFile(updated);
-      return updated;
+      updatedNovels = current.map(n => n.id === id ? { ...n, ...updates } : n);
+      return updatedNovels;
     });
+    await saveLibraryToFile(updatedNovels);
   }, []);
 
   const removeNovel = useCallback(async (id: string) => {
+    let updatedNovels: Novel[] = [];
     setNovels(current => {
-      const updated = current.filter(n => n.id !== id);
-      saveLibraryToFile(updated);
-      deleteNovelChapters(id);
-      return updated;
+      updatedNovels = current.filter(n => n.id !== id);
+      return updatedNovels;
     });
+    await saveLibraryToFile(updatedNovels);
+    deleteNovelChapters(id);
   }, []);
 
   const removeNovels = useCallback(async (ids: string[]) => {
+    let updatedNovels: Novel[] = [];
     setNovels(current => {
-      const updated = current.filter(n => !ids.includes(n.id));
-      saveLibraryToFile(updated);
-      ids.forEach(id => deleteNovelChapters(id));
-      return updated;
+      updatedNovels = current.filter(n => !ids.includes(n.id));
+      return updatedNovels;
     });
+    await saveLibraryToFile(updatedNovels);
+    ids.forEach(id => deleteNovelChapters(id));
   }, []);
 
   const getNovel = useCallback((id: string) => novels.find(n => n.id === id), [novels]);
