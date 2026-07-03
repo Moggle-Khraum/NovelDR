@@ -71,6 +71,9 @@ function LogLine({ entry }: { entry: LogEntry }) {
     if (text.includes("Chapter number")) return "🔢";
     if (text.includes("Direct skip")) return "⚡";
     if (text.includes("Chapter URL detected")) return "🔗";
+    if (text.includes("re-downloading")) return "♻️";
+    if (text.includes("content is missing")) return "⚠️";
+    if (text.includes("has content")) return "✅";
     return "";
   };
 
@@ -181,9 +184,6 @@ export default function UpdatesScreen() {
   };
 
   // ─── Determine next Start Chapter from saved chapters ───────────────────────
-  // Parses the chapter number out of the *last* saved chapter's title rather
-  // than just using array length, since gaps or untitled entries can throw off
-  // a simple count (e.g. last saved chapter title is "Chapter 972" -> next is 973).
   const getNextStartChapter = (novel: Novel): number => {
     if (novel.chapters.length === 0) return 1;
     const lastChapter = novel.chapters[novel.chapters.length - 1];
@@ -211,9 +211,30 @@ export default function UpdatesScreen() {
     }
   };
 
-  // ─── Chapter exists check ────────────────────────────────────────────────────
+  // ─── Chapter exists check (by URL) ──────────────────────────────────────────
   const chapterExists = (url: string, existingChapters: Chapter[]): boolean =>
     existingChapters.some((c) => c.url === url);
+
+  // ─── Chapter content file helpers (for override system) ─────────────────────
+  const getChapterFilePath = (novelId: string, chapterUrl: string): string => {
+    // Create a safe filename from the URL (keep it unique)
+    const safeName = chapterUrl.replace(/[^a-zA-Z0-9]/g, '_');
+    return `${FileSystem.documentDirectory}chapters/${novelId}/${safeName}.txt`;
+  };
+
+  const chapterHasContent = async (novelId: string, chapterUrl: string): Promise<boolean> => {
+    try {
+      const filePath = getChapterFilePath(novelId, chapterUrl);
+      const info = await FileSystem.getInfoAsync(filePath);
+      if (info.exists) {
+        const content = await FileSystem.readAsStringAsync(filePath);
+        return content.trim().length > 0;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   // ─── Lightweight metadata fetch (next URL only, no content parsing) ──────────
   const getChapterMetadata = async (
@@ -272,23 +293,15 @@ export default function UpdatesScreen() {
   };
 
   // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
-  // LightNovelWorld's /chapter/N/ scheme is reliable enough for an aggressive,
-  // broad-match direct skip. Every other source (FreeWebNovel, NovelBin,
-  // NovelFull, ReadNovelFull, etc.) uses the old, narrow, exact-suffix patterns
-  // only — these never match generic numeric path segments (like novel IDs),
-  // so a non-match safely falls through to the chapter-by-chapter crawl below,
-  // which is what actually works for homepage-only saved novels on those sites.
   const isLightNovelWorld = (url: string): boolean =>
     url.toLowerCase().includes("lightnovelworld");
 
-  // Narrow, source-specific patterns (safe for FreeWebNovel/NovelBin/NovelFull/etc.)
   const CHAPTER_SKIP_PATTERNS: { regex: RegExp }[] = [
     { regex: /(\/chapter-)(\d+)(\.html)$/ },
     { regex: /(\/chapter-)(\d+)(\/?)$/ },
     { regex: /(_chapter_)(\d+)()$/ },
   ];
 
-  // Broader patterns, only ever applied to LightNovelWorld URLs.
   const LNW_SKIP_PATTERNS: { regex: RegExp }[] = [
     { regex: /(\/chapter\/)(\d+)(\/?)$/ },
     { regex: /(chapter[-_]?)(\d+)()/i },
@@ -318,9 +331,7 @@ export default function UpdatesScreen() {
       return null;
     }
 
-    // Non-LNW sources: only the narrow, exact-suffix patterns. No generic
-    // fallback — if none of these match, return null and let the caller
-    // crawl chapter-by-chapter instead (the old, working behavior).
+    // Non-LNW sources: only the narrow, exact-suffix patterns.
     for (const { regex } of CHAPTER_SKIP_PATTERNS) {
       if (regex.test(firstChapterUrl)) {
         return firstChapterUrl.replace(
@@ -361,10 +372,6 @@ export default function UpdatesScreen() {
         domain = "Unknown";
       }
 
-      // Older novels (or ones added by pasting a chapter URL directly, before
-      // add.tsx started normalizing sourceUrl to the homepage) may have a
-      // chapter page stored as sourceUrl instead of the novel's info page.
-      // Detect that here and derive the homepage URL the same way add.tsx does.
       let metaUrl = selectedNovel.sourceUrl;
       const sourceIsChapterUrl = NOVEL_SOURCE_CHAPTER_PATTERN.test(selectedNovel.sourceUrl);
       if (sourceIsChapterUrl) {
@@ -420,14 +427,12 @@ export default function UpdatesScreen() {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
 
-        // Try instant URL construction first
         const directUrl = tryDirectSkip(meta.firstChapterUrl, startCh);
         if (directUrl) {
           addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
           currentUrl = directUrl;
           chapterNum = startCh;
         } else {
-          // Crawl chapter-by-chapter
           addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
 
           let skippedCount = 0;
@@ -441,7 +446,6 @@ export default function UpdatesScreen() {
               chapterNum++;
               skippedCount++;
 
-              // Log at every 20% milestone (5 entries: 20, 40, 60, 80, + final)
               const percent = Math.floor((skippedCount / totalToSkip) * 100);
               const nextMilestone = lastLoggedMilestone + 20;
               if (percent >= nextMilestone && nextMilestone <= 80) {
@@ -463,7 +467,6 @@ export default function UpdatesScreen() {
                 break;
               }
             }
-            // 35ms — fast but courteous; yield every 20 chapters to keep UI responsive
             await new Promise((r) => setTimeout(r, 35));
             if (skippedCount % 20 === 0) await new Promise((r) => setTimeout(r, 0));
           }
@@ -490,9 +493,11 @@ export default function UpdatesScreen() {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       // ========== DOWNLOAD NEW CHAPTERS ==========
-      const newChapters: (Chapter & { chapterNumber: number })[] = [];
+      const newChapters: (Chapter & { chapterNumber: number; content?: string })[] = [];
+      const reDownloadedContent: { url: string; content: string; title: string }[] = [];
       let downloaded = 0;
       let consecutiveErrors = 0;
+      let reDownloadedCount = 0;
 
       while (currentUrl && !stopRef.current) {
         if (maxCh !== null && downloaded >= maxCh) {
@@ -504,74 +509,134 @@ export default function UpdatesScreen() {
         setProgressLabel(`Chapter ${chapterNum}`);
         if (maxCh) setProgress((downloaded / maxCh) * 100);
 
-        addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
+        // Check if chapter exists in library (by URL)
+        const existsInLibrary = chapterExists(currentUrl, existingChapters);
+        const existsInNew = chapterExists(currentUrl, newChapters);
 
-        try {
-          const data = await fetchChapter(currentUrl, chapterNum);
+        let shouldDownload = false;
+        let contentExists = false;
 
-          if (
-            !chapterExists(currentUrl, existingChapters) &&
-            !chapterExists(currentUrl, newChapters)
-          ) {
-            const chapterNumber = extractChapterNumber(data.title);
-            newChapters.push({
-              title: data.title,
-              url: currentUrl,
-              content: data.content,
-              chapterNumber,
-            });
-            downloaded++;
-            consecutiveErrors = 0;
-
-            if (downloaded % 5 === 0) {
-              addLog(`Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`, "success");
-            } else {
-              addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
-            }
-          } else {
-            addLog(`SKIPPED: Chapter ${chapterNum} already exists`, "warning");
+        if (existsInLibrary || existsInNew) {
+          // Check if content file exists for this chapter
+          if (existsInLibrary) {
+            contentExists = await chapterHasContent(selectedNovel.id, currentUrl);
+          } else if (existsInNew) {
+            // It's in newChapters, which we just downloaded, so content should exist
+            const found = newChapters.find(c => c.url === currentUrl);
+            if (found && found.content) contentExists = true;
           }
 
-          if (!data.nextUrl) {
-            addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-            addLog(`No more chapters found.`, "info");
-            break;
-          }
-          currentUrl = data.nextUrl;
-          chapterNum++;
-        } catch (err: any) {
-          consecutiveErrors++;
-          addLog(`Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
-
-          if (consecutiveErrors >= 3) {
-            addLog(`Too many consecutive errors, stopping update.`, "warning");
-            break;
-          }
-
-          try {
-            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
-            if (nextUrl) {
+          if (contentExists) {
+            // Content is present → skip this chapter
+            addLog(`SKIPPED: Chapter ${chapterNum} already has content`, "warning");
+            // Get nextUrl using lightweight metadata
+            try {
+              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
               currentUrl = nextUrl;
               chapterNum++;
-            } else {
+              continue;
+            } catch {
+              addLog(`Failed to get next chapter URL for ${chapterNum}, aborting skip`, "error");
               break;
             }
-          } catch {
-            break;
+          } else {
+            // Content is missing → re-download
+            addLog(`Chapter ${chapterNum} exists but content is missing. Re-downloading...`, "warning");
+            shouldDownload = true;
           }
+        } else {
+          // Chapter does not exist → download as new
+          shouldDownload = true;
         }
 
-        await new Promise((r) => setTimeout(r, 200));
+        if (shouldDownload) {
+          addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
+
+          try {
+            const data = await fetchChapter(currentUrl, chapterNum);
+
+            // Determine if this is a re-download or new
+            if (existsInLibrary || existsInNew) {
+              // Re-download: store content for later merging
+              reDownloadedContent.push({
+                url: currentUrl,
+                content: data.content,
+                title: data.title,
+              });
+              reDownloadedCount++;
+              addLog(`Re-downloaded: ${data.title} (Chapter ${extractChapterNumber(data.title)})`, "success");
+            } else {
+              // New chapter
+              const chapterNumber = extractChapterNumber(data.title);
+              newChapters.push({
+                title: data.title,
+                url: currentUrl,
+                content: data.content,
+                chapterNumber,
+              });
+              downloaded++;
+              addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
+            }
+
+            consecutiveErrors = 0;
+            // Update progress label with total downloaded (new + re-downloaded)
+            if (downloaded % 5 === 0) {
+              addLog(`Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`, "success");
+            }
+
+            if (!data.nextUrl) {
+              addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+              addLog(`No more chapters found.`, "info");
+              break;
+            }
+            currentUrl = data.nextUrl;
+            chapterNum++;
+          } catch (err: any) {
+            consecutiveErrors++;
+            addLog(`Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
+
+            if (consecutiveErrors >= 3) {
+              addLog(`Too many consecutive errors, stopping update.`, "warning");
+              break;
+            }
+
+            try {
+              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              if (nextUrl) {
+                currentUrl = nextUrl;
+                chapterNum++;
+              } else {
+                break;
+              }
+            } catch {
+              break;
+            }
+          }
+
+          await new Promise((r) => setTimeout(r, 200));
+        }
       }
 
       // ========== FINALIZE & SORT ==========
-      if (downloaded > 0 || updatedCoverUrl !== selectedNovel.coverUrl) {
+      if (downloaded > 0 || reDownloadedCount > 0 || updatedCoverUrl !== selectedNovel.coverUrl) {
+        // Build final chapters list with content for those that have been updated
         const allChapters: (Chapter & { content?: string })[] = [...existingChapters];
 
+        // Add new chapters
         newChapters.forEach((newCh) => {
           if (!chapterExists(newCh.url, allChapters)) {
             const { chapterNumber, ...chapterData } = newCh;
             allChapters.push(chapterData);
+          }
+        });
+
+        // Merge re-downloaded content into existing entries
+        reDownloadedContent.forEach(({ url, content, title }) => {
+          const existing = allChapters.find(c => c.url === url);
+          if (existing) {
+            existing.content = content;
+            // Optionally update title if it changed (rare)
+            if (title) existing.title = title;
           }
         });
 
@@ -595,21 +660,15 @@ export default function UpdatesScreen() {
           );
         }
 
-        // Persist the actual chapter text to per-chapter files, at each chapter's FINAL
-        // sorted index — this matches how the reader (loadChapterContent) and add.tsx
-        // expect chapter bodies to be stored. Only entries that still carry `content`
-        // (i.e. the newly downloaded ones) get written; existing chapters are skipped.
-        if (downloaded > 0) {
+        // Save all updated content to disk (only chapters that have `content` will be written)
+        if (downloaded > 0 || reDownloadedCount > 0) {
           addLog(`Saving chapter content to disk...`, "info");
           await saveAllChaptersToFile(selectedNovel.id, allChapters);
         }
 
-        // Strip content before persisting the lightweight chapters metadata —
-        // chapter bodies live in their own per-chapter files, never in library.json.
+        // Strip content before persisting the lightweight chapters metadata
         const chaptersMetaOnly: Chapter[] = allChapters.map(({ content, ...rest }) => rest);
 
-        // Once we've successfully resolved sourceUrl to a working homepage URL,
-        // persist the corrected value so future updates skip the detection step.
         await updateNovel(selectedNovel.id, {
           chapters: chaptersMetaOnly,
           coverUrl: updatedCoverUrl,
@@ -621,9 +680,11 @@ export default function UpdatesScreen() {
         if (downloaded > 0) {
           addLog(`Novel updated with ${downloaded} new chapters!`, "success");
         }
+        if (reDownloadedCount > 0) {
+          addLog(`Re-downloaded ${reDownloadedCount} chapters with missing content.`, "success");
+        }
       } else if (sourceIsChapterUrl) {
-        // No new chapters, but still worth fixing the stored sourceUrl so
-        // future updates don't need to re-detect/re-derive it every time.
+        // No new chapters, but fix stored sourceUrl
         await updateNovel(selectedNovel.id, { sourceUrl: metaUrl });
       }
 
@@ -632,12 +693,13 @@ export default function UpdatesScreen() {
       if (stopRef.current) {
         addLog(`Update halted by user.`, "warning");
         addLog(`Downloaded ${downloaded} new chapters before stop.`, "info");
-      } else if (downloaded === 0) {
+      } else if (downloaded === 0 && reDownloadedCount === 0) {
         addLog(`UPDATE COMPLETE!`, "success");
-        addLog(`No new chapters found. Novel is up to date!`, "success");
+        addLog(`No new chapters and no missing content found. Novel is up to date!`, "success");
       } else {
         addLog(`UPDATE COMPLETE!`, "success");
-        addLog(`Total new chapters added: ${downloaded}`, "success");
+        if (downloaded > 0) addLog(`New chapters added: ${downloaded}`, "success");
+        if (reDownloadedCount > 0) addLog(`Re-downloaded chapters: ${reDownloadedCount}`, "success");
         addLog(`Novel updated in your library!`, "success");
       }
 
