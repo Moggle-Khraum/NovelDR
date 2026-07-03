@@ -283,6 +283,9 @@ export default function LibraryScreen() {
 
   const [statusSheetNovel, setStatusSheetNovel] = useState<Novel | null>(null);
 
+  // ── Dummy modal state to force cover images after refresh ────────────────
+  const [dummyModalVisible, setDummyModalVisible] = useState(false);
+
   // ── Refresh state ──────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
   const fabRotation = useSharedValue(0);
@@ -315,6 +318,10 @@ export default function LibraryScreen() {
       stopSpin();
       setRefreshing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // ── Invisible modal trick: force re‑render to kick‑start cover images ──
+      setDummyModalVisible(true);
+      setTimeout(() => setDummyModalVisible(false), 100);
     }
   };
 
@@ -732,6 +739,11 @@ export default function LibraryScreen() {
         onClose={() => setStatusSheetNovel(null)}
         onSelect={handleStatusSelect}
       />
+
+      {/* ── INVISIBLE DUMMY MODAL ── */}
+      <Modal visible={dummyModalVisible} transparent animationType="none">
+        <View style={{ flex: 1, backgroundColor: 'transparent' }} />
+      </Modal>
     </View>
   );
 }
