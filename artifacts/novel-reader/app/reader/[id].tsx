@@ -636,7 +636,12 @@ export default function ReaderScreen() {
         (appStateRef.current === 'active' && nextAppState.match(/inactive|background/)) ||
         nextAppState === 'background'
       ) {
-        console.log('[Reader] App backgrounding - saving chapter content...');
+        console.log('[Reader] App backgrounding - saving progress and chapter content...');
+        const n = novelRef.current;
+        const ch = chapterRef.current;
+        if (n && ch) {
+          await saveReadingProgress(n.id, chapterIndexRef.current, ch.title, scrollYRef.current);
+        }
         await persistChapterContent();
       }
       appStateRef.current = nextAppState;
@@ -646,7 +651,7 @@ export default function ReaderScreen() {
     return () => {
       subscription.remove();
     };
-  }, [persistChapterContent]);
+  }, [persistChapterContent, saveReadingProgress]);
 
   // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
