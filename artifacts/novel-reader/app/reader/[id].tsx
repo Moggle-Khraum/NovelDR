@@ -82,9 +82,6 @@ interface CachedChapter {
   wordCount: number;
 }
 
-const chapterCache = new Map<string, CachedChapter>();
-const CACHE_DURATION = 1000 * 60 * 30;
-
 function detectParagraphs(text: string): string[] {
   let normalized = text.replace(/\r\n?/g, "\n").replace(/\t/g, " ").trim();
   normalized = smartQuoteFormatting(normalized);
@@ -438,29 +435,17 @@ export default function ReaderScreen() {
   };
 
   const processChapterContent = useCallback(
-    async (content: string, chapterId: string): Promise<CachedChapter> => {
-      const cacheKey = `${novel?.id}_${chapterId}`;
-      const cached = chapterCache.get(cacheKey);
-      if (cached && Date.now() - cached.processedAt < CACHE_DURATION) return cached;
-
-      // If content is empty, don't cache it — return a default empty object
+    async (content: string): Promise<CachedChapter> => {
       if (!content.trim()) {
-        const empty: CachedChapter = { content: "", paragraphs: [], sentences: [], processedAt: Date.now(), wordCount: 0 };
-        return empty;
+        return { content: "", paragraphs: [], sentences: [], processedAt: Date.now(), wordCount: 0 };
       }
 
       const paragraphs = detectParagraphs(content);
       const sentences = splitIntoSentences(content);
       const wordCount = content.split(/\s+/).length;
-      const processed: CachedChapter = { content, paragraphs, sentences, processedAt: Date.now(), wordCount };
-      chapterCache.set(cacheKey, processed);
-      // Cleanup old cache entries
-      for (const [key, value] of chapterCache.entries()) {
-        if (Date.now() - value.processedAt > CACHE_DURATION) chapterCache.delete(key);
-      }
-      return processed;
+      return { content, paragraphs, sentences, processedAt: Date.now(), wordCount };
     },
-    [novel?.id]
+    []
   );
 
   // ─── Load effect with AbortController and request ID ──────────────────
@@ -505,8 +490,8 @@ export default function ReaderScreen() {
           content = fileChapter?.content || "";
         }
 
-        // Process the content (cached or fresh)
-        const processed = await processChapterContent(content, `${chapterIndex}`);
+        // Process the content fresh every time (no caching)
+        const processed = await processChapterContent(content);
         if (signal.aborted || currentLoadId !== loadIdRef.current) return;
 
         // Update state with the processed content
@@ -514,7 +499,7 @@ export default function ReaderScreen() {
         setProcessedParagraphs(processed.paragraphs);
         setTtsSentences(processed.sentences);
 
-        // Preload the next chapter if not already preloaded for this chapterIndex
+        // Preload the next chapter's raw content if not already preloaded for this chapterIndex
         if (preloadedIndexRef.current !== chapterIndex && chapterIndex + 1 < novel.chapters.length) {
           preloadedIndexRef.current = chapterIndex; // mark before awaiting so it can't re-enter
           const nextChapter = novel.chapters[chapterIndex + 1];
@@ -522,9 +507,6 @@ export default function ReaderScreen() {
             const nextFileChapter = await loadChapterContent(novel.id, chapterIndex + 1);
             if (signal.aborted || currentLoadId !== loadIdRef.current) return;
             if (nextFileChapter?.content) {
-              // Process and cache the next chapter (no need to store paragraphs)
-              await processChapterContent(nextFileChapter.content, `${chapterIndex + 1}`);
-              if (signal.aborted || currentLoadId !== loadIdRef.current) return;
               setNextChapterContent(nextFileChapter.content);
               setNextChapterPreloaded(true);
             }
@@ -636,12 +618,7 @@ export default function ReaderScreen() {
         (appStateRef.current === 'active' && nextAppState.match(/inactive|background/)) ||
         nextAppState === 'background'
       ) {
-        console.log('[Reader] App backgrounding - saving progress and chapter content...');
-        const n = novelRef.current;
-        const ch = chapterRef.current;
-        if (n && ch) {
-          await saveReadingProgress(n.id, chapterIndexRef.current, ch.title, scrollYRef.current);
-        }
+        console.log('[Reader] App backgrounding - saving chapter content...');
         await persistChapterContent();
       }
       appStateRef.current = nextAppState;
@@ -651,7 +628,7 @@ export default function ReaderScreen() {
     return () => {
       subscription.remove();
     };
-  }, [persistChapterContent, saveReadingProgress]);
+  }, [persistChapterContent]);
 
   // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
