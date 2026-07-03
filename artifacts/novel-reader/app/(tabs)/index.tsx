@@ -74,7 +74,7 @@ const FILTER_TABS: { key: NovelStatus | "all"; label: string }[] = [
   { key: "completed", label: "Completed" },
 ];
 
-// ── NovelCard (Updated to match the image layout) ────────────────────────────
+// ── NovelCard ────────────────────────────────────────────────────────────────
 
 function NovelCard({
   novel,
@@ -169,7 +169,6 @@ function NovelCard({
             </Text>
           </View>
 
-          
           {/* Progress row with button */}
           <View style={styles.progressRow}>
             <View style={styles.progressLeft}>
@@ -283,12 +282,13 @@ export default function LibraryScreen() {
 
   const [statusSheetNovel, setStatusSheetNovel] = useState<Novel | null>(null);
 
-  // ── Dummy modal state to force cover images after refresh ────────────────
+  // ── Force re‑render of list on refresh ────────────────────────────────────
+  const [refreshKey, setRefreshKey] = useState(0);
+  // ── Invisible modal trick (optional fallback) ─────────────────────────────
   const [dummyModalVisible, setDummyModalVisible] = useState(false);
 
   // ── Refresh state ──────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
-  // The FAB rotation logic is kept but not used – we keep it dormant in case we re-enable the FAB.
   const fabRotation = useSharedValue(0);
   const fabSpinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${fabRotation.value}deg` }],
@@ -312,7 +312,7 @@ export default function LibraryScreen() {
     if (refreshing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    startSpin(); // still starts spin but the FAB is hidden; can keep as dormant
+    startSpin();
     try {
       await refreshLibrary();
     } finally {
@@ -320,7 +320,9 @@ export default function LibraryScreen() {
       setRefreshing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // ── Invisible modal trick: force re‑render to kick‑start cover images ──
+      // ── Force a complete remount of the FlatList ──
+      setRefreshKey(prev => prev + 1);
+      // (Optional) invisible modal as extra insurance
       setDummyModalVisible(true);
       setTimeout(() => setDummyModalVisible(false), 100);
     }
@@ -629,6 +631,7 @@ export default function LibraryScreen() {
 
     return (
       <FlatList
+        key={refreshKey}  // <-- forces a full remount when refreshed
         data={filteredNovels}
         keyExtractor={(n) => n.id}
         renderItem={({ item, index }) => (
@@ -680,7 +683,6 @@ export default function LibraryScreen() {
       )}
 
       {/* ── Floating Refresh Button (FAB) – REMOVED ── */}
-      {/* The FAB is no longer rendered; pull-to-refresh is the only way to refresh. */}
 
       {/* Batch Delete Confirmation Modal */}
       <Modal
@@ -725,7 +727,7 @@ export default function LibraryScreen() {
         onSelect={handleStatusSelect}
       />
 
-      {/* ── INVISIBLE DUMMY MODAL ── */}
+      {/* ── INVISIBLE DUMMY MODAL (optional fallback) ── */}
       <Modal visible={dummyModalVisible} transparent animationType="none">
         <View style={{ flex: 1, backgroundColor: 'transparent' }} />
       </Modal>
@@ -850,7 +852,7 @@ const styles = StyleSheet.create({
   continueButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   continueButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#fff" },
 
-  // floating refresh button – styles are kept but not used (can be removed later)
+  // floating refresh button (styles kept but unused)
   fab: {
     position: "absolute",
     right: 16,
