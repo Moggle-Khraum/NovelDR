@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -357,6 +358,10 @@ const loadNovelsFromDisk = async (): Promise<{ novels: Novel[], sortOrder: SortO
 
 export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [novels, setNovels] = useState<Novel[]>([]);
+  const novelsRef = useRef<Novel[]>(novels);
+  useEffect(() => {
+    novelsRef.current = novels;
+  }, [novels]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<SortOrder>('ascending');
   const [initSteps, setInitSteps] = useState<InitStep[]>([]);
@@ -463,51 +468,45 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addNovel = useCallback(async (novel: Novel) => {
-    let updatedNovels: Novel[] = [];
-    let newChaptersToSave: Chapter[] = [];
-    setNovels(current => {
-      const existing = current.find(n => n.id === novel.id);
-      if (existing) {
-        const existingUrls = new Set(existing.chapters.map(ch => ch.url));
-        const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
-        const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
-        updatedNovels = current.map(n => n.id === novel.id ? merged : n);
-        newChaptersToSave = newChapters;
-      } else {
-        updatedNovels = [novel, ...current];
-        newChaptersToSave = novel.chapters;
-      }
-      return updatedNovels;
-    });
+    const current = novelsRef.current;
+    const existing = current.find(n => n.id === novel.id);
+    let updatedNovels: Novel[];
+    let newChaptersToSave: Chapter[];
+    if (existing) {
+      const existingUrls = new Set(existing.chapters.map(ch => ch.url));
+      const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
+      const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
+      updatedNovels = current.map(n => n.id === novel.id ? merged : n);
+      newChaptersToSave = newChapters;
+    } else {
+      updatedNovels = [novel, ...current];
+      newChaptersToSave = novel.chapters;
+    }
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
     await saveAllChaptersToFile(novel.id, newChaptersToSave);
     await saveLibraryToFile(updatedNovels);
   }, []);
 
   const updateNovel = useCallback(async (id: string, updates: Partial<Novel>) => {
-    let updatedNovels: Novel[] = [];
-    setNovels(current => {
-      updatedNovels = current.map(n => n.id === id ? { ...n, ...updates } : n);
-      return updatedNovels;
-    });
+    const updatedNovels = novelsRef.current.map(n => n.id === id ? { ...n, ...updates } : n);
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
   }, []);
 
   const removeNovel = useCallback(async (id: string) => {
-    let updatedNovels: Novel[] = [];
-    setNovels(current => {
-      updatedNovels = current.filter(n => n.id !== id);
-      return updatedNovels;
-    });
+    const updatedNovels = novelsRef.current.filter(n => n.id !== id);
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
     deleteNovelChapters(id);
   }, []);
 
   const removeNovels = useCallback(async (ids: string[]) => {
-    let updatedNovels: Novel[] = [];
-    setNovels(current => {
-      updatedNovels = current.filter(n => !ids.includes(n.id));
-      return updatedNovels;
-    });
+    const updatedNovels = novelsRef.current.filter(n => !ids.includes(n.id));
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
     ids.forEach(id => deleteNovelChapters(id));
   }, []);
@@ -563,23 +562,23 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     chapterNumber?: number
   ) => {
     await saveChapterToFile(novelId, chapterIndex, { title, url, content, chapterNumber });
-    setNovels(current => {
-      const idx = current.findIndex(n => n.id === novelId);
-      if (idx === -1) return current;
-      const novel = { ...current[idx] };
-      const newChapter = { title, url, chapterNumber };
-      if (chapterIndex >= novel.chapters.length) {
-        novel.chapters = [...novel.chapters, newChapter];
-      } else {
-        const chapters = [...novel.chapters];
-        chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
-        novel.chapters = chapters;
-      }
-      const updated = [...current];
-      updated[idx] = novel;
-      saveLibraryToFile(updated);
-      return updated;
-    });
+    const current = novelsRef.current;
+    const idx = current.findIndex(n => n.id === novelId);
+    if (idx === -1) return;
+    const novel = { ...current[idx] };
+    const newChapter = { title, url, chapterNumber };
+    if (chapterIndex >= novel.chapters.length) {
+      novel.chapters = [...novel.chapters, newChapter];
+    } else {
+      const chapters = [...novel.chapters];
+      chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
+      novel.chapters = chapters;
+    }
+    const updatedNovels = [...current];
+    updatedNovels[idx] = novel;
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+    await saveLibraryToFile(updatedNovels);
   }, []);
 
   const loadChapterContent = useCallback(async (novelId: string, chapterIndex: number) => {
