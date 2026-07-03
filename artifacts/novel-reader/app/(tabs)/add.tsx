@@ -250,7 +250,7 @@ export default function AddNovelScreen() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
-  
+
   // --- Site Health Check States ---
   const [siteStatuses, setSiteStatuses] = useState<Record<string, SiteStatus>>({});
   const [isCheckingSites, setIsCheckingSites] = useState(false);
@@ -300,7 +300,7 @@ export default function AddNovelScreen() {
   // --- Simple Site Health Check (Individual, Immediate Updates) ---
   const checkAllSites = async (forceRecheck: boolean = false) => {
     if (isCheckingSites) return;
-    
+
     // Check if we have saved status that's still valid
     if (!forceRecheck) {
       const savedStatus = await loadSavedSiteStatus();
@@ -311,7 +311,7 @@ export default function AddNovelScreen() {
     }
 
     setIsCheckingSites(true);
-    
+
     // Set all sites to 'checking' status
     const initialStatus: Record<string, SiteStatus> = {};
     SUPPORTED_SITES.forEach(site => {
@@ -321,15 +321,15 @@ export default function AddNovelScreen() {
 
     // Check each site individually and update immediately
     const updatedStatuses: Record<string, SiteStatus> = { ...initialStatus };
-    
+
     for (const site of SUPPORTED_SITES) {
       try {
         const isUp = await checkSiteHealth(site.baseUrl);
         updatedStatuses[site.name] = isUp ? 'online' : 'offline';
-        
+
         // Update immediately after each site check
         setSiteStatuses({ ...updatedStatuses });
-        
+
         // Save progress
         await saveSiteStatus(updatedStatuses);
       } catch (error) {
@@ -337,11 +337,11 @@ export default function AddNovelScreen() {
         setSiteStatuses({ ...updatedStatuses });
         await saveSiteStatus(updatedStatuses);
       }
-      
+
       // Small delay to avoid overwhelming servers
       await new Promise(r => setTimeout(r, 200));
     }
-    
+
     setIsCheckingSites(false);
   };
 
@@ -359,7 +359,7 @@ export default function AddNovelScreen() {
 
     // Periodic recheck every 12 hours
     const TWELVE_HOURS = 12 * 60 * 60 * 1000;
-    
+
     healthCheckIntervalRef.current = setInterval(() => {
       checkAllSites(true);
     }, TWELVE_HOURS);
@@ -536,11 +536,11 @@ export default function AddNovelScreen() {
 
     try {
       const meta = await fetchNovelMeta(metaUrl);
-      
+
       const existingNovel = novels.find(
         (n) => n.title.toLowerCase() === meta.title.toLowerCase()
       );
-      
+
       if (existingNovel) {
         Alert.alert(
           "📚 Novel Already Exists",
@@ -569,7 +569,7 @@ export default function AddNovelScreen() {
       } catch {
         domain = "Unknown";
       }
-      
+
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`CONNECTING TO SOURCE...`, "downloading");
       addLog(`Source Domain: ${domain}`, "info");
@@ -580,14 +580,14 @@ export default function AddNovelScreen() {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`Title: ${meta.title}`, "success");
       addLog(`Author: ${meta.author}`, "info");
-      
+
       if (meta.synopsis && meta.synopsis !== "No summary available.") {
         const shortSynopsis = meta.synopsis.length > 100
           ? meta.synopsis.substring(0, 100) + "..."
           : meta.synopsis;
         addLog(`Synopsis: ${shortSynopsis}`, "info");
       }
-      
+
       if (meta.coverUrl) addLog(`Cover found, downloading...`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
@@ -619,17 +619,46 @@ export default function AddNovelScreen() {
       }
 
       // ========== SKIP CHAPTERS BEFORE START CHAPTER ==========
+      // Holds a chapter we already fetched during direct-skip validation, so
+      // the download loop below can reuse it instead of re-fetching it.
+      let prefetchedChapter: {
+        url: string;
+        chapterNum: number;
+        data: Awaited<ReturnType<typeof fetchChapter>>;
+      } | null = null;
+
       if (!directChapterUrl && startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
 
         const directUrl = tryDirectSkip(meta.firstChapterUrl!, startCh);
+        let directSkipWorked = false;
+
         if (directUrl) {
-          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
-          currentUrl = directUrl;
-          chapterNum = startCh;
-        } else {
-          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
+          // FIX: Don't trust the regex-guessed URL blindly — validate it with
+          // a real fetch first. A wrong guess previously caused a 403 that
+          // aborted the whole download instead of falling back to crawling.
+          try {
+            const testData = await fetchChapter(directUrl, startCh);
+            addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+            currentUrl = directUrl;
+            chapterNum = startCh;
+            directSkipWorked = true;
+
+            // OPTIMIZATION: cache the validated fetch so the download loop
+            // doesn't request the exact same URL a second time.
+            prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
+          } catch (err) {
+            addLog(`Direct skip guess was invalid, falling back to crawl...`, "warning");
+          }
+        }
+
+        if (!directSkipWorked) {
+          addLog(`Crawling to chapter ${startCh} (no reliable URL pattern)...`, "warning");
+
+          // Reset in case a failed direct-skip attempt left these mutated.
+          currentUrl = meta.firstChapterUrl!;
+          chapterNum = 1;
 
           let skippedCount = 0;
           let lastLoggedMilestone = 0;
@@ -701,11 +730,26 @@ export default function AddNovelScreen() {
 
         setProgressLabel(`Chapter ${chapterNum}`);
         if (maxCh) setProgress((downloaded / maxCh) * 100);
-        
-        addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
 
         try {
-          const data = await fetchChapter(currentUrl, chapterNum);
+          // OPTIMIZATION: reuse the validated prefetch from the direct-skip
+          // step if it matches exactly what we're about to fetch, avoiding a
+          // duplicate network request for the same chapter.
+          let data: Awaited<ReturnType<typeof fetchChapter>>;
+          if (
+            prefetchedChapter &&
+            prefetchedChapter.url === currentUrl &&
+            prefetchedChapter.chapterNum === chapterNum
+          ) {
+            addLog(`Using validated Chapter ${chapterNum} (already fetched)`, "downloading");
+            data = prefetchedChapter.data;
+          } else {
+            addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
+            data = await fetchChapter(currentUrl, chapterNum);
+          }
+          // Prefetch cache is single-use — clear it after this iteration.
+          prefetchedChapter = null;
+
           const chapterNumber = extractChapterNumber(data.title);
 
           newChapters.push({
@@ -855,7 +899,7 @@ export default function AddNovelScreen() {
               <ActivityIndicator size="small" color={colors.accent} style={{ marginLeft: 'auto' }} />
             )}
           </View>
-          
+
           {/* Legend */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
@@ -870,12 +914,12 @@ export default function AddNovelScreen() {
               <Text style={[styles.legendText, { color: colors.textSecondary }]}>DOWN</Text>
             </View>
           </View>
-          
+
           {/* Subtitle */}
           <Text style={[styles.legendSubtitle, { color: colors.textMuted }]}>
             *Downed source more than a month will be removed
           </Text>
-          
+
           <View style={[styles.sitesGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {SUPPORTED_SITES.slice(0, 8).map((site) => (
               <SiteCell key={site.name} name={site.name} status={siteStatuses[site.name] || 'idle'} />
