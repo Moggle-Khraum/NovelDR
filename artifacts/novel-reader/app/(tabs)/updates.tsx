@@ -86,7 +86,7 @@ function LogLine({ entry }: { entry: LogEntry }) {
 
 export default function UpdatesScreen() {
   const { colors } = useTheme();
-  const { novels, updateNovel } = useLibrary();
+  const { novels, updateNovel, saveAllChaptersToFile } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -566,7 +566,7 @@ export default function UpdatesScreen() {
 
       // ========== FINALIZE & SORT ==========
       if (downloaded > 0 || updatedCoverUrl !== selectedNovel.coverUrl) {
-        const allChapters = [...existingChapters];
+        const allChapters: (Chapter & { content?: string })[] = [...existingChapters];
 
         newChapters.forEach((newCh) => {
           if (!chapterExists(newCh.url, allChapters)) {
@@ -595,10 +595,23 @@ export default function UpdatesScreen() {
           );
         }
 
+        // Persist the actual chapter text to per-chapter files, at each chapter's FINAL
+        // sorted index — this matches how the reader (loadChapterContent) and add.tsx
+        // expect chapter bodies to be stored. Only entries that still carry `content`
+        // (i.e. the newly downloaded ones) get written; existing chapters are skipped.
+        if (downloaded > 0) {
+          addLog(`Saving chapter content to disk...`, "info");
+          await saveAllChaptersToFile(selectedNovel.id, allChapters);
+        }
+
+        // Strip content before persisting the lightweight chapters metadata —
+        // chapter bodies live in their own per-chapter files, never in library.json.
+        const chaptersMetaOnly: Chapter[] = allChapters.map(({ content, ...rest }) => rest);
+
         // Once we've successfully resolved sourceUrl to a working homepage URL,
         // persist the corrected value so future updates skip the detection step.
         await updateNovel(selectedNovel.id, {
-          chapters: allChapters,
+          chapters: chaptersMetaOnly,
           coverUrl: updatedCoverUrl,
           author: meta.author,
           synopsis: meta.synopsis,
