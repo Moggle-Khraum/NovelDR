@@ -331,6 +331,70 @@ const lnwExtractInnerHtml = (html: string): string | null => {
   return inner;
 };
 
+// ─── ASIANOVEL.NET: quote-aware, depth-counting content extractor ──────────
+// Fictioneer's Stimulus.js markup uses attributes like
+// data-action="mousedown->fictioneer-chapter#fastClick", which contain a
+// literal '>' character INSIDE the quotes. Naive regex tag-matching (e.g.
+// [^>]*>) stops at that embedded '>' instead of the tag's real closing
+// bracket, truncating the match early. This scans character-by-character,
+// tracking whether we're inside a quoted attribute value, to find the true
+// end of the opening tag.
+const findRealTagEnd = (html: string, fromIdx: number): number => {
+  let i = fromIdx;
+  let quoteChar: string | null = null;
+  while (i < html.length) {
+    const ch = html[i];
+    if (quoteChar) {
+      if (ch === quoteChar) quoteChar = null;
+    } else if (ch === '"' || ch === "'") {
+      quoteChar = ch;
+    } else if (ch === '>') {
+      return i;
+    }
+    i++;
+  }
+  return -1;
+};
+
+// The real chapter text sits inside <section id="chapter-content">...</section>.
+// That section also contains ad <div> wrappers (top and bottom) BEFORE/AFTER
+// the actual <p> paragraphs — a naive non-greedy </div> or </section> match
+// would stop at the first nested closing tag and miss most (or all) of the
+// real content. Since there is never a nested <section> inside it, depth-
+// counting on <section>/</section> gives us the true, complete boundary.
+const extractAsianovelChapterContentHtml = (html: string): string | null => {
+  const marker = 'id="chapter-content"';
+  const markerIdx = html.indexOf(marker);
+  if (markerIdx === -1) return null;
+
+  const tagStart = html.lastIndexOf('<', markerIdx);
+  if (tagStart === -1) return null;
+
+  const openTagEnd = findRealTagEnd(html, tagStart);
+  if (openTagEnd === -1) return null;
+
+  let depth = 1;
+  let i = openTagEnd + 1;
+  let contentEnd = -1;
+
+  while (i < html.length && depth > 0) {
+    const nextOpen = html.indexOf('<section', i);
+    const nextClose = html.indexOf('</section', i);
+    if (nextClose === -1) break;
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth++;
+      i = nextOpen + 8; // length of '<section'
+    } else {
+      depth--;
+      if (depth === 0) contentEnd = nextClose;
+      i = nextClose + 9; // length of '</section'
+    }
+  }
+
+  if (contentEnd === -1) return null;
+  return html.slice(openTagEnd + 1, contentEnd);
+};
+
 const lnwExtractParagraphs = (html: string): {
   paragraphs: string[];
   selector: 'chapterText' | 'chapter-text' | 'generic-fallback';
@@ -1313,20 +1377,31 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     let content = '';
     
     if (isAsianovel) {
-      const ASIANOVEL_CONTENT_SELECTORS: RegExp[] = [
-        /<section[^>]*class="[^"]*chapter-formatting[^"]*"[^>]*>([\s\S]*?)<\/section>/i,
-        /<div[^>]*class="[^"]*chapter-formatting[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-        /<[^>]*\bid="chapter-content"[^>]*>([\s\S]*?)<\/(?:div|section|article)>/i,
-        /<div[^>]*class="[^"]*chapter__content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-        /<[^>]*class="[^"]*content-section[^"]*"[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
-      ];
-      
-      let contentHtml: string | null = null;
-      for (const selector of ASIANOVEL_CONTENT_SELECTORS) {
-        const match = safeMatch(html, selector);
-        if (match) {
-          contentHtml = match;
-          break;
+      // Primary method: depth-counting extraction anchored on the outer
+      // <section id="chapter-content">...</section> wrapper. This correctly
+      // captures the FULL content even though it contains nested ad <div>s
+      // (top and bottom) that would trip up a naive non-greedy </div> or
+      // </section> match. See extractAsianovelChapterContentHtml for details.
+      let contentHtml: string | null = extractAsianovelChapterContentHtml(html);
+
+      // Fallback: quote-aware regex selectors, only used if the primary
+      // depth-counting method didn't find anything (e.g. markup changed).
+      if (!contentHtml) {
+        const ATTR = `(?:"[^"]*"|'[^']*'|[^>"'])*`;
+        const ASIANOVEL_CONTENT_SELECTORS: RegExp[] = [
+          new RegExp(`<section${ATTR}class="[^"]*chapter-formatting[^"]*"${ATTR}>([\\s\\S]*?)<\\/section>`, 'i'),
+          new RegExp(`<div${ATTR}class="[^"]*chapter-formatting[^"]*"${ATTR}>([\\s\\S]*?)<\\/div>`, 'i'),
+          new RegExp(`<[a-z]+${ATTR}\\bid="chapter-content"${ATTR}>([\\s\\S]*?)<\\/(?:div|section|article)>`, 'i'),
+          new RegExp(`<div${ATTR}class="[^"]*chapter__content[^"]*"${ATTR}>([\\s\\S]*?)<\\/div>`, 'i'),
+          new RegExp(`<[a-z]+${ATTR}class="[^"]*content-section[^"]*"${ATTR}>([\\s\\S]*?)<\\/(?:div|section)>`, 'i'),
+        ];
+
+        for (const selector of ASIANOVEL_CONTENT_SELECTORS) {
+          const match = safeMatch(html, selector);
+          if (match) {
+            contentHtml = match;
+            break;
+          }
         }
       }
       
@@ -1334,9 +1409,11 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
         contentHtml = contentHtml
           .replace(/<script[\s\S]*?<\/script>/gi, '')
           .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-          .replace(/<[^>]*class="[^"]*\b(?:ad|adsbygoogle)\b[^"]*"[^>]*>[\s\S]*?<\/[a-z]+>/gi, '');
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '');
         
+        // No need to specifically strip ad <div> wrappers here — they contain
+        // no <p> tags (just <script>/<ins>), so the <p>-only extraction below
+        // naturally skips over them.
         const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
