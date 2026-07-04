@@ -591,6 +591,12 @@ export default function AddNovelScreen() {
       if (meta.coverUrl) addLog(`Cover found, downloading...`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
+      if (meta.debugInfo && meta.debugInfo.length > 0) {
+        addLog(`DEBUG INFO`, "downloading");
+        meta.debugInfo.forEach((line) => addLog(line, "info"));
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+      }
+
       if (!meta.firstChapterUrl) {
         addLog("Could not find chapter links on this page", "error");
         setIsDownloading(false);
