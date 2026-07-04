@@ -169,14 +169,26 @@ const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
   }
 };
 
-// Special fetch for Asianovel
-const fetchAsianovel = async (url: string): Promise<string> => {
-  console.log('[Scraper] Fetching Asianovel with special headers...');
-  const headers = {
+// ─── ASIANOVEL.NET — fully isolated HTTP client ─────────────────────────────
+// This axios instance is used ONLY for asianovel.net requests. It is
+// completely separate from the shared `httpClient` above so that anything
+// tuned here (headers, decompression behavior, timeouts) can never affect
+// FreeWebNovel, NovelBin, LightNovelWorld, or any other site.
+//
+// NOTE: deliberately does NOT set 'Accept-Encoding'. On Android, React
+// Native's networking layer (OkHttp) only auto-decompresses gzip/br
+// responses when it sets that header itself. Setting it manually disables
+// transparent decompression, so the server's compressed bytes come back
+// undecoded — raw gzip/brotli binary shoved into a JS string instead of
+// readable HTML (mojibake). This was the root cause of Asianovel scraping
+// returning garbage/empty results.
+const asianovelHttpClient = axios.create({
+  timeout: 15000,
+  maxRedirects: 5,
+  headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Cache-Control': 'max-age=0',
@@ -184,26 +196,34 @@ const fetchAsianovel = async (url: string): Promise<string> => {
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
-  };
+  },
+});
+
+// Special fetch for Asianovel — routed entirely through asianovelHttpClient above
+const fetchAsianovel = async (url: string): Promise<string> => {
+  console.log('[Scraper] Fetching Asianovel via isolated client...');
 
   try {
-    const response = await axios.get(url, { headers, timeout: 15000, maxRedirects: 5 });
+    const response = await asianovelHttpClient.get(url);
     return response.data;
   } catch (error: any) {
     console.warn('[Scraper] Asianovel direct fetch failed:', error.message);
     try {
-      const response = await fetch(url, { headers, redirect: 'follow' });
-      const html = await response.text();
-      return html;
+      // Native fetch as a secondary attempt, still without a manual
+      // Accept-Encoding header for the same decompression reason above.
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        redirect: 'follow',
+      });
+      return await response.text();
     } catch (fetchError: any) {
       console.warn('[Scraper] Asianovel fetch API failed:', fetchError.message);
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const proxyResponse = await axios.get(proxyUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
-        timeout: 15000,
-      });
+      const proxyResponse = await asianovelHttpClient.get(proxyUrl);
       return proxyResponse.data;
     }
   }
