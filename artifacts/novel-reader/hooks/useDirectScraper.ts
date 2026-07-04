@@ -826,8 +826,29 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       const titleMatch = safeMatch(html, /<h1[^>]*class="[^"]*story__identity-title[^"]*"[^>]*>([^<]+)<\/h1>/i);
       if (titleMatch) title = decodeEntities(titleMatch.trim());
       
-      const authorMatch = safeMatch(html, /<div[^>]*class="[^"]*story__identity-meta[^"]*"[^>]*>[\s\S]*?<a[^>]*class="[^"]*author[^"]*"[^>]*>([^<]+)<\/a>/i);
-      if (authorMatch) author = decodeEntities(authorMatch.trim());
+      const authorMetaMatch = safeMatch(html, /<div[^>]*class="[^"]*story__identity-meta[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      asianovelDebug.push(`author: story__identity-meta div found: ${!!authorMetaMatch}`);
+      if (authorMetaMatch) {
+        asianovelDebug.push(`author: meta div raw content: ${authorMetaMatch.slice(0, 200)}`);
+        // Prefer an <a href="/author/...">Name</a> link (most reliable — doesn't
+        // depend on the anchor's class attribute, which can vary/be blank).
+        let authorAnchorMatch = authorMetaMatch.match(/<a[^>]*\bhref="[^"]*\/author\/[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+        // Fall back to any <a> with an "author" class if no /author/ href is found.
+        if (!authorAnchorMatch) {
+          authorAnchorMatch = authorMetaMatch.match(/<a[^>]*class="[^"]*author[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+        }
+        // Last resort: any <a> at all inside the meta block.
+        if (!authorAnchorMatch) {
+          authorAnchorMatch = authorMetaMatch.match(/<a[^>]*>([\s\S]*?)<\/a>/i);
+        }
+        asianovelDebug.push(`author: anchor matched: ${!!authorAnchorMatch}`);
+        if (authorAnchorMatch) {
+          asianovelDebug.push(`author: raw captured group: ${JSON.stringify(authorAnchorMatch[1])}`);
+          const cleanedAuthor = decodeEntities(stripTags(authorAnchorMatch[1])).replace(/\s+/g, ' ').trim();
+          asianovelDebug.push(`author: cleaned result: ${JSON.stringify(cleanedAuthor)}`);
+          if (cleanedAuthor) author = cleanedAuthor;
+        }
+      }
       
       const thumbFigureMatch = safeMatch(html, /<figure[^>]*class="[^"]*story__thumbnail[^"]*"[^>]*>([\s\S]*?)<\/figure>/i);
       if (thumbFigureMatch) {
