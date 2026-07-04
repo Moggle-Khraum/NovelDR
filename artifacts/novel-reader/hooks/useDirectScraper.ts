@@ -507,7 +507,52 @@ const cleanSynopsis = (text: string): string => {
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   cleaned = cleaned.replace(/[ \t]+/g, ' ').trim();
 
+  // WuxiaWorld's synopsis HTML puts a <br> between nearly every sentence
+  // rather than using real paragraph breaks, so at this point `cleaned` is
+  // usually one long, unbroken block of prose. Left as-is, the app's
+  // truncation/"See More" preview has nowhere natural to cut, and shows a
+  // single dense wall of text instead of a nicely readable preview (unlike
+  // AsiaNovel, whose real <p> tags already give proper paragraph breaks).
+  // This regroups the flat sentence stream into readable pseudo-paragraphs —
+  // every 2–3 sentences, or sooner after a short one (typically dialogue) —
+  // purely for display/truncation purposes. It doesn't change any wording.
+  cleaned = groupSentencesIntoParagraphs(cleaned);
+
   return cleaned || text; // fallback to original if empty
+};
+
+// Regroups a flat block of prose into paragraph-sized chunks (2–3 sentences
+// each, breaking early after a short sentence) purely for readability and
+// so preview/truncation UIs have natural break points. Leaves the actual
+// wording untouched — this only inserts blank lines between groups.
+const groupSentencesIntoParagraphs = (text: string): string => {
+  const sentences = text.match(/[^.!?]+[.!?]+(?:['"”’]\s*)?/g);
+  if (!sentences || sentences.length <= 1) return text;
+
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+  let sentenceCount = 0;
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    currentParagraph.push(trimmed);
+    sentenceCount++;
+
+    // Start a new paragraph after 2-3 sentences, or sooner if this sentence
+    // was short (typically a line of dialogue or a quick beat).
+    if (sentenceCount >= 3 || trimmed.length < 50) {
+      paragraphs.push(currentParagraph.join(' '));
+      currentParagraph = [];
+      sentenceCount = 0;
+    }
+  }
+
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(' '));
+  }
+
+  return paragraphs.join('\n\n');
 };
 
 // ─── Main exports ──────────────────────────────────────────────────────────────
