@@ -9,6 +9,12 @@ export interface NovelMeta {
   firstChapterUrl: string | null;
 }
 
+export interface ChapterListItem {
+  number: number;
+  title: string;
+  url: string;
+}
+
 export interface ChapterData {
   url: string;
   title: string;
@@ -874,15 +880,16 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       }
       
       if (!firstChapterUrl) {
-        const chapterNumMatch = html.match(/chapter-(\d+)\//);
-        if (chapterNumMatch) {
-          const baseNovelUrl = url.replace(/\/$/, '');
-          firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}${chapterNumMatch[1]}/`;
-          console.log('[Scraper] Asianovel constructed first chapter URL from found number:', firstChapterUrl);
+        // Asianovel chapter URLs use opaque numeric IDs (e.g. /chapter/58421/),
+        // NOT a "chapter-1", "chapter-2"... slug — so we can't guess the URL
+        // from a pattern like other sites. Instead, pull the real chapter list
+        // out of the DOM and take its first entry (already sorted so index 0 = ch. 1).
+        const chapterEntries = extractAsianovelChapterLinks(html, url);
+        if (chapterEntries.length > 0) {
+          firstChapterUrl = chapterEntries[0].url;
+          console.log('[Scraper] Asianovel first chapter URL (chapter list DOM):', firstChapterUrl);
         } else {
-          const baseNovelUrl = url.replace(/\/$/, '');
-          firstChapterUrl = `${baseNovelUrl.replace('/story/', '/chapter/chapter-')}1/`;
-          console.log('[Scraper] Asianovel constructed first chapter URL (fallback):', firstChapterUrl);
+          console.log('[Scraper] Asianovel: could not determine first chapter URL');
         }
       }
     }
@@ -900,6 +907,93 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   } catch (error: any) {
     console.error('[Scraper] Error:', error.message);
     throw new Error(`Failed to fetch novel: ${error.message}`);
+  }
+};
+
+// Helper: extract every chapter <a href> from the <ol class="chapter-group__list">
+// blocks on an Asianovel (Fictioneer) novel page, in true reading order.
+//
+// IMPORTANT: Asianovel chapter/story URLs use opaque numeric post IDs
+// (e.g. https://www.asianovel.net/story/3377/, /chapter/58421/) — NOT a
+// sequential "chapter-1", "chapter-2"... slug like other sites. So chapter
+// number/order can NEVER be derived from the URL itself. Instead:
+//   1. Items are read straight out of the DOM in the order they appear.
+//   2. The <section ... data-order="asc"|"desc" ...> wrapper attribute tells us
+//      whether that DOM order is oldest-first (asc) or newest-first (desc);
+//      we reverse the array when needed so index 0 is always chapter 1.
+//   3. Numbering itself is done later from the chapter's own link text
+//      (title), only falling back to position if no number is present there.
+const extractAsianovelChapterLinks = (html: string, baseUrl: string): { url: string; title: string }[] => {
+  const entries: { url: string; title: string }[] = [];
+  const seenUrls = new Set<string>();
+
+  const listBlockRegex = /<ol[^>]*class="[^"]*chapter-group__list[^"]*"[^>]*>([\s\S]*?)<\/ol>/gi;
+  let listBlockMatch: RegExpExecArray | null;
+
+  while ((listBlockMatch = listBlockRegex.exec(html)) !== null) {
+    const listHtml = listBlockMatch[1];
+
+    const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+    let liMatch: RegExpExecArray | null;
+
+    while ((liMatch = liRegex.exec(listHtml)) !== null) {
+      const liInner = liMatch[1];
+
+      // Items like the "_folding-toggle" expand/collapse control have no
+      // chapter <a href> and are skipped naturally here.
+      const anchorMatch = liInner.match(/<a\b[^>]*\bhref="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+      if (!anchorMatch) continue;
+
+      const chapterUrl = makeAbsoluteUrl(anchorMatch[1], baseUrl);
+      if (seenUrls.has(chapterUrl)) continue;
+      seenUrls.add(chapterUrl);
+
+      const title = decodeEntities(stripTags(anchorMatch[2])).replace(/\s+/g, ' ').trim();
+      entries.push({ url: chapterUrl, title });
+    }
+  }
+
+  // Determine whether the DOM order above is oldest-first or newest-first
+  const orderAttrMatch = html.match(/data-order="(asc|desc)"/i);
+  const domOrder = orderAttrMatch ? orderAttrMatch[1].toLowerCase() : 'asc';
+  if (domOrder === 'desc') entries.reverse();
+
+  return entries;
+};
+
+// --- ASIANOVEL.NET (Fictioneer WordPress) — full chapter list ---
+// Extracts every chapter from the <ol class="chapter-group__list"> blocks on the
+// novel page, in proper reading order (see extractAsianovelChapterLinks above
+// for why we can't use the URL to figure out chapter numbers on this site).
+// Chapter number is taken from the link's own title text when present
+// (e.g. "Chapter 12", "12: Title"); otherwise it falls back to the chapter's
+// position in the corrected reading-order list (index + 1).
+export const directFetchAsianovelChapterList = async (url: string): Promise<ChapterListItem[]> => {
+  try {
+    const html = await fetchAsianovel(url);
+    const entries = extractAsianovelChapterLinks(html, url);
+
+    const chapters: ChapterListItem[] = entries.map((entry, index) => {
+      let chapterNumber: number | null = null;
+      const textNumMatch = entry.title.match(/(?:chapter\s*)?(\d+)/i);
+      if (textNumMatch) chapterNumber = parseInt(textNumMatch[1], 10);
+
+      if (chapterNumber === null || Number.isNaN(chapterNumber)) {
+        chapterNumber = index + 1; // fall back to reading-order position
+      }
+
+      return {
+        number: chapterNumber,
+        title: entry.title || `Chapter ${chapterNumber}`,
+        url: entry.url,
+      };
+    });
+
+    console.log(`[Scraper] Asianovel chapter list: found ${chapters.length} chapters`);
+    return chapters;
+  } catch (error: any) {
+    console.error('[Scraper] Error fetching Asianovel chapter list:', error.message);
+    throw new Error(`Failed to fetch chapter list: ${error.message}`);
   }
 };
 
