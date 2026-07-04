@@ -1152,6 +1152,48 @@ export const directFetchAsianovelChapterList = async (url: string): Promise<Chap
   }
 };
 
+// The CHAPTER page (not the story page) has its own chapter index, embedded
+// in a hidden dialog: <ul id="chapter-index-list" class="chapter-index__list">
+// with <li data-position="N" data-id="POST_ID"><a href="...">...</a></li>.
+// This is even more reliable than the story page's list — data-position is
+// an explicit, authoritative sequence number with no data-order guessing
+// needed. Used to find the true "next chapter" URL instead of scanning for
+// any <a> that happens to contain the word "next" (too fragile — matches
+// unrelated recommendation/suggestion links elsewhere on the page).
+const extractAsianovelChapterIndexList = (
+  html: string,
+  baseUrl: string
+): { position: number; url: string; title: string }[] => {
+  const listMatch = html.match(/<ul[^>]*id="chapter-index-list"[^>]*>([\s\S]*?)<\/ul>/i);
+  if (!listMatch) return [];
+
+  const listHtml = listMatch[1];
+  const entries: { position: number; url: string; title: string }[] = [];
+
+  const liRegex = /<li\b([^>]*)>([\s\S]*?)<\/li>/gi;
+  let liMatch: RegExpExecArray | null;
+
+  while ((liMatch = liRegex.exec(listHtml)) !== null) {
+    const liAttrs = liMatch[1];
+    const liInner = liMatch[2];
+
+    const positionMatch = liAttrs.match(/data-position="(\d+)"/i);
+    if (!positionMatch) continue;
+    const position = parseInt(positionMatch[1], 10);
+
+    const anchorMatch = liInner.match(/<a\b[^>]*\bhref="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!anchorMatch) continue;
+
+    const url = makeAbsoluteUrl(anchorMatch[1], baseUrl);
+    const title = decodeEntities(stripTags(anchorMatch[2])).replace(/\s+/g, ' ').trim();
+
+    entries.push({ position, url, title });
+  }
+
+  entries.sort((a, b) => a.position - b.position);
+  return entries;
+};
+
 export const directFetchChapter = async (url: string, chapterNum: number): Promise<ChapterData> => {
   console.log('[Scraper] Fetching chapter:', url);
   
@@ -1570,10 +1612,50 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     
     let nextUrl: string | null = null;
     
+    // --- ASIANOVEL.NET: reliable next-chapter lookup ---
+    // The generic "any <a> containing the word 'next'" scan below is too
+    // fragile on Fictioneer pages — there are unrelated links (recommended
+    // chapters, "keep reading" widgets, etc.) that also match "next" in
+    // their text/class/id, and the FIRST one found on the page wins, which
+    // can jump to a completely unrelated chapter. Instead, this exact page
+    // embeds its own chapter index (in a hidden dialog) with explicit
+    // data-position numbers — <li data-position="N" data-id="POST_ID"> — so
+    // we can find the current chapter's real position and take the next
+    // entry's real URL directly. No guessing based on link text, and no
+    // assuming chapter IDs in the URL are sequential (they sometimes skip).
+    if (isAsianovel) {
+      const indexEntries = extractAsianovelChapterIndexList(html, url);
+      if (indexEntries.length > 0) {
+        const normalize = (u: string) => u.replace(/\/$/, '').toLowerCase();
+        const currentIndex = indexEntries.findIndex(e => normalize(e.url) === normalize(url));
+        if (currentIndex !== -1 && currentIndex + 1 < indexEntries.length) {
+          nextUrl = indexEntries[currentIndex + 1].url;
+          console.log('[Scraper] Asianovel next chapter (data-position index):', nextUrl);
+        } else if (currentIndex === -1) {
+          console.log('[Scraper] Asianovel: current chapter not found in index list, trying story-page chapter list');
+        } else {
+          console.log('[Scraper] Asianovel: this is the last chapter in the list');
+        }
+      }
+      // Fall back to the story-page-style chapter-group__list, in case this
+      // particular page didn't embed the chapter-index-list dialog.
+      if (!nextUrl) {
+        const chapterEntries = extractAsianovelChapterLinks(html, url);
+        if (chapterEntries.length > 0) {
+          const normalize = (u: string) => u.replace(/\/$/, '').toLowerCase();
+          const currentIndex = chapterEntries.findIndex(e => normalize(e.url) === normalize(url));
+          if (currentIndex !== -1 && currentIndex + 1 < chapterEntries.length) {
+            nextUrl = chapterEntries[currentIndex + 1].url;
+            console.log('[Scraper] Asianovel next chapter (chapter-group__list fallback):', nextUrl);
+          }
+        }
+      }
+    }
+    
     const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
     let linkMatch;
     
-    while ((linkMatch = linkRegex.exec(html)) !== null) {
+    while (!nextUrl && (linkMatch = linkRegex.exec(html)) !== null) {
       const attrsStr = linkMatch[1];
       const innerHtml = linkMatch[2];
       
