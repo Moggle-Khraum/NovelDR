@@ -425,6 +425,19 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     
     const html = await fetchWithFallback(url, isFreeWebNovel, isAsianovel);
     
+    if (isAsianovel) {
+      console.log('[DEBUG][Asianovel] html length:', html.length);
+      console.log('[DEBUG][Asianovel] has chapter-group__list:', html.includes('chapter-group__list'));
+      console.log('[DEBUG][Asianovel] has story__identity-title:', html.includes('story__identity-title'));
+      console.log('[DEBUG][Asianovel] has story__thumbnail:', html.includes('story__thumbnail'));
+      const bodyIdx = html.indexOf('<body');
+      console.log(
+        '[DEBUG][Asianovel] first 500 chars of <body>:',
+        bodyIdx >= 0 ? html.slice(bodyIdx, bodyIdx + 500) : '(no <body> tag found)'
+      );
+      console.log('[DEBUG][Asianovel] first 500 chars of raw html:', html.slice(0, 500));
+    }
+    
     let title = extractTitleFromUrl(url);
     let author = 'Unknown Author';
     let synopsis = 'No summary available.';
