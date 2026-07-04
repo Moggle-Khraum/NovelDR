@@ -392,31 +392,51 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
 const cleanSynopsis = (text: string): string => {
   if (!text) return '';
 
-  // Split into lines
-  const lines = text.split(/\n/);
+  let cleaned = text;
 
-  // Filter out any line that contains the boilerplate pattern:
-  // "You're reading" (or "You are reading") AND a quote character.
+  // The boilerplate is usually split across multiple lines/elements, e.g.:
+  //   You're reading
+  //   "Novel Title"
+  //   on Wuxiaworld.Site
+  // Same-line matching alone misses this. Instead, match the whole sequence
+  // as a block — "you're/you are reading" ... (any quoted title in between,
+  // within a reasonable distance) ... "on wuxiaworld[.site]" — and delete it
+  // in one shot, however it's broken up by newlines/whitespace.
+  cleaned = cleaned.replace(
+    /you\s*'?\s*re\s+reading[\s\S]{0,150}?on\s*wuxiaworld(?:\.?site)?/gi,
+    ''
+  );
+  cleaned = cleaned.replace(
+    /you\s+are\s+reading[\s\S]{0,150}?on\s*wuxiaworld(?:\.?site)?/gi,
+    ''
+  );
+
+  // Split into lines for anything that survived as isolated fragments
+  const lines = cleaned.split(/\n/);
+
   const filteredLines = lines.filter(line => {
-    const lower = line.toLowerCase();
-    // Check for "you're reading" or "you are reading" and a quote
-    const hasReading = lower.includes("you're reading") || lower.includes("you are reading");
-    const hasQuote = line.includes('"') || line.includes('“') || line.includes('”');
-    if (hasReading && hasQuote) {
-      return false; // remove this entire line
-    }
-    // Also remove lines that are just "on WuxiaWorld.Site" leftovers
-    if (lower.match(/^\s*on\s*wuxiaworld\.?site\s*$/)) {
-      return false;
-    }
+    const lower = line.toLowerCase().trim();
+    if (!lower) return true; // keep blank lines, collapsed later
+
+    // Leftover "You're reading" fragment on its own line
+    if (/^you\s*'?\s*re\s+reading\s*:?\s*$/.test(lower)) return false;
+    if (/^you\s+are\s+reading\s*:?\s*$/.test(lower)) return false;
+
+    // Leftover "on Wuxiaworld[.site]" fragment on its own line
+    if (/^on\s*wuxiaworld(?:\.?site)?\s*$/.test(lower)) return false;
+
+    // A line that is ONLY a quoted string with nothing else (the orphaned
+    // novel title left behind once "reading"/"on wuxiaworld" are stripped
+    // from around it) — safe to drop since real synopsis sentences don't
+    // consist of just a bare quoted phrase with no other words.
+    if (/^["“][^"”]+["”]\s*$/.test(line.trim())) return false;
+
     return true;
   });
 
-  // Join remaining lines
-  let cleaned = filteredLines.join('\n');
+  cleaned = filteredLines.join('\n');
 
-  // Remove any leftover "on WuxiaWorld.Site" that might have survived
-  cleaned = cleaned.replace(/\s+on\s+wuxiaworld\.?site/gi, '');
+  // Catch-all: remove any remaining bare mentions of the site name
   cleaned = cleaned.replace(/wuxiaworld\.?site/gi, '');
 
   // Clean extra whitespace and normalize spacing
@@ -762,18 +782,32 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       
       if (descMatch) {
         let summaryHtml = descMatch;
+
+        // The "You're Reading "Title" on WuxiaWorld.Site" boilerplate is
+        // wrapped in <b><em>...</em></b> (or <em><b>...</b></em>) right at the
+        // start of the summary, immediately followed by a <br/> and then the
+        // real synopsis — all inside one single <p>. Strip that wrapped block
+        // directly out of the HTML here, before any text conversion, so we
+        // don't have to guess at it from plain text afterward.
+        summaryHtml = summaryHtml.replace(/<b>\s*<em>[\s\S]*?<\/em>\s*<\/b>/gi, '');
+        summaryHtml = summaryHtml.replace(/<em>\s*<b>[\s\S]*?<\/b>\s*<\/em>/gi, '');
+
         const paragraphs = summaryHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
           const cleanedParagraphs = paragraphs
             .map(p => {
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              text = text.replace(/<br\s*\/?>/gi, ' ');
+              text = text.replace(/<br\s*\/?>/gi, '\n');
               text = decodeEntities(text);
               text = stripTags(text);
-              return text.replace(/\s+/g, ' ').trim();
+              return text
+                .split('\n')
+                .map(line => line.replace(/[ \t]+/g, ' ').trim())
+                .filter(line => line.length > 0)
+                .join('\n');
             })
             .filter(t => t.length > 0);
-          let fullText = cleanedParagraphs.join(' ');
+          let fullText = cleanedParagraphs.join('\n');
           synopsis = cleanSynopsis(fullText);
           console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
