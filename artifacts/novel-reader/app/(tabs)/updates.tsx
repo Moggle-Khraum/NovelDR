@@ -237,59 +237,18 @@ export default function UpdatesScreen() {
   };
 
   // ─── Lightweight metadata fetch (next URL only, no content parsing) ──────────
+  // FIX: this used to hand-roll its own fetch() + regex HTML scrape for the
+  // "next chapter" link, which didn't know about per-site quirks (AJAX-loaded
+  // chapter lists, Cloudflare proxying, LNW's #chapterText selector, etc.)
+  // that fetchChapter() in useApi already handles. That mismatch is why
+  // updates.tsx failed on sites that worked fine in add.tsx. Now it just
+  // delegates to the same shared scraper add.tsx uses.
   const getChapterMetadata = async (
     url: string,
     chapterNum: number
-  ): Promise<{ nextUrl: string | null }> => {
-    try {
-      const isFreeWebNovel =
-        url.toLowerCase().includes("freewebnovel") ||
-        url.toLowerCase().includes("bednovel");
-
-      let html: string;
-      if (isFreeWebNovel) {
-        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-        });
-        html = await res.text();
-      } else {
-        const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-        html = await res.text();
-      }
-
-      const stripTags = (s: string) => s.replace(/<[^>]*>/g, " ").trim();
-      const makeAbsolute = (rel: string, base: string) => {
-        if (!rel) return base;
-        if (rel.startsWith("http")) return rel;
-        try { return new URL(rel, base).href; } catch { return rel; }
-      };
-
-      const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
-      let linkMatch: RegExpExecArray | null;
-      while ((linkMatch = linkRegex.exec(html)) !== null) {
-        const attrsStr = linkMatch[1];
-        const hrefMatch = attrsStr.match(/href=["']([^"']+)["']/i);
-        const href = hrefMatch ? hrefMatch[1] : null;
-        const txt = stripTags(linkMatch[2]).toLowerCase();
-        const classAttr = (attrsStr.match(/class=["']([^"']*)["']/i)?.[1] ?? "").toLowerCase();
-        const idAttr = (attrsStr.match(/id=["']([^"']*)["']/i)?.[1] ?? "").toLowerCase();
-        const attrs = classAttr + " " + idAttr;
-        if (
-          (txt.includes("next") ||
-            txt.includes("next chapter") ||
-            attrs.includes("next") ||
-            attrs.includes("next_chapter")) &&
-          href
-        ) {
-          return { nextUrl: makeAbsolute(href, url) };
-        }
-      }
-      return { nextUrl: null };
-    } catch {
-      // Fallback to full fetchChapter if lightweight fetch fails
-      const data = await fetchChapter(url, chapterNum);
-      return { nextUrl: data.nextUrl || null };
-    }
+  ): Promise<{ nextUrl: string | null; title: string }> => {
+    const data = await fetchChapter(url, chapterNum);
+    return { nextUrl: data.nextUrl || null, title: data.title };
   };
 
   // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
@@ -423,16 +382,40 @@ export default function UpdatesScreen() {
       let currentUrl: string | null = meta.firstChapterUrl;
       let chapterNum = 1;
 
+      // Holds a chapter already fetched while validating a direct-skip guess,
+      // so the download loop below can reuse it instead of re-fetching it.
+      let prefetchedChapter: {
+        url: string;
+        chapterNum: number;
+        data: Awaited<ReturnType<typeof fetchChapter>>;
+      } | null = null;
+
       if (startCh > 1) {
         addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
         addLog(`Skipping to chapter ${startCh}...`, "downloading");
 
         const directUrl = tryDirectSkip(meta.firstChapterUrl, startCh);
+        let directSkipWorked = false;
+
         if (directUrl) {
-          addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
-          currentUrl = directUrl;
-          chapterNum = startCh;
-        } else {
+          // FIX: don't trust the regex-guessed URL blindly — validate it with
+          // a real fetch first. A wrong guess previously caused an error that
+          // aborted the whole update instead of falling back to crawling.
+          try {
+            const testData = await fetchChapter(directUrl, startCh);
+            addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+            currentUrl = directUrl;
+            chapterNum = startCh;
+            directSkipWorked = true;
+            prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
+          } catch {
+            addLog(`Direct skip guess was invalid, falling back to crawl...`, "warning");
+          }
+        }
+
+        if (!directSkipWorked) {
+          currentUrl = meta.firstChapterUrl;
+          chapterNum = 1;
           addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
 
           let skippedCount = 0;
@@ -550,10 +533,24 @@ export default function UpdatesScreen() {
         }
 
         if (shouldDownload) {
-          addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
-
           try {
-            const data = await fetchChapter(currentUrl, chapterNum);
+            // Reuse the validated prefetch from the direct-skip step if it
+            // matches exactly what we're about to fetch, avoiding a duplicate
+            // network request for the same chapter.
+            let data: Awaited<ReturnType<typeof fetchChapter>>;
+            if (
+              prefetchedChapter &&
+              prefetchedChapter.url === currentUrl &&
+              prefetchedChapter.chapterNum === chapterNum
+            ) {
+              addLog(`Using validated Chapter ${chapterNum} (already fetched)`, "downloading");
+              data = prefetchedChapter.data;
+            } else {
+              addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
+              data = await fetchChapter(currentUrl, chapterNum);
+            }
+            // Prefetch cache is single-use — clear it after this iteration.
+            prefetchedChapter = null;
 
             // Determine if this is a re-download or new
             if (existsInLibrary || existsInNew) {
