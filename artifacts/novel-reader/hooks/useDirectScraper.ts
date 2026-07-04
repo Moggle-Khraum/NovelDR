@@ -861,17 +861,25 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
           const cleanedParagraphs = paragraphs
             .map(p => {
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              text = text.replace(/<br\s*\/?>/gi, '\n');
+              // WuxiaWorld puts a <br> between nearly every sentence, not just
+              // between real paragraphs — converting every single <br> to a
+              // newline turns the synopsis into one sentence per line, which
+              // breaks truncation/preview in the app. Only treat a genuine
+              // double break (<br><br>, with optional whitespace between) as
+              // a real paragraph break; collapse single breaks into a space
+              // so the text flows normally.
+              text = text.replace(/(?:<br\s*\/?>\s*){2,}/gi, '\n\n');
+              text = text.replace(/<br\s*\/?>/gi, ' ');
               text = decodeEntities(text);
               text = stripTags(text);
               return text
-                .split('\n')
-                .map(line => line.replace(/[ \t]+/g, ' ').trim())
-                .filter(line => line.length > 0)
-                .join('\n');
+                .split('\n\n')
+                .map(para => para.replace(/\s+/g, ' ').trim())
+                .filter(para => para.length > 0)
+                .join('\n\n');
             })
             .filter(t => t.length > 0);
-          let fullText = cleanedParagraphs.join('\n');
+          let fullText = cleanedParagraphs.join('\n\n');
           synopsis = cleanSynopsis(fullText);
           console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
