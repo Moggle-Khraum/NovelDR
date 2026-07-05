@@ -52,9 +52,6 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "lightnovelworld.org": "LightNovelWorld",
       "wuxiaworld.site": "WuxiaWorldSite",
       "lightnovelpub.me": "LightNovelPubMe",
-      "royalroad.com": "RoyalRoad",
-      "asianovel.net": "AsiaNovel",
-      "novelphoenix.com": "NovelPhoenix",
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
@@ -685,7 +682,25 @@ export default function LibraryScreen() {
         </View>
       )}
 
-      {/* ── Floating Refresh Button (FAB) – REMOVED ── */}
+      {/* Floating Refresh Button (FAB) */}
+      {!selectionMode && !showSearch && (
+        <Animated.View
+          style={[
+            styles.fab,
+            { bottom: bottomPad + 24, backgroundColor: colors.accent, borderColor: colors.border },
+          ]}
+        >
+          <Pressable
+            onPress={handleRefresh}
+            disabled={refreshing}
+            style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}
+          >
+            <Animated.View style={fabSpinStyle}>
+              <Ionicons name="refresh" size={22} color="#fff" />
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
+      )}
 
       {/* Batch Delete Confirmation Modal */}
       <Modal
@@ -855,7 +870,7 @@ const styles = StyleSheet.create({
   continueButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   continueButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#fff" },
 
-  // floating refresh button (styles kept but unused)
+  // floating refresh button
   fab: {
     position: "absolute",
     right: 16,
