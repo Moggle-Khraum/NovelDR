@@ -452,74 +452,6 @@ const lnwFilterParagraphs = (rawParas: string[]): string[] => {
   return deduped;
 };
 
-// ─── Sentence-aware line splitting ──────────────────────────────────────────
-// Splits a block of prose into one sentence per line. Naively splitting on
-// every '.', '!', or '?' would wrongly break on abbreviations ("Dr. Smith"),
-// decimal numbers ("3.14"), and ellipses ("..."), so those are protected
-// with placeholders first, then restored after splitting.
-const SENTENCE_ABBREVIATIONS = [
-  'Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'vs', 'etc',
-  'Inc', 'Ltd', 'Co', 'Corp', 'Gen', 'Col', 'Capt', 'Lt', 'Sgt', 'Ave', 'No',
-  'am', 'pm',
-];
-
-const splitIntoSentences = (text: string): string[] => {
-  if (!text) return [];
-  const trimmed = text.trim();
-  if (!trimmed) return [];
-
-  const DECIMAL_PLACEHOLDER = '\u0001';
-  const ELLIPSIS_PLACEHOLDER = '\u0002';
-  const ABBR_PLACEHOLDER = '\u0003';
-
-  let protectedText = trimmed;
-
-  // Protect ellipses (3+ dots) as one atomic token so they never trigger a split
-  protectedText = protectedText.replace(/\.{3,}/g, ELLIPSIS_PLACEHOLDER);
-
-  // Protect decimal numbers like 3.14 or 12.5%
-  protectedText = protectedText.replace(/(\d)\.(\d)/g, `$1${DECIMAL_PLACEHOLDER}$2`);
-
-  // Protect common abbreviations (case-insensitive), keeping original casing
-  for (const abbr of SENTENCE_ABBREVIATIONS) {
-    const escaped = abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`\\b${escaped}\\.`, 'gi');
-    protectedText = protectedText.replace(re, (m) => m.slice(0, -1) + ABBR_PLACEHOLDER);
-  }
-
-  // Protect single-capital initials, e.g. "J. K. Rowling"
-  protectedText = protectedText.replace(
-    /\b([A-Z])\.(?=\s?[A-Z]\.|\s[A-Z][a-z])/g,
-    `$1${ABBR_PLACEHOLDER}`
-  );
-
-  // Split after sentence-ending punctuation (with optional trailing quote/paren)
-  // when followed by whitespace and then a capital letter, digit, quote, or
-  // opening paren — or when it's simply the end of the string.
-  const sentenceRegex = /([.!?]+["'\u201D\u2019)]*)(\s+)(?=[A-Z0-9"'\u201C\u2018(]|$)/g;
-
-  const rawSentences: string[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = sentenceRegex.exec(protectedText)) !== null) {
-    const endIndex = match.index + match[1].length;
-    rawSentences.push(protectedText.slice(lastIndex, endIndex));
-    lastIndex = match.index + match[0].length;
-  }
-  rawSentences.push(protectedText.slice(lastIndex));
-
-  return rawSentences
-    .map(s =>
-      s
-        .replace(new RegExp(ELLIPSIS_PLACEHOLDER, 'g'), '...')
-        .replace(new RegExp(DECIMAL_PLACEHOLDER, 'g'), '.')
-        .replace(new RegExp(ABBR_PLACEHOLDER, 'g'), '.')
-        .trim()
-    )
-    .filter(s => s.length > 0);
-};
-
 // ─── Synopsis cleaning – remove the exact boilerplate line ──────────────────
 const cleanSynopsis = (text: string): string => {
   if (!text) return '';
@@ -563,13 +495,6 @@ const cleanSynopsis = (text: string): string => {
     // consist of just a bare quoted phrase with no other words.
     if (/^["“][^"”]+["”]\s*$/.test(line.trim())) return false;
 
-    // A line left with no letters or digits at all — e.g. a stray "."
-    // orphaned when "...on WuxiaWorld.Site." has "WuxiaWorld.Site" stripped
-    // out but its trailing period survives on its own line. Real synopsis
-    // sentences always contain actual words, so this is always leftover
-    // punctuation debris, safe to drop.
-    if (line.trim().length > 0 && !/[a-zA-Z0-9]/.test(line)) return false;
-
     return true;
   });
 
@@ -582,7 +507,52 @@ const cleanSynopsis = (text: string): string => {
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   cleaned = cleaned.replace(/[ \t]+/g, ' ').trim();
 
+  // WuxiaWorld's synopsis HTML puts a <br> between nearly every sentence
+  // rather than using real paragraph breaks, so at this point `cleaned` is
+  // usually one long, unbroken block of prose. Left as-is, the app's
+  // truncation/"See More" preview has nowhere natural to cut, and shows a
+  // single dense wall of text instead of a nicely readable preview (unlike
+  // AsiaNovel, whose real <p> tags already give proper paragraph breaks).
+  // This regroups the flat sentence stream into readable pseudo-paragraphs —
+  // every 2–3 sentences, or sooner after a short one (typically dialogue) —
+  // purely for display/truncation purposes. It doesn't change any wording.
+  cleaned = groupSentencesIntoParagraphs(cleaned);
+
   return cleaned || text; // fallback to original if empty
+};
+
+// Regroups a flat block of prose into paragraph-sized chunks (2–3 sentences
+// each, breaking early after a short sentence) purely for readability and
+// so preview/truncation UIs have natural break points. Leaves the actual
+// wording untouched — this only inserts blank lines between groups.
+const groupSentencesIntoParagraphs = (text: string): string => {
+  const sentences = text.match(/[^.!?]+[.!?]+(?:['"”’]\s*)?/g);
+  if (!sentences || sentences.length <= 1) return text;
+
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+  let sentenceCount = 0;
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    currentParagraph.push(trimmed);
+    sentenceCount++;
+
+    // Start a new paragraph after 2-3 sentences, or sooner if this sentence
+    // was short (typically a line of dialogue or a quick beat).
+    if (sentenceCount >= 3 || trimmed.length < 50) {
+      paragraphs.push(currentParagraph.join(' '));
+      currentParagraph = [];
+      sentenceCount = 0;
+    }
+  }
+
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(' '));
+  }
+
+  return paragraphs.join('\n\n');
 };
 
 // ─── Main exports ──────────────────────────────────────────────────────────────
@@ -769,7 +739,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
                          safeMatch(html, /<h3[^>]*itemprop="name"[^>]*class="title"[^>]*>([^<]+)<\/h3>/i);
       if (titleMatch) title = decodeEntities(titleMatch);
       
-      const coverMatch = safeMatch(html, /<div[^>]*class="book"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i);
+      const coverMatch = safeMatch(html, /<div[^>]*class="book"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i);
       if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
       
       const authorMatch = safeMatch(html, /<span[^>]*itemprop="author"[^>]*>[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i);
@@ -936,30 +906,32 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
           const cleanedParagraphs = paragraphs
             .map(p => {
               let text = p.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, '');
-              text = text.replace(/<br\s*\/?>/gi, '\n');
+              // WuxiaWorld puts a <br> between nearly every sentence, not just
+              // between real paragraphs — converting every single <br> to a
+              // newline turns the synopsis into one sentence per line, which
+              // breaks truncation/preview in the app. Only treat a genuine
+              // double break (<br><br>, with optional whitespace between) as
+              // a real paragraph break; collapse single breaks into a space
+              // so the text flows normally.
+              text = text.replace(/(?:<br\s*\/?>\s*){2,}/gi, '\n\n');
+              text = text.replace(/<br\s*\/?>/gi, ' ');
               text = decodeEntities(text);
               text = stripTags(text);
               return text
-                .split('\n')
-                .map(line => line.replace(/[ \t]+/g, ' ').trim())
-                .filter(line => line.length > 0)
-                // Break each line further into one sentence per line, since a
-                // single <p> (or a single <br>-separated line within it) often
-                // contains multiple sentences with no HTML boundary between
-                // them at all — the source of the "one giant text block" bug.
-                .flatMap(line => splitIntoSentences(line))
-                .join('\n');
+                .split('\n\n')
+                .map(para => para.replace(/\s+/g, ' ').trim())
+                .filter(para => para.length > 0)
+                .join('\n\n');
             })
             .filter(t => t.length > 0);
-          let fullText = cleanedParagraphs.join('\n');
+          let fullText = cleanedParagraphs.join('\n\n');
           synopsis = cleanSynopsis(fullText);
           console.log('[Scraper] Wuxiaworld extracted synopsis with', cleanedParagraphs.length, 'paragraphs');
         } else {
           let fallbackText = summaryHtml.replace(/<br\s*\/?>/gi, ' ');
           fallbackText = decodeEntities(stripTags(fallbackText));
           fallbackText = fallbackText.replace(/\s+/g, ' ').trim();
-          const fallbackSentences = splitIntoSentences(fallbackText);
-          synopsis = cleanSynopsis(fallbackSentences.join('\n'));
+          synopsis = cleanSynopsis(fallbackText);
         }
       }
       
@@ -1068,11 +1040,27 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
               text = stripTags(text);
               return text.trim();
             })
-            .filter(t => t.length > 0);
+            .filter(t => t.length > 0)
+            // Drop the "Related Stories:" / "No related posts." boilerplate
+            // widget that sometimes sits inside the same summary section.
+            .filter(t => !/^related\s+(stories|posts|series)\s*:?\s*$/i.test(t))
+            .filter(t => !/^no\s+related\s+(posts|stories)\.?\s*$/i.test(t));
           synopsis = cleanedParagraphs.join('\n\n');
         } else {
           synopsis = decodeEntities(stripTags(descMatch));
         }
+
+        // Safety net: the paragraph-level filter above only catches the case
+        // where "Related Stories:" / "No related posts." are their own,
+        // isolated <p> tags. Some pages mix it into the tail end of the last
+        // real paragraph instead (e.g. joined with a <br> rather than a
+        // separate <p>), which the filter above would miss entirely. Since
+        // this widget always appears at the very END of the summary and
+        // never partway through real synopsis prose, it's safe to just
+        // truncate everything from that marker onward, wherever it appears.
+        synopsis = synopsis
+          .replace(/related\s+(stories|posts|series)\s*:[\s\S]*$/i, '')
+          .trim();
       }
       
       const asianovelChapterLinkRegex = /<a\b[^>]*>/gi;

@@ -255,6 +255,16 @@ export default function UpdatesScreen() {
   const isLightNovelWorld = (url: string): boolean =>
     url.toLowerCase().includes("lightnovelworld");
 
+  // AsiaNovel chapter URLs (.../chapter/chapter-773154/) LOOK like they'd
+  // match the generic chapter-N patterns below, but the number is an opaque
+  // internal post ID, NOT a sequential chapter number — substituting the
+  // target chapter number in produces a URL that doesn't exist. AsiaNovel's
+  // WordPress theme returns a soft-404 (HTTP 200, "Page Not Found" body) for
+  // those, so the guess doesn't even throw — it silently scrapes garbage
+  // (e.g. a chapter literally titled "404") instead of failing loudly.
+  const isAsianovel = (url: string): boolean =>
+    url.toLowerCase().includes("asianovel.net");
+
   const CHAPTER_SKIP_PATTERNS: { regex: RegExp }[] = [
     { regex: /(\/chapter-)(\d+)(\.html)$/ },
     { regex: /(\/chapter-)(\d+)(\/?)$/ },
@@ -267,6 +277,13 @@ export default function UpdatesScreen() {
   ];
 
   const tryDirectSkip = (firstChapterUrl: string, targetChapter: number): string | null => {
+    if (isAsianovel(firstChapterUrl)) {
+      // No reliable way to guess a chapter's real URL from a target chapter
+      // number on this site — always fall back to the sequential crawl,
+      // which correctly walks the real chapter-index list instead.
+      return null;
+    }
+
     if (isLightNovelWorld(firstChapterUrl)) {
       for (const { regex } of LNW_SKIP_PATTERNS) {
         if (regex.test(firstChapterUrl)) {
@@ -403,11 +420,25 @@ export default function UpdatesScreen() {
           // aborted the whole update instead of falling back to crawling.
           try {
             const testData = await fetchChapter(directUrl, startCh);
-            addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
-            currentUrl = directUrl;
-            chapterNum = startCh;
-            directSkipWorked = true;
-            prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
+
+            // Extra safety net: some sites (e.g. WordPress-based themes)
+            // return a "soft 404" — HTTP 200 with a "Page Not Found" body —
+            // for a guessed URL that doesn't correspond to a real chapter.
+            // That doesn't throw, so without this check a bad guess could
+            // silently get saved as a real chapter (e.g. titled just "404").
+            const looksLikeSoft404 =
+              /^\s*404\s*$/i.test(testData.title) ||
+              /page not found|not found|does not exist/i.test(testData.title);
+
+            if (looksLikeSoft404) {
+              addLog(`Direct skip guess landed on a "Page Not Found" page, falling back to crawl...`, "warning");
+            } else {
+              addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+              currentUrl = directUrl;
+              chapterNum = startCh;
+              directSkipWorked = true;
+              prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
+            }
           } catch {
             addLog(`Direct skip guess was invalid, falling back to crawl...`, "warning");
           }
