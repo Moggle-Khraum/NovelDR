@@ -4,10 +4,11 @@
 // canHandle() match wins).
 
 import type { SourceScraper } from './types';
+import { novelPhoenixScraper } from './sources/novelphoenix';
 // import { exampleScraper } from './sources/exampleScraper'; // <-- keep commented until it's a real source
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
-  // exampleScraper,
+  novelPhoenixScraper,
 ];
 
 /** Find the first registered external scraper that can handle this URL, or null */
