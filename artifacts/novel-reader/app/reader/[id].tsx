@@ -1217,33 +1217,34 @@ export default function ReaderScreen() {
               onPress={() => {}}
             >
               <View style={[styles.sheetHandle, { backgroundColor: adaptiveColors.border }]} />
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad + 32 }}>
                 
-                {/* 1. FONT SIZE - Centered Value between A buttons */}
-                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary }]}>FONT SIZE</Text>
-                <View style={styles.controlRowCentered}>
+                {/* 1. FONT SIZE - Left label, Button, Value, Button (matches Line Spacing layout) */}
+                <View style={styles.rowGroup}>
+                  <Text style={[styles.rowGroupLabel, { color: adaptiveColors.textSecondary }]}>FONT SIZE</Text>
+
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.max(0, fontSizeIdx - 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 16 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 14 }]}>A</Text>
                   </Pressable>
-                  
-                  <Text style={[styles.controlValueCentered, { color: adaptiveColors.text }]}>{fontSize}PT</Text>
-                  
+
+                  <Text style={[styles.controlValueCenteredSmall, { color: adaptiveColors.text }]}>{fontSize}PT</Text>
+
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.min(FONT_SIZES.length - 1, fontSizeIdx + 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 22 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 18 }]}>A</Text>
                   </Pressable>
                 </View>
 
