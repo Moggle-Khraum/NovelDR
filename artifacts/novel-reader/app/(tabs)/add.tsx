@@ -32,8 +32,6 @@ const SUPPORTED_SITES = [
   { name: "AllNovelOrg", baseUrl: "https://allnovel.org/" },
   { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
   { name: "NovGoNet", baseUrl: "https://novgo.net/" },
-  { name: "NovelBinCom", baseUrl: "https://novelbin.com/" },
-  { name: "BedNovelCom", baseUrl: "https://bednovel.com/" },
   { name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
   { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
