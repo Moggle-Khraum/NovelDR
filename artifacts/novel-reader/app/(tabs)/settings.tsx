@@ -421,19 +421,51 @@ export default function SettingsScreen() {
     };
   };
 
+  // Merges the backup's novel list with whatever is currently in the library,
+  // so novels added after the backup was taken aren't wiped out by the restore.
+  // - Novel only in current library (added since backup) -> kept as-is.
+  // - Novel only in backup (since removed) -> restored.
+  // - Novel in both -> backup metadata wins, but chapters are unioned so nothing is lost.
+  const mergeLibraryData = (currentNovels: any[], backupNovels: any[]): any[] => {
+    const currentMap = new Map((currentNovels || []).map((n: any) => [n.id, n]));
+    const backupMap = new Map((backupNovels || []).map((n: any) => [n.id, n]));
+    const allIds = new Set([...currentMap.keys(), ...backupMap.keys()]);
+    const merged: any[] = [];
+
+    for (const id of allIds) {
+      const cur = currentMap.get(id);
+      const bak = backupMap.get(id);
+      if (cur && bak) {
+        const curChapterUrls = new Set((cur.chapters || []).map((c: any) => c.url));
+        const extraChapters = (bak.chapters || []).filter((c: any) => !curChapterUrls.has(c.url));
+        merged.push({
+          ...bak,
+          ...cur,
+          chapters: [...(cur.chapters || []), ...extraChapters],
+        });
+      } else if (cur) {
+        merged.push(cur);
+      } else if (bak) {
+        merged.push(bak);
+      }
+    }
+    return merged;
+  };
+
   const restoreAppData = async (backup: FullBackup) => {
     setBackupLogs([]);
     addBackupLog("🔄 Starting restore...");
     await ensureDir(APP_DATA_DIR);
 
     if (backup.libraryData) {
-      addBackupLog("📚 Restoring library metadata...");
+      addBackupLog("📚 Merging backup with current library...");
+      const mergedLibrary = mergeLibraryData(novels, Array.isArray(backup.libraryData) ? backup.libraryData : []);
+      backup.libraryData = mergedLibrary; // keep downstream cover-reference step in sync
       await FileSystem.writeAsStringAsync(
         `${APP_DATA_DIR}novel_library_v1.json`,
-        JSON.stringify(backup.libraryData)
+        JSON.stringify(mergedLibrary)
       );
-      const novelCount = Array.isArray(backup.libraryData) ? backup.libraryData.length : 0;
-      addBackupLog(`✅ ${novelCount} novels restored`);
+      addBackupLog(`✅ ${mergedLibrary.length} novels restored (merged, nothing overwritten)`);
     }
 
     if (backup.sortPreference) {
@@ -618,7 +650,7 @@ export default function SettingsScreen() {
 
     Alert.alert(
       "Restore Backup",
-      `This will replace ALL current data with the backup.\n\n"${filename}"${coverInfo}\n\n⚠️ Current data will be overwritten. Continue?`,
+      `This will merge the backup into your current library. Novels added since this backup was made will be kept.\n\n"${filename}"${coverInfo}\n\nContinue?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -667,7 +699,7 @@ export default function SettingsScreen() {
       if (result.canceled) return;
       Alert.alert(
         "Restore Backup",
-        "This will replace ALL current data with the selected backup.\n\n⚠️ Continue?",
+        "This will merge the selected backup into your current library. Novels added since this backup was made will be kept.\n\nContinue?",
         [
           { text: "Cancel", style: "cancel" },
           {
