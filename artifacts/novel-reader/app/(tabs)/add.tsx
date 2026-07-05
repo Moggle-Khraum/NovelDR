@@ -38,6 +38,7 @@ const SUPPORTED_SITES = [
   { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
+  { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
 ];
 
 type LogEntry = {
