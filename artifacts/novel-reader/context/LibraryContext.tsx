@@ -43,7 +43,9 @@ export type SortOrder = "ascending" | "descending";
 // =============================================================================
 
 const APP_FOLDER_NAME = 'NovelDR';
-const LIBRARY_FILE_NAME = 'novel_library_v1.json';
+const LIBRARY_FILE_NAME = 'novel_library_v1.json'; // legacy monolithic library file (read-only after migration)
+const NOVELS_FOLDER_NAME = 'novels';
+const NOVEL_INDEX_FILE_NAME = 'novel_index_v1.json';
 const SORT_PREFERENCE_FILE_NAME = 'chapter_sort_preference.json';
 const CHAPTERS_FOLDER_NAME = 'chapters';
 const INIT_FLAG_FILE_NAME = '.initialized';
@@ -57,6 +59,9 @@ const POSSIBLE_STORAGE_LOCATIONS = [
 
 const getAppStoragePath = () => `${FileSystem.documentDirectory}${APP_FOLDER_NAME}/`;
 const getLibraryFilePath = () => `${getAppStoragePath()}${LIBRARY_FILE_NAME}`;
+const getNovelsPath = () => `${getAppStoragePath()}${NOVELS_FOLDER_NAME}/`;
+const getNovelMetaFilePath = (novelId: string) => `${getNovelsPath()}${novelId}.json`;
+const getNovelIndexFilePath = () => `${getAppStoragePath()}${NOVEL_INDEX_FILE_NAME}`;
 const getSortPreferenceFilePath = () => `${getAppStoragePath()}${SORT_PREFERENCE_FILE_NAME}`;
 const getChaptersPath = () => `${getAppStoragePath()}${CHAPTERS_FOLDER_NAME}/`;
 const getNovelChaptersPath = (novelId: string) => `${getChaptersPath()}${novelId}/`;
@@ -128,6 +133,50 @@ const deleteFile = async (filePath: string) => {
     }
   } catch (error) {
     console.error('[Storage] Error deleting file:', error);
+  }
+};
+
+// Strips chapter content down to metadata-only fields for on-disk novel records.
+const toMetadataOnlyNovel = (novel: Novel) => ({
+  ...novel,
+  chapters: novel.chapters.map(ch => ({
+    title: ch.title,
+    url: ch.url,
+    chapterNumber: ch.chapterNumber,
+  })),
+});
+
+const saveNovelMetaToFile = async (novel: Novel) => {
+  await ensureDirectoryExists(getNovelsPath());
+  await FileSystem.writeAsStringAsync(
+    getNovelMetaFilePath(novel.id),
+    JSON.stringify(toMetadataOnlyNovel(novel))
+  );
+};
+
+const loadNovelMetaFromFile = async (novelId: string): Promise<Novel | null> => {
+  try {
+    const content = await loadFromFile(getNovelMetaFilePath(novelId));
+    return content ? JSON.parse(content) : null;
+  } catch {
+    return null;
+  }
+};
+
+const deleteNovelMetaFile = async (novelId: string) => {
+  await deleteFile(getNovelMetaFilePath(novelId));
+};
+
+const saveNovelIndex = async (novelIds: string[]) => {
+  await saveToFile(getNovelIndexFilePath(), novelIds);
+};
+
+const loadNovelIndex = async (): Promise<string[] | null> => {
+  try {
+    const content = await loadFromFile(getNovelIndexFilePath());
+    return content ? JSON.parse(content) : null;
+  } catch {
+    return null;
   }
 };
 
@@ -344,11 +393,28 @@ type LibraryContextType = {
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
 const loadNovelsFromDisk = async (): Promise<{ novels: Novel[], sortOrder: SortOrder }> => {
+  const sortContent = await loadFromFile(getSortPreferenceFilePath());
+  const sortOrder: SortOrder = sortContent ? JSON.parse(sortContent) : 'ascending';
+
+  const index = await loadNovelIndex();
+
+  if (index) {
+    // Current format: one metadata file per novel, order tracked by the index.
+    const loaded = await Promise.all(index.map(id => loadNovelMetaFromFile(id)));
+    const novels = loaded.filter((n): n is Novel => n !== null);
+    return { novels, sortOrder };
+  }
+
+  // No index yet — either a fresh install or a pre-existing monolithic library
+  // file from before the per-novel split. Read it once, split it into
+  // per-novel files, and write the index so this branch is never hit again.
   const libraryContent = await loadFromFile(getLibraryFilePath());
   const novels: Novel[] = libraryContent ? JSON.parse(libraryContent) : [];
 
-  const sortContent = await loadFromFile(getSortPreferenceFilePath());
-  const sortOrder: SortOrder = sortContent ? JSON.parse(sortContent) : 'ascending';
+  if (novels.length > 0) {
+    await Promise.all(novels.map(n => saveNovelMetaToFile(n)));
+  }
+  await saveNovelIndex(novels.map(n => n.id));
 
   return { novels, sortOrder };
 };
@@ -456,51 +522,57 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   // ── Library data management ──────────────────────────────────────────────
 
-  const saveLibraryToFile = async (novelsData: Novel[]) => {
-    const metadataOnly = novelsData.map(novel => ({
-      ...novel,
-      chapters: novel.chapters.map(ch => ({
-        title: ch.title,
-        url: ch.url,
-        chapterNumber: ch.chapterNumber,
-      })),
-    }));
-    await saveToFile(getLibraryFilePath(), metadataOnly);
-  };
-
   const addNovel = useCallback(async (novel: Novel) => {
     const current = novelsRef.current;
     const existing = current.find(n => n.id === novel.id);
     let updatedNovels: Novel[];
     let newChaptersToSave: Chapter[];
+    let mergedNovel: Novel;
+    let isNewEntry = false;
     if (existing) {
       const existingUrls = new Set(existing.chapters.map(ch => ch.url));
       const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
-      const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
-      updatedNovels = current.map(n => n.id === novel.id ? merged : n);
+      mergedNovel = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
+      updatedNovels = current.map(n => n.id === novel.id ? mergedNovel : n);
       newChaptersToSave = newChapters;
     } else {
+      mergedNovel = novel;
       updatedNovels = [novel, ...current];
       newChaptersToSave = novel.chapters;
+      isNewEntry = true;
     }
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
     await saveAllChaptersToFile(novel.id, newChaptersToSave);
-    await saveLibraryToFile(updatedNovels);
+    // Only this novel's file needs writing — the rest of the library is untouched.
+    await saveNovelMetaToFile(mergedNovel);
+    // The index only needs rewriting when membership/order actually changes.
+    if (isNewEntry) {
+      await saveNovelIndex(updatedNovels.map(n => n.id));
+    }
   }, []);
 
   const updateNovel = useCallback(async (id: string, updates: Partial<Novel>) => {
-    const updatedNovels = novelsRef.current.map(n => n.id === id ? { ...n, ...updates } : n);
+    const current = novelsRef.current;
+    const idx = current.findIndex(n => n.id === id);
+    if (idx === -1) return;
+    const updatedNovel = { ...current[idx], ...updates };
+    const updatedNovels = [...current];
+    updatedNovels[idx] = updatedNovel;
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
+    // This is the hot path (reading progress on every chapter change / backgrounding).
+    // Previously this rewrote metadata for the entire library; now it only
+    // touches the one novel that actually changed.
+    await saveNovelMetaToFile(updatedNovel);
   }, []);
 
   const removeNovel = useCallback(async (id: string) => {
     const updatedNovels = novelsRef.current.filter(n => n.id !== id);
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
+    await saveNovelIndex(updatedNovels.map(n => n.id));
+    await deleteNovelMetaFile(id);
     deleteNovelChapters(id);
   }, []);
 
@@ -508,7 +580,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     const updatedNovels = novelsRef.current.filter(n => !ids.includes(n.id));
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
+    await saveNovelIndex(updatedNovels.map(n => n.id));
+    await Promise.all(ids.map(id => deleteNovelMetaFile(id)));
     ids.forEach(id => deleteNovelChapters(id));
   }, []);
 
@@ -579,7 +652,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     updatedNovels[idx] = novel;
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
+    await saveNovelMetaToFile(novel);
   }, []);
 
   const loadChapterContent = useCallback(async (novelId: string, chapterIndex: number) => {
