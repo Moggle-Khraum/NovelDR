@@ -46,7 +46,7 @@ You can download the latest from the [WEBSITE REPO - LATEST](https://github.com/
 | FreeWebNovel | https://freewebnovel.com/ | ✅ Full support   | NovGo | https://novgo.net/ | ✅ Full support |
 | LightNovelWorld | https://lightnovelworld.org/ | ✅ Full support     | WuxiaWorld.site | https://wuxiaworld.site/ | ✅ Full support |
 | RoyalRoad | https://www.royalroad.com/ | ✅ Full support     | AsiaNovel | https://www.asianovel.net/  | ✅ Full support  |
-| BedNovel |  | ✅  |   |    | ✅ |
+| NovelPheoenix | https://novelphoenix.com/ | ✅ Full Support |   |    | ✅ |
 |  |  | ✅  |       |  | ✅  |
 |  |  | ✅  |    |    | ✅  |
 
