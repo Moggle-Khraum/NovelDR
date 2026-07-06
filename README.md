@@ -8,6 +8,7 @@
 - [🖼️ App Screenshots](#app-screenshots)
 - [🌐 Supported Sources](#supported-sources)
 - [📚 Wiki: Adding a Custom Source](#wiki-adding-a-custom-source)
+  - [Where new sources actually live](#where-new-sources-actually-live)
   - [How site detection works](#how-site-detection-works)
   - [What you need before writing anything](#what-you-need-before-writing-anything)
   - [Getting Claude Code to do the regex-patching](#getting-claude-code-to-do-the-regex-patching)
@@ -71,45 +72,85 @@ NovelDR is a free, open-source Android application that lets you download webnov
 <a id="wiki-adding-a-custom-source"></a>
 ## 📚 Wiki: Adding a Custom Source
 
-NovelDR's scraper is entirely client-side and regex-based — no headless browser, no backend. Every site is just a block of pattern matches inside one hook file. This section walks through how those blocks are structured, what a new source needs, and how to get Claude Code to write the regex for you instead of doing it by hand.
+NovelDR's scraping is entirely client-side and regex-based — no headless browser, no backend. Built-in sites live in `hooks/useDirectScraper.ts`; everything else is added as a small, self-contained plugin under `hooks/scrapers/`. This section covers how that folder is structured, what a source needs, and how to get Claude Code to write the regex for you instead of doing it by hand.
+
+<a id="where-new-sources-actually-live"></a>
+### Where new sources actually live
+
+```
+hooks/
+├── useDirectScraper.ts        ← built-in sites (FreeWebNovel, LightNovelWorld, RoyalRoad, etc.)
+├── useApi.ts                  ← checks the registry first, falls back to useDirectScraper.ts
+└── scrapers/
+    ├── types.ts                ← the SourceScraper contract every source implements
+    ├── registry.ts              ← the list of registered sources — order matters
+    ├── shared/
+    │   ├── html.ts               ← stripTags, decodeEntities, safeMatch, makeAbsoluteUrl, extractByDepth
+    │   └── http.ts                ← fetchHtmlWithFallback (direct fetch, falls back to a CORS proxy)
+    └── sources/
+        ├── exampleScraper.ts      ← template — copy this for every new source
+        └── novelphoenix.ts        ← a real, working reference implementation
+```
+
+**Add new sources in `hooks/scrapers/sources/`.** Each source is its own file implementing the `SourceScraper` interface from `types.ts`. `useApi.ts` decides which one handles a given URL:
+
+```ts
+// useApi.ts
+export const fetchNovelMeta = async (url) => {
+  const external = findExternalScraper(url);       // checks hooks/scrapers/registry.ts
+  if (external) return external.fetchNovelMeta(url);
+  return directFetchNovelMeta(url);                  // built-in sites
+};
+```
+
+The registry is checked first; a URL only reaches `useDirectScraper.ts` if nothing registered in `hooks/scrapers/` claims it.
 
 <a id="how-site-detection-works"></a>
 ### How site detection works
 
-Everything lives in `hooks/useDirectScraper.ts`, in two exported functions:
-
-- **`directFetchNovelMeta(url)`** — scrapes the novel's info/landing page. Returns a `NovelMeta`:
-  ```ts
-  { title, author, synopsis, coverUrl, firstChapterUrl, debugInfo? }
-  ```
-- **`directFetchChapter(url, chapterNum)`** — scrapes a single chapter page. Returns a `ChapterData`:
-  ```ts
-  { url, title, content, nextUrl, scraperInfo? }
-  ```
-
-Both functions detect which site they're looking at the same simple way:
+Every source in `hooks/scrapers/sources/` implements the same shape (`types.ts`):
 
 ```ts
-const domainLower = url.toLowerCase();
-const isMySite = domainLower.includes('mynovelsite.com');
+export interface SourceScraper {
+  id: string;                                            // e.g. "novelphoenix"
+  name: string;                                           // e.g. "NovelPhoenix"
+  canHandle: (url: string) => boolean;                    // does this source own this URL?
+  fetchNovelMeta: (url: string) => Promise<NovelMeta>;
+  fetchChapter: (url: string, chapterNum: number) => Promise<ChapterData>;
+}
 ```
 
-Then a block like `if (isMySite) { ... }` runs regex/`safeMatch()` calls against the raw HTML to pull out each field. There's no plugin system or per-site file — you're adding an `if` block to each function, next to all the others (FreeWebNovel, LightNovelWorld, RoyalRoad, etc. are good ones to read as reference).
+`canHandle` is usually just a hostname check:
 
-`nextUrl` for chapters is usually free — there's a generic fallback near the end of `directFetchChapter` that scans every `<a>` tag on the page for the word "next" in its text/class/id, and that works for most sites without any site-specific code. You only need to write custom next-chapter logic if the site doesn't have a straightforward "Next Chapter" link (AsiaNovel is the one exception currently, because its "next" links are ambiguous — see the comment above `isAsianovel` in the file).
+```ts
+canHandle: (url: string) => {
+  try {
+    return new URL(url).hostname.includes('mynovelsite.com');
+  } catch {
+    return false;
+  }
+},
+```
+
+`registry.ts` walks `REGISTERED_SCRAPERS` in array order and uses the **first** `canHandle()` that returns true — so if a hostname pattern could overlap another entry, put the more specific one first.
+
+`NovelMeta` and `ChapterData` are the same shapes used throughout the app, so nothing downstream needs to know or care which source produced the data:
+
+```ts
+NovelMeta:    { title, author, synopsis, coverUrl, firstChapterUrl, debugInfo? }
+ChapterData:  { url, title, content, nextUrl, scraperInfo? }
+```
 
 <a id="what-you-need-before-writing-anything"></a>
 ### What you need before writing anything
 
-1. **Two saved HTML sources**, not screenshots:
-   - The novel's **info/landing page** (title, author, synopsis, cover, chapter list)
-   - **One chapter page** (title, body text, next-chapter link)
+1. **Two saved HTML sources** — the novel's **info/landing page** and **one chapter page**. "View Page Source" isn't reliable enough to build a scraper against: some sites serve a different (stripped-down, bot-walled, or stale-cached) response to a raw source request than what actually renders, so you can end up writing regex against markup the live page never really shows the app.
 
-   Save these as `.html` files from your browser's "View Page Source" (not "Inspect Element" — you want the raw server response, since some sites render extra stuff client-side that won't be there when the app fetches it).
+   **More reliable: open DevTools → Elements/Inspector, let the page fully load, right-click the `<html>` root → "Copy outerHTML"**, then paste that into a `.html` (or `.txt`) file. This captures the actual final DOM after the page has settled, which is much closer to what you'll be matching against in practice.
 
-2. **A read of the site's URL patterns** — is it `/chapter-12`, `/ch12`, `/chapter/12`, something with a numeric post ID? This matters for two extra things beyond the scraper itself (covered below): the direct-skip patterns and the meta scraper's `firstChapterUrl` construction.
+2. **A read of the site's URL patterns** — is it `/chapter-12`, `/ch12`, `/chapter/12`, something with a numeric post ID? Matters for the meta scraper's `firstChapterUrl` construction and for direct-skip support later.
 
-3. Confirm it isn't secretly a mirror. BedNovel looked like a separate site but was just a redirect front for FreeWebNovel with no real content of its own — worth checking before writing a whole new block for what's actually zero new site.
+3. Confirm it isn't secretly a mirror of a site you already support before writing a whole new source for it.
 
 <a id="getting-claude-code-to-do-the-regex-patching"></a>
 ### Getting Claude Code to do the regex-patching
@@ -118,12 +159,12 @@ Claude Code works well for this because it's a mechanical, pattern-matching task
 
 A prompt that works reliably:
 
-> I want to add support for `mynovelsite.com` to NovelDR's scraper (`hooks/useDirectScraper.ts`). Here's the HTML for the novel info page: [paste or attach]. Here's the HTML for a chapter page: [paste or attach]. Add a new `isMynovelsite` detection block to both `directFetchNovelMeta` and `directFetchChapter`, following the same pattern as the existing FreeWebNovel block. Extract: title, author, synopsis, cover image URL, and first-chapter URL for the meta page; title and chapter body paragraphs for the chapter page. Use `safeMatch()` and `decodeEntities()`/`stripTags()` like the rest of the file does.
+> Copy `hooks/scrapers/sources/exampleScraper.ts` to `hooks/scrapers/sources/mynovelsite.ts` and implement it for `mynovelsite.com`. Here's the outerHTML for the novel info page: [paste or attach]. Here's the outerHTML for a chapter page: [paste or attach]. Follow the same structure as `hooks/scrapers/sources/novelphoenix.ts` — use `fetchHtmlWithFallback` from `../shared/http` and `safeMatch`/`decodeEntities`/`stripTags`/`makeAbsoluteUrl`/`extractByDepth` from `../shared/html`. Extract title, author, synopsis, cover URL, and first-chapter URL for the meta page; title, chapter body, and next-chapter URL for the chapter page. Then register it in `hooks/scrapers/registry.ts`.
 
 Things worth telling it explicitly, since these are easy to get subtly wrong:
-- **Give it the real markup, not a summary.** "It has a div with the chapter text in it" produces guessed class names that don't exist.
-- **Tell it to reuse existing helpers** (`safeMatch`, `decodeEntities`, `stripTags`, `makeAbsoluteUrl`) instead of writing new ones — keeps the file consistent and avoids subtly different HTML-entity/whitespace handling per site.
-- **Ask it to filter out junk paragraphs** (ads, "read more on X.com" boilerplate, comment counts) the same way the FreeWebNovel block does with its `junkPhrases` array — the generic fallback catches real chapter text but also catches nav cruft if you don't filter it.
+- **Give it the real captured DOM, not a summary.** "It has a div with the chapter text in it" produces guessed class names that don't exist.
+- **Tell it to reuse the shared helpers** (`shared/html.ts`, `shared/http.ts`) instead of writing new ones inline — that's the whole point of the shared/ folder, and it's what keeps every source consistent.
+- **Ask it to filter out junk paragraphs** (ads, "read more on X.com" boilerplate, comment counts) if the site's content block isn't clean — `novelphoenix.ts`'s `extractParagraphs()` helper is a reasonable model since it only pulls `<p>` tags rather than the whole content div verbatim.
 - **Have it dry-run its regex** against the pasted HTML sample before calling the change done — a regex that "looks right" but doesn't actually match the sample is the most common failure here.
 
 <a id="files-and-fields-checklist"></a>
@@ -133,22 +174,23 @@ Adding a source that's fully functional in the app (not just scrapeable) touches
 
 | File | What to add |
 |---|---|
-| `hooks/useDirectScraper.ts` | The `isMySite` detection + extraction block in **both** `directFetchNovelMeta` and `directFetchChapter` |
+| `hooks/scrapers/sources/mynovelsite.ts` | New file, copied from `exampleScraper.ts`, implementing `SourceScraper` |
+| `hooks/scrapers/registry.ts` | Import it and add it to `REGISTERED_SCRAPERS` — position matters if hostnames could overlap |
 | `app/(tabs)/add.tsx` → `SUPPORTED_SITES` | A `{ name, baseUrl }` entry — this is what makes the site show up in the site picker and the health-check list |
-| `app/(tabs)/updates.tsx` / `add.tsx` → `tryDirectSkip` | Only needed if the site has a predictable numeric chapter URL (`/chapter-N`) and you want "start from chapter 500" to jump straight there instead of crawling sequentially. Skip this if the site's URLs use opaque IDs (like AsiaNovel) — direct-skip will silently guess wrong |
+| `app/(tabs)/updates.tsx` / `add.tsx` → `tryDirectSkip` | Only needed if the site has a predictable numeric chapter URL (`/chapter-N`) and you want "start from chapter 500" to jump straight there instead of crawling sequentially. Skip this if the site's URLs use opaque IDs — direct-skip will silently guess wrong |
 
 Minimum required fields per function, or the app falls back to generic/placeholder values:
 
 - **Meta:** `title` (fallback: derived from the URL slug), `author` (fallback: `"Unknown Author"`), `synopsis` (fallback: `"No summary available."`), `firstChapterUrl` (fallback: `null` — breaks the "start reading" flow if missing)
-- **Chapter:** `title`, `content` (fallback: generic `<p>`-tag scrape across the whole page, which usually includes nav/ads if the site's real content div wasn't matched)
+- **Chapter:** `title`, `content`, `nextUrl` (fallback: `null` — breaks auto-advance to the next chapter if missing)
 
 <a id="whats-next-registering-the-source"></a>
 ### What's next: registering the source
 
-1. Add the site to `SUPPORTED_SITES` in `add.tsx` (see table above) — this is the "registry." Nothing reads the scraper's `if` blocks to build the site list automatically; the array is the actual source of truth for what shows up in the UI.
-2. Update the **Supported Sources** table at the top of this README.
-3. Test both a fresh add (`add.tsx`) and an update on an already-downloaded novel (`updates.tsx`) — they call the same scraper functions but exercise different code paths (chapter-skip logic, existing-chapter detection).
-4. **Known cleanup item:** `SUPPORTED_SITES` in `add.tsx` still lists `NovelBinCom` and `BedNovelCom`, even though their scraper blocks were removed from `useDirectScraper.ts`. Selecting either in the app right now will silently fall through to the generic fallback scraper instead of failing loudly. Worth pulling both entries next time you're in that file.
+1. Add the source to `REGISTERED_SCRAPERS` in `hooks/scrapers/registry.ts` — this is what `useApi.ts` actually checks first.
+2. Add the site to `SUPPORTED_SITES` in `add.tsx` (see table above) — a separate registration that controls what shows up in the UI's site picker and health-check list. Nothing wires these two together automatically; both need updating.
+3. Update the **Supported Sources** table at the top of this README.
+4. Test both a fresh add (`add.tsx`) and an update on an already-downloaded novel (`updates.tsx`) — they call the same `fetchNovelMeta`/`fetchChapter` functions but exercise different code paths (chapter-skip logic, existing-chapter detection).
 
 <a id="appreciation"></a>
 ## 🌟 Appreciation
