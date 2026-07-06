@@ -223,6 +223,9 @@ export default function ReaderScreen() {
 
   const hasRestoredScrollRef = useRef(false);
   const restoredChapterRef = useRef<number>(-1);
+  const restoreAttemptsRef = useRef(0);
+  const lastRestoreHeightRef = useRef(0);
+  const restoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Tracks the on-screen Y position of each paragraph and each sentence within it,
   // populated via onLayout (cheap, fires once per layout, not per render).
@@ -672,6 +675,7 @@ export default function ReaderScreen() {
       isMountedRef.current = false;
       Speech.stop();
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -843,24 +847,64 @@ export default function ReaderScreen() {
     if (autoScrollActive) stopAutoScroll();
   };
 
+  // Restoring scroll position is tricky because content renders progressively —
+  // paragraphs, TTS sentence splitting, and layout can all cause the ScrollView's
+  // content height to grow across several onContentSizeChange events. A single
+  // early attempt can get silently clamped by the native view if the content
+  // isn't tall enough yet to reach the saved offset, leaving the reader stuck
+  // near the top while the progress bar (driven by scrollYRef) still reports
+  // the intended percentage. To fix that, we retry on every content-size change
+  // until the content is tall enough to actually contain the saved offset, or
+  // the height stops changing (rendering has settled), or we hit a max attempt
+  // count — and we always clamp scrollYRef to what was actually achievable so
+  // the progress bar never lies about where the view really is.
+  const MAX_RESTORE_ATTEMPTS = 10;
+  const RESTORE_SETTLE_DELAY = 100;
+
   const handleContentSizeChange = (_width: number, height: number) => {
     contentHeightRef.current = height;
     updateReadingProgress();
-    if (!hasRestoredScrollRef.current && restoredChapterRef.current !== chapterIndex) {
-      const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
-      if (savedOffset > 0 && height > 0) {
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
-          scrollYRef.current = savedOffset;
-          hasRestoredScrollRef.current = true;
-          restoredChapterRef.current = chapterIndex;
-          updateReadingProgress();
-        }, 80);
-      } else {
+
+    if (hasRestoredScrollRef.current || restoredChapterRef.current === chapterIndex) return;
+
+    const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
+
+    if (savedOffset <= 0 || height <= 0) {
+      hasRestoredScrollRef.current = true;
+      restoredChapterRef.current = chapterIndex;
+      return;
+    }
+
+    // A newer content-size change superseded the last pending attempt — drop it
+    // so we always act on the freshest height instead of piling up scrollTo calls.
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
+
+    restoreAttemptsRef.current += 1;
+    const contentTallEnough = height - scrollViewHeightRef.current >= savedOffset;
+    const heightSettled = height === lastRestoreHeightRef.current;
+    lastRestoreHeightRef.current = height;
+    const shouldFinalize = contentTallEnough || heightSettled || restoreAttemptsRef.current >= MAX_RESTORE_ATTEMPTS;
+
+    restoreTimeoutRef.current = setTimeout(() => {
+      const maxScrollNow = Math.max(0, contentHeightRef.current - scrollViewHeightRef.current);
+      const targetY = Math.min(savedOffset, maxScrollNow);
+      scrollRef.current?.scrollTo({ y: targetY, animated: false });
+      scrollYRef.current = targetY;
+      updateReadingProgress();
+
+      if (shouldFinalize) {
         hasRestoredScrollRef.current = true;
         restoredChapterRef.current = chapterIndex;
+        restoreAttemptsRef.current = 0;
+        lastRestoreHeightRef.current = 0;
       }
-    }
+      // Otherwise leave hasRestoredScrollRef false — the next onContentSizeChange,
+      // fired as more content finishes laying out, will retry with a taller height.
+      restoreTimeoutRef.current = null;
+    }, RESTORE_SETTLE_DELAY);
   };
 
   const handleScrollViewLayout = (event: any) => {
@@ -894,6 +938,12 @@ export default function ReaderScreen() {
 
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
+    restoreAttemptsRef.current = 0;
+    lastRestoreHeightRef.current = 0;
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChapterIndex(next);
     setReadingProgress(0);
@@ -916,6 +966,12 @@ export default function ReaderScreen() {
 
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
+    restoreAttemptsRef.current = 0;
+    lastRestoreHeightRef.current = 0;
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     setChapterIndex(index);
     setShowTOC(false);
