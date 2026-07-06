@@ -1,10 +1,28 @@
 ----
 # Novel DR
 
+## 📑 Table of Contents
+
+- [📖 About](#about)
+- [📈 Download Counts](#download-counts)
+- [🖼️ App Screenshots](#app-screenshots)
+- [🌐 Supported Sources](#supported-sources)
+- [📚 Wiki: Adding a Custom Source](#wiki-adding-a-custom-source)
+  - [How site detection works](#how-site-detection-works)
+  - [What you need before writing anything](#what-you-need-before-writing-anything)
+  - [Getting Claude Code to do the regex-patching](#getting-claude-code-to-do-the-regex-patching)
+  - [Files and fields checklist](#files-and-fields-checklist)
+  - [What's next: registering the source](#whats-next-registering-the-source)
+- [🌟 Appreciation](#appreciation)
+- [📜 License](#license)
+- [⚠️ Disclaimer](#disclaimer)
+
+<a id="about"></a>
 ## 📖 About
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
 
+<a id="download-counts"></a>
 ## 📈 Download Counts
 
 <div align="center">
@@ -19,6 +37,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 </div>
 
+<a id="app-screenshots"></a>
 ## 🖼️ App Screenshots
 
 <div align="center">
@@ -35,6 +54,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ##
 
+<a id="supported-sources"></a>
 ## 🌐 Supported Sources
 
 | Source | Domain | Status | Source | Domain | Status |
@@ -48,10 +68,12 @@ NovelDR is a free, open-source Android application that lets you download webnov
 |  |  | ✅  |       |  | ✅  |
 |  |  | ✅  |    |    | ✅  |
 
+<a id="wiki-adding-a-custom-source"></a>
 ## 📚 Wiki: Adding a Custom Source
 
 NovelDR's scraper is entirely client-side and regex-based — no headless browser, no backend. Every site is just a block of pattern matches inside one hook file. This section walks through how those blocks are structured, what a new source needs, and how to get Claude Code to write the regex for you instead of doing it by hand.
 
+<a id="how-site-detection-works"></a>
 ### How site detection works
 
 Everything lives in `hooks/useDirectScraper.ts`, in two exported functions:
@@ -76,6 +98,7 @@ Then a block like `if (isMySite) { ... }` runs regex/`safeMatch()` calls against
 
 `nextUrl` for chapters is usually free — there's a generic fallback near the end of `directFetchChapter` that scans every `<a>` tag on the page for the word "next" in its text/class/id, and that works for most sites without any site-specific code. You only need to write custom next-chapter logic if the site doesn't have a straightforward "Next Chapter" link (AsiaNovel is the one exception currently, because its "next" links are ambiguous — see the comment above `isAsianovel` in the file).
 
+<a id="what-you-need-before-writing-anything"></a>
 ### What you need before writing anything
 
 1. **Two saved HTML sources**, not screenshots:
@@ -88,6 +111,7 @@ Then a block like `if (isMySite) { ... }` runs regex/`safeMatch()` calls against
 
 3. Confirm it isn't secretly a mirror. BedNovel looked like a separate site but was just a redirect front for FreeWebNovel with no real content of its own — worth checking before writing a whole new block for what's actually zero new site.
 
+<a id="getting-claude-code-to-do-the-regex-patching"></a>
 ### Getting Claude Code to do the regex-patching
 
 Claude Code works well for this because it's a mechanical, pattern-matching task once it has the actual HTML in front of it — the failure mode is always giving it a description of the page instead of the page itself.
@@ -102,6 +126,7 @@ Things worth telling it explicitly, since these are easy to get subtly wrong:
 - **Ask it to filter out junk paragraphs** (ads, "read more on X.com" boilerplate, comment counts) the same way the FreeWebNovel block does with its `junkPhrases` array — the generic fallback catches real chapter text but also catches nav cruft if you don't filter it.
 - **Have it dry-run its regex** against the pasted HTML sample before calling the change done — a regex that "looks right" but doesn't actually match the sample is the most common failure here.
 
+<a id="files-and-fields-checklist"></a>
 ### Files and fields checklist
 
 Adding a source that's fully functional in the app (not just scrapeable) touches more than one file:
@@ -117,6 +142,7 @@ Minimum required fields per function, or the app falls back to generic/placehold
 - **Meta:** `title` (fallback: derived from the URL slug), `author` (fallback: `"Unknown Author"`), `synopsis` (fallback: `"No summary available."`), `firstChapterUrl` (fallback: `null` — breaks the "start reading" flow if missing)
 - **Chapter:** `title`, `content` (fallback: generic `<p>`-tag scrape across the whole page, which usually includes nav/ads if the site's real content div wasn't matched)
 
+<a id="whats-next-registering-the-source"></a>
 ### What's next: registering the source
 
 1. Add the site to `SUPPORTED_SITES` in `add.tsx` (see table above) — this is the "registry." Nothing reads the scraper's `if` blocks to build the site list automatically; the array is the actual source of truth for what shows up in the UI.
@@ -124,12 +150,15 @@ Minimum required fields per function, or the app falls back to generic/placehold
 3. Test both a fresh add (`add.tsx`) and an update on an already-downloaded novel (`updates.tsx`) — they call the same scraper functions but exercise different code paths (chapter-skip logic, existing-chapter detection).
 4. **Known cleanup item:** `SUPPORTED_SITES` in `add.tsx` still lists `NovelBinCom` and `BedNovelCom`, even though their scraper blocks were removed from `useDirectScraper.ts`. Selecting either in the app right now will silently fall through to the generic fallback scraper instead of failing loudly. Worth pulling both entries next time you're in that file.
 
+<a id="appreciation"></a>
 ## 🌟 Appreciation
 If this project helps you somehow, please dont forget to Star the Repo~!
 
+<a id="license"></a>
 ## 📜 License
 This project is licensed under the MIT License
 
+<a id="disclaimer"></a>
 ## ⚠️ Disclaimer
 
 NovelDR is a tool for downloading publicly available web content. Users are responsible for ensuring their downloads comply with applicable copyright laws. We encourage supporting authors by purchasing official releases when available.
