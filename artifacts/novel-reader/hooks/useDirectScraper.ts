@@ -173,7 +173,7 @@ const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
 // This axios instance is used ONLY for asianovel.net requests. It is
 // completely separate from the shared `httpClient` above so that anything
 // tuned here (headers, decompression behavior, timeouts) can never affect
-// FreeWebNovel, NovelBin, LightNovelWorld, or any other site.
+// FreeWebNovel, LightNovelWorld, or any other site.
 //
 // NOTE: deliberately does NOT set 'Accept-Encoding'. On Android, React
 // Native's networking layer (OkHttp) only auto-decompresses gzip/br
@@ -566,8 +566,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     const isNovelFullCom = domainLower.includes('novelfull.com');
     const isAllNovel = domainLower.includes('allnovel.org');
     const isNovgo = domainLower.includes('novgo.net');
-    const isFreeWebNovel = domainLower.includes('freewebnovel') || domainLower.includes('bednovel');
-    const isNovelBin = domainLower.includes('novelbin');
+    const isFreeWebNovel = domainLower.includes('freewebnovel');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad.com');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
@@ -729,47 +728,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
           synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 0).join('\n\n');
         }
       }
-    }
-    
-    // --- NOVELBIN ---
-    if (isNovelBin) {
-      console.log('[Scraper] Novelbin detected');
-      
-      const titleMatch = safeMatch(html, /<h3[^>]*class="title"[^>]*itemprop="name"[^>]*>([^<]+)<\/h3>/i) ||
-                         safeMatch(html, /<h3[^>]*itemprop="name"[^>]*class="title"[^>]*>([^<]+)<\/h3>/i);
-      if (titleMatch) title = decodeEntities(titleMatch);
-      
-      const coverMatch = safeMatch(html, /<div[^>]*class="book"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
-      
-      const authorMatch = safeMatch(html, /<span[^>]*itemprop="author"[^>]*>[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i);
-      if (authorMatch) author = decodeEntities(authorMatch);
-      
-      const descDivMatch = html.match(/<div[^>]*id="novel-description-content"[^>]*>([\s\S]*?)<\/div>/i);
-      if (descDivMatch) {
-        const innerHtml = descDivMatch[1];
-        const paragraphs = innerHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-        if (paragraphs && paragraphs.length > 0) {
-          synopsis = paragraphs
-            .map(p => decodeEntities(stripTags(p)))
-            .filter(t => t.length > 20)
-            .join('\n\n');
-          console.log('[Scraper] Extracted synopsis with', paragraphs.length, 'paragraphs');
-        } else {
-          synopsis = decodeEntities(stripTags(innerHtml));
-        }
-      } else {
-        const descMatch = safeMatch(html, /<div[^>]*class="desc-text"[^>]*>([\s\S]*?)<\/div>/i);
-        if (descMatch) {
-          const paragraphs = descMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-          if (paragraphs) {
-            synopsis = paragraphs.map(p => decodeEntities(stripTags(p))).filter(t => t.length > 20).join('\n\n');
-          }
-        }
-      }
-      
-      const chapterMatch = safeMatch(html, /<a[^>]*href="([^"]*\/chapter-1[^"]*)"[^>]*>/i);
-      if (chapterMatch) firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
     }
     
     // --- LIGHTNOVELWORLD ---
@@ -1273,8 +1231,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     const isNovelFullCom = domainLower.includes('novelfull.com');
     const isAllNovel = domainLower.includes('allnovel.org');
     const isNovgo = domainLower.includes('novgo.net');
-    const isFreeWebNovel = domainLower.includes('freewebnovel') || domainLower.includes('bednovel');
-    const isNovelBin = domainLower.includes('novelbin');
+    const isFreeWebNovel = domainLower.includes('freewebnovel');
     const isLightNovelWorld = domainLower.includes('lightnovelworld');
     const isRoyalRoad = domainLower.includes('royalroad');
     const isWuxiaworld = domainLower.includes('wuxiaworld.site');
@@ -1320,18 +1277,6 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
         let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
         rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]\s*/gi, '').trim();
         rawTitle = rawTitle.replace(new RegExp(`^\\s*${chapterNum}\\s*[:.\\-–—]?\\s*`, 'i'), '').trim();
-        title = `Chapter ${chapterNum}: ${rawTitle}`;
-        skipCleanup = true;
-      }
-    }
-    
-    if (isNovelBin) {
-      const titleMatch = safeMatch(html, /<h1[^>]*class="title"[^>]*itemprop="headline"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<h1[^>]*itemprop="headline"[^>]*class="title"[^>]*>([^<]+)<\/h1>/i) ||
-                         safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i);
-      if (titleMatch) {
-        let rawTitle = decodeEntities(titleMatch.trim()).replace(/\s+/g, ' ').trim();
-        rawTitle = rawTitle.replace(/Chapter\s+\d+/gi, '').trim();
         title = `Chapter ${chapterNum}: ${rawTitle}`;
         skipCleanup = true;
       }
@@ -1577,35 +1522,7 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     }
     
     if (!content) {
-      if (isNovelBin && validParagraphs.length > 0) {
-        const junkPhrases = [
-          'error loading comments',
-          'please try again later',
-          'total responses',
-          'load comments',
-          '~Novelⅈght~',
-          'login to comment',
-          'post a comment',
-          'report error',
-          'novelbin.com',
-          'novelbin.me',
-          'Community',
-          'Share your thoughts',
-          'react to the',
-          'latest chapter',
-          'or reply',
-          'to other readers',
-          'Thoughful comments',
-          'make this page',
-          'more useful',
-          'for everyone.'
-        ];
-        const filtered = validParagraphs.filter(text => {
-          const lower = text.toLowerCase();
-          return !junkPhrases.some(phrase => lower.includes(phrase));
-        });
-        content = filtered.join('\n\n') || validParagraphs.join('\n\n');
-      } else if (isFreeWebNovel && validParagraphs.length > 0) {
+      if (isFreeWebNovel && validParagraphs.length > 0) {
         const junkPhrases = [
           'panda',
           'novɐ1',
@@ -1613,8 +1530,6 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
           'freewebnovel.com',
           'freewebnovel',
           '𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞',
-          'bednovel.com',
-          'bednovel',
           'please visit',
           'for a better experience',
           'click here',
