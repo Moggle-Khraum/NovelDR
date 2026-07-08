@@ -1,9 +1,22 @@
 import { directFetchNovelMeta, directFetchChapter } from './useDirectScraper';
+import { findExternalScraper } from './scrapers/registry';
 
 export type { NovelMeta, ChapterData } from './useDirectScraper';
 
-export const fetchNovelMeta = directFetchNovelMeta;
-export const fetchChapter = directFetchChapter;
+// Check the external scraper registry first; if a registered source
+// claims the URL, use it. Otherwise fall through to the existing
+// direct-scraper behavior, unchanged.
+export const fetchNovelMeta: typeof directFetchNovelMeta = async (url) => {
+  const external = findExternalScraper(url);
+  if (external) return external.fetchNovelMeta(url);
+  return directFetchNovelMeta(url);
+};
+
+export const fetchChapter: typeof directFetchChapter = async (url, chapterNum) => {
+  const external = findExternalScraper(url);
+  if (external) return external.fetchChapter(url, chapterNum);
+  return directFetchChapter(url, chapterNum);
+};
 
 /**
  * Check if a site is healthy/accessible
