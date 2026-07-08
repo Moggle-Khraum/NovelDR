@@ -52,6 +52,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "lightnovelworld.org": "LightNovelWorld",
       "wuxiaworld.site": "WuxiaWorldSite",
       "asianovel.me": "AsiaNovel",
+      "novelphoenix.com": "NovelPhoenix"
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
