@@ -4,7 +4,7 @@ import * as Speech from "expo-speech";
 import { router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -223,6 +223,15 @@ export default function ReaderScreen() {
 
   const hasRestoredScrollRef = useRef(false);
   const restoredChapterRef = useRef<number>(-1);
+  const restoreAttemptsRef = useRef(0);
+  const lastRestoreHeightRef = useRef(0);
+  const restoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tracks the on-screen Y position of each paragraph and each sentence within it,
+  // populated via onLayout (cheap, fires once per layout, not per render).
+  // Used to scroll precisely to the sentence currently being read by TTS.
+  const paraYPositionsRef = useRef<Map<number, number>>(new Map());
+  const sentenceYPositionsRef = useRef<Map<string, number>>(new Map());
 
   const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
@@ -448,6 +457,69 @@ export default function ReaderScreen() {
     []
   );
 
+  // ─── Memoized sentence splitting & TTS↔render mapping ──────────────────
+  // Splitting every paragraph into render-sentences used to happen INSIDE the
+  // render function on every single re-render (including every scroll event
+  // and every autoscroll tick, since those trigger setReadingProgress).
+  // That meant hundreds of regex operations running dozens of times per
+  // second — a major, needless CPU/battery cost. Now it's computed once
+  // whenever the chapter's paragraphs actually change.
+  const paragraphSentences = useMemo(
+    () => processedParagraphs.map((p) => splitSentencesWithLineBreaks(p)),
+    [processedParagraphs]
+  );
+
+  // Maps each ttsSentences[] index to the render-sentence key ("paraIdx-sentIdx")
+  // that visually corresponds to it. Computed once per chapter/TTS-sentence
+  // change instead of doing string .includes() matching for every sentence on
+  // every render (which is what caused the highlight lookup to be so expensive).
+  const ttsToRenderKeyMap = useMemo(() => {
+    const map = new Map<number, string>();
+    if (ttsSentences.length === 0) return map;
+    let ttsPointer = 0;
+    for (let paraIdx = 0; paraIdx < paragraphSentences.length; paraIdx++) {
+      const sentences = paragraphSentences[paraIdx];
+      for (let sentIdx = 0; sentIdx < sentences.length; sentIdx++) {
+        const normalizedRender = sentences[sentIdx].trim().replace(/[""'']/g, '"');
+        const searchLimit = Math.min(ttsSentences.length, ttsPointer + 5);
+        for (let t = ttsPointer; t < searchLimit; t++) {
+          const normalizedTts = ttsSentences[t].replace(/[""'']/g, '"');
+          if (normalizedRender.includes(normalizedTts) || normalizedTts.includes(normalizedRender)) {
+            map.set(t, `${paraIdx}-${sentIdx}`);
+            ttsPointer = t;
+            break;
+          }
+        }
+      }
+    }
+    return map;
+  }, [paragraphSentences, ttsSentences]);
+
+  const currentHighlightKey = ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
+
+  // Clear stale layout measurements whenever the chapter's paragraphs change,
+  // so old y-positions from a previous chapter can't be scrolled to.
+  useEffect(() => {
+    paraYPositionsRef.current.clear();
+    sentenceYPositionsRef.current.clear();
+  }, [processedParagraphs]);
+
+  // Auto-scroll to keep the sentence currently being read by TTS in view.
+  // Replaces the old blind "+120px every 4 sentences" scroll, which had no
+  // idea where the actual sentence was on screen.
+  useEffect(() => {
+    if (!ttsActive || !currentHighlightKey) return;
+    const [paraIdxStr] = currentHighlightKey.split("-");
+    const paraIdx = parseInt(paraIdxStr, 10);
+    const paraY = paraYPositionsRef.current.get(paraIdx);
+    const sentY = sentenceYPositionsRef.current.get(currentHighlightKey);
+    if (paraY === undefined || sentY === undefined) return;
+    const absoluteY = paraY + sentY;
+    const targetY = Math.max(0, absoluteY - scrollViewHeightRef.current * 0.3);
+    scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    scrollYRef.current = targetY;
+  }, [currentHighlightKey, ttsActive]);
+
   // ─── Load effect with AbortController and request ID ──────────────────
   const loadIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -603,6 +675,7 @@ export default function ReaderScreen() {
       isMountedRef.current = false;
       Speech.stop();
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -670,13 +743,6 @@ export default function ReaderScreen() {
             if (!isMountedRef.current) return;
             if (!ttsActiveRef.current) return;
             ttsErrorCountRef.current = 0;
-            ttsScrollCounterRef.current += 1;
-            if (ttsScrollCounterRef.current >= 4) {
-              ttsScrollCounterRef.current = 0;
-              const newY = scrollYRef.current + 120;
-              scrollRef.current?.scrollTo({ y: newY, animated: true });
-              scrollYRef.current = newY;
-            }
             speakSentence(sentences, index + 1);
           },
           onError: (err) => {
@@ -781,24 +847,64 @@ export default function ReaderScreen() {
     if (autoScrollActive) stopAutoScroll();
   };
 
+  // Restoring scroll position is tricky because content renders progressively —
+  // paragraphs, TTS sentence splitting, and layout can all cause the ScrollView's
+  // content height to grow across several onContentSizeChange events. A single
+  // early attempt can get silently clamped by the native view if the content
+  // isn't tall enough yet to reach the saved offset, leaving the reader stuck
+  // near the top while the progress bar (driven by scrollYRef) still reports
+  // the intended percentage. To fix that, we retry on every content-size change
+  // until the content is tall enough to actually contain the saved offset, or
+  // the height stops changing (rendering has settled), or we hit a max attempt
+  // count — and we always clamp scrollYRef to what was actually achievable so
+  // the progress bar never lies about where the view really is.
+  const MAX_RESTORE_ATTEMPTS = 10;
+  const RESTORE_SETTLE_DELAY = 100;
+
   const handleContentSizeChange = (_width: number, height: number) => {
     contentHeightRef.current = height;
     updateReadingProgress();
-    if (!hasRestoredScrollRef.current && restoredChapterRef.current !== chapterIndex) {
-      const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
-      if (savedOffset > 0 && height > 0) {
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
-          scrollYRef.current = savedOffset;
-          hasRestoredScrollRef.current = true;
-          restoredChapterRef.current = chapterIndex;
-          updateReadingProgress();
-        }, 80);
-      } else {
+
+    if (hasRestoredScrollRef.current || restoredChapterRef.current === chapterIndex) return;
+
+    const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
+
+    if (savedOffset <= 0 || height <= 0) {
+      hasRestoredScrollRef.current = true;
+      restoredChapterRef.current = chapterIndex;
+      return;
+    }
+
+    // A newer content-size change superseded the last pending attempt — drop it
+    // so we always act on the freshest height instead of piling up scrollTo calls.
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
+
+    restoreAttemptsRef.current += 1;
+    const contentTallEnough = height - scrollViewHeightRef.current >= savedOffset;
+    const heightSettled = height === lastRestoreHeightRef.current;
+    lastRestoreHeightRef.current = height;
+    const shouldFinalize = contentTallEnough || heightSettled || restoreAttemptsRef.current >= MAX_RESTORE_ATTEMPTS;
+
+    restoreTimeoutRef.current = setTimeout(() => {
+      const maxScrollNow = Math.max(0, contentHeightRef.current - scrollViewHeightRef.current);
+      const targetY = Math.min(savedOffset, maxScrollNow);
+      scrollRef.current?.scrollTo({ y: targetY, animated: false });
+      scrollYRef.current = targetY;
+      updateReadingProgress();
+
+      if (shouldFinalize) {
         hasRestoredScrollRef.current = true;
         restoredChapterRef.current = chapterIndex;
+        restoreAttemptsRef.current = 0;
+        lastRestoreHeightRef.current = 0;
       }
-    }
+      // Otherwise leave hasRestoredScrollRef false — the next onContentSizeChange,
+      // fired as more content finishes laying out, will retry with a taller height.
+      restoreTimeoutRef.current = null;
+    }, RESTORE_SETTLE_DELAY);
   };
 
   const handleScrollViewLayout = (event: any) => {
@@ -832,6 +938,12 @@ export default function ReaderScreen() {
 
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
+    restoreAttemptsRef.current = 0;
+    lastRestoreHeightRef.current = 0;
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChapterIndex(next);
     setReadingProgress(0);
@@ -854,6 +966,12 @@ export default function ReaderScreen() {
 
     scrollYRef.current = 0;
     hasRestoredScrollRef.current = false;
+    restoreAttemptsRef.current = 0;
+    lastRestoreHeightRef.current = 0;
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     setChapterIndex(index);
     setShowTOC(false);
@@ -976,11 +1094,16 @@ export default function ReaderScreen() {
               </View>
             ) : (
               <View>
-                {processedParagraphs.map((paragraph, paraIdx) => {
-                  const sentences = splitSentencesWithLineBreaks(paragraph);
-                  const isLastParagraph = paraIdx === processedParagraphs.length - 1;
+                {paragraphSentences.map((sentences, paraIdx) => {
+                  const isLastParagraph = paraIdx === paragraphSentences.length - 1;
                   return (
-                    <View key={paraIdx} style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}>
+                    <View
+                      key={paraIdx}
+                      style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}
+                      onLayout={(e) => {
+                        paraYPositionsRef.current.set(paraIdx, e.nativeEvent.layout.y);
+                      }}
+                    >
                       {sentences.map((sentence, sentIdx) => {
                         const trimmed = sentence.trim();
                         const endsWithPeriod = /[.!?]$/.test(trimmed);
@@ -993,17 +1116,15 @@ export default function ReaderScreen() {
                         const hasDialogue = /^["'“”‘’]/.test(trimmed);
                         if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
 
-                        let isCurrentSentence = false;
-                        const normalizedSentence = trimmed.replace(/[""'']/g, '"');
-                        if (ttsIndex >= 0 && ttsSentences[ttsIndex]) {
-                          const currentTtsSentence = ttsSentences[ttsIndex].replace(/[""'']/g, '"');
-                          if (normalizedSentence.includes(currentTtsSentence) || currentTtsSentence.includes(normalizedSentence)) {
-                            isCurrentSentence = true;
-                          }
-                        }
+                        const renderKey = `${paraIdx}-${sentIdx}`;
+                        const isCurrentSentence = renderKey === currentHighlightKey;
+
                         return (
                           <Text
                             key={sentIdx}
+                            onLayout={(e) => {
+                              sentenceYPositionsRef.current.set(renderKey, e.nativeEvent.layout.y);
+                            }}
                             style={[
                               styles.content,
                               {
@@ -1152,33 +1273,34 @@ export default function ReaderScreen() {
               onPress={() => {}}
             >
               <View style={[styles.sheetHandle, { backgroundColor: adaptiveColors.border }]} />
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad + 32 }}>
                 
-                {/* 1. FONT SIZE - Centered Value between A buttons */}
-                <Text style={[styles.sectionLabel, { color: adaptiveColors.textSecondary }]}>FONT SIZE</Text>
-                <View style={styles.controlRowCentered}>
+                {/* 1. FONT SIZE - Left label, Button, Value, Button (matches Line Spacing layout) */}
+                <View style={styles.rowGroup}>
+                  <Text style={[styles.rowGroupLabel, { color: adaptiveColors.textSecondary }]}>FONT SIZE</Text>
+
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.max(0, fontSizeIdx - 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 16 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 14 }]}>A</Text>
                   </Pressable>
-                  
-                  <Text style={[styles.controlValueCentered, { color: adaptiveColors.text }]}>{fontSize}PT</Text>
-                  
+
+                  <Text style={[styles.controlValueCenteredSmall, { color: adaptiveColors.text }]}>{fontSize}PT</Text>
+
                   <Pressable
-                    style={[styles.controlBtnPill, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                    style={[styles.controlBtnSmall, { backgroundColor: adaptiveColors.card, borderColor: adaptiveColors.border }]}
                     onPress={() => {
                       const newIdx = Math.min(FONT_SIZES.length - 1, fontSizeIdx + 1);
                       setFontSizeIdx(newIdx);
                       saveAllSettings(newIdx, lineSpacingIdx, marginPresetIdx, autoScrollSpeedIdx);
                     }}
                   >
-                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 22 }]}>A</Text>
+                    <Text style={[styles.controlBtnText, { color: adaptiveColors.text, fontSize: 18 }]}>A</Text>
                   </Pressable>
                 </View>
 
