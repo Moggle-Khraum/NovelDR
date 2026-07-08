@@ -49,7 +49,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novgo.net": "NovGoNet",
       "lightnovelworld.org": "LightNovelWorld",
       "wuxiaworld.site": "WuxiaWorldSite",
-      "asianovel.me": "AsiaNovel",
+      "asianovel.net": "AsiaNovel",
       "novelphoenix.com": "NovelPhoenix"
     };
     return siteNames[clean] || clean.split(".")[0];
