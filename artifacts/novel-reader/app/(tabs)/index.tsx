@@ -682,6 +682,25 @@ export default function LibraryScreen() {
       )}
 
       {/* ── Floating Refresh Button (FAB) – REMOVED ── */}
+       
+      {/* ── Floating Refresh Button (FAB) ── */}
+      {!selectionMode && (
+        <Pressable
+          style={[
+            styles.fab,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.accent,
+              bottom: bottomPad + 90,
+            },
+          ]}
+          onPress={handleRefresh}
+        >
+          <Animated.View style={fabSpinStyle}>
+            <Ionicons name="refresh" size={22} color={colors.text} />
+          </Animated.View>
+        </Pressable>
+      )}
 
       {/* Batch Delete Confirmation Modal */}
       <Modal
@@ -867,7 +886,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-
+  
   // empty state
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 12 },
   shookImg: { width: 120, height: 120 },
