@@ -9,8 +9,6 @@ import { novelPhoenixScraper } from './sources/novelphoenix';
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
-  novelArrowScraper,
-  
 ];
 
 /** Find the first registered external scraper that can handle this URL, or null */
