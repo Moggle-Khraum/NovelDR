@@ -16,9 +16,11 @@
 - [🌐 Supported Sources](#supported-sources)
 - [💀 Deprecated Sources](#dead-sources)
 - [📚 Add Source or Request Source](#wiki-add-or-requestsource)
+- [📖 Credits & Acknowledgements](#credits)
 - [🌟 Appreciation](#appreciation)
 - [📜 License](#license)
 - [⚠️ Disclaimer](#disclaimer)
+
 
 <a id="about"></a>
 ## 📖 About
@@ -111,6 +113,21 @@ That's it — once submitted, it'll be picked up and worked on.
 ## 🌟 Appreciation
 If this project helps you somehow, please dont forget to Star the Repo~!
 
+<a id="credits"></a>
+## 📖 Credits & Acknowledgements
+### Scraper Development
+- Original Python Prototype: [NovelGrabber.py](https://github.com/Moggle-Khraum/NovelDR-Python)
+
+### Webnovel Scraper:
+Utilized and adapted the code to be used by the app.
+- LightNovelWorld scraper: [lightnovelworld](https://github.com/TUVIMEN/lightnovelworld)
+
+Added 3 specific sources to the app by adapating and using it as reference
+- LightNovel Crawler: [lncrawl](https://github.com/lncrawl/lightnovel-crawler)
+
+Cloned and use as reference in building external scraper for NovelArrow
+- NovelArrow Scraper: [novelarrow](https://github.com/Rudransh-Susarla-1802/Novel_Project)
+
 <a id="license"></a>
 ## 📜 License
 This project is licensed under the MIT License
@@ -119,6 +136,8 @@ This project is licensed under the MIT License
 ## ⚠️ Disclaimer
 
 NovelDR is a tool for downloading publicly available web content. Users are responsible for ensuring their downloads comply with applicable copyright laws. We encourage supporting authors by purchasing official releases when available.
+
+
 
 ---
 
