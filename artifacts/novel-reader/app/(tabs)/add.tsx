@@ -22,6 +22,8 @@ import { router } from "expo-router";
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter, checkSiteHealth } from "@/hooks/useApi";
+import { useChapterLimiter, CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
+import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
 
 // --- SUPPORTED SITES ---
@@ -244,6 +246,7 @@ export default function AddNovelScreen() {
   const [url, setUrl] = useState("");
   const [startChStr, setStartChStr] = useState("1");
   const [maxChStr, setMaxChStr] = useState("");
+  const chapterLimiter = useChapterLimiter(maxChStr, setMaxChStr);
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -420,6 +423,7 @@ export default function AddNovelScreen() {
     setUrl("");
     setStartChStr("1");
     setMaxChStr("");
+    chapterLimiter.resetLimiter();
     setLogs([]);
     setProgress(0);
     setProgressLabel("");
@@ -507,8 +511,14 @@ export default function AddNovelScreen() {
       return;
     }
 
+    if (chapterLimiter.dangerModalVisible) {
+      addLog("Acknowledge the chapter limit warning before starting.", "warning");
+      return;
+    }
+
     const startCh = Math.max(1, parseInt(startChStr) || 1);
-    const maxCh = parseInt(maxChStr) || null;
+    const parsedMaxCh = parseInt(maxChStr) || null;
+    const maxCh = parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
 
     // ── Detect if a chapter URL was pasted directly ──────────────────────────
     const chapterUrlPattern = /\/chapter[-/](\d+)/i;
@@ -985,14 +995,35 @@ export default function AddNovelScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Max Chapters</Text>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: chapterLimiter.isDanger
+                      ? Colors.error
+                      : chapterLimiter.isCaution
+                      ? Colors.amber
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                Max Chapters {chapterLimiter.isCaution ? `(max ${CHAPTER_LIMIT_MAX})` : ""}
+              </Text>
               <TextInput
-                style={inputStyle}
+                style={[
+                  inputStyle,
+                  chapterLimiter.isDanger
+                    ? { borderColor: Colors.error, color: Colors.error }
+                    : chapterLimiter.isCaution
+                    ? { borderColor: Colors.amber }
+                    : null,
+                ]}
                 value={maxChStr}
-                onChangeText={setMaxChStr}
+                onChangeText={chapterLimiter.onMaxChStrChange}
                 placeholder="All"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
+                maxLength={3}
                 editable={!isDownloading}
               />
             </View>
@@ -1106,6 +1137,14 @@ export default function AddNovelScreen() {
         onClose={() => setSourceListModalVisible(false)}
         sites={SUPPORTED_SITES}
         siteStatuses={siteStatuses}
+      />
+
+      {/* Chapter Limiter Danger Modal */}
+      <ChapterLimitModal
+        visible={chapterLimiter.dangerModalVisible}
+        chapterCount={chapterLimiter.currentValue}
+        onLower={chapterLimiter.lowerToSafeValue}
+        onProceed={chapterLimiter.closeDangerModal}
       />
     </KeyboardAvoidingView>
   );
