@@ -39,6 +39,7 @@ const SUPPORTED_SITES = [
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
   { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
+  { name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
   
 ];
 
