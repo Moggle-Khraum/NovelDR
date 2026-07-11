@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Theme } from "@/constants/colors";
+import { useUpdateContext } from "@/context/UpdateContext";
 
 const imageToBase64 = async (imagePath: string): Promise<string | null> => {
   try {
@@ -125,6 +126,19 @@ export default function SettingsScreen() {
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
   const [showCredits, setShowCredits] = useState(false);
+  const { checkNow, checkingUpdate } = useUpdateContext();
+
+  const handleCheckForUpdates = async () => {
+    const result = await checkNow(); // force=true, bypasses the 24h throttle
+    if (result) {
+      Alert.alert(
+        `Update available: ${result.tag}`,
+        "Head back to the Library screen to download it — tap the notification bell that just appeared above the reload button."
+      );
+    } else {
+      Alert.alert("You're up to date", `Novel DR v${Constants.expoConfig?.version ?? ""} is the latest version.`);
+    }
+  };
 
   const APP_DATA_DIR = `${FileSystem.documentDirectory}NovelDR/`;
   const BACKUP_DIR = `${FileSystem.documentDirectory}noveldrr-backups/`;
@@ -1058,6 +1072,21 @@ export default function SettingsScreen() {
         >
           <Ionicons name="heart-outline" size={18} color={colors.accent} />
           <Text style={[styles.creditsBtnText, { color: colors.text }]}>Credits & Acknowledgments</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.creditsBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={handleCheckForUpdates}
+          disabled={checkingUpdate}
+        >
+          {checkingUpdate ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Ionicons name="cloud-download-outline" size={18} color={colors.accent} />
+          )}
+          <Text style={[styles.creditsBtnText, { color: colors.text }]}>
+            {checkingUpdate ? "Checking..." : "Check for Updates"}
+          </Text>
         </Pressable>
 
         <View style={[styles.versionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
