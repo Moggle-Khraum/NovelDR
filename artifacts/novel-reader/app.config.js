@@ -24,7 +24,9 @@ export default () => {
       },
       android: {
         package: "com.noveldr.app",
-        versionCode: parseInt(buildNumber, 10)
+        versionCode: parseInt(buildNumber, 10),
+        permissions: ["REQUEST_INSTALL_PACKAGES"]
+        }
       },
       web: {
         favicon: "./assets/images/icon.png"
