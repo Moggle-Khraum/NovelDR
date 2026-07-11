@@ -1,40 +1,16 @@
-// NovelArrow (novelarrow.com) — Next.js Server Components site.
-// Content ships as RSC streaming payloads (self.__next_f.push([1, "..."]))
-// instead of hydrated HTML, so we pull it out of inline <script> chunks
-// rather than querying the DOM directly.
+// NovelArrow (novelarrow.com) — Next.js site.
+// Confirmed against real page dumps: despite being a Next.js app, both the
+// novel page's synopsis and the chapter page's content are plain SSR'd HTML
+// (<article data-chapter-id="..."> full of ordinary <p> tags) — NOT RSC
+// streaming payloads. No self.__next_f.push chunk parsing needed here.
 
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, makeAbsoluteUrl } from '../shared/html';
+import { stripTags, decodeEntities, safeMatch, makeAbsoluteUrl, extractByDepth } from '../shared/html';
 
 const BASE_HOST = 'novelarrow.com';
 
-/** Pull every self.__next_f.push([1,"...']) chunk's decoded inner string out of raw HTML */
-const extractRscChunks = (html: string): string[] => {
-  const scriptBlocks = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  const allScriptText = scriptBlocks.join('\n');
-
-  const rawChunks = allScriptText.match(/self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g) || [];
-
-  return rawChunks.map((chunk) => {
-    const inner = chunk.match(/self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/);
-    let content = inner ? inner[1] : '';
-    try {
-      content = JSON.parse('"' + content + '"');
-    } catch {
-      content = content
-        .replace(/\\u003c/g, '<')
-        .replace(/\\u003e/g, '>')
-        .replace(/\\u0026/g, '&')
-        .replace(/\\n/g, '\n')
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-    }
-    return content;
-  });
-};
-
-/** Extract every <p>...</p> from a block of (possibly chunk-embedded) HTML */
+/** Extract every <p>...</p> from a block of HTML */
 const extractParagraphs = (html: string): string => {
   const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
   return matches
@@ -58,43 +34,43 @@ export const novelArrowScraper: SourceScraper = {
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // Head <meta> tags are still SSR'd for SEO even though body content is
-    // RSC-streamed, so these are the most reliable source for novel-level info.
+    // Confirmed against a real /novel/ page dump — the <head> carries custom
+    // og:novel:* meta tags (name=, not property=) that are cleaner than the
+    // generic og: tags (og:title has a "| Read Online on NovelArrow" suffix,
+    // og:description is truncated with "...").
     const title = decodeEntities(
-      safeMatch(html, /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ??
+      safeMatch(html, /<meta[^>]*name="og:novel:novel_name"[^>]*content="([^"]+)"/i) ??
+        safeMatch(html, /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ??
         safeMatch(html, /<title>([^<]+)<\/title>/i) ??
         'Unknown Title',
     );
 
     const author = decodeEntities(
       safeMatch(html, /<meta[^>]*name="og:novel:author"[^>]*content="([^"]+)"/i) ??
-        safeMatch(html, /<meta[^>]*property="og:novel:author"[^>]*content="([^"]+)"/i) ??
+        safeMatch(html, /<meta[^>]*name="author"[^>]*content="([^"]+)"/i) ??
         'Unknown Author',
     );
 
-    const synopsisMeta = safeMatch(html, /<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
-    let synopsis = synopsisMeta ? decodeEntities(synopsisMeta) : '';
+    const coverUrl = safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ?? '';
 
-    const coverUrl =
-      safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ?? '';
+    // The synopsis is plain SSR'd HTML — lives in a div.site-reading-copy
+    // block as ordinary <p> tags.
+    const synopsisBlock = extractByDepth(html, 'class="site-reading-copy');
+    let synopsis = synopsisBlock ? extractParagraphs(synopsisBlock) : '';
 
-    // Fall back to RSC chunks for synopsis if the meta description was empty/truncated
+    // Fall back to the (truncated) og:description meta if the div wasn't found
     if (!synopsis) {
-      const chunks = extractRscChunks(html);
-      for (const chunk of chunks) {
-        if (chunk.includes('<p>') && chunk.length > 300 && !chunk.includes('chapter')) {
-          const paras = extractParagraphs(chunk);
-          if (paras) {
-            synopsis = paras;
-            break;
-          }
-        }
-      }
+      const synopsisMeta = safeMatch(html, /<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
+      synopsis = synopsisMeta ? decodeEntities(synopsisMeta) : '';
     }
 
-    // First chapter link: look for a /chapter/{novelId}/... href in the raw HTML
-    const firstChapterPath = safeMatch(html, /<a[^>]*href="(\/chapter\/[^"]+)"/i);
-    const firstChapterUrl = firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
+    // og:novel:read_url gives the first chapter link directly, already absolute
+    const firstChapterUrl =
+      safeMatch(html, /<meta[^>]*name="og:novel:read_url"[^>]*content="([^"]+)"/i) ??
+      (() => {
+        const firstChapterPath = safeMatch(html, /<a[^>]*href="(\/chapter\/[^"]+)"/i);
+        return firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
+      })();
 
     return {
       title,
@@ -102,64 +78,38 @@ export const novelArrowScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ['fetched via external scraper: novelarrow (meta-tag + RSC fallback)'],
+      debugInfo: ['fetched via external scraper: novelarrow (og:novel:* meta tags)'],
     };
   },
 
   fetchChapter: async (url: string, _chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
-    const chunks = extractRscChunks(html);
 
-    // Find the chunk that actually holds the chapter's paragraph content
-    let chapterHtml = '';
-    for (const chunk of chunks) {
-      if (chunk.includes('<p>') && chunk.includes('</p>') && chunk.length > 500) {
-        chapterHtml = chunk;
-        break;
-      }
+    // Confirmed against a real /chapter/ page dump — chapter text is plain
+    // SSR'd HTML inside <article data-chapter-id="...">, one <p> per line.
+    const articleHtml = extractByDepth(html, 'data-chapter-id', '<article', '</article');
+    if (!articleHtml) {
+      throw new Error('novelarrow: could not locate <article data-chapter-id> block.');
     }
 
-    if (!chapterHtml) {
-      throw new Error('novelarrow: could not locate chapter content in RSC chunks.');
-    }
-
-    // Title: try h1-h4 inside the chapter chunk first, then og:novel:chapter_name meta
-    let title = '';
-    for (const tag of ['h4', 'h3', 'h2', 'h1']) {
-      const match = safeMatch(chapterHtml, new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, 'i'));
-      if (match) {
-        title = decodeEntities(match);
-        break;
-      }
-    }
-    if (!title) {
-      title = decodeEntities(
-        safeMatch(html, /<meta[^>]*name="og:novel:chapter_name"[^>]*content="([^"]+)"/i) ?? '',
-      );
-    }
-
-    const content = extractParagraphs(chapterHtml);
+    const content = extractParagraphs(articleHtml);
     if (!content) {
-      throw new Error('novelarrow: chapter chunk found but no <p> paragraphs extracted.');
+      throw new Error('novelarrow: article block found but no <p> paragraphs extracted.');
     }
 
-    // Next chapter: pulled from the escaped nextChapter.chapter_id payload embedded
-    // in the RSC scripts, then rebuilt against the current novelId from the URL.
-    let nextUrl: string | null = null;
-    const urlMatch = url.match(/\/chapter\/([^/]+)\/([^/?#]+)/);
-    const novelId = urlMatch ? urlMatch[1] : null;
-
-    const allScriptText = chunks.join('\n');
-    const nextChapterMatch = allScriptText.match(
-      /\\?"nextChapter\\?"\s*:\s*\\?\{[^}]*\\?"chapter_id\\?"\s*:\s*\\?"([^"\\]+)\\?"/,
+    // Title: og:novel:chapter_name meta is simplest and confirmed present;
+    // falls back to the "hidden sm:inline" span inside the article's <h2>.
+    const title = decodeEntities(
+      safeMatch(html, /<meta[^>]*name="og:novel:chapter_name"[^>]*content="([^"]+)"/i) ??
+        safeMatch(articleHtml, /<span class="hidden sm:inline">([^<]+)<\/span>/i) ??
+        '',
     );
-    const nullNextMatch = allScriptText.match(/\\?"nextChapter\\?"\s*:\s*null/);
 
-    if (nullNextMatch) {
-      nextUrl = null;
-    } else if (nextChapterMatch && novelId) {
-      nextUrl = `https://${BASE_HOST}/chapter/${novelId}/${nextChapterMatch[1]}`;
-    }
+    // Next chapter: the desktop side-rail "Next chapter" link has a real href
+    // when a next chapter exists; it's a disabled <span> (no href) on the
+    // last chapter, so an absent match correctly yields null.
+    const nextPath = safeMatch(html, /<a[^>]*aria-label="Next chapter"[^>]*href="([^"]+)"/i);
+    const nextUrl = nextPath ? makeAbsoluteUrl(nextPath, url) : null;
 
     return {
       url,
