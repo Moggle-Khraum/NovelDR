@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
+import { useChapterLimiter, CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
+import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
 
 // Detects when a saved novel's sourceUrl is actually a chapter page rather than
@@ -97,6 +99,7 @@ export default function UpdatesScreen() {
   const [selectedNovel, setSelectedNovel] = useState<Novel | null>(null);
   const [startChStr, setStartChStr] = useState("");
   const [maxChStr, setMaxChStr] = useState("");
+  const chapterLimiter = useChapterLimiter(maxChStr, setMaxChStr);
   const [isUpdating, setIsUpdating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -134,6 +137,7 @@ export default function UpdatesScreen() {
     setElapsedTime("00:00:00");
     setStartChStr("");
     setMaxChStr("");
+    chapterLimiter.resetLimiter();
     setNovelSearchQuery("");
     setShowNovelSearch(false);
     if (timerIntervalRef.current) {
@@ -327,10 +331,16 @@ export default function UpdatesScreen() {
       return;
     }
 
+    if (chapterLimiter.dangerModalVisible) {
+      addLog("Acknowledge the chapter limit warning before starting.", "warning");
+      return;
+    }
+
     const existingChapters = [...selectedNovel.chapters];
     const existingCount = existingChapters.length;
     const startCh = Math.max(1, parseInt(startChStr) || getNextStartChapter(selectedNovel));
-    const maxCh = parseInt(maxChStr) || null;
+    const parsedMaxCh = parseInt(maxChStr) || null;
+    const maxCh = parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
 
     stopRef.current = false;
     setIsUpdating(true);
@@ -899,14 +909,35 @@ export default function UpdatesScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Max Chapters</Text>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: chapterLimiter.isDanger
+                      ? Colors.error
+                      : chapterLimiter.isCaution
+                      ? Colors.amber
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                Max Chapters {chapterLimiter.isCaution ? `(max ${CHAPTER_LIMIT_MAX})` : ""}
+              </Text>
               <TextInput
-                style={inputStyle}
+                style={[
+                  inputStyle,
+                  chapterLimiter.isDanger
+                    ? { borderColor: Colors.error, color: Colors.error }
+                    : chapterLimiter.isCaution
+                    ? { borderColor: Colors.amber }
+                    : null,
+                ]}
                 value={maxChStr}
-                onChangeText={setMaxChStr}
+                onChangeText={chapterLimiter.onMaxChStrChange}
                 placeholder="All"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
+                maxLength={3}
                 editable={!isUpdating}
               />
             </View>
@@ -1014,6 +1045,14 @@ export default function UpdatesScreen() {
           </ScrollView>
         </View>
       </ScrollView>
+
+      {/* Chapter Limiter Danger Modal */}
+      <ChapterLimitModal
+        visible={chapterLimiter.dangerModalVisible}
+        chapterCount={chapterLimiter.currentValue}
+        onLower={chapterLimiter.lowerToSafeValue}
+        onProceed={chapterLimiter.closeDangerModal}
+      />
     </KeyboardAvoidingView>
   );
 }
