@@ -33,14 +33,18 @@ function parseVersion(tag: string) {
   return { major: +match[1], minor: +match[2], patch: +match[3], rev: match[4] ? +match[4] : 0 };
 }
 
-function isNewerVersion(current: string, latest: string): boolean {
+// `currentBuildNumber` is the real installed android.versionCode (== the `rev`
+// baked in by the build workflow), NOT parsed from the semver string — the
+// semver string never carries a rev suffix, so parsing it always yielded 0
+// and made every release look newer than whatever was actually installed.
+function isNewerVersion(current: string, currentBuildNumber: number, latest: string): boolean {
   const c = parseVersion(current);
   const l = parseVersion(latest);
   if (!c || !l) return false;
   if (l.major !== c.major) return l.major > c.major;
   if (l.minor !== c.minor) return l.minor > c.minor;
   if (l.patch !== c.patch) return l.patch > c.patch;
-  return l.rev > c.rev;
+  return l.rev > currentBuildNumber;
 }
 
 async function withinRequestBudget(AsyncStorage: any): Promise<boolean> {
@@ -63,6 +67,10 @@ async function logRequest(AsyncStorage: any) {
 export async function checkForUpdate(force = false): Promise<UpdateInfo | null> {
   const AsyncStorage = await getAsyncStorage();
   const currentVersion = Constants.expoConfig?.version ?? '0.0.0';
+  const currentBuildNumber =
+    Constants.expoConfig?.android?.versionCode ??
+    Number(Constants.nativeBuildVersion) ??
+    0;
 
   if (!force && AsyncStorage) {
     const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY);
@@ -82,7 +90,7 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
     const data = await res.json();
     const tag: string = data.tag_name;
 
-    if (!isNewerVersion(currentVersion, tag)) return null;
+    if (!isNewerVersion(currentVersion, currentBuildNumber, tag)) return null;
 
     if (!force && AsyncStorage) {
       const dismissed = await AsyncStorage.getItem(DISMISSED_KEY);
