@@ -1,4 +1,6 @@
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 const RELEASE_REPO = 'Moggle-Khraum/NovelDR-site'; // release repo, not this code repo
 const LAST_CHECK_KEY = 'update_last_check_v1';
@@ -105,4 +107,63 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
 export async function skipVersion(tag: string) {
   const AsyncStorage = await getAsyncStorage();
   if (AsyncStorage) await AsyncStorage.setItem(DISMISSED_KEY, tag);
+}
+
+// ─── APK download + install (Android self-update flow) ─────────────────────
+
+const UPDATES_DIR = `${FileSystem.documentDirectory}updates/`;
+
+/**
+ * Downloads the release APK to local storage, reporting progress as a
+ * 0-100 percentage (matches how the Settings/Library update modal renders it).
+ * Returns the local file:// URI of the downloaded APK.
+ */
+export async function downloadApk(
+  info: UpdateInfo,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const dirInfo = await FileSystem.getInfoAsync(UPDATES_DIR);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(UPDATES_DIR, { intermediates: true });
+  }
+
+  const destUri = `${UPDATES_DIR}${info.apkName}`;
+  // Clear out any partial/stale download of the same file name first.
+  const existing = await FileSystem.getInfoAsync(destUri);
+  if (existing.exists) {
+    await FileSystem.deleteAsync(destUri, { idempotent: true });
+  }
+
+  const downloadResumable = FileSystem.createDownloadResumable(
+    info.apkUrl,
+    destUri,
+    {},
+    (progressEvent) => {
+      if (!onProgress) return;
+      const { totalBytesWritten, totalBytesExpectedToWrite } = progressEvent;
+      if (totalBytesExpectedToWrite > 0) {
+        onProgress(Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100));
+      }
+    }
+  );
+
+  const result = await downloadResumable.downloadAsync();
+  if (!result?.uri) {
+    throw new Error('APK download did not complete');
+  }
+  return result.uri;
+}
+
+/**
+ * Hands the downloaded APK off to Android's package installer. Requires a
+ * content:// URI (not a raw file:// path) since Android 7+ blocks file://
+ * across app boundaries — expo-file-system's FileProvider handles that.
+ */
+export async function installApk(fileUri: string): Promise<void> {
+  const contentUri = await FileSystem.getContentUriAsync(fileUri);
+  await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+    data: contentUri,
+    flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+    type: 'application/vnd.android.package-archive',
+  });
 }
