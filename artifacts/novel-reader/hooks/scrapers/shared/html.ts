@@ -141,6 +141,49 @@ export const extractJsonValueAfterKey = (raw: string, key: string): string | nul
   return null;
 };
 
+/**
+ * De-escape and concatenate Next.js RSC flight payloads out of their
+ * <script> wrappers. The flight data is NOT raw text in the document body —
+ * it's shipped as a JS string literal inside inline scripts:
+ *   self.__next_f.push([1,"25:T1a6e,\u003ch4\u003eChapter 1\u003c/h4\u003e..."])
+ * Angle brackets (\u003c/\u003e), quotes (\"), and newlines (\n as two
+ * chars) are all JS-string-escaped there. extractFlightTChunks and
+ * extractJsonValueAfterKey both expect *real* `<`, `"`, and newline bytes —
+ * so they must run against this de-escaped/joined text, not the raw fetched
+ * HTML. (Real <meta> tags are the exception: Next.js still SSRs those into
+ * the actual <head>, so meta extraction can keep matching raw `html`.)
+ */
+export const extractNextFlightPayload = (html: string): string => {
+  if (!html) return '';
+  const pushRe = /self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g;
+  const chunks: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = pushRe.exec(html)) !== null) {
+    let content = match[1];
+    try {
+      // The captured text is itself the body of a JSON string literal, so
+      // wrapping it back in quotes and JSON.parse-ing it is the correct/
+      // complete unescape (handles \u003c, \", \n, \\, etc. all at once).
+      content = JSON.parse(`"${content}"`);
+    } catch {
+      // Fallback for malformed/partial matches: hand-roll the common escapes.
+      content = content
+        .replace(/\\u003c/gi, '<')
+        .replace(/\\u003e/gi, '>')
+        .replace(/\\u0026/gi, '&')
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    }
+    chunks.push(content);
+  }
+
+  // Joined with real newlines so extractFlightTChunks' (?:^|\n) anchor
+  // matches between pushes just like it would between chunks in one push.
+  return chunks.join('\n');
+};
+
 /** Extract the first inner text/HTML block between a start marker and its matching close tag by simple depth counting (for div-based selectors) */
 export const extractByDepth = (
   html: string,
