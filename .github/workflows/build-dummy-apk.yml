@@ -1,0 +1,163 @@
+name: Build Dummy Update-Test APK
+
+# Builds a tiny placeholder Android app (NOT the real NovelDR app) so you can
+# quickly test the in-app update flow: does the app detect a "new" version,
+# download the APK, and prompt install? Takes ~1-2 min instead of the ~26 min
+# real eas build, because there's no JS bundle, no RN, no Expo involved.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Fake versionName to bake into the dummy APK (e.g. 99.9.9)"
+        required: true
+        default: "99.9.9"
+      version_code:
+        description: "Fake versionCode (int). Leave blank to use the CI run number."
+        required: false
+        default: ""
+      package_id:
+        description: "applicationId to use. MUST match NovelDR's real applicationId if you want this to be treated as an update to the installed app; use a different id if you just want a standalone test app."
+        required: true
+        default: "com.moggle.noveldr"
+      release_tag:
+        description: "Tag for the GitHub Release this gets published under"
+        required: true
+        default: "dummy-update-test"
+      mark_as_latest:
+        description: "Mark this release as 'latest'. DANGEROUS if your real app's update-checker queries GitHub's latest-release API — real users would get prompted with this dummy APK. Leave false unless you specifically want to test that path in a throwaway/fork repo."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version vars
+        id: vars
+        run: |
+          VCODE="${{ github.event.inputs.version_code }}"
+          if [ -z "$VCODE" ]; then VCODE="${{ github.run_number }}"; fi
+          echo "version_code=$VCODE" >> "$GITHUB_OUTPUT"
+          echo "apk_name=NovelDR-DUMMY-v${{ github.event.inputs.version_name }}rev${VCODE}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: Generate minimal dummy app source
+        run: |
+          PKG="${{ github.event.inputs.package_id }}"
+          PKG_PATH=$(echo "$PKG" | tr '.' '/')
+          mkdir -p build/src/$PKG_PATH
+
+          cat > build/AndroidManifest.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/auto"
+              package="${PKG}"
+              android:versionCode="${{ steps.vars.outputs.version_code }}"
+              android:versionName="${{ github.event.inputs.version_name }}">
+              <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+              <application android:label="NovelDR (Dummy Update Test)" android:allowBackup="false">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > build/src/$PKG_PATH/MainActivity.java <<EOF
+          package ${PKG};
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.widget.TextView;
+          import android.graphics.Color;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  TextView t = new TextView(this);
+                  t.setText("NovelDR — DUMMY UPDATE TEST BUILD\n\nversionName: ${{ github.event.inputs.version_name }}\nversionCode: ${{ steps.vars.outputs.version_code }}\n\nThis is a placeholder APK, not the real app.");
+                  t.setTextSize(18);
+                  t.setPadding(48, 96, 48, 48);
+                  t.setBackgroundColor(Color.BLACK);
+                  t.setTextColor(Color.WHITE);
+                  setContentView(t);
+              }
+          }
+          EOF
+
+      - name: Compile and package APK
+        env:
+          ANDROID_JAR: ${{ env.ANDROID_HOME }}/platforms/android-34/android.jar
+        run: |
+          BT="${ANDROID_HOME}/build-tools/34.0.0"
+          mkdir -p build/obj build/out
+
+          javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" \
+            -d build/obj $(find build/src -name '*.java')
+
+          "$BT/d8" --output build/out --lib "$ANDROID_JAR" $(find build/obj -name '*.class')
+
+          "$BT/aapt2" link -o build/out/base.apk -I "$ANDROID_JAR" \
+            --manifest build/AndroidManifest.xml \
+            --min-sdk-version 24 --target-sdk-version 34
+
+          cd build/out
+          mkdir -p unpacked
+          unzip -o base.apk -d unpacked > /dev/null
+          cp classes.dex unpacked/
+          cd unpacked
+          zip -r -X ../unsigned.apk . > /dev/null
+          cd ../../..
+
+          keytool -genkeypair -v -keystore build/debug.keystore \
+            -storepass android -keypass android -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=NovelDR Dummy Test, O=NovelDR, C=US"
+
+          "$BT/zipalign" -f -p 4 build/out/unsigned.apk build/out/aligned.apk
+
+          "$BT/apksigner" sign \
+            --ks build/debug.keystore --ks-pass pass:android \
+            --key-pass pass:android \
+            --out "${{ steps.vars.outputs.apk_name }}" \
+            build/out/aligned.apk
+
+          echo "Built ${{ steps.vars.outputs.apk_name }}"
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.apk_name }}
+          path: ${{ steps.vars.outputs.apk_name }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        run: |
+          gh release create "${{ github.event.inputs.release_tag }}-${{ steps.vars.outputs.version_code }}" \
+            "${{ steps.vars.outputs.apk_name }}" \
+            --title "[DUMMY TEST] NovelDR v${{ github.event.inputs.version_name }}rev${{ steps.vars.outputs.version_code }}" \
+            --notes "Dummy placeholder build for testing the in-app update flow. Not a real NovelDR release." \
+            $( [ "${{ github.event.inputs.mark_as_latest }}" != "true" ] && echo "--prerelease" ) \
+            --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
