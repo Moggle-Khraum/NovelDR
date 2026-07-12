@@ -1,0 +1,28 @@
+name: Debug Fetch
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to fetch'
+        required: true
+        default: 'https://novelarrow.com/chapter/the-lins-patriarch-is-weird/chapter-1-the-beginning'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch with RSC header
+        run: |
+          curl -sL -H "RSC: 1" \
+            -H "Next-Router-State-Tree: %5B%22%22%2C%7B%7D%5D" \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+            "${{ github.event.inputs.url }}" \
+            -o response.txt
+          echo "--- first 3000 chars ---"
+          head -c 3000 response.txt
+
+      - name: Upload full response
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsc-response
+          path: response.txt
