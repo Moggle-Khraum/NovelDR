@@ -734,6 +734,14 @@ export default function AddNovelScreen() {
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
 
+      // Same cycle-detection this screen was missing: since a brand-new add
+      // has nothing on disk to compare against, a broken nextUrl chain used
+      // to just re-download the same chapter over and over, quietly burning
+      // through maxCh on duplicates instead of failing loudly.
+      const visitedThisRun = new Set<string>();
+      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      let iterations = 0;
+
       addLog(`Starting from chapter ${startCh}...`, "downloading");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
@@ -744,6 +752,28 @@ export default function AddNovelScreen() {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           break;
         }
+
+        iterations++;
+        if (iterations > ITERATION_CEILING) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
+            `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
+            "error"
+          );
+          break;
+        }
+
+        if (visitedThisRun.has(currentUrl)) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: Chapter ${chapterNum}'s URL was already downloaded earlier in this run. ` +
+            `The source's "next chapter" link is looping back on itself instead of moving forward.`,
+            "error"
+          );
+          break;
+        }
+        visitedThisRun.add(currentUrl);
 
         setProgressLabel(`Chapter ${chapterNum}`);
         if (maxCh) setProgress((downloaded / maxCh) * 100);
