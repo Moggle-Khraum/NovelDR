@@ -1204,6 +1204,12 @@ export default function SettingsScreen() {
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Adapted and ported 3 novel scraper src into the App.
                 </Text>
+                 <Pressable onPress={() => Linking.openURL("https://github.com/Rudransh-Susarla-1802/Novel_Project")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@Rudransh-Susarla-1802/Novel_Project</Text>
+                </Pressable>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Adapted and ported NovelArrow scraper to the App.
+                </Text>
               </View>
 
               <Text style={[styles.creditsSectionTitle, { color: colors.accent, marginTop: 16 }]}>🛠️ This App is Built with</Text>
