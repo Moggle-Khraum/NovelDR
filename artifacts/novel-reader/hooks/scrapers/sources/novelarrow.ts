@@ -1,14 +1,54 @@
 // NovelArrow (novelarrow.com) — Next.js site.
-// Confirmed against real page dumps: despite being a Next.js app, both the
-// novel page's synopsis and the chapter page's content are plain SSR'd HTML
-// (<article data-chapter-id="..."> full of ordinary <p> tags) — NOT RSC
-// streaming payloads. No self.__next_f.push chunk parsing needed here.
+// IMPORTANT (re-confirmed against real /chapter/ and /novel/ page response
+// dumps, 2026-07): BOTH page types ship NO server-rendered DOM whatsoever —
+// no <html>, no <meta> tags, no <article>, nothing. Every response is a
+// pure Next.js RSC flight payload (chunks like `25:T1a6e,<h4>Chapter 1...`
+// and JSON-described elements like `["$","meta","13",{"name":"...",
+// "content":"..."}]` in place of literal <meta> tags).
+//
+// Data is recovered via three complementary strategies:
+//  1. extractMetaContent() — matches meta name/property + content whether
+//     it's literal HTML or the JSON-described element form.
+//  2. extractJsonValueAfterKey() — pulls balanced JSON array/object values
+//     out of the payload by key, e.g. the novel page's full, untruncated
+//     "synopsisParagraphs":[...] array.
+//  3. extractFlightTChunks() — parses the raw "T" text segments (chapter
+//     prose), looked up via the id a JSON blob points at, e.g.
+//     "chapter_content":"$25".
+// DOM-based paths (extractByDepth for <article>/site-reading-copy, literal
+// <meta> regex) are kept as a first attempt / fallback in case some pages
+// or future deployments do SSR real markup.
 
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, makeAbsoluteUrl, extractByDepth } from '../shared/html';
+import {
+  stripTags,
+  decodeEntities,
+  safeMatch,
+  makeAbsoluteUrl,
+  extractByDepth,
+  extractFlightTChunks,
+  extractJsonValueAfterKey,
+} from '../shared/html';
 
 const BASE_HOST = 'novelarrow.com';
+
+/**
+ * Extract a meta tag's content by name/property. Handles two formats:
+ *  1. Literal HTML: <meta name="x" content="y">
+ *  2. JSON-described React element (found inside RSC flight payloads,
+ *     confirmed present on both /novel/ and /chapter/ pages):
+ *     ["$","meta","13",{"name":"x","content":"y"}]
+ * Tried in that order since format (1) is cheaper to match and may still
+ * appear on some deployments/pages.
+ */
+const extractMetaContent = (html: string, key: string): string | null => {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (
+    safeMatch(html, new RegExp(`<meta[^>]*(?:name|property)="${escapedKey}"[^>]*content="([^"]+)"`, 'i')) ??
+    safeMatch(html, new RegExp(`"(?:name|property)":"${escapedKey}","content":"([^"]+)"`, 'i'))
+  );
+};
 
 /** Extract every <p>...</p> from a block of HTML */
 const extractParagraphs = (html: string): string => {
@@ -34,39 +74,78 @@ export const novelArrowScraper: SourceScraper = {
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // Confirmed against a real /novel/ page dump — the <head> carries custom
-    // og:novel:* meta tags (name=, not property=) that are cleaner than the
-    // generic og: tags (og:title has a "| Read Online on NovelArrow" suffix,
-    // og:description is truncated with "...").
+    // og:novel:* meta carries cleaner values than the generic og: tags
+    // (og:title has a "| Read Online on NovelArrow" suffix, og:description
+    // is truncated with "..."). Present as either literal <meta> HTML or a
+    // JSON-described element depending on what the page ships — see
+    // extractMetaContent above.
     const title = decodeEntities(
-      safeMatch(html, /<meta[^>]*name="og:novel:novel_name"[^>]*content="([^"]+)"/i) ??
-        safeMatch(html, /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ??
+      extractMetaContent(html, 'og:novel:novel_name') ??
+        extractMetaContent(html, 'og:title') ??
         safeMatch(html, /<title>([^<]+)<\/title>/i) ??
         'Unknown Title',
     );
 
     const author = decodeEntities(
-      safeMatch(html, /<meta[^>]*name="og:novel:author"[^>]*content="([^"]+)"/i) ??
-        safeMatch(html, /<meta[^>]*name="author"[^>]*content="([^"]+)"/i) ??
-        'Unknown Author',
+      extractMetaContent(html, 'og:novel:author') ?? extractMetaContent(html, 'author') ?? 'Unknown Author',
     );
 
-    const coverUrl = safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ?? '';
+    const coverUrl = extractMetaContent(html, 'og:image') ?? '';
 
-    // The synopsis is plain SSR'd HTML — lives in a div.site-reading-copy
-    // block as ordinary <p> tags.
-    const synopsisBlock = extractByDepth(html, 'class="site-reading-copy');
-    let synopsis = synopsisBlock ? extractParagraphs(synopsisBlock) : '';
+    // Re-confirmed against a real /novel/ page response dump (2026-07):
+    // like chapter pages, novel pages ship NO server-rendered DOM at all —
+    // no <html>, no site-reading-copy div, nothing. The FULL synopsis lives
+    // as a plain inline JSON array in the flight payload:
+    //   "synopsisParagraphs":["para one","———","\u201cdialogue\u201d",...]
+    // Each element is already a complete paragraph (including scene-break
+    // markers like "———"), so this is both more reliable AND untruncated
+    // compared to og:description.
+    let synopsis = '';
+    const synopsisArrayJson = extractJsonValueAfterKey(html, 'synopsisParagraphs');
+    if (synopsisArrayJson) {
+      try {
+        const paragraphs = JSON.parse(synopsisArrayJson) as unknown;
+        if (Array.isArray(paragraphs)) {
+          synopsis = paragraphs
+            .filter((p): p is string => typeof p === 'string')
+            .map((p) => decodeEntities(p))
+            .filter(Boolean)
+            .join('\n\n');
+        }
+      } catch {
+        // malformed JSON (shouldn't happen) — fall through to other paths
+      }
+    }
 
-    // Fall back to the (truncated) og:description meta if the div wasn't found
+    // Fallback: some deployments may still SSR a div.site-reading-copy
+    // block full of ordinary <p> tags.
     if (!synopsis) {
-      const synopsisMeta = safeMatch(html, /<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
+      const synopsisBlock = extractByDepth(html, 'class="site-reading-copy');
+      if (synopsisBlock) synopsis = extractParagraphs(synopsisBlock);
+    }
+
+    // Further fallback: a generic "$<id>" reference into a raw flight text
+    // chunk, in case the key name ever differs from synopsisParagraphs.
+    if (!synopsis) {
+      const refId = safeMatch(html, /"(?:description|synopsis|novel_description|about)":"\$(\w+)"/i);
+      if (refId) {
+        const tChunks = extractFlightTChunks(html);
+        const chunk = tChunks.get(refId);
+        if (chunk) {
+          synopsis = /<p[^>]*>/i.test(chunk) ? extractParagraphs(chunk) : decodeEntities(stripTags(chunk));
+        }
+      }
+    }
+
+    // Last resort: the (truncated, "...") og:description meta tag.
+    if (!synopsis) {
+      const synopsisMeta = extractMetaContent(html, 'og:description');
       synopsis = synopsisMeta ? decodeEntities(synopsisMeta) : '';
     }
 
     // og:novel:read_url gives the first chapter link directly, already absolute
     const firstChapterUrl =
-      safeMatch(html, /<meta[^>]*name="og:novel:read_url"[^>]*content="([^"]+)"/i) ??
+      extractMetaContent(html, 'og:novel:read_url') ??
       (() => {
         const firstChapterPath = safeMatch(html, /<a[^>]*href="(\/chapter\/[^"]+)"/i);
         return firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
@@ -78,38 +157,85 @@ export const novelArrowScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ['fetched via external scraper: novelarrow (og:novel:* meta tags)'],
+      debugInfo: ['fetched via external scraper: novelarrow (og:novel:* meta, synopsisParagraphs JSON)'],
     };
   },
 
   fetchChapter: async (url: string, _chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // Confirmed against a real /chapter/ page dump — chapter text is plain
-    // SSR'd HTML inside <article data-chapter-id="...">, one <p> per line.
-    const articleHtml = extractByDepth(html, 'data-chapter-id', '<article', '</article');
+    // Try the DOM path first in case some chapters/deployments really do
+    // SSR an <article data-chapter-id="..."> block.
+    let articleHtml = extractByDepth(html, 'data-chapter-id', '<article', '</article');
+    let title = '';
+    let nextUrl: string | null = null;
+
     if (!articleHtml) {
-      throw new Error('novelarrow: could not locate <article data-chapter-id> block.');
+      // Re-confirmed against a real response dump: chapter pages ship NO
+      // DOM at all, only a Next.js RSC flight payload. It embeds a
+      // `chapterInfo` JSON blob — e.g.
+      //   "chapterInfo":{"chapter_name":"Chapter 1. The beginning.",
+      //     "chapter_content":"$25",
+      //     "nextChapter":{"chapter_id":"chapter-2-a-fixed-future",...}}
+      // `"chapter_content":"$25"` points at flight chunk id "25", which
+      // holds the actual chapter HTML (one <p> per line, no wrapper tag).
+      const tChunks = extractFlightTChunks(html);
+
+      const contentRefId = safeMatch(html, /"chapter_content":"\$(\w+)"/);
+      articleHtml = contentRefId ? tChunks.get(contentRefId) ?? null : null;
+
+      // Fallback if the JSON ref pattern isn't found: the content chunk is
+      // the one starting with the chapter's <h4> heading.
+      if (!articleHtml) {
+        for (const chunk of tChunks.values()) {
+          if (/^<h4[^>]*>/i.test(chunk) && /<p[^>]*>/i.test(chunk)) {
+            articleHtml = chunk;
+            break;
+          }
+        }
+      }
+
+      title = decodeEntities(safeMatch(html, /"chapter_name":"([^"]+)"/) ?? '');
+
+      // "nextChapter":null on the last chapter; otherwise a chapter_id we
+      // can rebuild the URL from (chapter URLs are /chapter/<novelId>/<id>).
+      const nextChapterId = safeMatch(html, /"nextChapter":\{"chapter_id":"([^"]+)"/);
+      if (nextChapterId) {
+        const novelIdMatch = url.match(/\/chapter\/([^/]+)\//);
+        if (novelIdMatch) {
+          nextUrl = makeAbsoluteUrl(`/chapter/${novelIdMatch[1]}/${nextChapterId}`, url);
+        }
+      }
+    }
+
+    if (!articleHtml) {
+      throw new Error(
+        'novelarrow: could not locate chapter content (neither <article> DOM nor RSC flight chunk found).',
+      );
     }
 
     const content = extractParagraphs(articleHtml);
     if (!content) {
-      throw new Error('novelarrow: article block found but no <p> paragraphs extracted.');
+      throw new Error('novelarrow: content block found but no <p> paragraphs extracted.');
     }
 
-    // Title: og:novel:chapter_name meta is simplest and confirmed present;
-    // falls back to the "hidden sm:inline" span inside the article's <h2>.
-    const title = decodeEntities(
-      safeMatch(html, /<meta[^>]*name="og:novel:chapter_name"[^>]*content="([^"]+)"/i) ??
-        safeMatch(articleHtml, /<span class="hidden sm:inline">([^<]+)<\/span>/i) ??
-        '',
-    );
+    // Title: og:novel:chapter_name meta is simplest when present; otherwise
+    // fall back to whatever the DOM/flight-blob path above already found.
+    if (!title) {
+      title = decodeEntities(
+        extractMetaContent(html, 'og:novel:chapter_name') ??
+          safeMatch(articleHtml, /<span class="hidden sm:inline">([^<]+)<\/span>/i) ??
+          '',
+      );
+    }
 
     // Next chapter: the desktop side-rail "Next chapter" link has a real href
-    // when a next chapter exists; it's a disabled <span> (no href) on the
-    // last chapter, so an absent match correctly yields null.
-    const nextPath = safeMatch(html, /<a[^>]*aria-label="Next chapter"[^>]*href="([^"]+)"/i);
-    const nextUrl = nextPath ? makeAbsoluteUrl(nextPath, url) : null;
+    // when a next chapter exists (DOM path only — the flight path above
+    // already resolved this from the chapterInfo JSON).
+    if (!nextUrl) {
+      const nextPath = safeMatch(html, /<a[^>]*aria-label="Next chapter"[^>]*href="([^"]+)"/i);
+      nextUrl = nextPath ? makeAbsoluteUrl(nextPath, url) : null;
+    }
 
     return {
       url,
