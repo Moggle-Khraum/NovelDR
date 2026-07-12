@@ -1638,7 +1638,14 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
     
     const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
     let linkMatch;
-    
+
+    // Normalize for comparing "is this really a different chapter" — strips
+    // fragments/trailing slashes so "chapter-177.html#" doesn't look
+    // different from "chapter-177.html".
+    const normalizeForCompare = (u: string) =>
+      u.split('#')[0].replace(/\/$/, '').toLowerCase();
+    const currentPageNormalized = normalizeForCompare(url);
+
     while (!nextUrl && (linkMatch = linkRegex.exec(html)) !== null) {
       const attrsStr = linkMatch[1];
       const innerHtml = linkMatch[2];
@@ -1658,12 +1665,30 @@ export const directFetchChapter = async (url: string, chapterNum: number): Promi
       
       if ((txt.includes('next') || txt.includes('next chapter') || 
            attrs.includes('next') || attrs.includes('next_chapter')) && href) {
-        nextUrl = makeAbsoluteUrl(href, url);
-        console.log('[Scraper] Found next chapter:', nextUrl);
-        break;
+        // Reject placeholder hrefs (JS-driven nav buttons for keyboard
+        // shortcuts / floating toolbars — common on reader themes — use
+        // these instead of a real link) and anything that just points back
+        // at the current page. Keep scanning instead of latching onto the
+        // first "next"-labeled element found, since that's often a hidden
+        // nav control that appears earlier in the markup than the real
+        // Prev/Next Chapter links at the bottom of the article.
+        const isPlaceholder =
+          !href || href === '#' || href.startsWith('javascript:') || href.trim() === '';
+        const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
+        const isSelfReference =
+          resolved !== null && normalizeForCompare(resolved) === currentPageNormalized;
+
+        if (!isPlaceholder && !isSelfReference && resolved) {
+          nextUrl = resolved;
+          console.log('[Scraper] Found next chapter:', nextUrl);
+          break;
+        } else {
+          console.log('[Scraper] Skipped placeholder/self-referencing "next" link:', href);
+        }
       }
     }
     
+
     if (!nextUrl) {
       console.log('[Scraper] No next chapter found.');
     }
