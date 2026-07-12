@@ -523,10 +523,36 @@ export default function UpdatesScreen() {
       let consecutiveErrors = 0;
       let reDownloadedCount = 0;
 
+      // Hard iteration ceiling so a broken nextUrl chain (site pagination bug,
+      // redirect loop, etc.) can never spin forever without ever incrementing
+      // `downloaded` — which is the only thing the maxCh check below looks at.
+      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      let iterations = 0;
+
+      // Tracks every URL actually fetched in this run (new chapters AND
+      // re-downloads). A repeat here means the site's nextUrl chain has
+      // looped — the earlier check only looked at newChapters, which missed
+      // loops that happened entirely within the existsInLibrary/re-download
+      // path (e.g. AllNovel: chapter 177's page has a broken "next" link
+      // that resolves back to itself, so every "re-download" after it kept
+      // re-fetching chapter 177's content under increasing chapter labels).
+      const visitedThisRun = new Set<string>();
+
       while (currentUrl && !stopRef.current) {
         if (maxCh !== null && downloaded >= maxCh) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(`Reached max chapter limit (${maxCh})`, "success");
+          break;
+        }
+
+        iterations++;
+        if (iterations > ITERATION_CEILING) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
+            `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
+            "error"
+          );
           break;
         }
 
@@ -536,6 +562,23 @@ export default function UpdatesScreen() {
         // Check if chapter exists in library (by URL)
         const existsInLibrary = chapterExists(currentUrl, existingChapters);
         const existsInNew = chapterExists(currentUrl, newChapters);
+
+        // A URL repeating at all in this run — whether it's a "new" chapter
+        // or one we're re-downloading because content was missing — means
+        // the site's "next chapter" link has looped back on itself. Treat
+        // that as a hard stop instead of an infinite SKIPPED/re-download
+        // loop (which also silently blocked the maxCh limit from ever being
+        // reached, since `downloaded` never advanced).
+        if (visitedThisRun.has(currentUrl)) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: Chapter ${chapterNum}'s URL was already fetched earlier in this run. ` +
+            `The source's "next chapter" link is looping back on itself instead of moving forward.`,
+            "error"
+          );
+          break;
+        }
+        visitedThisRun.add(currentUrl);
 
         let shouldDownload = false;
         let contentExists = false;
