@@ -160,10 +160,14 @@ const deleteNovelChapters = async (novelId: string) => {
   }
 };
 
-const saveAllChaptersToFile = async (novelId: string, chapters: Chapter[]) => {
+const saveAllChaptersToFile = async (novelId: string, chapters: Chapter[], offset: number = 0) => {
+  // `offset` is the absolute index (within the novel's full chapter list) that
+  // `chapters[0]` corresponds to. Callers that pass a partial/incremental batch
+  // (e.g. addNovel appending to an existing novel) MUST pass the correct offset,
+  // otherwise this silently overwrites chapter_0.json, chapter_1.json, etc.
   for (let i = 0; i < chapters.length; i++) {
     if (chapters[i].content) {
-      await saveChapterToFile(novelId, i, {
+      await saveChapterToFile(novelId, offset + i, {
         title: chapters[i].title,
         url: chapters[i].url,
         content: chapters[i].content!,
@@ -335,7 +339,7 @@ type LibraryContextType = {
   toggleSortOrder: () => void;
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
-  saveAllChaptersToFile: (novelId: string, chapters: Chapter[]) => Promise<void>;
+  saveAllChaptersToFile: (novelId: string, chapters: Chapter[], offset?: number) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
   refreshLibrary: () => Promise<void>;
   library: Novel[];
@@ -473,19 +477,24 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     const existing = current.find(n => n.id === novel.id);
     let updatedNovels: Novel[];
     let newChaptersToSave: Chapter[];
+    let saveOffset = 0;
     if (existing) {
       const existingUrls = new Set(existing.chapters.map(ch => ch.url));
       const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
       const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
       updatedNovels = current.map(n => n.id === novel.id ? merged : n);
       newChaptersToSave = newChapters;
+      // Existing novel already has files 0..existing.chapters.length-1 on disk —
+      // the new batch must be written starting after those, not from 0 again.
+      saveOffset = existing.chapters.length;
     } else {
       updatedNovels = [novel, ...current];
       newChaptersToSave = novel.chapters;
+      saveOffset = 0;
     }
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveAllChaptersToFile(novel.id, newChaptersToSave);
+    await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
     await saveLibraryToFile(updatedNovels);
   }, []);
 
