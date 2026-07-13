@@ -5,9 +5,9 @@ import { useRef, useState } from "react";
 // CAUTION – DANGER-1: input turns amber, still no modal.
 // DANGER and up: input turns red + a blocking modal explains the risks.
 // MAX: hard ceiling, the field will not accept anything higher.
-export const CHAPTER_LIMIT_MAX = 300;
-export const CHAPTER_LIMIT_DANGER_THRESHOLD = 250;
-export const CHAPTER_LIMIT_CAUTION_THRESHOLD = 200;
+export const CHAPTER_LIMIT_MAX = 500;
+export const CHAPTER_LIMIT_DANGER_THRESHOLD = 450;
+export const CHAPTER_LIMIT_CAUTION_THRESHOLD = 400;
 
 export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => void) {
   const [dangerModalVisible, setDangerModalVisible] = useState(false);
