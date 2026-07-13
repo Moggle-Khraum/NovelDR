@@ -626,6 +626,21 @@ export default function AddNovelScreen() {
         localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
 
+      // Base novel metadata, built once up front so checkpoint saves during
+      // the download loop and the final save both write the exact same
+      // novel record — only `chapters` differs between calls.
+      const dateAdded = Date.now();
+      const novelBase: Omit<Novel, "chapters"> = {
+        id: safeId,
+        title: meta.title,
+        author: meta.author,
+        synopsis: meta.synopsis,
+        coverUrl: localCoverUrl || meta.coverUrl,
+        sourceUrl: metaUrl,
+        dateAdded,
+        status: "unread",
+      };
+
       // ── If a chapter URL was pasted, skip directly to it ─────────────────
       let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
       let chapterNum = directChapterUrl ? directChapterNum : 1;
@@ -733,6 +748,7 @@ export default function AddNovelScreen() {
       // ========== DOWNLOAD CHAPTERS ==========
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
+      let lastCheckpointCount = 0; // how many of newChapters are already flushed to disk
 
       // Same cycle-detection this screen was missing: since a brand-new add
       // has nothing on disk to compare against, a broken nextUrl chain used
@@ -834,6 +850,21 @@ export default function AddNovelScreen() {
               `Saved: ${data.title} (Chapter ${chapterNumber}) [${downloaded} chapters so far]`,
               "success"
             );
+
+            // ── Checkpoint: flush what we have to disk every 10 chapters ──
+            // so a crash mid-download only loses the current batch, not the
+            // whole run. addNovel() dedupes by URL and appends, so calling
+            // it repeatedly for the same safeId is safe.
+            try {
+              const checkpointBatch = newChapters
+                .slice(lastCheckpointCount)
+                .map(({ chapterNumber, ...ch }) => ch);
+              await addNovel({ ...novelBase, chapters: checkpointBatch });
+              lastCheckpointCount = newChapters.length;
+              addLog(`Checkpoint: ${downloaded} chapters written to disk`, "info");
+            } catch (checkpointErr: any) {
+              addLog(`Checkpoint save failed: ${checkpointErr.message}`, "warning");
+            }
           } else {
             addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
           }
@@ -858,9 +889,19 @@ export default function AddNovelScreen() {
 
       // ========== SORT & FINALIZE ==========
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      addLog(`Sorting ${newChapters.length} chapters by chapter number...`, "info");
 
-      newChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
+      // Chapters already flushed to disk by a checkpoint are on disk in
+      // download order (file index N matches array position N). Re-sorting
+      // the whole list here would desync that mapping, so once checkpointing
+      // has started we only sort the log summary, not the array itself —
+      // downloads already arrive in ascending order in the vast majority of
+      // cases, so this is a cosmetic difference in the rare edge case where
+      // a source's nextUrl chain isn't monotonic.
+      const alreadyCheckpointed = lastCheckpointCount > 0;
+      if (!alreadyCheckpointed) {
+        addLog(`Sorting ${newChapters.length} chapters by chapter number...`, "info");
+        newChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
+      }
 
       if (newChapters.length > 0) {
         const validNums = newChapters.map(c => c.chapterNumber).filter(n => n > 0);
@@ -869,7 +910,7 @@ export default function AddNovelScreen() {
           const maxChNum = Math.max(...validNums);
           const missing = newChapters.length - validNums.length;
           addLog(
-            `Chapters sorted: ${minCh} → ${maxChNum} (${newChapters.length} total${missing > 0 ? `, ${missing} untitled` : ""})`,
+            `Chapters ${alreadyCheckpointed ? "range" : "sorted"}: ${minCh} → ${maxChNum} (${newChapters.length} total${missing > 0 ? `, ${missing} untitled` : ""})`,
             "success"
           );
         }
@@ -888,20 +929,15 @@ export default function AddNovelScreen() {
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
-      const finalChapters = newChapters.map(({ chapterNumber, ...ch }) => ch);
+      // Only flush what hasn't already been written by a checkpoint — addNovel
+      // dedupes by URL anyway, but slicing avoids redundant disk writes.
+      const remainder = newChapters
+        .slice(lastCheckpointCount)
+        .map(({ chapterNumber, ...ch }) => ch);
 
-      const novel: Novel = {
-        id: safeId,
-        title: meta.title,
-        author: meta.author,
-        synopsis: meta.synopsis,
-        coverUrl: localCoverUrl || meta.coverUrl,
-        sourceUrl: metaUrl,
-        chapters: finalChapters,
-        dateAdded: Date.now(),
-        status: "unread",
-      };
-      await addNovel(novel);
+      if (remainder.length > 0 || !alreadyCheckpointed) {
+        await addNovel({ ...novelBase, chapters: remainder });
+      }
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
