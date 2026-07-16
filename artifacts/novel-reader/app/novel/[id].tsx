@@ -501,12 +501,6 @@ export default function NovelDetailScreen() {
       // prop below guarantees the list actually redraws immediately.
       setChapterListRefreshKey((k) => k + 1);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Delete Failed",
-        error?.message || "Could not delete the selected chapters. Nothing was removed."
-      );
     } finally {
       if (showLoadingModal) setDeletingChapters(false);
     }
