@@ -1,8 +1,12 @@
 // Generic HTTP helper for external scrapers: tries a direct fetch first,
-// falls back to a CORS proxy if that fails. Self-contained — does not
-// import the axios instance/headers from useDirectScraper.ts.
+// falls back to a CORS proxy if that fails, and (opt-in per source) falls
+// back further to a hidden WebView for sites that run a JS bot-challenge
+// (Cloudflare, etc.) that neither a direct request nor a plain proxy can
+// clear. Self-contained — does not import the axios instance/headers from
+// useDirectScraper.ts.
 
 import axios from 'axios';
+import { fetchViaWebView } from './webviewBridge';
 
 const DEFAULT_HEADERS = {
   'User-Agent':
@@ -22,13 +26,25 @@ export interface FetchOptions {
   proxyFirst?: boolean;
   /** Proxy URL builder; defaults to corsproxy.io */
   buildProxyUrl?: (url: string) => string;
+  /**
+   * If direct + proxy both fail, fall back to loading the page in a hidden
+   * WebView (see shared/webviewBridge.tsx) so a real JS challenge (e.g.
+   * Cloudflare's "Just a moment") can actually run and clear. Off by
+   * default — this is much slower than a plain HTTP request, so only turn
+   * it on for sources known to need it.
+   */
+  webviewFallback?: boolean;
+  /** Timeout for the WebView fallback attempt, in ms. Default 25000. */
+  webviewTimeoutMs?: number;
 }
 
 const defaultBuildProxyUrl = (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
 /**
  * Fetch a URL's HTML, trying direct first then falling back to a proxy
- * (or vice versa if proxyFirst is set). Throws if both attempts fail.
+ * (or vice versa if proxyFirst is set), and finally — if webviewFallback is
+ * set and both of those fail — a hidden WebView. Throws if every attempt
+ * that was tried fails.
  */
 export const fetchHtmlWithFallback = async (
   url: string,
@@ -44,8 +60,26 @@ export const fetchHtmlWithFallback = async (
   try {
     return await first();
   } catch (firstError) {
-    return await second();
+    try {
+      return await second();
+    } catch (secondError) {
+      if (!options.webviewFallback) throw secondError;
+
+      try {
+        return await fetchViaWebView(url, options.webviewTimeoutMs);
+      } catch (webviewError) {
+        // The HTTP error (status code, etc.) is usually more informative
+        // than the WebView's generic failure — surface both so logs show
+        // that the WebView fallback was tried and why it also failed.
+        const httpMessage =
+          secondError instanceof Error ? secondError.message : String(secondError);
+        const webviewMessage =
+          webviewError instanceof Error ? webviewError.message : String(webviewError);
+        throw new Error(`${httpMessage}. WebView fallback also failed: ${webviewMessage}`);
+      }
+    }
   }
 };
 
 export { httpClient };
+
