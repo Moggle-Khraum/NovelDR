@@ -534,6 +534,14 @@ export default function UpdatesScreen() {
       // re-fetching chapter 177's content under increasing chapter labels).
       const visitedThisRun = new Set<string>();
 
+      // Fast stop for the "already in library" / "already fetched this run"
+      // spam: if the loop skips this many chapters in a row without ever
+      // actually downloading something, the nextUrl chain isn't making real
+      // progress (near-duplicate URLs that dodge the exact visitedThisRun
+      // match). Break immediately instead of waiting for ITERATION_CEILING.
+      const MAX_CONSECUTIVE_SKIPS = 5;
+      let consecutiveSkips = 0;
+
       while (currentUrl && !stopRef.current) {
         if (maxCh !== null && downloaded >= maxCh) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -581,7 +589,16 @@ export default function UpdatesScreen() {
         if (existsInNew) {
           // Duplicate URL within this same run — content was just fetched
           // a moment ago, guaranteed present. Just move on.
-          addLog(`SKIPPED: Chapter ${chapterNum} already fetched this run`, "warning");
+          consecutiveSkips++;
+          if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
+            addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+            addLog(
+              `STOPPED: Update has stopped without downloading anything new. ` +
+              `The source's "next chapter" link likely nonexistent.`,
+              "error"
+            );
+            break;
+          }
           try {
             const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
             currentUrl = nextUrl;
@@ -604,7 +621,16 @@ export default function UpdatesScreen() {
           const hasRealContent = !!onDisk?.content && onDisk.content.trim().length > 0;
 
           if (hasRealContent) {
-            addLog(`SKIPPED: Chapter ${chapterNum} already in library`, "warning");
+            consecutiveSkips++;
+            if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
+              addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+              addLog(
+                `STOPPED: Update has stopped without downloading anything new. ` +
+                `The source's "next chapter" link likely nonexistent.`,
+                "error"
+              );
+              break;
+            }
             try {
               const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
               currentUrl = nextUrl;
@@ -643,6 +669,8 @@ export default function UpdatesScreen() {
             }
             // Prefetch cache is single-use — clear it after this iteration.
             prefetchedChapter = null;
+            // Real progress happened — the skip streak is broken.
+            consecutiveSkips = 0;
 
             const chapterNumber = extractChapterNumber(data.title);
             if (isGapFill) {
