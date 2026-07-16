@@ -341,6 +341,7 @@ type LibraryContextType = {
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
   saveAllChaptersToFile: (novelId: string, chapters: Chapter[], offset?: number) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
+  deleteChapters: (novelId: string, urls: string[]) => Promise<void>;
   refreshLibrary: () => Promise<void>;
   library: Novel[];
 };
@@ -595,6 +596,36 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     return await loadChapterFromFile(novelId, chapterIndex);
   }, []);
 
+  const deleteChapters = useCallback(async (novelId: string, urls: string[]) => {
+    const novel = novelsRef.current.find(n => n.id === novelId);
+    if (!novel) return;
+
+    const urlSet = new Set(urls);
+
+    // Delete the on-disk file for each selected chapter (indices correspond
+    // to position in the novel's chapters array, matching saveChapterToFile).
+    await Promise.all(
+      novel.chapters.map((chapter, index) =>
+        urlSet.has(chapter.url) ? deleteFile(getChapterFilePath(novelId, index)) : Promise.resolve()
+      )
+    );
+
+    // Clear content (not the chapter entry itself) so the chapter still
+    // shows in the list, just marked as not-downloaded.
+    const updatedNovels = novelsRef.current.map(n => {
+      if (n.id !== novelId) return n;
+      return {
+        ...n,
+        chapters: n.chapters.map(chapter =>
+          urlSet.has(chapter.url) ? { ...chapter, content: undefined } : chapter
+        ),
+      };
+    });
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+    await saveLibraryToFile(updatedNovels);
+  }, []);
+
   // ── Refresh library from disk ────────────────────────────────────────────
 
   const refreshLibrary = useCallback(async () => {
@@ -626,6 +657,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       saveChapterContent,
       saveAllChaptersToFile,
       loadChapterContent,
+      deleteChapters,
       refreshLibrary,
       library: novels,
     }),
@@ -646,6 +678,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       getSortedChapters,
       saveChapterContent,
       loadChapterContent,
+      deleteChapters,
       refreshLibrary,
     ]
   );
