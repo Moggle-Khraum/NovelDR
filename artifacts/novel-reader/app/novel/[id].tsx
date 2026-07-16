@@ -29,7 +29,7 @@ type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
 // Deleting rewrites every surviving chapter's file to re-index it — past
 // this many chapters in one batch, that's slow enough to need a loading
 // indicator instead of the UI just appearing to hang.
-const BULK_DELETE_LOADING_THRESHOLD = 2;
+const BULK_DELETE_LOADING_THRESHOLD = 1;
 
 // Export options configuration
 const EXPORT_OPTIONS: { format: ExportFormat; label: string; icon: string; color: string }[] = [
