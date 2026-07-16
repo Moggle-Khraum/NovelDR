@@ -441,8 +441,24 @@ export default function UpdatesScreen() {
           let skippedCount = 0;
           let lastLoggedMilestone = 0;
           const totalToSkip = startCh - 1;
+          // Same failure mode as the main download loop below: a broken
+          // nextUrl chain can loop back on a URL it already visited. chapterNum
+          // is just a counter, so without this check it climbs forever while
+          // currentUrl never actually advances toward startCh.
+          const visitedWhileSkipping = new Set<string>();
 
           while (currentUrl && chapterNum < startCh && !stopRef.current) {
+            if (visitedWhileSkipping.has(currentUrl)) {
+              addLog(
+                `Stopped: chapter ${chapterNum}'s URL was already visited while skipping ahead. ` +
+                `The source's "next chapter" link is looping instead of moving forward.`,
+                "error"
+              );
+              currentUrl = null;
+              break;
+            }
+            visitedWhileSkipping.add(currentUrl);
+
             try {
               const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
               currentUrl = nextUrl;
