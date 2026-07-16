@@ -26,6 +26,11 @@ import { useTheme } from "@/context/ThemeContext";
 // Export format types
 type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
 
+// Deleting rewrites every surviving chapter's file to re-index it — past
+// this many chapters in one batch, that's slow enough to need a loading
+// indicator instead of the UI just appearing to hang.
+const BULK_DELETE_LOADING_THRESHOLD = 2;
+
 // Export options configuration
 const EXPORT_OPTIONS: { format: ExportFormat; label: string; icon: string; color: string }[] = [
   { format: "txt", label: "Plain Text (.txt)", icon: "document-text-outline", color: "#4A90E2" },
@@ -352,7 +357,7 @@ const mimeTypes: Record<ExportFormat, string> = {
 
 export default function NovelDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getNovel, loadChapterContent, sortOrder, toggleSortOrder, getSortedChapters } = useLibrary();
+  const { getNovel, loadChapterContent, sortOrder, toggleSortOrder, getSortedChapters, deleteChapters } = useLibrary();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
@@ -360,6 +365,11 @@ export default function NovelDetailScreen() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("");
+  const [chapterSelectionMode, setChapterSelectionMode] = useState(false);
+  const [selectedChapterUrls, setSelectedChapterUrls] = useState<string[]>([]);
+  const [confirmDeleteChaptersVisible, setConfirmDeleteChaptersVisible] = useState(false);
+  const [chapterListRefreshKey, setChapterListRefreshKey] = useState(0);
+  const [deletingChapters, setDeletingChapters] = useState(false);
 
   const novel = getNovel(id);
 
@@ -441,33 +451,107 @@ export default function NovelDetailScreen() {
     }
   };
 
+  // ── Chapter selection / delete ─────────────────────────────────────────
+  const enterChapterSelectionMode = (firstUrl?: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setChapterSelectionMode(true);
+    setSelectedChapterUrls(firstUrl ? [firstUrl] : []);
+  };
+
+  const exitChapterSelectionMode = () => {
+    setChapterSelectionMode(false);
+    setSelectedChapterUrls([]);
+  };
+
+  const toggleChapterSelection = (url: string) => {
+    Haptics.selectionAsync();
+    setSelectedChapterUrls((prev) =>
+      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]
+    );
+  };
+
+  const showFirstDeleteConfirmation = () => {
+    if (selectedChapterUrls.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Confirm Deletion",
+      `Delete ${selectedChapterUrls.length} chapter${selectedChapterUrls.length !== 1 ? "s" : ""}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => setConfirmDeleteChaptersVisible(true) },
+      ]
+    );
+  };
+
+  const performChapterDelete = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setConfirmDeleteChaptersVisible(false);
+
+    const showLoadingModal = selectedChapterUrls.length > BULK_DELETE_LOADING_THRESHOLD;
+    if (showLoadingModal) setDeletingChapters(true);
+
+    try {
+      await deleteChapters(novel.id, selectedChapterUrls);
+      setChapterSelectionMode(false);
+      setSelectedChapterUrls([]);
+      // Force a full remount of the chapter FlatList — getNovel(id) already
+      // returns the updated chapters array on the next render, but the list
+      // doesn't always visually reflect it until something else (like
+      // navigating away and back) triggers a fresh mount. Bumping the `key`
+      // prop below guarantees the list actually redraws immediately.
+      setChapterListRefreshKey((k) => k + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } finally {
+      if (showLoadingModal) setDeletingChapters(false);
+    }
+  };
+
   const renderChapterItem = useCallback(({ item: ch, index: i }: { item: typeof sortedChapters[0], index: number }) => {
     const originalIndex = novel.chapters.findIndex(c => c.url === ch.url);
     const isCurrent = novel.lastRead?.chapterIndex === originalIndex;
+    const isSelected = selectedChapterUrls.includes(ch.url);
     return (
       <Pressable
         style={[
           styles.chapterRow,
-          {
-            backgroundColor: isCurrent ? colors.accent + "18" : colors.card,
-            borderColor: isCurrent ? colors.accent : colors.border,
-          },
+          chapterSelectionMode
+            ? {
+                backgroundColor: isSelected ? colors.accent + "20" : colors.card,
+                borderColor: isSelected ? colors.accent : colors.border,
+              }
+            : {
+                backgroundColor: isCurrent ? colors.accent + "18" : colors.card,
+                borderColor: isCurrent ? colors.accent : colors.border,
+              },
         ]}
         onPress={() => {
+          if (chapterSelectionMode) {
+            toggleChapterSelection(ch.url);
+            return;
+          }
           Haptics.selectionAsync();
           router.push({
             pathname: "/reader/[id]",
             params: { id: novel.id, chapterIndex: originalIndex.toString() },
           });
         }}
+        onLongPress={() => {
+          if (chapterSelectionMode) {
+            toggleChapterSelection(ch.url);
+          } else {
+            enterChapterSelectionMode(ch.url);
+          }
+        }}
       >
-        <Text style={[styles.chapterTitle, { color: isCurrent ? colors.accent : colors.text }]} numberOfLines={1}>
-          {isCurrent ? "► " : ""}{ch.title}
+        <Text style={[styles.chapterTitle, { color: isCurrent && !chapterSelectionMode ? colors.accent : colors.text }]} numberOfLines={1}>
+          {isCurrent && !chapterSelectionMode ? "► " : ""}{ch.title}
         </Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        {!chapterSelectionMode && (
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        )}
       </Pressable>
     );
-  }, [novel.chapters, novel.lastRead?.chapterIndex, novel.id, colors.accent, colors.text, colors.card, colors.border, colors.textMuted]);
+  }, [novel.chapters, novel.lastRead?.chapterIndex, novel.id, colors.accent, colors.text, colors.card, colors.border, colors.textMuted, chapterSelectionMode, selectedChapterUrls]);
 
   const keyExtractor = useCallback((item: typeof sortedChapters[0], index: number) => {
     return `${item.url}-${index}`;
@@ -481,27 +565,45 @@ export default function NovelDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.navBar, { paddingTop: topPad + 4, borderBottomColor: colors.border }]}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.accent} />
-          <Text style={[styles.backLabel, { color: colors.accent }]}>Library</Text>
-        </Pressable>
-        <Text style={[styles.navTitle, { color: colors.text }]} numberOfLines={1}>
-          {novel.title}
-        </Text>
-        <Pressable
-          style={styles.menuBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowMenu(true);
-          }}
-        >
-          <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
-        </Pressable>
-      </View>
+      {chapterSelectionMode ? (
+        <View style={[styles.navBar, { paddingTop: topPad + 4, borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+          <Pressable style={styles.backBtn} onPress={exitChapterSelectionMode}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </Pressable>
+          <Text style={[styles.navTitle, { color: colors.text }]} numberOfLines={1}>
+            Selected: {selectedChapterUrls.length}
+          </Text>
+          {selectedChapterUrls.length > 0 ? (
+            <Pressable style={styles.menuBtn} onPress={showFirstDeleteConfirmation}>
+              <Ionicons name="trash-outline" size={22} color={colors.text} />
+            </Pressable>
+          ) : (
+            <View style={styles.menuBtn} />
+          )}
+        </View>
+      ) : (
+        <View style={[styles.navBar, { paddingTop: topPad + 4, borderBottomColor: colors.border }]}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.accent} />
+            <Text style={[styles.backLabel, { color: colors.accent }]}>Library</Text>
+          </Pressable>
+          <Text style={[styles.navTitle, { color: colors.text }]} numberOfLines={1}>
+            {novel.title}
+          </Text>
+          <Pressable
+            style={styles.menuBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowMenu(true);
+            }}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -589,24 +691,34 @@ export default function NovelDetailScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Chapters ({novel.chapters.length})
             </Text>
-            <Pressable
-              onPress={toggleSortOrder}
-              style={[styles.sortBtn, { borderColor: colors.border }]}
-            >
-              <Ionicons
-                name={sortOrder === "ascending" ? "arrow-up" : "arrow-down"}
-                size={16}
-                color={colors.accent}
-              />
-              <Text style={[styles.sortBtnText, { color: colors.accent }]}>
-                {sortOrder === "ascending" ? "Asc" : "Desc"}
-              </Text>
-            </Pressable>
+            <View style={styles.chapterHeaderActions}>
+              <Pressable
+                onPress={toggleSortOrder}
+                style={[styles.sortBtn, { borderColor: colors.border }]}
+              >
+                <Ionicons
+                  name={sortOrder === "ascending" ? "arrow-up" : "arrow-down"}
+                  size={16}
+                  color={colors.accent}
+                />
+                <Text style={[styles.sortBtnText, { color: colors.accent }]}>
+                  {sortOrder === "ascending" ? "Asc" : "Desc"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => enterChapterSelectionMode()}
+                style={[styles.sortBtn, styles.deleteChaptersBtn, { borderColor: colors.border }]}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.chapterListContainer}>
             <FlatList
+              key={chapterListRefreshKey}
               data={sortedChapters}
+              extraData={[chapterSelectionMode, selectedChapterUrls]}
               keyExtractor={keyExtractor}
               renderItem={renderChapterItem}
               getItemLayout={getItemLayout}
@@ -664,12 +776,55 @@ export default function NovelDetailScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={confirmDeleteChaptersVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmDeleteChaptersVisible(false)}
+      >
+        <View style={styles.confirmModalOverlay}>
+          <View style={[styles.confirmModalContent, { backgroundColor: colors.card }]}>
+            <Ionicons name="alert-circle" size={48} color={colors.text} style={styles.confirmModalIcon} />
+            <Text style={[styles.confirmModalTitle, { color: colors.text }]}>Confirm Deletion</Text>
+            <Text style={[styles.confirmModalMessage, { color: colors.textSecondary }]}>
+              This will permanently delete {selectedChapterUrls.length} chapter{selectedChapterUrls.length !== 1 ? "s" : ""}.{"\n\n"}
+              Are you sure about this? {"\n\n"}
+              If YES, click the 'DELETE' button.
+            </Text>
+
+            <View style={styles.confirmModalButtons}>
+              <Pressable
+                style={[styles.confirmModalButton, styles.confirmModalCancelButton, { borderColor: colors.border }]}
+                onPress={() => setConfirmDeleteChaptersVisible(false)}
+              >
+                <Text style={[styles.confirmModalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.confirmModalButton, styles.confirmModalDeleteButton]}
+                onPress={performChapterDelete}
+              >
+                <Text style={[styles.confirmModalButtonText, { color: "#fff" }]}>DELETE</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={exporting} transparent animationType="fade">
         <View style={styles.menuOverlay}>
           <View style={[styles.progressModal, { backgroundColor: colors.card }]}>
             <ActivityIndicator size="large" color={colors.accent} />
             <Text style={[styles.progressText, { color: colors.text }]}>{exportProgress}</Text>
             <Text style={[styles.progressSubText, { color: colors.textSecondary }]}>This may take a moment for large novels...</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={deletingChapters} transparent animationType="fade">
+        <View style={styles.menuOverlay}>
+          <View style={[styles.progressModal, { backgroundColor: colors.card }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.progressText, { color: colors.text }]}>Deleting... Please wait...</Text>
           </View>
         </View>
       </Modal>
@@ -709,7 +864,9 @@ const styles = StyleSheet.create({
   seeMoreRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   seeMore: { fontFamily: "Inter_500Medium", fontSize: 13 },
   chapterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  chapterHeaderActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   sortBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  deleteChaptersBtn: { paddingHorizontal: 8 },
   sortBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   chapterListContainer: { minHeight: 200 },
   chapterRow: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, marginBottom: 6 },
@@ -730,4 +887,14 @@ const styles = StyleSheet.create({
   progressModal: { marginHorizontal: 40, borderRadius: 16, padding: 30, alignItems: 'center', gap: 12, alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto' },
   progressText: { fontFamily: "Inter_600SemiBold", fontSize: 16, textAlign: 'center' },
   progressSubText: { fontFamily: "Inter_400Regular", fontSize: 13, textAlign: 'center' },
+  confirmModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  confirmModalContent: { width: "80%", borderRadius: 16, padding: 20, alignItems: "center", gap: 12 },
+  confirmModalIcon: { marginBottom: 8 },
+  confirmModalTitle: { fontFamily: "Inter_700Bold", fontSize: 20 },
+  confirmModalMessage: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center" },
+  confirmModalButtons: { flexDirection: "row", gap: 12, marginTop: 16, width: "100%" },
+  confirmModalButton: { flex: 1, height: 44, borderRadius: 8, justifyContent: "center", alignItems: "center" },
+  confirmModalCancelButton: { borderWidth: 1 },
+  confirmModalDeleteButton: { backgroundColor: "#ff4444" },
+  confirmModalButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });
