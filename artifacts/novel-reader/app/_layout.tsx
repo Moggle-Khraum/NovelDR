@@ -23,6 +23,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
+import { UpdateProvider } from "@/context/UpdateContext";
+import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -310,7 +312,10 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
               <LibraryProvider>
-                <RootLayoutNav />
+                <UpdateProvider>
+                  <RootLayoutNav />
+                  <WebViewFetchBridge />
+                </UpdateProvider>
               </LibraryProvider>
             </ThemeProvider>
           </GestureHandlerRootView>

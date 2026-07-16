@@ -22,6 +22,8 @@ import { router } from "expo-router";
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter, checkSiteHealth } from "@/hooks/useApi";
+import { useChapterLimiter, CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
+import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
 
 // --- SUPPORTED SITES ---
@@ -37,6 +39,7 @@ const SUPPORTED_SITES = [
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
   { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
+  { name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
   
 ];
 
@@ -244,6 +247,7 @@ export default function AddNovelScreen() {
   const [url, setUrl] = useState("");
   const [startChStr, setStartChStr] = useState("1");
   const [maxChStr, setMaxChStr] = useState("");
+  const chapterLimiter = useChapterLimiter(maxChStr, setMaxChStr);
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -420,6 +424,7 @@ export default function AddNovelScreen() {
     setUrl("");
     setStartChStr("1");
     setMaxChStr("");
+    chapterLimiter.resetLimiter();
     setLogs([]);
     setProgress(0);
     setProgressLabel("");
@@ -507,8 +512,14 @@ export default function AddNovelScreen() {
       return;
     }
 
+    if (chapterLimiter.dangerModalVisible) {
+      addLog("Acknowledge the chapter limit warning before starting.", "warning");
+      return;
+    }
+
     const startCh = Math.max(1, parseInt(startChStr) || 1);
-    const maxCh = parseInt(maxChStr) || null;
+    const parsedMaxCh = parseInt(maxChStr) || null;
+    const maxCh = parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
 
     // ── Detect if a chapter URL was pasted directly ──────────────────────────
     const chapterUrlPattern = /\/chapter[-/](\d+)/i;
@@ -614,6 +625,21 @@ export default function AddNovelScreen() {
       if (meta.coverUrl) {
         localCoverUrl = await downloadAndSaveCover(meta.coverUrl, safeId);
       }
+
+      // Base novel metadata, built once up front so checkpoint saves during
+      // the download loop and the final save both write the exact same
+      // novel record — only `chapters` differs between calls.
+      const dateAdded = Date.now();
+      const novelBase: Omit<Novel, "chapters"> = {
+        id: safeId,
+        title: meta.title,
+        author: meta.author,
+        synopsis: meta.synopsis,
+        coverUrl: localCoverUrl || meta.coverUrl,
+        sourceUrl: metaUrl,
+        dateAdded,
+        status: "unread",
+      };
 
       // ── If a chapter URL was pasted, skip directly to it ─────────────────
       let currentUrl: string | null = directChapterUrl ?? meta.firstChapterUrl;
@@ -722,6 +748,15 @@ export default function AddNovelScreen() {
       // ========== DOWNLOAD CHAPTERS ==========
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
       let downloaded = 0;
+      let lastCheckpointCount = 0; // how many of newChapters are already flushed to disk
+
+      // Same cycle-detection this screen was missing: since a brand-new add
+      // has nothing on disk to compare against, a broken nextUrl chain used
+      // to just re-download the same chapter over and over, quietly burning
+      // through maxCh on duplicates instead of failing loudly.
+      const visitedThisRun = new Set<string>();
+      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      let iterations = 0;
 
       addLog(`Starting from chapter ${startCh}...`, "downloading");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -733,6 +768,28 @@ export default function AddNovelScreen() {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           break;
         }
+
+        iterations++;
+        if (iterations > ITERATION_CEILING) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
+            `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
+            "error"
+          );
+          break;
+        }
+
+        if (visitedThisRun.has(currentUrl)) {
+          addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+          addLog(
+            `Stopped: Chapter ${chapterNum}'s URL was already downloaded earlier in this run. ` +
+            `The source's "next chapter" link is looping back on itself instead of moving forward.`,
+            "error"
+          );
+          break;
+        }
+        visitedThisRun.add(currentUrl);
 
         setProgressLabel(`Chapter ${chapterNum}`);
         if (maxCh) setProgress((downloaded / maxCh) * 100);
@@ -793,6 +850,21 @@ export default function AddNovelScreen() {
               `Saved: ${data.title} (Chapter ${chapterNumber}) [${downloaded} chapters so far]`,
               "success"
             );
+
+            // ── Checkpoint: flush what we have to disk every 10 chapters ──
+            // so a crash mid-download only loses the current batch, not the
+            // whole run. addNovel() dedupes by URL and appends, so calling
+            // it repeatedly for the same safeId is safe.
+            try {
+              const checkpointBatch = newChapters
+                .slice(lastCheckpointCount)
+                .map(({ chapterNumber, ...ch }) => ch);
+              await addNovel({ ...novelBase, chapters: checkpointBatch });
+              lastCheckpointCount = newChapters.length;
+              addLog(`Checkpoint: ${downloaded} chapters written to disk`, "info");
+            } catch (checkpointErr: any) {
+              addLog(`Checkpoint save failed: ${checkpointErr.message}`, "warning");
+            }
           } else {
             addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
           }
@@ -817,9 +889,19 @@ export default function AddNovelScreen() {
 
       // ========== SORT & FINALIZE ==========
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-      addLog(`Sorting ${newChapters.length} chapters by chapter number...`, "info");
 
-      newChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
+      // Chapters already flushed to disk by a checkpoint are on disk in
+      // download order (file index N matches array position N). Re-sorting
+      // the whole list here would desync that mapping, so once checkpointing
+      // has started we only sort the log summary, not the array itself —
+      // downloads already arrive in ascending order in the vast majority of
+      // cases, so this is a cosmetic difference in the rare edge case where
+      // a source's nextUrl chain isn't monotonic.
+      const alreadyCheckpointed = lastCheckpointCount > 0;
+      if (!alreadyCheckpointed) {
+        addLog(`Sorting ${newChapters.length} chapters by chapter number...`, "info");
+        newChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
+      }
 
       if (newChapters.length > 0) {
         const validNums = newChapters.map(c => c.chapterNumber).filter(n => n > 0);
@@ -828,7 +910,7 @@ export default function AddNovelScreen() {
           const maxChNum = Math.max(...validNums);
           const missing = newChapters.length - validNums.length;
           addLog(
-            `Chapters sorted: ${minCh} → ${maxChNum} (${newChapters.length} total${missing > 0 ? `, ${missing} untitled` : ""})`,
+            `Chapters ${alreadyCheckpointed ? "range" : "sorted"}: ${minCh} → ${maxChNum} (${newChapters.length} total${missing > 0 ? `, ${missing} untitled` : ""})`,
             "success"
           );
         }
@@ -847,20 +929,15 @@ export default function AddNovelScreen() {
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
-      const finalChapters = newChapters.map(({ chapterNumber, ...ch }) => ch);
+      // Only flush what hasn't already been written by a checkpoint — addNovel
+      // dedupes by URL anyway, but slicing avoids redundant disk writes.
+      const remainder = newChapters
+        .slice(lastCheckpointCount)
+        .map(({ chapterNumber, ...ch }) => ch);
 
-      const novel: Novel = {
-        id: safeId,
-        title: meta.title,
-        author: meta.author,
-        synopsis: meta.synopsis,
-        coverUrl: localCoverUrl || meta.coverUrl,
-        sourceUrl: metaUrl,
-        chapters: finalChapters,
-        dateAdded: Date.now(),
-        status: "unread",
-      };
-      await addNovel(novel);
+      if (remainder.length > 0 || !alreadyCheckpointed) {
+        await addNovel({ ...novelBase, chapters: remainder });
+      }
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
@@ -985,14 +1062,35 @@ export default function AddNovelScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Max Chapters</Text>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: chapterLimiter.isDanger
+                      ? Colors.error
+                      : chapterLimiter.isCaution
+                      ? Colors.amber
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                Max Chapters {chapterLimiter.isCaution ? `(max ${CHAPTER_LIMIT_MAX})` : ""}
+              </Text>
               <TextInput
-                style={inputStyle}
+                style={[
+                  inputStyle,
+                  chapterLimiter.isDanger
+                    ? { borderColor: Colors.error, color: Colors.error }
+                    : chapterLimiter.isCaution
+                    ? { borderColor: Colors.amber }
+                    : null,
+                ]}
                 value={maxChStr}
-                onChangeText={setMaxChStr}
+                onChangeText={chapterLimiter.onMaxChStrChange}
                 placeholder="All"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
+                maxLength={3}
                 editable={!isDownloading}
               />
             </View>
@@ -1106,6 +1204,14 @@ export default function AddNovelScreen() {
         onClose={() => setSourceListModalVisible(false)}
         sites={SUPPORTED_SITES}
         siteStatuses={siteStatuses}
+      />
+
+      {/* Chapter Limiter Danger Modal */}
+      <ChapterLimitModal
+        visible={chapterLimiter.dangerModalVisible}
+        chapterCount={chapterLimiter.currentValue}
+        onLower={chapterLimiter.lowerToSafeValue}
+        onProceed={chapterLimiter.closeDangerModal}
       />
     </KeyboardAvoidingView>
   );

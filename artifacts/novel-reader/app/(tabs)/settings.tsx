@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
 import Constants from 'expo-constants';
 import * as DocumentPicker from "expo-document-picker";
 import * as Application from "expo-application";
 import * as IntentLauncher from "expo-intent-launcher";
+import { zip, unzip } from "react-native-zip-archive";
 import React, { useState, useEffect } from "react";
 import {
   Alert,
@@ -27,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Theme } from "@/constants/colors";
+import { useUpdateContext } from "@/context/UpdateContext";
 
 const imageToBase64 = async (imagePath: string): Promise<string | null> => {
   try {
@@ -50,6 +53,23 @@ const saveBase64AsImage = async (base64: string, targetPath: string): Promise<bo
   } catch (error) {
     console.error('Failed to save image from base64:', error);
     return false;
+  }
+};
+
+// Downscales + re-encodes a cover before it's copied into a backup folder.
+// Covers only ever need to be big enough for a library thumbnail.
+const compressCoverImage = async (sourcePath: string): Promise<{ uri: string; size: number } | null> => {
+  try {
+    const result = await ImageManipulator.manipulateAsync(
+      sourcePath,
+      [{ resize: { width: COVER_MAX_DIMENSION } }],
+      { compress: COVER_JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    const info = await FileSystem.getInfoAsync(result.uri);
+    return { uri: result.uri, size: info.exists ? (info.size || 0) : 0 };
+  } catch (error) {
+    console.error('Failed to compress cover:', error);
+    return null;
   }
 };
 
@@ -86,6 +106,9 @@ interface BackupMetadata {
   includesChapters: boolean;
   includesCovers: boolean;
   totalCoverSize: number;
+  originalCoverSize?: number;
+  coverCount?: number;
+  chapterPartCount?: number;
 }
 
 interface NovelCoverBackup {
@@ -94,6 +117,7 @@ interface NovelCoverBackup {
   fileName: string;
 }
 
+// Legacy (v4 and earlier) single-file backup format
 interface FullBackup {
   metadata: BackupMetadata;
   libraryData: any;
@@ -105,9 +129,30 @@ interface FullBackup {
   covers: NovelCoverBackup[];
 }
 
+// v5+ backup format (folder + manifest)
+interface BackupManifest {
+  metadata: BackupMetadata;
+  libraryData: any;
+  sortPreference: string;
+  readerSettings: any;
+  appSettings: any;
+  asyncStorageData?: Record<string, string>;
+}
+
+interface CoverManifestEntry {
+  novelId: string;
+  fileName: string;
+  originalSize: number;
+  compressedSize: number;
+}
+
+const CHAPTERS_PER_PART = 40;
+const COVER_MAX_DIMENSION = 480;
+const COVER_JPEG_QUALITY = 0.6;
+
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
-  const { novels } = useLibrary();
+  const { novels, purgeOrphanedData } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -125,6 +170,19 @@ export default function SettingsScreen() {
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
   const [showCredits, setShowCredits] = useState(false);
+  const { checkNow, checkingUpdate } = useUpdateContext();
+
+  const handleCheckForUpdates = async () => {
+    const result = await checkNow();
+    if (result) {
+      Alert.alert(
+        `Update available: ${result.tag}`,
+        "Head back to the Library screen to download it — tap the notification bell that just appeared above the reload button."
+      );
+    } else {
+      Alert.alert("You're up to date", `Novel DR v${Constants.expoConfig?.version ?? ""} is the latest version.`);
+    }
+  };
 
   const APP_DATA_DIR = `${FileSystem.documentDirectory}NovelDR/`;
   const BACKUP_DIR = `${FileSystem.documentDirectory}noveldrr-backups/`;
@@ -179,6 +237,8 @@ export default function SettingsScreen() {
     if (!info.exists) await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
   };
 
+  const stripFileScheme = (path: string) => path.replace(/^file:\/\//, "");
+
   const formatDateTag = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -198,9 +258,20 @@ export default function SettingsScreen() {
     setOperationProgress(msg);
   };
 
-  const collectAppData = async (): Promise<FullBackup> => {
+  // ──────────────────────────────────────────────────────────────────────────
+  //  ZIP backup – streams chapters and covers to disk, no big memory spikes.
+  // ──────────────────────────────────────────────────────────────────────────
+  const exportBackup = async (backupFolder: string, comment: string): Promise<BackupMetadata> => {
     setBackupLogs([]);
     addBackupLog("📂 Reading library data...");
+
+    addBackupLog("🧹 Purging orphaned directories and files...");
+    const { dirs: purgedDirs, files: purgedFiles } = await purgeOrphanedData(novels);
+    if (purgedDirs > 0 || purgedFiles > 0) {
+      addBackupLog(`🗑️ Removed ${purgedDirs} stray novel folder${purgedDirs !== 1 ? "s" : ""}, ${purgedFiles} orphaned chapter file${purgedFiles !== 1 ? "s" : ""}`);
+    } else {
+      addBackupLog("✅ No orphaned data found");
+    }
 
     const libraryPath = `${APP_DATA_DIR}novel_library_v1.json`;
     const sortPath = `${APP_DATA_DIR}chapter_sort_preference.json`;
@@ -238,83 +309,96 @@ export default function SettingsScreen() {
 
     addBackupLog(`📚 Found ${novelCount} novels in library`);
 
-    const chapters: Record<string, Record<string, any>> = {};
+    // ── Chapters: stream straight from disk to NDJSON part files ──────────
     const chaptersDir = `${APP_DATA_DIR}chapters/`;
+    const backupChaptersDir = `${backupFolder}chapters/`;
+    await ensureDir(backupChaptersDir);
     addBackupLog("🔍 Scanning chapter files...");
+
+    let totalChaptersFound = 0;
+    let partIndex = 0;
+    let partLines: string[] = [];
+
+    const flushPart = async () => {
+      if (partLines.length === 0) return;
+      const partPath = `${backupChaptersDir}part_${String(partIndex).padStart(4, "0")}.ndjson`;
+      await FileSystem.writeAsStringAsync(partPath, partLines.join("\n") + "\n");
+      partIndex++;
+      partLines = [];
+    };
 
     try {
       const chaptersDirInfo = await FileSystem.getInfoAsync(chaptersDir);
       if (chaptersDirInfo.exists && chaptersDirInfo.isDirectory) {
         const novelDirs = await FileSystem.readDirectoryAsync(chaptersDir);
         addBackupLog(`📁 Found ${novelDirs.length} novel directories`);
-        let totalChaptersFound = 0;
         for (const novelId of novelDirs) {
           const novelChapterDir = `${chaptersDir}${novelId}/`;
           const novelChapterInfo = await FileSystem.getInfoAsync(novelChapterDir);
-          if (novelChapterInfo.exists && novelChapterInfo.isDirectory) {
-            const chapterFiles = await FileSystem.readDirectoryAsync(novelChapterDir);
-            const jsonFiles = chapterFiles.filter(f => f.startsWith('chapter_') && f.endsWith('.json'));
-            if (jsonFiles.length > 0) {
-              chapters[novelId] = {};
-              for (const chapterFile of jsonFiles) {
-                const chapterPath = `${novelChapterDir}${chapterFile}`;
-                try {
-                  const chapterRaw = await FileSystem.readAsStringAsync(chapterPath);
-                  if (chapterRaw) {
-                    const chapterData = JSON.parse(chapterRaw);
-                    const chapterIndex = chapterFile.replace("chapter_", "").replace(".json", "");
-                    chapters[novelId][chapterIndex] = chapterData;
-                    totalChaptersFound++;
-                  }
-                } catch (err) {
-                  addBackupLog(`⚠️ Skipped corrupted: ${chapterFile}`);
-                }
+          if (!novelChapterInfo.exists || !novelChapterInfo.isDirectory) continue;
+          const chapterFiles = await FileSystem.readDirectoryAsync(novelChapterDir);
+          const jsonFiles = chapterFiles.filter(f => f.startsWith('chapter_') && f.endsWith('.json'));
+          if (jsonFiles.length === 0) continue;
+
+          let novelChapterCount = 0;
+          for (const chapterFile of jsonFiles) {
+            const chapterPath = `${novelChapterDir}${chapterFile}`;
+            try {
+              const chapterRaw = await FileSystem.readAsStringAsync(chapterPath);
+              if (chapterRaw) {
+                const chapterData = JSON.parse(chapterRaw);
+                const chapterIndex = chapterFile.replace("chapter_", "").replace(".json", "");
+                partLines.push(JSON.stringify({ novelId, chapterIndex, ...chapterData }));
+                totalChaptersFound++;
+                novelChapterCount++;
+                if (partLines.length >= CHAPTERS_PER_PART) await flushPart();
               }
-              const novelData = Array.isArray(libraryData) ? libraryData.find((n: any) => n.id === novelId) : null;
-              const novelTitle = novelData?.title || novelId.slice(0, 12);
-              addBackupLog(`   📄 ${novelTitle}: ${jsonFiles.length} chapters`);
+            } catch (err) {
+              addBackupLog(`⚠️ Skipped corrupted: ${chapterFile}`);
             }
           }
+          const novelData = Array.isArray(libraryData) ? libraryData.find((n: any) => n.id === novelId) : null;
+          const novelTitle = novelData?.title || novelId.slice(0, 12);
+          addBackupLog(`   📄 ${novelTitle}: ${novelChapterCount} chapters`);
         }
+        await flushPart();
         addBackupLog(`📊 Total chapters found: ${totalChaptersFound}`);
       } else {
         addBackupLog("⚠️ No chapters folder found");
         if (AsyncStorage && Array.isArray(libraryData)) {
           addBackupLog("🔍 Checking AsyncStorage for chapter content...");
-          let asyncChapterCount = 0;
           for (const novel of libraryData) {
             if (novel.chapters && Array.isArray(novel.chapters)) {
-              const contentChapters = novel.chapters.filter((ch: any) => ch.content);
-              if (contentChapters.length > 0) {
-                chapters[novel.id] = {};
-                for (let i = 0; i < novel.chapters.length; i++) {
-                  if (novel.chapters[i].content) {
-                    chapters[novel.id][i.toString()] = {
-                      title: novel.chapters[i].title || `Chapter ${i + 1}`,
-                      url: novel.chapters[i].url || '',
-                      content: novel.chapters[i].content,
-                    };
-                    asyncChapterCount++;
-                  }
+              for (let i = 0; i < novel.chapters.length; i++) {
+                if (novel.chapters[i].content) {
+                  partLines.push(JSON.stringify({
+                    novelId: novel.id,
+                    chapterIndex: i.toString(),
+                    title: novel.chapters[i].title || `Chapter ${i + 1}`,
+                    url: novel.chapters[i].url || '',
+                    content: novel.chapters[i].content,
+                  }));
+                  totalChaptersFound++;
+                  if (partLines.length >= CHAPTERS_PER_PART) await flushPart();
                 }
-                addBackupLog(`   📄 ${novel.title}: ${contentChapters.length} chapters from legacy storage`);
               }
             }
           }
-          if (asyncChapterCount > 0) addBackupLog(`📊 Total legacy chapters: ${asyncChapterCount}`);
+          await flushPart();
+          if (totalChaptersFound > 0) addBackupLog(`📊 Total legacy chapters: ${totalChaptersFound}`);
         }
       }
     } catch (chaptersError) {
       addBackupLog(`❌ Error scanning chapters: ${String(chaptersError)}`);
     }
 
-    const totalChapters = Object.values(chapters).reduce(
-      (sum, novelChapters) => sum + Object.keys(novelChapters).length, 0
-    );
-
+    // ── Covers: compress, then copy straight to backup folder ────────────
     addBackupLog("🖼️ Scanning novel covers...");
-    const covers: NovelCoverBackup[] = [];
-    let totalCoverSize = 0;
+    const backupCoversDir = `${backupFolder}covers/`;
+    await ensureDir(backupCoversDir);
+    const coverEntries: CoverManifestEntry[] = [];
+    let totalOriginalCoverSize = 0;
+    let totalCompressedCoverSize = 0;
 
     try {
       const coversDirInfo = await FileSystem.getInfoAsync(COVERS_DIR);
@@ -328,42 +412,50 @@ export default function SettingsScreen() {
           const coverPath = `${COVERS_DIR}${coverFile}`;
           const novelId = coverFile.replace(/\.(jpg|jpeg|png|webp)$/i, '');
           const novelExists = Array.isArray(libraryData) && libraryData.some((n: any) => n.id === novelId);
-          if (novelExists) {
-            const coverInfo = await FileSystem.getInfoAsync(coverPath);
-            if (coverInfo.exists) {
-              addBackupLog(`   🖼️ Converting cover: ${coverFile} (${((coverInfo.size || 0) / 1024).toFixed(1)} KB)`);
-              const coverBase64 = await imageToBase64(coverPath);
-              if (coverBase64) {
-                covers.push({ novelId, coverBase64, fileName: coverFile });
-                totalCoverSize += coverInfo.size || 0;
-              } else {
-                addBackupLog(`   ⚠️ Failed to convert cover: ${coverFile}`);
-              }
-            }
-          } else {
+          if (!novelExists) {
             addBackupLog(`   ⏭️ Skipping orphan cover: ${coverFile}`);
+            continue;
           }
+          const coverInfo = await FileSystem.getInfoAsync(coverPath);
+          if (!coverInfo.exists) continue;
+          const originalSize = coverInfo.size || 0;
+          addBackupLog(`   🖼️ Compressing cover: ${coverFile} (${(originalSize / 1024).toFixed(1)} KB)`);
+          const compressed = await compressCoverImage(coverPath);
+          if (!compressed) {
+            addBackupLog(`   ⚠️ Failed to compress cover: ${coverFile}`);
+            continue;
+          }
+          const destFileName = `${novelId}.jpg`;
+          await FileSystem.copyAsync({ from: compressed.uri, to: `${backupCoversDir}${destFileName}` });
+          coverEntries.push({ novelId, fileName: destFileName, originalSize, compressedSize: compressed.size });
+          totalOriginalCoverSize += originalSize;
+          totalCompressedCoverSize += compressed.size;
         }
-        addBackupLog(`📊 Covers collected: ${covers.length} (${(totalCoverSize / (1024 * 1024)).toFixed(2)} MB total)`);
+        addBackupLog(`📊 Covers collected: ${coverEntries.length} (${(totalCompressedCoverSize / (1024 * 1024)).toFixed(2)} MB, down from ${(totalOriginalCoverSize / (1024 * 1024)).toFixed(2)} MB)`);
       } else {
         addBackupLog("⚠️ No covers directory found - no covers to backup");
       }
 
-      if (covers.length === 0 && Array.isArray(libraryData)) {
+      if (coverEntries.length === 0 && Array.isArray(libraryData)) {
         addBackupLog("🔄 Trying to fetch remote covers for novels without local files...");
         await ensureDir(COVERS_DIR);
         for (const novel of libraryData) {
           if (novel.coverUrl && novel.coverUrl.startsWith('http')) {
             try {
-              const coverPath = `${COVERS_DIR}${novel.id}.jpg`;
-              const result = await FileSystem.downloadAsync(novel.coverUrl, coverPath, {
+              const tempPath = `${COVERS_DIR}${novel.id}.jpg`;
+              const result = await FileSystem.downloadAsync(novel.coverUrl, tempPath, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
               });
               const fileInfo = await FileSystem.getInfoAsync(result.uri);
               if (fileInfo.exists && (fileInfo as any).size > 1000) {
-                const base64 = await imageToBase64(result.uri);
-                if (base64) {
-                  covers.push({ novelId: novel.id, coverBase64: base64, fileName: `${novel.id}.jpg` });
+                const originalSize = (fileInfo as any).size || 0;
+                const compressed = await compressCoverImage(result.uri);
+                if (compressed) {
+                  const destFileName = `${novel.id}.jpg`;
+                  await FileSystem.copyAsync({ from: compressed.uri, to: `${backupCoversDir}${destFileName}` });
+                  coverEntries.push({ novelId: novel.id, fileName: destFileName, originalSize, compressedSize: compressed.size });
+                  totalOriginalCoverSize += originalSize;
+                  totalCompressedCoverSize += compressed.size;
                   addBackupLog(`   ✅ Fetched remote cover: ${novel.title}`);
                 }
               } else {
@@ -374,12 +466,15 @@ export default function SettingsScreen() {
             }
           }
         }
-        if (covers.length > 0) addBackupLog(`📊 Fetched ${covers.length} remote covers as fallback`);
+        if (coverEntries.length > 0) addBackupLog(`📊 Fetched ${coverEntries.length} remote covers as fallback`);
       }
     } catch (coversError) {
       addBackupLog(`❌ Error scanning covers: ${String(coversError)}`);
     }
 
+    await FileSystem.writeAsStringAsync(`${backupCoversDir}manifest.json`, JSON.stringify(coverEntries));
+
+    // ── Small sections only from here ─────────────────────────────────────
     let asyncStorageData: Record<string, string> = {};
     if (AsyncStorage) {
       addBackupLog("📦 Saving legacy preferences...");
@@ -398,34 +493,33 @@ export default function SettingsScreen() {
       }
     }
 
-    addBackupLog(`✅ Backup ready: ${novelCount} novels, ${totalChapters} chapters, ${covers.length} covers`);
-
-    return {
-      metadata: {
-        version: 4,
-        exportedAt: new Date().toISOString(),
-        comment: pendingComment.trim() || null,
-        novelCount,
-        totalChapters,
-        includesChapters: totalChapters > 0,
-        includesCovers: covers.length > 0,
-        totalCoverSize,
-      },
-      libraryData,
-      sortPreference,
-      readerSettings,
-      appSettings: settingsData,
-      chapters,
-      asyncStorageData,
-      covers,
+    const metadata: BackupMetadata = {
+      version: 5,
+      exportedAt: new Date().toISOString(),
+      comment: comment.trim() || null,
+      novelCount,
+      totalChapters: totalChaptersFound,
+      includesChapters: totalChaptersFound > 0,
+      includesCovers: coverEntries.length > 0,
+      totalCoverSize: totalCompressedCoverSize,
+      originalCoverSize: totalOriginalCoverSize,
+      coverCount: coverEntries.length,
+      chapterPartCount: partIndex,
     };
+
+    const manifest: BackupManifest = {
+      metadata, libraryData, sortPreference, readerSettings, appSettings: settingsData, asyncStorageData,
+    };
+    await FileSystem.writeAsStringAsync(`${backupFolder}manifest.json`, JSON.stringify(manifest));
+
+    addBackupLog(`✅ Backup ready: ${novelCount} novels, ${totalChaptersFound} chapters, ${coverEntries.length} covers`);
+    return metadata;
   };
 
-  // Merges the backup's novel list with whatever is currently in the library,
-  // so novels added after the backup was taken aren't wiped out by the restore.
-  // - Novel only in current library (added since backup) -> kept as-is.
-  // - Novel only in backup (since removed) -> restored.
-  // - Novel in both -> backup metadata wins, but chapters are unioned so nothing is lost.
+  // ──────────────────────────────────────────────────────────────────────────
+  //  Restore functions – both ZIP and legacy JSON are handled.
+  // ──────────────────────────────────────────────────────────────────────────
+
   const mergeLibraryData = (currentNovels: any[], backupNovels: any[]): any[] => {
     const currentMap = new Map((currentNovels || []).map((n: any) => [n.id, n]));
     const backupMap = new Map((backupNovels || []).map((n: any) => [n.id, n]));
@@ -452,7 +546,7 @@ export default function SettingsScreen() {
     return merged;
   };
 
-  const restoreAppData = async (backup: FullBackup) => {
+  const restoreLegacyBackup = async (backup: FullBackup) => {
     setBackupLogs([]);
     addBackupLog("🔄 Starting restore...");
     await ensureDir(APP_DATA_DIR);
@@ -460,7 +554,7 @@ export default function SettingsScreen() {
     if (backup.libraryData) {
       addBackupLog("📚 Merging backup with current library...");
       const mergedLibrary = mergeLibraryData(novels, Array.isArray(backup.libraryData) ? backup.libraryData : []);
-      backup.libraryData = mergedLibrary; // keep downstream cover-reference step in sync
+      backup.libraryData = mergedLibrary;
       await FileSystem.writeAsStringAsync(
         `${APP_DATA_DIR}novel_library_v1.json`,
         JSON.stringify(mergedLibrary)
@@ -561,6 +655,130 @@ export default function SettingsScreen() {
     addBackupLog("✅ Restore complete!");
   };
 
+  const restoreBackupFromFolder = async (backupFolder: string): Promise<BackupMetadata> => {
+    setBackupLogs([]);
+    addBackupLog("🔄 Starting restore...");
+    await ensureDir(APP_DATA_DIR);
+
+    const manifestRaw = await FileSystem.readAsStringAsync(`${backupFolder}manifest.json`);
+    const manifest: BackupManifest = JSON.parse(manifestRaw);
+
+    if (manifest.libraryData) {
+      addBackupLog("📚 Merging backup with current library...");
+      const mergedLibrary = mergeLibraryData(novels, Array.isArray(manifest.libraryData) ? manifest.libraryData : []);
+      manifest.libraryData = mergedLibrary;
+      await FileSystem.writeAsStringAsync(
+        `${APP_DATA_DIR}novel_library_v1.json`,
+        JSON.stringify(mergedLibrary)
+      );
+      addBackupLog(`✅ ${mergedLibrary.length} novels restored (merged, nothing overwritten)`);
+    }
+
+    if (manifest.sortPreference) {
+      await FileSystem.writeAsStringAsync(
+        `${APP_DATA_DIR}chapter_sort_preference.json`,
+        JSON.stringify(manifest.sortPreference)
+      );
+    }
+
+    if (manifest.readerSettings) {
+      addBackupLog("⚙️ Restoring reader settings...");
+      await FileSystem.writeAsStringAsync(
+        `${APP_DATA_DIR}reader_settings.json`,
+        JSON.stringify(manifest.readerSettings)
+      );
+    }
+
+    if (manifest.appSettings) await saveAppSettings(manifest.appSettings);
+
+    const backupChaptersDir = `${backupFolder}chapters/`;
+    const backupChaptersDirInfo = await FileSystem.getInfoAsync(backupChaptersDir);
+    let totalChaptersRestored = 0;
+    if (backupChaptersDirInfo.exists && backupChaptersDirInfo.isDirectory) {
+      const partFiles = (await FileSystem.readDirectoryAsync(backupChaptersDir))
+        .filter(f => f.startsWith("part_") && f.endsWith(".ndjson"))
+        .sort();
+      addBackupLog(`📄 Restoring chapters from ${partFiles.length} part file${partFiles.length !== 1 ? "s" : ""}...`);
+      const chaptersDir = `${APP_DATA_DIR}chapters/`;
+      const ensuredNovelDirs = new Set<string>();
+      for (const partFile of partFiles) {
+        const partRaw = await FileSystem.readAsStringAsync(`${backupChaptersDir}${partFile}`);
+        const lines = partRaw.split("\n").filter(Boolean);
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line);
+            const { novelId, chapterIndex, ...chapterData } = entry;
+            const novelChapterDir = `${chaptersDir}${novelId}/`;
+            if (!ensuredNovelDirs.has(novelId)) {
+              await ensureDir(novelChapterDir);
+              ensuredNovelDirs.add(novelId);
+            }
+            await FileSystem.writeAsStringAsync(`${novelChapterDir}chapter_${chapterIndex}.json`, JSON.stringify(chapterData));
+            totalChaptersRestored++;
+          } catch (err) {
+            addBackupLog(`⚠️ Failed to restore a chapter entry`);
+          }
+        }
+      }
+      addBackupLog(`📊 Total chapters restored: ${totalChaptersRestored}`);
+    } else {
+      addBackupLog("⚠️ No chapters to restore");
+    }
+
+    const backupCoversDir = `${backupFolder}covers/`;
+    const coversManifestPath = `${backupCoversDir}manifest.json`;
+    const coversManifestInfo = await FileSystem.getInfoAsync(coversManifestPath);
+    if (coversManifestInfo.exists) {
+      const coverEntries: CoverManifestEntry[] = JSON.parse(await FileSystem.readAsStringAsync(coversManifestPath));
+      addBackupLog(`🖼️ Restoring ${coverEntries.length} novel covers...`);
+      await ensureDir(COVERS_DIR);
+      let coversRestored = 0, coversFailed = 0;
+      for (const cover of coverEntries) {
+        try {
+          await FileSystem.copyAsync({ from: `${backupCoversDir}${cover.fileName}`, to: `${COVERS_DIR}${cover.fileName}` });
+          coversRestored++;
+        } catch {
+          coversFailed++;
+          addBackupLog(`   ❌ Failed: ${cover.fileName}`);
+        }
+      }
+      addBackupLog(`📊 Covers restored: ${coversRestored} ✅, ${coversFailed} ❌`);
+
+      if (manifest.libraryData && Array.isArray(manifest.libraryData)) {
+        addBackupLog(`🔄 Updating novel cover references...`);
+        for (const novel of manifest.libraryData) {
+          const matchingCover = coverEntries.find(c => c.novelId === novel.id);
+          if (matchingCover) novel.coverUrl = `${COVERS_DIR}${matchingCover.fileName}`;
+        }
+        await FileSystem.writeAsStringAsync(
+          `${APP_DATA_DIR}novel_library_v1.json`,
+          JSON.stringify(manifest.libraryData)
+        );
+        addBackupLog(`✅ Novel cover references updated`);
+      }
+    } else {
+      addBackupLog("⚠️ No covers to restore");
+    }
+
+    if (manifest.asyncStorageData) {
+      addBackupLog("📦 Restoring legacy data...");
+      const AsyncStorage = await getAsyncStorage();
+      if (AsyncStorage) {
+        for (const [key, value] of Object.entries(manifest.asyncStorageData)) {
+          await AsyncStorage.setItem(key, value);
+        }
+        addBackupLog("✅ Legacy data restored");
+      }
+    }
+
+    addBackupLog("✅ Restore complete!");
+    return manifest.metadata;
+  };
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  User actions
+  // ──────────────────────────────────────────────────────────────────────────
+
   const handleExport = () => {
     if (novels.length === 0) return;
     setPendingComment("");
@@ -573,32 +791,41 @@ export default function SettingsScreen() {
       closePanel();
       setExporting(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const backup = await collectAppData();
-      addBackupLog("💾 Saving backup file...");
       await ensureDir(BACKUP_DIR);
+
       const dateTag = formatDateTag();
       const tag = comment.trim().replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-      const filename = `noveldrr-backup-${dateTag}${tag ? "_" + tag : ""}.json`;
-      const backupPath = `${BACKUP_DIR}${filename}`;
-      await FileSystem.writeAsStringAsync(backupPath, JSON.stringify(backup, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
-      const fileInfo = await FileSystem.getInfoAsync(backupPath);
-      const sizeMB = fileInfo.exists ? ((fileInfo.size || 0) / (1024 * 1024)).toFixed(1) : "0";
-      addBackupLog(`✅ Backup saved: ${filename} (${sizeMB} MB)`);
+      const backupName = `noveldrr-backup-${dateTag}${tag ? "_" + tag : ""}`;
+      const backupFolder = `${BACKUP_DIR}${backupName}/`;
+      await ensureDir(backupFolder);
+
+      const metadata = await exportBackup(backupFolder, comment);
+
+      addBackupLog("🗜️ Zipping backup into a single file...");
+      const zipPath = `${BACKUP_DIR}${backupName}.zip`;
+      await zip(stripFileScheme(backupFolder), stripFileScheme(zipPath));
+      await FileSystem.writeAsStringAsync(`${BACKUP_DIR}${backupName}.meta.json`, JSON.stringify(metadata));
+      await FileSystem.deleteAsync(backupFolder, { idempotent: true });
+
+      addBackupLog("💾 Backup saved");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
       let coverInfo = "";
-      if (backup.metadata.includesCovers) {
-        coverInfo = `\n🖼️ ${backup.covers.length} covers (${(backup.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
+      if (metadata.includesCovers) {
+        coverInfo = `\n🖼️ ${metadata.coverCount} covers (${(metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
       }
       Alert.alert(
         "Backup Complete ✓",
-        `Saved to: ${filename}\n\n📚 ${backup.metadata.novelCount} novels\n📄 ${backup.metadata.totalChapters} chapters${coverInfo}\n💾 ${sizeMB} MB\n\nAll data backed up including covers and legacy AsyncStorage content.`,
+        `Saved: ${backupName}.zip\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters${coverInfo}\n\nAll data backed up including covers and legacy AsyncStorage content.`,
         [
           { text: "OK" },
           {
             text: "Share Backup",
             onPress: async () => {
               const canShare = await Sharing.isAvailableAsync();
-              if (canShare) await Sharing.shareAsync(backupPath, { mimeType: "application/json", dialogTitle: "Share NovelDR Backup" });
+              if (canShare) {
+                await Sharing.shareAsync(zipPath, { mimeType: "application/zip", dialogTitle: "Share NovelDR Backup" });
+              }
             },
           },
         ]
@@ -614,19 +841,38 @@ export default function SettingsScreen() {
   const loadBackupList = async () => {
     try {
       await ensureDir(BACKUP_DIR);
-      const files = await FileSystem.readDirectoryAsync(BACKUP_DIR);
-      const jsonBackups = files
-        .filter(f => f.startsWith("noveldrr-backup-") && f.endsWith(".json"))
-        .sort().reverse();
+      const entries = await FileSystem.readDirectoryAsync(BACKUP_DIR);
+      const candidates: { name: string; kind: "zip" | "legacyJson" | "looseFolder" }[] = [];
+      for (const entry of entries) {
+        if (!entry.startsWith("noveldrr-backup-")) continue;
+        if (entry.endsWith(".meta.json")) continue;
+        if (entry.endsWith(".zip")) {
+          candidates.push({ name: entry, kind: "zip" });
+        } else if (entry.endsWith(".json")) {
+          candidates.push({ name: entry, kind: "legacyJson" });
+        } else {
+          const info = await FileSystem.getInfoAsync(`${BACKUP_DIR}${entry}`);
+          if (info.exists && info.isDirectory) candidates.push({ name: entry, kind: "looseFolder" });
+        }
+      }
+      candidates.sort((a, b) => b.name.localeCompare(a.name));
       const backupsWithMeta = await Promise.all(
-        jsonBackups.map(async (filename) => {
-          const path = `${BACKUP_DIR}${filename}`;
+        candidates.map(async ({ name, kind }) => {
           try {
-            const raw = await FileSystem.readAsStringAsync(path);
-            const backup = JSON.parse(raw);
-            return { name: filename, metadata: backup.metadata || null };
+            if (kind === "zip") {
+              const raw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}.meta.json`);
+              return { name, metadata: JSON.parse(raw) as BackupMetadata };
+            } else if (kind === "legacyJson") {
+              const raw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}`);
+              const backup = JSON.parse(raw);
+              return { name, metadata: backup.metadata || null };
+            } else {
+              const raw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}/manifest.json`);
+              const manifest = JSON.parse(raw);
+              return { name, metadata: manifest.metadata || null };
+            }
           } catch {
-            return { name: filename, metadata: null };
+            return { name, metadata: null };
           }
         })
       );
@@ -637,42 +883,73 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleImportBackup = async (filename: string) => {
-    const backupPath = `${BACKUP_DIR}${filename}`;
+  const backupKind = (name: string): "zip" | "legacyJson" | "looseFolder" =>
+    name.endsWith(".zip") ? "zip" : name.endsWith(".json") ? "legacyJson" : "looseFolder";
+
+  const handleImportBackup = async (name: string) => {
+    const kind = backupKind(name);
     let coverInfo = "";
     try {
-      const rawPreview = await FileSystem.readAsStringAsync(backupPath);
-      const preview = JSON.parse(rawPreview);
-      if (preview.metadata?.includesCovers) {
-        coverInfo = `\n🖼️ Includes ${preview.covers?.length || 0} novel covers (${(preview.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
+      if (kind === "zip") {
+        const raw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}.meta.json`);
+        const metadata: BackupMetadata = JSON.parse(raw);
+        if (metadata.includesCovers) {
+          coverInfo = `\n🖼️ Includes ${metadata.coverCount || 0} novel covers (${(metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
+        }
+      } else if (kind === "legacyJson") {
+        const rawPreview = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}`);
+        const preview = JSON.parse(rawPreview);
+        if (preview.metadata?.includesCovers) {
+          coverInfo = `\n🖼️ Includes ${preview.covers?.length || 0} novel covers (${(preview.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
+        }
+      } else {
+        const manifestRaw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}/manifest.json`);
+        const manifest = JSON.parse(manifestRaw);
+        if (manifest.metadata?.includesCovers) {
+          coverInfo = `\n🖼️ Includes ${manifest.metadata.coverCount || 0} novel covers (${(manifest.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
+        }
       }
     } catch (e) {}
 
     Alert.alert(
       "Restore Backup",
-      `This will merge the backup into your current library. Novels added since this backup was made will be kept.\n\n"${filename}"${coverInfo}\n\nContinue?`,
+      `This will merge the backup into your current library. Novels added since this backup was made will be kept.\n\n"${name}"${coverInfo}\n\nContinue?`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Restore",
           style: "destructive",
           onPress: async () => {
+            let tempExtractDir: string | null = null;
             try {
               setImporting(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              const raw = await FileSystem.readAsStringAsync(backupPath);
-              const backup: FullBackup = JSON.parse(raw);
-              if (!backup.metadata || !backup.libraryData) {
-                Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
-                return;
+              let metadata: BackupMetadata | undefined;
+
+              if (kind === "zip") {
+                addBackupLog("🗜️ Unzipping backup...");
+                tempExtractDir = `${APP_DATA_DIR}tmp_restore_${Date.now()}/`;
+                await ensureDir(tempExtractDir);
+                await unzip(stripFileScheme(`${BACKUP_DIR}${name}`), stripFileScheme(tempExtractDir));
+                metadata = await restoreBackupFromFolder(tempExtractDir);
+              } else if (kind === "legacyJson") {
+                const raw = await FileSystem.readAsStringAsync(`${BACKUP_DIR}${name}`);
+                const backup: FullBackup = JSON.parse(raw);
+                if (!backup.metadata || !backup.libraryData) {
+                  Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
+                  return;
+                }
+                await restoreLegacyBackup(backup);
+                metadata = backup.metadata;
+              } else {
+                metadata = await restoreBackupFromFolder(`${BACKUP_DIR}${name}/`);
               }
-              await restoreAppData(backup);
+
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert(
                 "Restore Complete ✓",
-                `Successfully restored:\n\n📚 ${backup.metadata.novelCount} novels\n📄 ${backup.metadata.totalChapters} chapters\n` +
-                (backup.metadata.includesCovers ? `🖼️ ${backup.covers?.length || 0} covers\n` : "") +
-                (backup.asyncStorageData ? `🔄 Legacy data also restored\n\n` : "\n") +
+                `Successfully restored:\n\n📚 ${metadata?.novelCount ?? "?"} novels\n📄 ${metadata?.totalChapters ?? "?"} chapters\n` +
+                (metadata?.includesCovers ? `🖼️ covers included\n\n` : "\n") +
                 `Please refresh the Library by pulling or pressing the refresh button.`,
                 [{
                   text: "OK",
@@ -685,6 +962,7 @@ export default function SettingsScreen() {
             } catch (e) {
               Alert.alert("Import Failed", String(e));
             } finally {
+              if (tempExtractDir) await FileSystem.deleteAsync(tempExtractDir, { idempotent: true });
               setImporting(false);
             }
           },
@@ -695,8 +973,14 @@ export default function SettingsScreen() {
 
   const handleImportFromPicker = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: "application/json", copyToCacheDirectory: true });
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/json", "application/zip", "application/x-zip-compressed"],
+        copyToCacheDirectory: true,
+      });
       if (result.canceled) return;
+      const pickedUri = result.assets[0].uri;
+      const isZip = pickedUri.toLowerCase().endsWith(".zip");
+
       Alert.alert(
         "Restore Backup",
         "This will merge the selected backup into your current library. Novels added since this backup was made will be kept.\n\nContinue?",
@@ -706,21 +990,39 @@ export default function SettingsScreen() {
             text: "Restore",
             style: "destructive",
             onPress: async () => {
+              let tempExtractDir: string | null = null;
               try {
                 setImporting(true);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                const raw = await FileSystem.readAsStringAsync(result.assets[0].uri);
-                const backup: FullBackup = JSON.parse(raw);
-                if (!backup.metadata || !backup.libraryData) {
-                  Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
-                  return;
+                let metadata: BackupMetadata | undefined;
+
+                if (isZip) {
+                  addBackupLog("🗜️ Unzipping backup...");
+                  tempExtractDir = `${APP_DATA_DIR}tmp_restore_${Date.now()}/`;
+                  await ensureDir(tempExtractDir);
+                  await unzip(stripFileScheme(pickedUri), stripFileScheme(tempExtractDir));
+                  metadata = await restoreBackupFromFolder(tempExtractDir);
+                } else {
+                  const raw = await FileSystem.readAsStringAsync(pickedUri);
+                  const backup: FullBackup = JSON.parse(raw);
+                  if (!backup.metadata || !backup.libraryData) {
+                    Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
+                    return;
+                  }
+                  await restoreLegacyBackup(backup);
+                  metadata = backup.metadata;
                 }
-                await restoreAppData(backup);
+
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Restore Complete ✓", "Data restored. Please use the [↻] Reload button.", [{ text: "OK" }]);
+                Alert.alert(
+                  "Restore Complete ✓",
+                  `Successfully restored:\n\n📚 ${metadata?.novelCount ?? "?"} novels\n📄 ${metadata?.totalChapters ?? "?"} chapters\n\nPlease use the [↻] Reload button.`,
+                  [{ text: "OK" }]
+                );
               } catch (e) {
                 Alert.alert("Import Failed", String(e));
               } finally {
+                if (tempExtractDir) await FileSystem.deleteAsync(tempExtractDir, { idempotent: true });
                 setImporting(false);
               }
             },
@@ -732,23 +1034,28 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDeleteBackup = (filename: string) => {
-    Alert.alert("Delete Backup", `Delete "${filename}"?`, [
+  const handleDeleteBackup = (name: string) => {
+    Alert.alert("Delete Backup", `Delete "${name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await FileSystem.deleteAsync(BACKUP_DIR + filename, { idempotent: true });
+          const kind = backupKind(name);
+          const path = kind === "looseFolder" ? `${BACKUP_DIR}${name}/` : `${BACKUP_DIR}${name}`;
+          await FileSystem.deleteAsync(path, { idempotent: true });
+          if (kind === "zip") {
+            await FileSystem.deleteAsync(`${BACKUP_DIR}${name}.meta.json`, { idempotent: true });
+          }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          setBackupList(prev => prev.filter(b => b.name !== filename));
+          setBackupList(prev => prev.filter(b => b.name !== name));
         },
       },
     ]);
   };
 
   const parseFilename = (filename: string) => {
-    const base = filename.replace("noveldrr-backup-", "").replace(".json", "");
+    const base = filename.replace("noveldrr-backup-", "").replace(/\.zip$/, "").replace(/\.json$/, "").replace(/\/$/, "");
     const [datePart, timePart, ...rest] = base.split("_");
     const date = datePart ?? "";
     const time = timePart ? timePart.replace(/-/g, ":") : "";
@@ -799,6 +1106,10 @@ export default function SettingsScreen() {
 
   const totalChapters = novels.reduce((sum, n) => sum + n.chapters.length, 0);
   const handleThemeChange = (t: Theme) => { setTheme(t); Haptics.selectionAsync(); };
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  JSX – identical to before, just the backup alert now has a Share button
+  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -978,7 +1289,14 @@ export default function SettingsScreen() {
                       <Pressable
                         onPress={async () => {
                           const canShare = await Sharing.isAvailableAsync();
-                          if (canShare) await Sharing.shareAsync(BACKUP_DIR + backup.name, { mimeType: "application/json", dialogTitle: "Share Backup" });
+                          if (!canShare) return;
+                          if (backup.name.endsWith(".zip")) {
+                            await Sharing.shareAsync(`${BACKUP_DIR}${backup.name}`, { mimeType: "application/zip", dialogTitle: "Share Backup" });
+                          } else if (backup.name.endsWith(".json")) {
+                            await Sharing.shareAsync(`${BACKUP_DIR}${backup.name}`, { mimeType: "application/json", dialogTitle: "Share Backup" });
+                          } else {
+                            await Sharing.shareAsync(`${BACKUP_DIR}${backup.name}/manifest.json`, { mimeType: "application/json", dialogTitle: "Share Backup" });
+                          }
                         }}
                         style={styles.backupItemAction}
                       >
@@ -1058,6 +1376,21 @@ export default function SettingsScreen() {
         >
           <Ionicons name="heart-outline" size={18} color={colors.accent} />
           <Text style={[styles.creditsBtnText, { color: colors.text }]}>Credits & Acknowledgments</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.creditsBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={handleCheckForUpdates}
+          disabled={checkingUpdate}
+        >
+          {checkingUpdate ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Ionicons name="cloud-download-outline" size={18} color={colors.accent} />
+          )}
+          <Text style={[styles.creditsBtnText, { color: colors.text }]}>
+            {checkingUpdate ? "Checking..." : "Check for Updates"}
+          </Text>
         </Pressable>
 
         <View style={[styles.versionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -1174,6 +1507,12 @@ export default function SettingsScreen() {
                 </Pressable>
                 <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
                   Adapted and ported 3 novel scraper src into the App.
+                </Text>
+                 <Pressable onPress={() => Linking.openURL("https://github.com/Rudransh-Susarla-1802/Novel_Project")}>
+                  <Text style={[styles.creditsItemLink, { color: colors.accent }]}>@Rudransh-Susarla-1802/Novel_Project</Text>
+                </Pressable>
+                <Text style={[styles.creditsItemDesc, { color: colors.textSecondary }]}>
+                  Adapted and ported NovelArrow scraper to the App.
                 </Text>
               </View>
 

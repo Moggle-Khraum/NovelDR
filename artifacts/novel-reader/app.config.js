@@ -6,7 +6,7 @@ export default () => {
     expo: {
       name: "Novel DR",
       slug: "novel-reader",
-      version: "3.2.25",
+      version: "3.5.30",
       owner: "moggstones-stash",   // 🔧 Add this line
       orientation: "portrait",
       icon: "./assets/images/icon.png",
@@ -24,7 +24,8 @@ export default () => {
       },
       android: {
         package: "com.noveldr.app",
-        versionCode: parseInt(buildNumber, 10)
+        versionCode: parseInt(buildNumber, 10),
+        permissions: ["REQUEST_INSTALL_PACKAGES"]
       },
       web: {
         favicon: "./assets/images/icon.png"
