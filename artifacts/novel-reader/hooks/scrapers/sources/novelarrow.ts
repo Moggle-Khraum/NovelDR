@@ -75,7 +75,11 @@ export const novelArrowScraper: SourceScraper = {
   },
 
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
-    const html = await fetchHtmlWithFallback(url);
+    // NovelArrow runs a Cloudflare JS challenge that blocks both the direct
+    // request and the plain corsproxy.io fallback with a 403 — neither can
+    // execute JS to clear it. The WebView fallback loads a real page context
+    // that can pass the challenge.
+    const html = await fetchHtmlWithFallback(url, { webviewFallback: true });
     // The body's RSC data (synopsisParagraphs, chapter refs, etc.) ships
     // inside <script>self.__next_f.push([1,"..."])</script> as an escaped
     // JS string — real `<`/`"`/newlines only exist after de-escaping. <meta>
@@ -172,7 +176,7 @@ export const novelArrowScraper: SourceScraper = {
   },
 
   fetchChapter: async (url: string, _chapterNum: number): Promise<ChapterData> => {
-    const html = await fetchHtmlWithFallback(url);
+    const html = await fetchHtmlWithFallback(url, { webviewFallback: true });
     // Chapter content, chapter_name, and nextChapter all live in the body's
     // RSC flight data, shipped inside <script>self.__next_f.push([1,"..."])
     // as an escaped JS string (real `<`/`"`/newlines only exist once
