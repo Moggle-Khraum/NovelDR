@@ -9,7 +9,6 @@
     "expo-print": "~15.0.0",
     "expo-speech": "~13.0.0",
     "expo-sharing": "~13.0.0",
-    "expo-constants": "^17.0.0",
     "expo-application": "~6.0.2",
     "expo-file-system": "~18.0.0",
     "expo-image-manipulator": "~14.0.8",
