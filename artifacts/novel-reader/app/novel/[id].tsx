@@ -739,7 +739,7 @@ export default function NovelDetailScreen() {
 
       <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
         <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
-          <View style={[styles.menuContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.menuContainer, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: bottomPad + 20 }]}>
             <Text style={[styles.menuTitle, { color: colors.text }]} numberOfLines={1}>{novel.title}</Text>
             <Pressable style={[styles.menuItem, { borderColor: colors.border }]} onPress={() => { setShowMenu(false); setShowExportModal(true); }}>
               <Ionicons name="download-outline" size={20} color={colors.accent} />
