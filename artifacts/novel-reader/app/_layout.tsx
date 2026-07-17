@@ -336,7 +336,6 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    |
     <SafeAreaProvider>
       <ErrorBoundary
         onError={(error, stack) =>
