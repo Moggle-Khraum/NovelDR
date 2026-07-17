@@ -340,6 +340,7 @@ type LibraryContextType = {
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
   saveAllChaptersToFile: (novelId: string, chapters: Chapter[], offset?: number) => Promise<void>;
+  deleteChapters: (novelId: string, chapterUrls: string[]) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
   refreshLibrary: () => Promise<void>;
   library: Novel[];
@@ -521,6 +522,61 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     ids.forEach(id => deleteNovelChapters(id));
   }, []);
 
+  const deleteChapters = useCallback(async (novelId: string, chapterUrls: string[]) => {
+    const novel = novelsRef.current.find(n => n.id === novelId);
+    if (!novel) return;
+
+    const urlsToDelete = new Set(chapterUrls);
+    const oldChapters = novel.chapters;
+
+    // Load full content for every chapter that's surviving BEFORE we wipe the
+    // directory below — chapters are stored positionally (chapter_N.json), so
+    // once we delete some, the remaining files need to be rewritten starting
+    // back at index 0 to close the gap left by the deleted ones.
+    const survivingContent: (Chapter | null)[] = [];
+    for (let i = 0; i < oldChapters.length; i++) {
+      if (urlsToDelete.has(oldChapters[i].url)) continue;
+      survivingContent.push(await loadChapterFromFile(novelId, i));
+    }
+
+    const newChapters = oldChapters.filter(ch => !urlsToDelete.has(ch.url));
+
+    await deleteNovelChapters(novelId);
+    for (let i = 0; i < survivingContent.length; i++) {
+      const data = survivingContent[i];
+      if (data?.content) {
+        await saveChapterToFile(novelId, i, {
+          title: data.title,
+          url: data.url,
+          content: data.content,
+          chapterNumber: data.chapterNumber,
+        });
+      }
+    }
+
+    // Re-point lastRead at the surviving chapter's new index, or clear it
+    // entirely if the chapter the user was on got deleted.
+    let newLastRead = novel.lastRead;
+    if (novel.lastRead) {
+      const oldChapter = oldChapters[novel.lastRead.chapterIndex];
+      if (!oldChapter || urlsToDelete.has(oldChapter.url)) {
+        newLastRead = undefined;
+      } else {
+        const newIndex = newChapters.findIndex(ch => ch.url === oldChapter.url);
+        newLastRead = newIndex >= 0
+          ? { ...novel.lastRead, chapterIndex: newIndex }
+          : undefined;
+      }
+    }
+
+    const updatedNovels = novelsRef.current.map(n =>
+      n.id === novelId ? { ...n, chapters: newChapters, lastRead: newLastRead } : n
+    );
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+    await saveLibraryToFile(updatedNovels);
+  }, []);
+
   const getNovel = useCallback((id: string) => novels.find(n => n.id === id), [novels]);
 
   const saveReadingProgress = useCallback(async (
@@ -625,6 +681,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       getSortedChapters,
       saveChapterContent,
       saveAllChaptersToFile,
+      deleteChapters,
       loadChapterContent,
       refreshLibrary,
       library: novels,
@@ -645,6 +702,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       toggleSortOrder,
       getSortedChapters,
       saveChapterContent,
+      deleteChapters,
       loadChapterContent,
       refreshLibrary,
     ]
