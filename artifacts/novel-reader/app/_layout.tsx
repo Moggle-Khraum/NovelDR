@@ -20,13 +20,12 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants"; // ← NEW import
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
 import { UpdateProvider } from "@/context/UpdateContext";
-import { WebViewFetchBridge } from "@hooks/scrapers/shared/webviewBridge";
+import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -69,9 +68,6 @@ function InitScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
-
-  // Read the version from app.config.js (or app.json)
-  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   // Spinning animation for running steps
   useEffect(() => {
@@ -154,9 +150,7 @@ function InitScreen() {
         </View>
         
         <Text style={[initStyles.title, { color: colors.text }]}>Novel DR</Text>
-
-        {/* Dynamic version from app.config.js */}
-        <Text style={[initStyles.version, { color: colors.textSecondary }]}>v{appVersion}</Text>
+        <Text style={[initStyles.version, { color: colors.textSecondary }]}>v1.3.12</Text>
         
         {/* Progress Steps */}
         <View style={initStyles.stepsContainer}>
@@ -360,4 +354,3 @@ export default Sentry.wrap(function RootLayout() {
     </SafeAreaProvider>
   );
 });
-
