@@ -13,5 +13,7 @@
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.2"
-  }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@sentry/cli"]
 }
