@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const BULK_DELETE_LOADING_THRESHOLD = 2;
+const BULK_DELETE_LOADING_THRESHOLD = 1;
 
 // Export format types
 type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
