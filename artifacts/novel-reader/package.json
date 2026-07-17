@@ -71,7 +71,5 @@
     "typescript": "~5.9.2",
     "zod": "catalog:",
     "zod-validation-error": "^3.4.0"
-  }
-  
-}
+  } 
 }
