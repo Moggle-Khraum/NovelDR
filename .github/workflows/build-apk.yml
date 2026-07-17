@@ -24,6 +24,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+        
+      - name: ApproveSentry CLI build script
+        run: pnpm approve-builds @sentry/cli || true
 
       - name: Install Expo packages
         working-directory: artifacts/novel-reader
