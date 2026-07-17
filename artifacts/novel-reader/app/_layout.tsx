@@ -336,8 +336,15 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
+    |
     <SafeAreaProvider>
-      <ErrorBoundary>
+      <ErrorBoundary
+        onError={(error, stack) =>
+          Sentry.captureException(error, {
+            contexts: { react: { componentStack: stack } },
+          })
+        }
+      >
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
