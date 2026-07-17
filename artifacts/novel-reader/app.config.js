@@ -6,7 +6,7 @@ export default () => {
     expo: {
       name: "Novel DR",
       slug: "novel-reader",
-      version: "3.5.30",
+      version: "3.8.60",
       owner: "moggstones-stash",   // 🔧 Add this line
       orientation: "portrait",
       icon: "./assets/images/icon.png",
@@ -38,7 +38,14 @@ export default () => {
           }
         ],
         "expo-font",
-        "expo-web-browser"
+        "expo-web-browser",
+        [
+          "@sentry/react-native/expo",
+          {
+            organization: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+          }
+        ]
       ],
       experiments: {
         typedRoutes: true,
