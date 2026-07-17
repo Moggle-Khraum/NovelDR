@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as Sentry from "@sentry/react-native";
 import React, { useEffect, useRef } from "react";
 import { 
   View, 
@@ -19,13 +20,44 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants"; // ← NEW import
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
 import { UpdateProvider } from "@/context/UpdateContext";
+import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 
 SplashScreen.preventAutoHideAsync();
+
+// Native crash capture (segfaults/OOM/ANRs bypass the JS layer entirely,
+// so this must be initialized as early as possible, before any other
+// provider mounts). Reports upload automatically on next launch — no
+// device access or logcat needed to read them; view them in the Sentry
+// dashboard instead.
+Sentry.init({
+  dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648", // TODO: replace with your project's DSN from sentry.io
+  enableNative: true,
+  tracesSampleRate: 0.2,
+  // Keep breadcrumbs of nav/console so a crash report shows what led up to it
+  // (e.g. "reading" vs "backup" vs "download") without needing repro steps.
+  enableAutoSessionTracking: true,
+  // Session Replay — records a masked visual replay of user sessions.
+  // 10% of normal sessions get recorded (replaysSessionSampleRate), but any
+  // session that hits an error/crash gets recorded at 100% (replaysOnErrorSampleRate),
+  // so a report like hers comes with an actual replay of what she was doing,
+  // not just a stack trace. Text/images/vectors stay masked by default —
+  // fine for a novel reader where screens include chapter content.
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [
+    Sentry.mobileReplayIntegration({
+      maskAllText: true,
+      maskAllImages: true,
+      maskAllVectors: true,
+    }),
+  ],
+});
 
 const queryClient = new QueryClient();
 
@@ -37,6 +69,9 @@ function InitScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
+
+  // Read the version from app.config.js (or app.json)
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   // Spinning animation for running steps
   useEffect(() => {
@@ -119,7 +154,9 @@ function InitScreen() {
         </View>
         
         <Text style={[initStyles.title, { color: colors.text }]}>Novel DR</Text>
-        <Text style={[initStyles.version, { color: colors.textSecondary }]}>v1.3.12</Text>
+
+        {/* Dynamic version from app.config.js */}
+        <Text style={[initStyles.version, { color: colors.textSecondary }]}>v{appVersion}</Text>
         
         {/* Progress Steps */}
         <View style={initStyles.stepsContainer}>
@@ -285,7 +322,7 @@ function RootLayoutNav() {
 
 // ── Root Layout (with Providers) ────────────────────────────────────────────
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -313,6 +350,7 @@ export default function RootLayout() {
               <LibraryProvider>
                 <UpdateProvider>
                   <RootLayoutNav />
+                  <WebViewFetchBridge />
                 </UpdateProvider>
               </LibraryProvider>
             </ThemeProvider>
@@ -321,4 +359,5 @@ export default function RootLayout() {
       </ErrorBoundary>
     </SafeAreaProvider>
   );
-}
+});
+
