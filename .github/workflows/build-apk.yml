@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Expo packages
         working-directory: artifacts/novel-reader
-        run: pnpm add expo-file-system expo-sharing && pnpm install --no-frozen-lockfile
+        run: pnpm add expo-file-system expo-sharing @sentry/react-native && pnpm install --no-frozen-lockfile
 
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
@@ -44,6 +44,15 @@ jobs:
         run: eas build --platform android --profile preview --non-interactive --local
         env:
           APP_BUILD_NUMBER: ${{ github.run_number }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          # The EAS local build repackages the project into a fresh sandbox,
+          # so the sentry-cli we install earlier in this job never makes it
+          # there. Skip the build-time source map upload rather than chase
+          # that — native crash capture at runtime is unaffected, this only
+          # means JS stack traces in Sentry stay minified for now.
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         
       - name: Rename and Move APK
         working-directory: artifacts/novel-reader
