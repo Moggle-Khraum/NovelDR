@@ -47,7 +47,10 @@ const extractMetaContent = (html: string, key: string, flight?: string): string 
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const jsonPattern = new RegExp(`"(?:name|property)":"${escapedKey}","content":"([^"]+)"`, 'i');
   return (
-    safeMatch(html, new RegExp(`<meta[^>]*(?:name|property)="${escapedKey}"[^>]*content="([^"]+)"`, 'i')) ??
+    safeMatch(
+      html,
+      new RegExp(`<meta[^>]*(?:name|property)="${escapedKey}"[^>]*content="([^"]+)"`, 'i'),
+    ) ??
     safeMatch(html, jsonPattern) ??
     (flight ? safeMatch(flight, jsonPattern) : null)
   );
@@ -137,12 +140,17 @@ export const novelArrowScraper: SourceScraper = {
     // Further fallback: a generic "$<id>" reference into a raw flight text
     // chunk, in case the key name ever differs from synopsisParagraphs.
     if (!synopsis) {
-      const refId = safeMatch(flight, /"(?:description|synopsis|novel_description|about)":"\$(\w+)"/i);
+      const refId = safeMatch(
+        flight,
+        /"(?:description|synopsis|novel_description|about)":"\$(\w+)"/i,
+      );
       if (refId) {
         const tChunks = extractFlightTChunks(flight);
         const chunk = tChunks.get(refId);
         if (chunk) {
-          synopsis = /<p[^>]*>/i.test(chunk) ? extractParagraphs(chunk) : decodeEntities(stripTags(chunk));
+          synopsis = /<p[^>]*>/i.test(chunk)
+            ? extractParagraphs(chunk)
+            : decodeEntities(stripTags(chunk));
         }
       }
     }
@@ -167,7 +175,9 @@ export const novelArrowScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ['fetched via external scraper: novelarrow (og:novel:* meta, synopsisParagraphs JSON)'],
+      debugInfo: [
+        'fetched via external scraper: novelarrow (og:novel:* meta, synopsisParagraphs JSON)',
+      ],
     };
   },
 
@@ -198,7 +208,7 @@ export const novelArrowScraper: SourceScraper = {
       const tChunks = extractFlightTChunks(flight);
 
       const contentRefId = safeMatch(flight, /"chapter_content":"\$(\w+)"/);
-      articleHtml = contentRefId ? tChunks.get(contentRefId) ?? null : null;
+      articleHtml = contentRefId ? (tChunks.get(contentRefId) ?? null) : null;
 
       // Fallback if the JSON ref pattern isn't found: the content chunk is
       // the one starting with the chapter's <h4> heading.
@@ -261,3 +271,4 @@ export const novelArrowScraper: SourceScraper = {
     };
   },
 };
+
