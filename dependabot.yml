@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # App dependencies (pnpm workspace) — grouped into one weekly PR instead of
+  # one PR per package, since this repo is edited through the GitHub web UI
+  # only and a flood of individual PRs isn't practical to review that way.
+  - package-ecosystem: "npm"
+    directory: "/artifacts/novel-reader"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      expo-and-react-native:
+        patterns:
+          - "expo*"
+          - "react-native*"
+          - "@expo/*"
+      dev-dependencies:
+        dependency-type: "development"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions versions used in workflow files
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "chore(ci)"
