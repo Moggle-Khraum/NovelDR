@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
 import Constants from 'expo-constants';
 import * as DocumentPicker from "expo-document-picker";
 import * as Application from "expo-application";
 import * as IntentLauncher from "expo-intent-launcher";
+import { zip, unzip } from "react-native-zip-archive";
 import React, { useState, useEffect } from "react";
 import {
   Alert,
@@ -51,6 +53,30 @@ const saveBase64AsImage = async (base64: string, targetPath: string): Promise<bo
   } catch (error) {
     console.error('Failed to save image from base64:', error);
     return false;
+  }
+};
+
+// Ported from the cover-compression pass used in Production-1/2/3/master.
+// Those trees copy the compressed file straight into a backup folder; this
+// tree backs up covers as base64 inside the JSON, so here the compressed
+// output just gets fed into imageToBase64() instead. Downscales + re-encodes
+// a cover before backup — covers only ever need to be big enough for a
+// library thumbnail.
+const COVER_MAX_DIMENSION = 480;
+const COVER_JPEG_QUALITY = 0.6;
+
+const compressCoverImage = async (sourcePath: string): Promise<{ uri: string; size: number } | null> => {
+  try {
+    const result = await ImageManipulator.manipulateAsync(
+      sourcePath,
+      [{ resize: { width: COVER_MAX_DIMENSION } }],
+      { compress: COVER_JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    const info = await FileSystem.getInfoAsync(result.uri);
+    return { uri: result.uri, size: info.exists ? (info.size || 0) : 0 };
+  } catch (error) {
+    console.error('Failed to compress cover:', error);
+    return null;
   }
 };
 
@@ -108,7 +134,7 @@ interface FullBackup {
 
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
-  const { novels } = useLibrary();
+  const { novels, purgeOrphanedData } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -119,7 +145,7 @@ export default function SettingsScreen() {
   const [pendingComment, setPendingComment] = useState("");
   const [showDevProfile, setShowDevProfile] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
-  const [showWarningCard, setShowWarningCard] = useState(true);
+  const [showWarningCard, setShowWarningCard] = useState(false);
   const [operationProgress, setOperationProgress] = useState("");
   const [backupLogs, setBackupLogs] = useState<string[]>([]);
   const [showBugReport, setShowBugReport] = useState(false);
@@ -172,13 +198,28 @@ export default function SettingsScreen() {
     }
   };
 
+  // Android has no public API that lets an app query the "Pause app activity /
+  // Remove permissions if unused" toggle for itself, so we can't do a true
+  // OS-level read of that setting. The closest honest proxy is time-based:
+  // Android applies auto-revoke after months of disuse, so instead of a
+  // permanent "dismissed forever" flag, we re-surface the warning on a
+  // cooldown. Tapping through to the OS settings screen resets the cooldown;
+  // there's no silent "skip" anymore.
+  const WARNING_RECHECK_DAYS = 21;
+
   useEffect(() => {
     const checkWarningStatus = async () => {
       try {
         const settings = await loadAppSettings();
-        setShowWarningCard(settings.warningDismissed !== true);
+        const lastAckMs = settings.warningLastAcknowledgedAt
+          ? new Date(settings.warningLastAcknowledgedAt).getTime()
+          : 0;
+        const daysSinceAck = (Date.now() - lastAckMs) / (1000 * 60 * 60 * 24);
+        setShowWarningCard(daysSinceAck >= WARNING_RECHECK_DAYS);
       } catch (error) {
         console.error('Failed to check warning status:', error);
+        // Fail open: if we can't read the flag, show the warning rather than hide it.
+        setShowWarningCard(true);
       }
     };
     checkWarningStatus();
@@ -212,8 +253,53 @@ export default function SettingsScreen() {
     setOperationProgress(msg);
   };
 
+  // Deletes cover images in COVERS_DIR whose novelId (derived from the
+  // filename) doesn't exist in the given valid-id set. Mirrors the
+  // dir/chapter purges in LibraryContext, but covers live outside the
+  // chapters tree, so this stays local to Settings where COVERS_DIR is defined.
+  const purgeOrphanedCovers = async (validNovelIds: Set<string>): Promise<number> => {
+    try {
+      const info = await FileSystem.getInfoAsync(COVERS_DIR);
+      if (!info.exists) return 0;
+      const files = await FileSystem.readDirectoryAsync(COVERS_DIR);
+      let purged = 0;
+      for (const file of files) {
+        const novelId = file.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+        if (!validNovelIds.has(novelId)) {
+          await FileSystem.deleteAsync(`${COVERS_DIR}${file}`, { idempotent: true });
+          purged++;
+        }
+      }
+      return purged;
+    } catch (error) {
+      addBackupLog(`⚠️ Error purging orphaned covers: ${String(error)}`);
+      return 0;
+    }
+  };
+
+  // Reads a backup file regardless of format. ZIP is the current export
+  // format; JSON is read directly for backward compatibility with backups
+  // made before the ZIP switch.
+  const readBackupFromPath = async (path: string): Promise<FullBackup> => {
+    if (path.toLowerCase().endsWith('.zip')) {
+      const tempDir = `${FileSystem.cacheDirectory}noveldrr-restore-${Date.now()}/`;
+      await ensureDir(tempDir);
+      try {
+        await unzip(path, tempDir);
+        const files = await FileSystem.readDirectoryAsync(tempDir);
+        const jsonFile = files.find(f => f.endsWith('.json'));
+        if (!jsonFile) throw new Error('No backup JSON found inside ZIP');
+        const raw = await FileSystem.readAsStringAsync(`${tempDir}${jsonFile}`);
+        return JSON.parse(raw);
+      } finally {
+        await FileSystem.deleteAsync(tempDir, { idempotent: true });
+      }
+    }
+    const raw = await FileSystem.readAsStringAsync(path);
+    return JSON.parse(raw);
+  };
+
   const collectAppData = async (): Promise<FullBackup> => {
-    setBackupLogs([]);
     addBackupLog("📂 Reading library data...");
 
     const libraryPath = `${APP_DATA_DIR}novel_library_v1.json`;
@@ -329,6 +415,7 @@ export default function SettingsScreen() {
     addBackupLog("🖼️ Scanning novel covers...");
     const covers: NovelCoverBackup[] = [];
     let totalCoverSize = 0;
+    let totalOriginalCoverSize = 0;
 
     try {
       const coversDirInfo = await FileSystem.getInfoAsync(COVERS_DIR);
@@ -345,11 +432,14 @@ export default function SettingsScreen() {
           if (novelExists) {
             const coverInfo = await FileSystem.getInfoAsync(coverPath);
             if (coverInfo.exists) {
-              addBackupLog(`   🖼️ Converting cover: ${coverFile} (${((coverInfo.size || 0) / 1024).toFixed(1)} KB)`);
-              const coverBase64 = await imageToBase64(coverPath);
+              const originalSize = coverInfo.size || 0;
+              addBackupLog(`   🖼️ Compressing cover: ${coverFile} (${(originalSize / 1024).toFixed(1)} KB)`);
+              const compressed = await compressCoverImage(coverPath);
+              const coverBase64 = compressed ? await imageToBase64(compressed.uri) : await imageToBase64(coverPath);
               if (coverBase64) {
                 covers.push({ novelId, coverBase64, fileName: coverFile });
-                totalCoverSize += coverInfo.size || 0;
+                totalOriginalCoverSize += originalSize;
+                totalCoverSize += compressed ? compressed.size : originalSize;
               } else {
                 addBackupLog(`   ⚠️ Failed to convert cover: ${coverFile}`);
               }
@@ -358,7 +448,7 @@ export default function SettingsScreen() {
             addBackupLog(`   ⏭️ Skipping orphan cover: ${coverFile}`);
           }
         }
-        addBackupLog(`📊 Covers collected: ${covers.length} (${(totalCoverSize / (1024 * 1024)).toFixed(2)} MB total)`);
+        addBackupLog(`📊 Covers collected: ${covers.length} (${(totalCoverSize / (1024 * 1024)).toFixed(2)} MB, down from ${(totalOriginalCoverSize / (1024 * 1024)).toFixed(2)} MB)`);
       } else {
         addBackupLog("⚠️ No covers directory found - no covers to backup");
       }
@@ -375,9 +465,12 @@ export default function SettingsScreen() {
               });
               const fileInfo = await FileSystem.getInfoAsync(result.uri);
               if (fileInfo.exists && (fileInfo as any).size > 1000) {
-                const base64 = await imageToBase64(result.uri);
+                const compressed = await compressCoverImage(result.uri);
+                const base64 = compressed ? await imageToBase64(compressed.uri) : await imageToBase64(result.uri);
                 if (base64) {
                   covers.push({ novelId: novel.id, coverBase64: base64, fileName: `${novel.id}.jpg` });
+                  totalOriginalCoverSize += (fileInfo as any).size || 0;
+                  totalCoverSize += compressed ? compressed.size : ((fileInfo as any).size || 0);
                   addBackupLog(`   ✅ Fetched remote cover: ${novel.title}`);
                 }
               } else {
@@ -572,6 +665,16 @@ export default function SettingsScreen() {
       }
     }
 
+    addBackupLog("🧹 Purging orphaned data...");
+    try {
+      const validIds = new Set((backup.libraryData || []).map((n: any) => n.id));
+      const { dirs, files } = await purgeOrphanedData(backup.libraryData);
+      const purgedCovers = await purgeOrphanedCovers(validIds);
+      addBackupLog(`✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`);
+    } catch (e) {
+      addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
+    }
+
     addBackupLog("✅ Restore complete!");
   };
 
@@ -587,14 +690,31 @@ export default function SettingsScreen() {
       closePanel();
       setExporting(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setBackupLogs([]);
+      addBackupLog("🧹 Purging orphaned data before backup...");
+      try {
+        const validIds = new Set(novels.map(n => n.id));
+        const { dirs, files } = await purgeOrphanedData(novels);
+        const purgedCovers = await purgeOrphanedCovers(validIds);
+        addBackupLog(`✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`);
+      } catch (e) {
+        addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
+      }
       const backup = await collectAppData();
       addBackupLog("💾 Saving backup file...");
       await ensureDir(BACKUP_DIR);
       const dateTag = formatDateTag();
       const tag = comment.trim().replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-      const filename = `noveldrr-backup-${dateTag}${tag ? "_" + tag : ""}.json`;
+      const baseName = `noveldrr-backup-${dateTag}${tag ? "_" + tag : ""}`;
+      // ZIP is the export format going forward; JSON is only produced as a
+      // temp intermediate that gets zipped up, then discarded.
+      const filename = `${baseName}.zip`;
+      const tempJsonPath = `${FileSystem.cacheDirectory}${baseName}.json`;
       const backupPath = `${BACKUP_DIR}${filename}`;
-      await FileSystem.writeAsStringAsync(backupPath, JSON.stringify(backup, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeAsStringAsync(tempJsonPath, JSON.stringify(backup, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
+      addBackupLog("🗜️ Compressing backup to ZIP...");
+      await zip([tempJsonPath], backupPath);
+      await FileSystem.deleteAsync(tempJsonPath, { idempotent: true });
       const fileInfo = await FileSystem.getInfoAsync(backupPath);
       const sizeMB = fileInfo.exists ? ((fileInfo.size || 0) / (1024 * 1024)).toFixed(1) : "0";
       addBackupLog(`✅ Backup saved: ${filename} (${sizeMB} MB)`);
@@ -612,7 +732,7 @@ export default function SettingsScreen() {
             text: "Share Backup",
             onPress: async () => {
               const canShare = await Sharing.isAvailableAsync();
-              if (canShare) await Sharing.shareAsync(backupPath, { mimeType: "application/json", dialogTitle: "Share NovelDR Backup" });
+              if (canShare) await Sharing.shareAsync(backupPath, { mimeType: "application/zip", dialogTitle: "Share NovelDR Backup" });
             },
           },
         ]
@@ -629,15 +749,15 @@ export default function SettingsScreen() {
     try {
       await ensureDir(BACKUP_DIR);
       const files = await FileSystem.readDirectoryAsync(BACKUP_DIR);
-      const jsonBackups = files
-        .filter(f => f.startsWith("noveldrr-backup-") && f.endsWith(".json"))
+      // Duality: list both ZIP (current format) and JSON (legacy format) backups.
+      const allBackups = files
+        .filter(f => f.startsWith("noveldrr-backup-") && (f.endsWith(".json") || f.endsWith(".zip")))
         .sort().reverse();
       const backupsWithMeta = await Promise.all(
-        jsonBackups.map(async (filename) => {
+        allBackups.map(async (filename) => {
           const path = `${BACKUP_DIR}${filename}`;
           try {
-            const raw = await FileSystem.readAsStringAsync(path);
-            const backup = JSON.parse(raw);
+            const backup = await readBackupFromPath(path);
             return { name: filename, metadata: backup.metadata || null };
           } catch {
             return { name: filename, metadata: null };
@@ -655,8 +775,7 @@ export default function SettingsScreen() {
     const backupPath = `${BACKUP_DIR}${filename}`;
     let coverInfo = "";
     try {
-      const rawPreview = await FileSystem.readAsStringAsync(backupPath);
-      const preview = JSON.parse(rawPreview);
+      const preview = await readBackupFromPath(backupPath);
       if (preview.metadata?.includesCovers) {
         coverInfo = `\n🖼️ Includes ${preview.covers?.length || 0} novel covers (${(preview.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
       }
@@ -674,8 +793,7 @@ export default function SettingsScreen() {
             try {
               setImporting(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              const raw = await FileSystem.readAsStringAsync(backupPath);
-              const backup: FullBackup = JSON.parse(raw);
+              const backup = await readBackupFromPath(backupPath);
               if (!backup.metadata || !backup.libraryData) {
                 Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
                 return;
@@ -709,7 +827,11 @@ export default function SettingsScreen() {
 
   const handleImportFromPicker = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: "application/json", copyToCacheDirectory: true });
+      // Duality: accept ZIP (current export format) or JSON (legacy format).
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/json", "application/zip", "application/x-zip-compressed"],
+        copyToCacheDirectory: true,
+      });
       if (result.canceled) return;
       Alert.alert(
         "Restore Backup",
@@ -723,8 +845,7 @@ export default function SettingsScreen() {
               try {
                 setImporting(true);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                const raw = await FileSystem.readAsStringAsync(result.assets[0].uri);
-                const backup: FullBackup = JSON.parse(raw);
+                const backup = await readBackupFromPath(result.assets[0].uri);
                 if (!backup.metadata || !backup.libraryData) {
                   Alert.alert("Invalid Backup", "This file is not a valid NovelDR backup.");
                   return;
@@ -762,7 +883,7 @@ export default function SettingsScreen() {
   };
 
   const parseFilename = (filename: string) => {
-    const base = filename.replace("noveldrr-backup-", "").replace(".json", "");
+    const base = filename.replace("noveldrr-backup-", "").replace(/\.(json|zip)$/, "");
     const [datePart, timePart, ...rest] = base.split("_");
     const date = datePart ?? "";
     const time = timePart ? timePart.replace(/-/g, ":") : "";
@@ -770,29 +891,35 @@ export default function SettingsScreen() {
     return { date, time, tag };
   };
 
+  // Acknowledging only resets the recheck cooldown - it does not permanently
+  // hide the warning. We can't confirm from JS that the OS toggle was
+  // actually changed, so the card will come back in WARNING_RECHECK_DAYS to
+  // make sure it actually got set.
+  const acknowledgeWarning = async () => {
+    await saveAppSettings({ warningLastAcknowledgedAt: new Date().toISOString() });
+    setShowWarningCard(false);
+  };
+
   const openUnusedAppSettings = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (Platform.OS === 'android') {
       try {
         await IntentLauncher.startActivityAsync('android.settings.MANAGE_UNUSED_APPS');
-        await saveAppSettings({ warningDismissed: true });
-        setShowWarningCard(false);
+        await acknowledgeWarning();
       } catch (error) {
         try {
           const packageName = Application.applicationId;
           await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', { data: `package:${packageName}` });
-          await saveAppSettings({ warningDismissed: true });
-          setShowWarningCard(false);
+          await acknowledgeWarning();
         } catch (e) {
           try {
             await IntentLauncher.startActivityAsync('android.settings.SETTINGS');
-            await saveAppSettings({ warningDismissed: true });
-            setShowWarningCard(false);
+            await acknowledgeWarning();
           } catch (finalError) {
             Alert.alert(
               'Manual Steps Required',
-              'Go to Settings > Apps > Novel DR\nTurn off: Pause app activity if unused & Remove permissions',
-              [{ text: 'OK', onPress: async () => { await saveAppSettings({ warningDismissed: true }); setShowWarningCard(false); } }]
+              'Go to Settings > Apps > Novel DR\nTurn off "Pause app activity if unused" to keep your library from being removed.',
+              [{ text: 'OK', onPress: acknowledgeWarning }]
             );
           }
         }
@@ -800,12 +927,6 @@ export default function SettingsScreen() {
     } else if (Platform.OS === 'ios') {
       Linking.openURL('app-settings:');
     }
-  };
-
-  const dismissWarning = async () => {
-    await saveAppSettings({ warningDismissed: true });
-    setShowWarningCard(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const openPanel = (panel: ActivePanel) => setActivePanel(prev => prev === panel ? null : panel);
@@ -836,16 +957,14 @@ export default function SettingsScreen() {
             <View style={styles.warningHeader}>
               <View style={styles.aboutRow}>
                 <Ionicons name="warning" size={18} color="#ffb300" />
-                <Text style={[styles.warningTitle, { color: colors.text }]}>System Action Required</Text>
+                <Text style={[styles.warningTitle, { color: colors.text }]}>Protect Your Library</Text>
               </View>
-              <Pressable onPress={dismissWarning} style={styles.dismissButton}>
-                <Ionicons name="close" size={18} color={colors.textSecondary} />
-              </Pressable>
             </View>
             <Text style={[styles.warningText, { color: colors.textSecondary }]}>
-              Turn off <Text style={{ fontWeight: '700' }}>'Manage unused Apps'</Text> and{' '}
-              <Text style={{ fontWeight: '700' }}>'Remove permissions and free up space'</Text>{' '}
-              to prevent data loss.
+              Novel DR stores your entire library on this device only, with no cloud backup.{' '}
+              If Android's <Text style={{ fontWeight: '700' }}>'Remove unused apps'</Text> feature
+              uninstalls it after months of inactivity, your novels and chapters go with it.{' '}
+              Turn off <Text style={{ fontWeight: '700' }}>'Pause app activity if unused'</Text> for Novel DR to prevent this.
             </Text>
             <Text style={[styles.warningTapHint, { color: '#ffb300' }]}>👆 Tap here to open settings</Text>
           </Pressable>
@@ -992,7 +1111,8 @@ export default function SettingsScreen() {
                       <Pressable
                         onPress={async () => {
                           const canShare = await Sharing.isAvailableAsync();
-                          if (canShare) await Sharing.shareAsync(BACKUP_DIR + backup.name, { mimeType: "application/json", dialogTitle: "Share Backup" });
+                          const mimeType = backup.name.endsWith(".zip") ? "application/zip" : "application/json";
+                          if (canShare) await Sharing.shareAsync(BACKUP_DIR + backup.name, { mimeType, dialogTitle: "Share Backup" });
                         }}
                         style={styles.backupItemAction}
                       >

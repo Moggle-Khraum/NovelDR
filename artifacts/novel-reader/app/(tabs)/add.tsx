@@ -39,7 +39,8 @@ const SUPPORTED_SITES = [
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
   { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
-  { name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
+  { name: "Novel-Bin", baseUrl: "https://novel-bin.com/" },
+  { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
   
 ];
 
@@ -301,6 +302,50 @@ export default function AddNovelScreen() {
     }
   };
 
+  // --- Find sites that have no status yet, or are stuck on idle/'?' ---
+  const getSitesNeedingCheck = (
+    statuses: Record<string, SiteStatus> | null | undefined
+  ) => {
+    return SUPPORTED_SITES.filter(
+      (site) => !statuses || !statuses[site.name] || statuses[site.name] === 'idle'
+    );
+  };
+
+  // --- Run health checks for a given subset of sites, merging into baseStatuses ---
+  const runHealthChecks = async (
+    sitesToCheck: typeof SUPPORTED_SITES,
+    baseStatuses: Record<string, SiteStatus>
+  ) => {
+    if (sitesToCheck.length === 0) return baseStatuses;
+
+    setIsCheckingSites(true);
+
+    const updatedStatuses: Record<string, SiteStatus> = { ...baseStatuses };
+    sitesToCheck.forEach((site) => {
+      updatedStatuses[site.name] = 'checking';
+    });
+    setSiteStatuses({ ...updatedStatuses });
+
+    for (const site of sitesToCheck) {
+      try {
+        const isUp = await checkSiteHealth(site.baseUrl);
+        updatedStatuses[site.name] = isUp ? 'online' : 'offline';
+      } catch (error) {
+        updatedStatuses[site.name] = 'offline';
+      }
+
+      // Update immediately after each site check and persist progress
+      setSiteStatuses({ ...updatedStatuses });
+      await saveSiteStatus(updatedStatuses);
+
+      // Small delay to avoid overwhelming servers
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    setIsCheckingSites(false);
+    return updatedStatuses;
+  };
+
   // --- Simple Site Health Check (Individual, Immediate Updates) ---
   const checkAllSites = async (forceRecheck: boolean = false) => {
     if (isCheckingSites) return;
@@ -310,43 +355,19 @@ export default function AddNovelScreen() {
       const savedStatus = await loadSavedSiteStatus();
       if (savedStatus) {
         setSiteStatuses(savedStatus);
+
+        // Fallback: anything still showing '?' (missing/idle) in the
+        // cache — e.g. a site added after the cache was written — gets
+        // checked now and the result gets saved.
+        const missing = getSitesNeedingCheck(savedStatus);
+        if (missing.length > 0) {
+          await runHealthChecks(missing, savedStatus);
+        }
         return;
       }
     }
 
-    setIsCheckingSites(true);
-
-    // Set all sites to 'checking' status
-    const initialStatus: Record<string, SiteStatus> = {};
-    SUPPORTED_SITES.forEach(site => {
-      initialStatus[site.name] = 'checking';
-    });
-    setSiteStatuses(initialStatus);
-
-    // Check each site individually and update immediately
-    const updatedStatuses: Record<string, SiteStatus> = { ...initialStatus };
-
-    for (const site of SUPPORTED_SITES) {
-      try {
-        const isUp = await checkSiteHealth(site.baseUrl);
-        updatedStatuses[site.name] = isUp ? 'online' : 'offline';
-
-        // Update immediately after each site check
-        setSiteStatuses({ ...updatedStatuses });
-
-        // Save progress
-        await saveSiteStatus(updatedStatuses);
-      } catch (error) {
-        updatedStatuses[site.name] = 'offline';
-        setSiteStatuses({ ...updatedStatuses });
-        await saveSiteStatus(updatedStatuses);
-      }
-
-      // Small delay to avoid overwhelming servers
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    setIsCheckingSites(false);
+    await runHealthChecks(SUPPORTED_SITES, {});
   };
 
   // --- Setup automatic health checks ---
@@ -356,6 +377,13 @@ export default function AddNovelScreen() {
       const savedStatus = await loadSavedSiteStatus();
       if (savedStatus) {
         setSiteStatuses(savedStatus);
+
+        // Fallback: fill in any sites that show '?' because they're
+        // missing from the cache (e.g. newly added sources).
+        const missing = getSitesNeedingCheck(savedStatus);
+        if (missing.length > 0) {
+          await runHealthChecks(missing, savedStatus);
+        }
       } else {
         checkAllSites(false);
       }

@@ -55,7 +55,10 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "wuxiaworld.site": "WuxiaWorldSite",
       "asianovel.net": "AsiaNovel",
       "novelphoenix.com": "NovelPhoenix",
-      "novelarrow.com": "NovelArrow"
+      "novelarrow.com": "NovelArrow",
+      "novel-bin.com": "Novel-Bin",
+      "novelbin.cc": "NovelBinCC"
+      
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
@@ -220,12 +223,14 @@ function StatusSheet({
   onSelect: (status: NovelStatus) => void;
 }) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   if (!novel) return null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.sheetBackdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+      <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: bottomPad + 20 }]}>
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
         <Text style={[styles.sheetTitle, { color: colors.text }]} numberOfLines={1}>
           {novel.title}
