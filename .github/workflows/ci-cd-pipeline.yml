@@ -1,0 +1,156 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - Prod-Dev
+  pull_request:
+    branches:
+      - main
+      - Prod-Dev
+  workflow_dispatch:
+    inputs:
+      changelog_entry:
+        description: 'Manual changelog entry (optional - leave empty to auto-parse commits)'
+        required: false
+        type: string
+
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.26.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Sync lockfile
+        run: pnpm install
+
+      - name: Check for lockfile changes
+        id: verify-changed-files
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit lockfile changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "github-actions[bot]"
+          git add pnpm-lock.yaml
+          git commit -m "chore: sync lockfile"
+          git push
+
+  lint-test:
+    runs-on: ubuntu-latest
+    needs: sync-lockfile
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.26.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  update-changelog:
+    runs-on: ubuntu-latest
+    needs: lint-test
+    permissions:
+      contents: write
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Parse commits since last changelog update
+        id: parse-commits
+        if: ${{ !github.event.inputs.changelog_entry }}
+        run: |
+          LAST_CHANGELOG_COMMIT=$(git log --oneline --all --grep="docs: update changelog" | head -1 | cut -d' ' -f1)
+          if [ -z "$LAST_CHANGELOG_COMMIT" ]; then
+            COMMITS=$(git log --oneline --pretty=format:"%s")
+          else
+            COMMITS=$(git log $LAST_CHANGELOG_COMMIT..HEAD --oneline --pretty=format:"%s")
+          fi
+          
+          CHANGELOG_TEXT=$(echo "$COMMITS" | awk '{print "- " $0}')
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG_TEXT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Set changelog text
+        id: changelog-text
+        run: |
+          if [ -n "${{ github.event.inputs.changelog_entry }}" ]; then
+            echo "text=${{ github.event.inputs.changelog_entry }}" >> $GITHUB_OUTPUT
+          else
+            echo "text=${{ steps.parse-commits.outputs.commits }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update CHANGELOG.md
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create new changelog entry
+          NEW_ENTRY="## $DATE
+
+          ${{ steps.changelog-text.outputs.text }}
+          
+          "
+          
+          # Prepend to CHANGELOG.md
+          echo "$NEW_ENTRY" > CHANGELOG.temp
+          cat CHANGELOG.md >> CHANGELOG.temp
+          mv CHANGELOG.temp CHANGELOG.md
+
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "github-actions[bot]"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog"
+          git push
