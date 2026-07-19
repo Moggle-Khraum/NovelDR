@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v4
@@ -54,10 +54,35 @@ jobs:
           git commit -m "chore: sync lockfile"
           git push
 
-  lint:
+  scraper-regression:
     runs-on: ubuntu-latest
     needs: sync-lockfile
-    continue-on-error: true
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run scraper content-extraction regression tests
+        working-directory: artifacts/novel-reader
+        run: pnpm run test:scrapers
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: scraper-regression
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v4
@@ -79,35 +104,10 @@ jobs:
         working-directory: artifacts/novel-reader
         run: pnpm run lint
 
-  typecheck:
-    runs-on: ubuntu-latest
-    needs: lint
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.26.1
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Run TypeScript check
-        working-directory: artifacts/novel-reader
-        run: pnpm run typecheck
-
   format:
     runs-on: ubuntu-latest
-    needs: typecheck
-    continue-on-error: true
+    needs: lint
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v4
@@ -129,10 +129,10 @@ jobs:
         working-directory: artifacts/novel-reader
         run: pnpm run format:check
 
-  scraper-regression:
+  typecheck:
     runs-on: ubuntu-latest
     needs: format
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v4
@@ -150,7 +150,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Run scraper content-extraction regression tests
+      - name: Run TypeScript check
         working-directory: artifacts/novel-reader
-        run: pnpm run test:scrapers
+        run: pnpm run typecheck
         
