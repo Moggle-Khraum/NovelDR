@@ -29,56 +29,55 @@ export function InitScreen() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'running': return 'sync-outline';
-      case 'done': return 'checkmark-circle';
-      case 'error': return 'alert-circle';
-      default: return 'ellipse-outline';
+      case 'running':
+        return 'sync-outline';
+      case 'done':
+        return 'checkmark-circle';
+      case 'error':
+        return 'alert-circle';
+      default:
+        return 'ellipse-outline';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return colors.accent;
-      case 'done': return '#27AE60';
-      case 'error': return '#FF4444';
-      default: return colors.textMuted;
+      case 'running':
+        return colors.accent;
+      case 'done':
+        return '#27AE60';
+      case 'error':
+        return '#FF4444';
+      default:
+        return colors.textMuted;
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Animated.View 
+      <Animated.View
         style={[
           styles.content,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
+            transform: [{ translateY: slideAnim }],
+          },
         ]}
       >
-        <Ionicons 
-          name="book-outline" 
-          size={64} 
-          color={colors.accent} 
-          style={styles.icon}
-        />
+        <Ionicons name="book-outline" size={64} color={colors.accent} style={styles.icon} />
         <Text style={[styles.title, { color: colors.text }]}>Novel DR</Text>
-        
+
         <View style={styles.stepsContainer}>
           {initSteps.map((step) => (
             <View key={step.id} style={styles.stepRow}>
-              <Ionicons 
+              <Ionicons
                 name={getStatusIcon(step.status)}
                 size={18}
                 color={getStatusColor(step.status)}
-                style={[
-                  step.status === 'running' && styles.spinning
-                ]}
+                style={[step.status === 'running' && styles.spinning]}
               />
               <View style={styles.stepTextContainer}>
-                <Text style={[styles.stepMessage, { color: colors.text }]}>
-                  {step.message}
-                </Text>
+                <Text style={[styles.stepMessage, { color: colors.text }]}>{step.message}</Text>
                 {step.detail && (
                   <Text style={[styles.stepDetail, { color: colors.textSecondary }]}>
                     {step.detail}
@@ -150,3 +149,4 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 });
+
