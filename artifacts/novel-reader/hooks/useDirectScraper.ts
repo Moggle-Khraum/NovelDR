@@ -980,7 +980,7 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
             const imgTag = imgTagMatch[0];
             const srcMatch = imgTag.match(/\bsrc="([^"]+)"/i);
             const dataSrcMatch = imgTag.match(/\bdata-src="([^"]+)"/i);
-            rawCover = (srcMatch && srcMatch[1]) || (dataSrcMatch && dataSrcMatch[1]);
+            rawCover = srcMatch?.[1] ?? dataSrcMatch?.[1];
           }
         }
 
