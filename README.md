@@ -96,7 +96,7 @@ Got a webnovel site you want NovelDR to support? There are two paths, depending 
 
 Full step-by-step instructions (how to capture a site's HTML, how to prompt Claude Code to build the scraper, and how to register it in the app) are already written up here:
 
-👉 **[NovelDR Scraper Guide](https://github.com/Moggle-Khraum/NovelDR/blob/Production-2/NovelDR%20Scraper%20Guide.md)**
+👉 **[NovelDR Scraper Guide](https://github.com/Moggle-Khraum/NovelDR/blob/Prod-Dev/NovelDR%20Scraper%20Guide.md)**
 
 That guide walks through the whole process from start to finish, so you don't need to touch any other files — just follow it top to bottom.
 
