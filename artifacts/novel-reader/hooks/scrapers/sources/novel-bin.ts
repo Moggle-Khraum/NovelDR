@@ -1,6 +1,12 @@
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, extractByDepth, makeAbsoluteUrl } from '../shared/html';
+import {
+  stripTags,
+  decodeEntities,
+  safeMatch,
+  extractByDepth,
+  makeAbsoluteUrl,
+} from '../shared/html';
 
 const BASE_HOST = 'novel-bin.com';
 
@@ -51,18 +57,20 @@ export const novelBinScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // <meta itemprop="image" content="https://novel-bin.com/files/image/....jpg">
-    const coverUrl =
-      safeMatch(html, /<meta[^>]*itemprop="image"[^>]*content="([^"]+)"/i) ?? '';
+    const coverUrl = safeMatch(html, /<meta[^>]*itemprop="image"[^>]*content="([^"]+)"/i) ?? '';
 
     // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
     const title = decodeEntities(
-      safeMatch(html, /<h3[^>]*class="title"[^>]*itemprop="name"[^>]*>([^<]+)<\/h3>/i) ?? 'Unknown Title',
+      safeMatch(html, /<h3[^>]*class="title"[^>]*itemprop="name"[^>]*>([^<]+)<\/h3>/i) ??
+        'Unknown Title',
     );
 
     // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
     const author = decodeEntities(
-      safeMatch(html, /<span[^>]*itemprop="author"[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i) ??
-        'Unknown Author',
+      safeMatch(
+        html,
+        /<span[^>]*itemprop="author"[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i,
+      ) ?? 'Unknown Author',
     );
 
     // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
@@ -75,7 +83,10 @@ export const novelBinScraper: SourceScraper = {
     const synopsis = extractBrSeparatedText(descBlock);
 
     // <a class="btn btn-danger btn-read-now" title="READ NOW" href="/novel-bin/{slug}/chapter-1">
-    const firstChapterPath = safeMatch(html, /<a[^>]*class="btn btn-danger btn-read-now"[^>]*href="([^"]+)"/i);
+    const firstChapterPath = safeMatch(
+      html,
+      /<a[^>]*class="btn btn-danger btn-read-now"[^>]*href="([^"]+)"/i,
+    );
     const firstChapterUrl = firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
 
     return {
@@ -92,7 +103,9 @@ export const novelBinScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
-    const title = decodeEntities(safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? '');
+    const title = decodeEntities(
+      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? '',
+    );
 
     // <div id="chr-content" class="chr-c" ...>...</div>
     const contentBlock = extractByDepth(html, 'id="chr-content"') ?? '';
@@ -115,3 +128,4 @@ export const novelBinScraper: SourceScraper = {
     };
   },
 };
+
