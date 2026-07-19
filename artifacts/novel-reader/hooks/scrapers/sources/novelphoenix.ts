@@ -1,6 +1,12 @@
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, extractByDepth, makeAbsoluteUrl } from '../shared/html';
+import {
+  stripTags,
+  decodeEntities,
+  safeMatch,
+  extractByDepth,
+  makeAbsoluteUrl,
+} from '../shared/html';
 
 const BASE_HOST = 'novelphoenix.com';
 
@@ -43,8 +49,10 @@ export const novelPhoenixScraper: SourceScraper = {
 
     // <div class="author">...<span itemprop="author">Name</span>...</div>
     const author = decodeEntities(
-      safeMatch(html, /<div[^>]*class="author"[^>]*>[\s\S]*?<span itemprop="author">([^<]+)<\/span>/i) ??
-        'Unknown Author',
+      safeMatch(
+        html,
+        /<div[^>]*class="author"[^>]*>[\s\S]*?<span itemprop="author">([^<]+)<\/span>/i,
+      ) ?? 'Unknown Author',
     );
 
     // div.summary > div.content > <p> paragraphs
@@ -70,7 +78,9 @@ export const novelPhoenixScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // <span class="chapter-title">CHAPTER N — TITLE</span>
-    const title = decodeEntities(safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ?? '');
+    const title = decodeEntities(
+      safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ?? '',
+    );
 
     // <div id="content" class="clearfix font_default" ...>...</div>
     // Contains an <h2>/<h1> restating the book/chapter title before the
@@ -80,7 +90,8 @@ export const novelPhoenixScraper: SourceScraper = {
 
     // <a rel="next" class="chnav next" href="...">  (href is "javascript:;" when disabled/last chapter)
     const nextRaw = safeMatch(html, /<a[^>]*rel="next"[^>]*href="([^"]+)"/i);
-    const nextUrl = nextRaw && !nextRaw.startsWith('javascript') ? makeAbsoluteUrl(nextRaw, url) : null;
+    const nextUrl =
+      nextRaw && !nextRaw.startsWith('javascript') ? makeAbsoluteUrl(nextRaw, url) : null;
 
     return {
       url,
