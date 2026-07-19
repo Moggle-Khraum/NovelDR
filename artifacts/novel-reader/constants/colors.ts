@@ -41,7 +41,8 @@ export const ThemeColors = {
     accentLight: "#FF8C5A",
     tabBar: "#111624",
     icon: "#9AA4C4",
-    iconActive: "#FF6B35",  
+    iconActive: "#FF6B35",
+    error: palette.error,
   },
   light: {
     background: palette.offWhite,
@@ -56,6 +57,7 @@ export const ThemeColors = {
     tabBar: palette.white,
     icon: "#888888",
     iconActive: palette.orange,
+    error: palette.error,
   },
   sepia: {
     background: palette.sepiaBg,
@@ -70,6 +72,7 @@ export const ThemeColors = {
     tabBar: palette.sepiaCard,
     icon: "#8B7355",
     iconActive: palette.sepiaAccent,
+    error: palette.error,
   },
   // NEW THEMES START HERE
   amoled: {
@@ -85,6 +88,7 @@ export const ThemeColors = {
     tabBar: "#000000",
     icon: "#B0B0B0",
     iconActive: "#00E5FF",
+    error: palette.error,
   },
   warm: {
     background: "#1A1008",
@@ -99,6 +103,7 @@ export const ThemeColors = {
     tabBar: "#221508",
     icon: "#C4956A",
     iconActive: "#FF8C42",
+    error: palette.error,
   },
   slate: {
     background: "#1E2430",
@@ -113,6 +118,7 @@ export const ThemeColors = {
     tabBar: "#252D3D",
     icon: "#8A97B0",
     iconActive: "#7EB8D4",
+    error: palette.error,
   },
 };
 
