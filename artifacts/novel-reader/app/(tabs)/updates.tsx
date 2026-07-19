@@ -111,7 +111,7 @@ export default function UpdatesScreen() {
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
   const startTimeRef = useRef<number>(0);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filteredNovels = useMemo(() => {
     if (!novelSearchQuery.trim()) return novels;

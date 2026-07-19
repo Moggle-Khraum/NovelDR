@@ -260,10 +260,10 @@ export default function AddNovelScreen() {
   const [isCheckingSites, setIsCheckingSites] = useState(false);
 
   const startTimeRef = useRef<number>(0);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
-  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // --- Load saved site status from storage ---
   const loadSavedSiteStatus = async (): Promise<Record<string, SiteStatus> | null> => {
