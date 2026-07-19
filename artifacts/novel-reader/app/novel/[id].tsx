@@ -117,7 +117,7 @@ async function loadFullNovelContent(
 
     // Fallback to in-memory
     if (!content && hasRealContent(ch.content)) {
-      content = ch.content;
+      content = ch.content ?? null;
     }
 
     result.push({
