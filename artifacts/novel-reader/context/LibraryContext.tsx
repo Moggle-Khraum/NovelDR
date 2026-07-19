@@ -491,15 +491,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           setNovels(loaded);
           addInitStep({ id: 'preferences', message: 'Preferences loaded', status: 'done' });
 
-          const { dirs, files } = await purgeOrphanedDataOnStartup(loaded);
-          if (dirs > 0 || files > 0) {
-            addInitStep({
-              id: 'purge',
-              message: 'Cleaned up orphaned data',
-              status: 'done',
-              detail: `${dirs} stray folder${dirs !== 1 ? 's' : ''}, ${files} orphaned file${files !== 1 ? 's' : ''}`,
-            });
-          }
+          // NOTE: orphan purge no longer runs automatically here. It deletes
+          // chapter_N.json files whose index is >= a novel's recorded chapter
+          // count, and that count can legitimately drift from what's on disk
+          // (migrations, restores, interrupted downloads) without the extra
+          // files actually being orphaned — auto-running this on every launch
+          // was silently deleting real chapter content. It's now exposed as
+          // `purgeOrphanedData` for manual use from Settings only.
 
           try {
             const novelDirs = await FileSystem.readDirectoryAsync(getChaptersPath());
