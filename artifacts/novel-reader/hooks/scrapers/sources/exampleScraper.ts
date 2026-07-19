@@ -5,7 +5,13 @@
 
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, makeAbsoluteUrl, extractByDepth } from '../shared/html';
+import {
+  stripTags,
+  decodeEntities,
+  safeMatch,
+  makeAbsoluteUrl,
+  extractByDepth,
+} from '../shared/html';
 
 const BASE_HOST = 'example.com'; // <-- change per source
 
@@ -25,8 +31,12 @@ export const exampleScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // --- Replace these with real selectors for the target site ---
-    const title = decodeEntities(safeMatch(html, /<h1[^>]*class="title"[^>]*>([^<]+)<\/h1>/i) ?? 'Unknown Title');
-    const author = decodeEntities(safeMatch(html, /<span[^>]*class="author"[^>]*>([^<]+)<\/span>/i) ?? 'Unknown Author');
+    const title = decodeEntities(
+      safeMatch(html, /<h1[^>]*class="title"[^>]*>([^<]+)<\/h1>/i) ?? 'Unknown Title',
+    );
+    const author = decodeEntities(
+      safeMatch(html, /<span[^>]*class="author"[^>]*>([^<]+)<\/span>/i) ?? 'Unknown Author',
+    );
     const rawSynopsis = extractByDepth(html, 'class="synopsis"') ?? '';
     const synopsis = decodeEntities(stripTags(rawSynopsis));
     const coverPath = safeMatch(html, /<img[^>]*class="cover"[^>]*src="([^"]+)"/i);
@@ -48,7 +58,9 @@ export const exampleScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // --- Replace these with real selectors for the target site ---
-    const title = decodeEntities(safeMatch(html, /<h2[^>]*class="chapter-title"[^>]*>([^<]+)<\/h2>/i) ?? '');
+    const title = decodeEntities(
+      safeMatch(html, /<h2[^>]*class="chapter-title"[^>]*>([^<]+)<\/h2>/i) ?? '',
+    );
     const rawContent = extractByDepth(html, 'class="chapter-content"') ?? '';
     const content = decodeEntities(stripTags(rawContent));
     const nextPath = safeMatch(html, /<a[^>]*class="next-chapter"[^>]*href="([^"]+)"/i);
