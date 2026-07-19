@@ -236,7 +236,12 @@ export default function ReaderScreen() {
   const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
+  // NOTE: written to below (setNextChapterContent/setNextChapterPreloaded) as part of
+  // a next-chapter preload, but never read anywhere — looks like an unfinished
+  // "instant transition" feature rather than something safe to delete outright.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nextChapterPreloaded, setNextChapterPreloaded] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nextChapterContent, setNextChapterContent] = useState<string>("");
 
   const [ttsActive, setTtsActive] = useState(false);
@@ -584,7 +589,7 @@ export default function ReaderScreen() {
             }
           }
         }
-      } catch (error) {
+      } catch {
         if (!signal.aborted && currentLoadId === loadIdRef.current) {
           setChapterContent("Error loading chapter content. Please try again.");
           setProcessedParagraphs([]);
@@ -602,6 +607,11 @@ export default function ReaderScreen() {
     return () => {
       abortController.abort();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed off
+  // chapterIndex/novel?.id (stable primitives), not the chapter/novel object refs,
+  // which can change identity on unrelated re-renders. Depending on the objects
+  // would re-trigger this load (spinner + fetch) whenever that happens, not just
+  // on actual chapter navigation.
   }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
 
   // ─── Search ────────────────────────────────────────────────────────────
@@ -717,7 +727,7 @@ export default function ReaderScreen() {
 
   useEffect(() => {
     stopTTS();
-  }, [chapterIndex]);
+  }, [chapterIndex, stopTTS]);
 
   const speakSentence = useCallback(
     (sentences: string[], index: number) => {
