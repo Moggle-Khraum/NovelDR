@@ -68,9 +68,7 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
   const AsyncStorage = await getAsyncStorage();
   const currentVersion = Constants.expoConfig?.version ?? '0.0.0';
   const currentBuildNumber =
-    Constants.expoConfig?.android?.versionCode ??
-    Number(Constants.nativeBuildVersion) ??
-    0;
+    Constants.expoConfig?.android?.versionCode ?? Number(Constants.nativeBuildVersion) ?? 0;
 
   if (!force && AsyncStorage) {
     const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY);
@@ -128,7 +126,7 @@ const UPDATES_DIR = `${FileSystem.documentDirectory}updates/`;
  */
 export async function downloadApk(
   info: UpdateInfo,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
 ): Promise<string> {
   const dirInfo = await FileSystem.getInfoAsync(UPDATES_DIR);
   if (!dirInfo.exists) {
@@ -152,7 +150,7 @@ export async function downloadApk(
       if (totalBytesExpectedToWrite > 0) {
         onProgress(Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100));
       }
-    }
+    },
   );
 
   const result = await downloadResumable.downloadAsync();

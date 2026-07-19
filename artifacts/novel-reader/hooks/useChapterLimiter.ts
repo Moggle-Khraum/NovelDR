@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState } from 'react';
 
 // ─── Chapter Limiter thresholds ──────────────────────────────────────────
 // Below CAUTION: totally normal, no visual change.
@@ -16,10 +16,10 @@ export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => 
   const lastValueRef = useRef<number | null>(null);
 
   const onMaxChStrChange = (text: string) => {
-    const digitsOnly = text.replace(/[^0-9]/g, "");
+    const digitsOnly = text.replace(/[^0-9]/g, '');
 
-    if (digitsOnly === "") {
-      setMaxChStr("");
+    if (digitsOnly === '') {
+      setMaxChStr('');
       lastValueRef.current = null;
       return;
     }
@@ -28,7 +28,8 @@ export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => 
     if (num > CHAPTER_LIMIT_MAX) num = CHAPTER_LIMIT_MAX;
     setMaxChStr(String(num));
 
-    const wasBelowDanger = lastValueRef.current === null || lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
+    const wasBelowDanger =
+      lastValueRef.current === null || lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
     if (num >= CHAPTER_LIMIT_DANGER_THRESHOLD && wasBelowDanger) {
       setDangerModalVisible(true);
     }
