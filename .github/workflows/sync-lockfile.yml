@@ -1,0 +1,49 @@
+name: Sync pnpm lockfile
+
+# Manually triggered from the Actions tab whenever package.json changes are
+# made via the GitHub web UI (no local CLI to run `pnpm install` and commit
+# the resulting lockfile diff). Regenerates pnpm-lock.yaml and commits it
+# straight back to the branch that triggered the run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to sync the lockfile on'
+        required: true
+        default: 'Prod-Dev'
+
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Regenerate lockfile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Commit lockfile if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- pnpm-lock.yaml; then
+            git add pnpm-lock.yaml
+            git commit -m "chore: sync pnpm-lock.yaml"
+            git push origin HEAD:${{ github.event.inputs.branch }}
+            echo "Lockfile updated and pushed."
+          else
+            echo "Lockfile already up to date — nothing to commit."
+          fi
