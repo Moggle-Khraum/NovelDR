@@ -6,7 +6,7 @@ export default () => {
     expo: {
       name: "Novel DR",
       slug: "novel-reader",
-      version: "3.10.5",
+      version: "3.10.25",
       owner: "moggstones-stash", // 🔧 Add this line
       orientation: "portrait",
       icon: "./assets/images/icon.png",
