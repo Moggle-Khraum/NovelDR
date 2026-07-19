@@ -18,7 +18,6 @@
     "react-native-webview": "^14.0.1",
     "react-native-zip-archive": "^8.0.1"
   },
-
   "scripts": {
     "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
     "build": "node scripts/build.js",
@@ -29,7 +28,6 @@
     "format:check": "prettier --check .",
     "test:scrapers": "tsx scripts/test-scrapers.ts"
   },
-
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@expo-google-fonts/inter": "^0.4.0",
