@@ -30,9 +30,9 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 <div align="center">
 
-**Total Download Counts: 960+**
+**Total Download Counts: 1.2K+**
 
-[![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads)](https://github.com/Moggle-Khraum/NovelDR-site/releases) [![MediaFire Downloads](https://img.shields.io/badge/Downloads-382-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
+[![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads)](https://github.com/Moggle-Khraum/NovelDR-site/releases) [![MediaFire Downloads](https://img.shields.io/badge/Downloads-430-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
 
 **Download webnovels. Read anywhere. No ads, no login, just pure offline reading.**
 
@@ -60,14 +60,14 @@ NovelDR is a free, open-source Android application that lets you download webnov
 <a id="supported-sources"></a>
 ## 🌐 Supported Sources
 
-| Source Domain| Status | Source Domain | Status |
-|--------|--------|-------|--------|
-| [ReadNovelFull](https://readnovelfull.com/) | ✅ Full support     | [NovelFull.com](https://novelfull.com/) | ✅ Full support |
-| [NovelFull.net](https://novelfull.net/) | ✅ Full support      | [AllNovel](https://allnovel.org/) | ✅ Full support |
-| [FreeWebNovel](https://freewebnovel.com/) | ✅ Full support   | [NovGo](https://novgo.net/) | ✅ Full support |
-| [LightNovelWorld](https://lightnovelworld.org/) | ✅ Full support     | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Full support |
-| [RoyalRoad](https://www.royalroad.com/) | ✅ Full support     | [AsiaNovel](https://www.asianovel.net/)  | ✅ Full support  |
-| [NovelPhoenix](https://novelphoenix.com/) | ✅ Full Support |   |  | ✅ Full Support |
+| Source Domain| Status | Source Domain | Status | Source Domain| Status |
+|--------|--------|-------|--------|-------|--------|
+| [ReadNovelFull](https://readnovelfull.com/) | ✅ Site Active     | [NovelFull.com](https://novelfull.com/) | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/)  | ✅ Site Active |
+| [NovelFull.net](https://novelfull.net/) | ✅ Site Active      | [AllNovel](https://allnovel.org/) | ✅ Site Active |
+| [FreeWebNovel](https://freewebnovel.com/) | ✅ Site Active    | [NovGo](https://novgo.net/) | ✅ Site Active  |
+| [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active   | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active  |
+| [RoyalRoad](https://www.royalroad.com/) | ✅ Site Active      | [AsiaNovel](https://www.asianovel.net/)  | ✅ Site Active   |
+| [NovelPhoenix](https://novelphoenix.com/) | ✅ Site Active  | [Novel-bin](https://novel-bin.com/)  | ✅ Site Active  |
 |  |  |   |       |  |   |
 |  |  |   |    |    |   |
 
