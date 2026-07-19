@@ -32,8 +32,8 @@ export function ChapterLimitModal({ visible, chapterCount, onLower, onProceed }:
           </Text>
 
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Batches this large push the app well past what it's built to safely handle in a single run.
-            Here's what you're risking the longer it goes:
+            Batches this large push the app well past what it&apos;s built to safely handle in a single run.
+            Here&apos;s what you&apos;re risking the longer it goes:
           </Text>
 
           <View style={styles.riskList}>
@@ -52,7 +52,7 @@ export function ChapterLimitModal({ visible, chapterCount, onLower, onProceed }:
           </View>
 
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            {CHAPTER_LIMIT_MAX} chapters is the hard ceiling. Only push this close to it if you're confident
+            {CHAPTER_LIMIT_MAX} chapters is the hard ceiling. Only push this close to it if you&apos;re confident
             about your device and connection.
           </Text>
 
