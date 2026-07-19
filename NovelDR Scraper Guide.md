@@ -53,7 +53,19 @@ Once you have both `.txt` files, you give them to Claude Code in two rounds:
 **Round 2 — the chapter page:**
 > Here's the pasted HTML from a chapter page. Build a regex-based extractor for the chapter content.
 
-Claude writes the matching code for each piece, following the same format as existing sources — see `novelphoenix.ts` for a working example: it defines a `canHandle` check for the site's domain, a `fetchNovelMeta` function for the info page, and a `fetchChapter` function for the story text, all using the shared helpers (`stripTags`, `decodeEntities`, `safeMatch`, `extractByDepth`, `makeAbsoluteUrl`).
+Claude writes the matching code for each piece, following the same format as existing sources — see `novelphoenix.ts` or `novelbin.ts` for working examples: each defines a `canHandle` check for the site's domain, a `fetchNovelMeta` function for the info page, and a `fetchChapter` function for the story text, all using the shared helpers (`stripTags`, `decodeEntities`, `safeMatch`, `extractByDepth`, `makeAbsoluteUrl`).
+
+---
+
+## ⚠️ Common Gotchas (learned the hard way)
+
+These have each bitten a real scraper at least once — worth double-checking before calling a scraper "done":
+
+- **Not every site uses `<p>` tags for paragraphs.** Some (like novel-bin.com's synopsis) use plain text separated by bare `<br>` tags instead. Splitting on `<p>...</p>` in that case returns nothing — split on `<br>` instead and strip/decode each fragment.
+- **`safeMatch` only returns capture group 1.** If you write a regex with no `(...)` group — e.g. one meant to just grab a whole tag like `<a ... id="next_chap">` — `safeMatch` will always return `null`. Use a plain `html.match(re)?.[0]` when you want the *whole* match, not a piece of it.
+- **`extractByDepth` matches the *first* occurrence of the marker string.** If that marker (e.g. `itemprop="description"`) also appears earlier in the page — like in an unrelated `<meta>` tag in `<head>` — depth-counting will start from the wrong spot and swallow a huge, wrong chunk of the page. Grep the saved HTML for the marker first and make sure it's unique, or pick a more specific one (e.g. the element's actual `class=` value).
+- **"Next chapter" links can be disabled instead of missing.** On the last chapter, sites often keep the `<a>` tag but add a `disabled=""` attribute rather than removing the `href`. Check for that attribute explicitly — don't assume "no next chapter" just because a link is present.
+- **Verify against the real files before shipping.** Run the extractors against the two saved `.txt` files (a quick Node script with the same regex logic works fine) and actually print the title/author/synopsis/content/next-URL. Catching a bad marker or missing capture group this way is much faster than finding it after the scraper is live.
 
 ---
 
