@@ -8,7 +8,10 @@ import { decodeHTML } from 'entities';
 /** Strip HTML tags and collapse whitespace */
 export const stripTags = (html: string): string => {
   if (!html) return '';
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 /** Decode HTML entities safely, e.g. &amp; -> & */
