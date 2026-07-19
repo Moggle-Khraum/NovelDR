@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   checkForUpdate,
   skipVersion as skipVersionHelper,
   UpdateInfo,
-} from "@/hooks/useUpdateChecker";
+} from '@/hooks/useUpdateChecker';
 
 type UpdateContextType = {
   updateInfo: UpdateInfo | null;
@@ -48,7 +48,9 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   }, [updateInfo]);
 
   return (
-    <UpdateContext.Provider value={{ updateInfo, checkingUpdate, checkNow, clearUpdate, skipVersion }}>
+    <UpdateContext.Provider
+      value={{ updateInfo, checkingUpdate, checkNow, clearUpdate, skipVersion }}
+    >
       {children}
     </UpdateContext.Provider>
   );

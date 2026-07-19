@@ -1,12 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { Theme, ThemeColors } from "@/constants/colors";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Theme, ThemeColors } from '@/constants/colors';
 
 type ThemeContextType = {
   theme: Theme;
@@ -15,18 +9,24 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "dark",
+  theme: 'dark',
   colors: ThemeColors.dark,
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
-    AsyncStorage.getItem("app_theme").then((saved) => {
-      if (saved === "dark" || saved === "light" || saved === "sepia" || 
-          saved === "amoled" || saved === "warm" || saved === "slate") {
+    AsyncStorage.getItem('app_theme').then((saved) => {
+      if (
+        saved === 'dark' ||
+        saved === 'light' ||
+        saved === 'sepia' ||
+        saved === 'amoled' ||
+        saved === 'warm' ||
+        saved === 'slate'
+      ) {
         setThemeState(saved as Theme);
       }
     });
@@ -34,13 +34,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    AsyncStorage.setItem("app_theme", t);
+    AsyncStorage.setItem('app_theme', t);
   }, []);
 
   return (
-    <ThemeContext.Provider
-      value={{ theme, colors: ThemeColors[theme], setTheme }}
-    >
+    <ThemeContext.Provider value={{ theme, colors: ThemeColors[theme], setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
