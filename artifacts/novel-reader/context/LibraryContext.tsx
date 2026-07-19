@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from "react";
+} from 'react';
 
 export type Chapter = {
   title: string;
@@ -17,7 +17,7 @@ export type Chapter = {
   chapterNumber?: number;
 };
 
-export type NovelStatus = "unread" | "reading" | "completed";
+export type NovelStatus = 'unread' | 'reading' | 'completed';
 
 export type Novel = {
   id: string;
@@ -36,7 +36,7 @@ export type Novel = {
   };
 };
 
-export type SortOrder = "ascending" | "descending";
+export type SortOrder = 'ascending' | 'descending';
 
 // =============================================================================
 // FILE SYSTEM PATHS
@@ -60,7 +60,8 @@ const getLibraryFilePath = () => `${getAppStoragePath()}${LIBRARY_FILE_NAME}`;
 const getSortPreferenceFilePath = () => `${getAppStoragePath()}${SORT_PREFERENCE_FILE_NAME}`;
 const getChaptersPath = () => `${getAppStoragePath()}${CHAPTERS_FOLDER_NAME}/`;
 const getNovelChaptersPath = (novelId: string) => `${getChaptersPath()}${novelId}/`;
-const getChapterFilePath = (novelId: string, chapterIndex: number) => `${getNovelChaptersPath(novelId)}chapter_${chapterIndex}.json`;
+const getChapterFilePath = (novelId: string, chapterIndex: number) =>
+  `${getNovelChaptersPath(novelId)}chapter_${chapterIndex}.json`;
 const getInitFlagPath = () => `${getAppStoragePath()}${INIT_FLAG_FILE_NAME}`;
 
 // =============================================================================
@@ -131,15 +132,22 @@ const deleteFile = async (filePath: string) => {
   }
 };
 
-const saveChapterToFile = async (novelId: string, chapterIndex: number, chapterData: { title: string; url: string; content: string; chapterNumber?: number }) => {
+const saveChapterToFile = async (
+  novelId: string,
+  chapterIndex: number,
+  chapterData: { title: string; url: string; content: string; chapterNumber?: number },
+) => {
   await ensureDirectoryExists(getNovelChaptersPath(novelId));
   await FileSystem.writeAsStringAsync(
     getChapterFilePath(novelId, chapterIndex),
-    JSON.stringify(chapterData)
+    JSON.stringify(chapterData),
   );
 };
 
-const loadChapterFromFile = async (novelId: string, chapterIndex: number): Promise<Chapter | null> => {
+const loadChapterFromFile = async (
+  novelId: string,
+  chapterIndex: number,
+): Promise<Chapter | null> => {
   try {
     const content = await loadFromFile(getChapterFilePath(novelId, chapterIndex));
     return content ? JSON.parse(content) : null;
@@ -222,13 +230,23 @@ const migrateFromLegacyStorage = async (onStep: (step: InitStep) => void): Promi
     try {
       AsyncStorage = require('@react-native-async-storage/async-storage').default;
     } catch {
-      onStep({ id: stepId, message: 'Legacy storage not available', status: 'done', detail: 'Skipped' });
+      onStep({
+        id: stepId,
+        message: 'Legacy storage not available',
+        status: 'done',
+        detail: 'Skipped',
+      });
       return false;
     }
 
     const libraryFileInfo = await FileSystem.getInfoAsync(getLibraryFilePath());
     if (libraryFileInfo.exists) {
-      onStep({ id: stepId, message: 'Already migrated', status: 'done', detail: 'Library data present' });
+      onStep({
+        id: stepId,
+        message: 'Already migrated',
+        status: 'done',
+        detail: 'Library data present',
+      });
       return false;
     }
 
@@ -316,7 +334,10 @@ const recoverDataIfNeeded = async (onStep: (step: InitStep) => void): Promise<bo
 // but nothing in the library index points to them. They're otherwise
 // invisible (not shown in the reader, not counted anywhere) but sit there
 // as dead weight and can confuse anything that scans the directory directly.
-const purgeOrphanedChapterFiles = async (novelId: string, validChapterCount: number): Promise<number> => {
+const purgeOrphanedChapterFiles = async (
+  novelId: string,
+  validChapterCount: number,
+): Promise<number> => {
   try {
     const dir = getNovelChaptersPath(novelId);
     const dirInfo = await FileSystem.getInfoAsync(dir);
@@ -372,8 +393,10 @@ const purgeOrphanedNovelDirectories = async (validNovelIds: Set<string>): Promis
 // Runs both orphan-cleanup passes against a freshly-loaded library: whole
 // directories for novels no longer in the index, and stray chapter_N.json
 // files within each remaining novel's directory.
-const purgeOrphanedDataOnStartup = async (loadedNovels: Novel[]): Promise<{ dirs: number; files: number }> => {
-  const validIds = new Set(loadedNovels.map(n => n.id));
+const purgeOrphanedDataOnStartup = async (
+  loadedNovels: Novel[],
+): Promise<{ dirs: number; files: number }> => {
+  const validIds = new Set(loadedNovels.map((n) => n.id));
   const purgedDirs = await purgeOrphanedNovelDirectories(validIds);
 
   let purgedFiles = 0;
@@ -408,12 +431,24 @@ type LibraryContextType = {
   removeNovel: (id: string) => Promise<void>;
   removeNovels: (ids: string[]) => Promise<void>;
   getNovel: (id: string) => Novel | undefined;
-  saveReadingProgress: (novelId: string, chapterIndex: number, chapterTitle: string, scrollOffset: number) => Promise<void>;
+  saveReadingProgress: (
+    novelId: string,
+    chapterIndex: number,
+    chapterTitle: string,
+    scrollOffset: number,
+  ) => Promise<void>;
   setNovelStatus: (novelId: string, status: NovelStatus) => Promise<void>;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
-  saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
+  saveChapterContent: (
+    novelId: string,
+    chapterIndex: number,
+    title: string,
+    url: string,
+    content: string,
+    chapterNumber?: number,
+  ) => Promise<void>;
   saveAllChaptersToFile: (novelId: string, chapters: Chapter[], offset?: number) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
   refreshLibrary: () => Promise<void>;
@@ -421,14 +456,14 @@ type LibraryContextType = {
   deleteChapters: (
     novelId: string,
     chapterUrls: string[],
-    onProgress?: (done: number, total: number) => void
+    onProgress?: (done: number, total: number) => void,
   ) => Promise<void>;
   library: Novel[];
 };
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
-const loadNovelsFromDisk = async (): Promise<{ novels: Novel[], sortOrder: SortOrder }> => {
+const loadNovelsFromDisk = async (): Promise<{ novels: Novel[]; sortOrder: SortOrder }> => {
   const libraryContent = await loadFromFile(getLibraryFilePath());
   const novels: Novel[] = libraryContent ? JSON.parse(libraryContent) : [];
 
@@ -454,8 +489,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [initComplete, setInitComplete] = useState(false);
 
   const addInitStep = (step: InitStep) => {
-    setInitSteps(prev => {
-      const idx = prev.findIndex(s => s.id === step.id);
+    setInitSteps((prev) => {
+      const idx = prev.findIndex((s) => s.id === step.id);
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = step;
@@ -535,14 +570,18 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
         addInitStep({
           id: 'complete',
-          message: (migrated || recovered) ? '✅ Data restored' : '✅ Ready!',
+          message: migrated || recovered ? '✅ Data restored' : '✅ Ready!',
           status: 'done',
         });
         setInitComplete(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
-
+        await new Promise((resolve) => setTimeout(resolve, 800));
       } catch (error: any) {
-        addInitStep({ id: 'error', message: 'Initialization failed', status: 'error', detail: error.message });
+        addInitStep({
+          id: 'error',
+          message: 'Initialization failed',
+          status: 'error',
+          detail: error.message,
+        });
       } finally {
         setLoading(false);
       }
@@ -554,9 +593,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   // ── Library data management ──────────────────────────────────────────────
 
   const saveLibraryToFile = async (novelsData: Novel[]) => {
-    const metadataOnly = novelsData.map(novel => ({
+    const metadataOnly = novelsData.map((novel) => ({
       ...novel,
-      chapters: novel.chapters.map(ch => ({
+      chapters: novel.chapters.map((ch) => ({
         title: ch.title,
         url: ch.url,
         chapterNumber: ch.chapterNumber,
@@ -567,15 +606,15 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   const addNovel = useCallback(async (novel: Novel) => {
     const current = novelsRef.current;
-    const existing = current.find(n => n.id === novel.id);
+    const existing = current.find((n) => n.id === novel.id);
     let updatedNovels: Novel[];
     let newChaptersToSave: Chapter[];
     let saveOffset = 0;
     if (existing) {
-      const existingUrls = new Set(existing.chapters.map(ch => ch.url));
-      const newChapters = novel.chapters.filter(ch => !existingUrls.has(ch.url));
+      const existingUrls = new Set(existing.chapters.map((ch) => ch.url));
+      const newChapters = novel.chapters.filter((ch) => !existingUrls.has(ch.url));
       const merged = { ...existing, ...novel, chapters: [...existing.chapters, ...newChapters] };
-      updatedNovels = current.map(n => n.id === novel.id ? merged : n);
+      updatedNovels = current.map((n) => (n.id === novel.id ? merged : n));
       newChaptersToSave = newChapters;
       // Existing novel already has files 0..existing.chapters.length-1 on disk —
       // the new batch must be written starting after those, not from 0 again.
@@ -592,14 +631,14 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateNovel = useCallback(async (id: string, updates: Partial<Novel>) => {
-    const updatedNovels = novelsRef.current.map(n => n.id === id ? { ...n, ...updates } : n);
+    const updatedNovels = novelsRef.current.map((n) => (n.id === id ? { ...n, ...updates } : n));
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
   }, []);
 
   const removeNovel = useCallback(async (id: string) => {
-    const updatedNovels = novelsRef.current.filter(n => n.id !== id);
+    const updatedNovels = novelsRef.current.filter((n) => n.id !== id);
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
@@ -607,34 +646,35 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeNovels = useCallback(async (ids: string[]) => {
-    const updatedNovels = novelsRef.current.filter(n => !ids.includes(n.id));
+    const updatedNovels = novelsRef.current.filter((n) => !ids.includes(n.id));
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
     await saveLibraryToFile(updatedNovels);
-    ids.forEach(id => deleteNovelChapters(id));
+    ids.forEach((id) => deleteNovelChapters(id));
   }, []);
 
-  const getNovel = useCallback((id: string) => novels.find(n => n.id === id), [novels]);
+  const getNovel = useCallback((id: string) => novels.find((n) => n.id === id), [novels]);
 
-  const saveReadingProgress = useCallback(async (
-    novelId: string,
-    chapterIndex: number,
-    chapterTitle: string,
-    scrollOffset: number
-  ) => {
-    await updateNovel(novelId, {
-      lastRead: { chapterIndex, chapterTitle, scrollOffset },
-      status: "reading",
-    });
-  }, [updateNovel]);
+  const saveReadingProgress = useCallback(
+    async (novelId: string, chapterIndex: number, chapterTitle: string, scrollOffset: number) => {
+      await updateNovel(novelId, {
+        lastRead: { chapterIndex, chapterTitle, scrollOffset },
+        status: 'reading',
+      });
+    },
+    [updateNovel],
+  );
 
-  const setNovelStatus = useCallback(async (novelId: string, status: NovelStatus) => {
-    await updateNovel(novelId, { status });
-  }, [updateNovel]);
+  const setNovelStatus = useCallback(
+    async (novelId: string, status: NovelStatus) => {
+      await updateNovel(novelId, { status });
+    },
+    [updateNovel],
+  );
 
   const toggleSortOrder = useCallback(() => {
-    setSortOrder(prev => {
-      const next = prev === "ascending" ? "descending" : "ascending";
+    setSortOrder((prev) => {
+      const next = prev === 'ascending' ? 'descending' : 'ascending';
       saveToFile(getSortPreferenceFilePath(), next);
       return next;
     });
@@ -651,38 +691,41 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         if (nb) return 1;
         return (a.title || '').localeCompare(b.title || '');
       });
-      return sortOrder === "descending" ? sorted.reverse() : sorted;
+      return sortOrder === 'descending' ? sorted.reverse() : sorted;
     },
-    [sortOrder]
+    [sortOrder],
   );
 
-  const saveChapterContent = useCallback(async (
-    novelId: string,
-    chapterIndex: number,
-    title: string,
-    url: string,
-    content: string,
-    chapterNumber?: number
-  ) => {
-    await saveChapterToFile(novelId, chapterIndex, { title, url, content, chapterNumber });
-    const current = novelsRef.current;
-    const idx = current.findIndex(n => n.id === novelId);
-    if (idx === -1) return;
-    const novel = { ...current[idx] };
-    const newChapter = { title, url, chapterNumber };
-    if (chapterIndex >= novel.chapters.length) {
-      novel.chapters = [...novel.chapters, newChapter];
-    } else {
-      const chapters = [...novel.chapters];
-      chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
-      novel.chapters = chapters;
-    }
-    const updatedNovels = [...current];
-    updatedNovels[idx] = novel;
-    novelsRef.current = updatedNovels;
-    setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
-  }, []);
+  const saveChapterContent = useCallback(
+    async (
+      novelId: string,
+      chapterIndex: number,
+      title: string,
+      url: string,
+      content: string,
+      chapterNumber?: number,
+    ) => {
+      await saveChapterToFile(novelId, chapterIndex, { title, url, content, chapterNumber });
+      const current = novelsRef.current;
+      const idx = current.findIndex((n) => n.id === novelId);
+      if (idx === -1) return;
+      const novel = { ...current[idx] };
+      const newChapter = { title, url, chapterNumber };
+      if (chapterIndex >= novel.chapters.length) {
+        novel.chapters = [...novel.chapters, newChapter];
+      } else {
+        const chapters = [...novel.chapters];
+        chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
+        novel.chapters = chapters;
+      }
+      const updatedNovels = [...current];
+      updatedNovels[idx] = novel;
+      novelsRef.current = updatedNovels;
+      setNovels(updatedNovels);
+      await saveLibraryToFile(updatedNovels);
+    },
+    [],
+  );
 
   const loadChapterContent = useCallback(async (novelId: string, chapterIndex: number) => {
     return await loadChapterFromFile(novelId, chapterIndex);
@@ -701,63 +744,64 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   // index 0 to close the gap left by the deleted ones. `onProgress` fires
   // once per surviving chapter re-save so callers (e.g. a "Please Wait"
   // modal) can show done/total instead of hanging with no feedback.
-  const deleteChapters = useCallback(async (
-    novelId: string,
-    chapterUrls: string[],
-    onProgress?: (done: number, total: number) => void
-  ) => {
-    const novel = novelsRef.current.find(n => n.id === novelId);
-    if (!novel) return;
+  const deleteChapters = useCallback(
+    async (
+      novelId: string,
+      chapterUrls: string[],
+      onProgress?: (done: number, total: number) => void,
+    ) => {
+      const novel = novelsRef.current.find((n) => n.id === novelId);
+      if (!novel) return;
 
-    const urlsToDelete = new Set(chapterUrls);
-    const oldChapters = novel.chapters;
+      const urlsToDelete = new Set(chapterUrls);
+      const oldChapters = novel.chapters;
 
-    const survivingContent: (Chapter | null)[] = [];
-    for (let i = 0; i < oldChapters.length; i++) {
-      if (urlsToDelete.has(oldChapters[i].url)) continue;
-      survivingContent.push(await loadChapterFromFile(novelId, i));
-    }
-
-    const newChapters = oldChapters.filter(ch => !urlsToDelete.has(ch.url));
-    const total = survivingContent.length;
-
-    await deleteNovelChapters(novelId);
-    onProgress?.(0, total);
-    for (let i = 0; i < survivingContent.length; i++) {
-      const data = survivingContent[i];
-      if (data?.content) {
-        await saveChapterToFile(novelId, i, {
-          title: data.title,
-          url: data.url,
-          content: data.content,
-          chapterNumber: data.chapterNumber,
-        });
+      const survivingContent: (Chapter | null)[] = [];
+      for (let i = 0; i < oldChapters.length; i++) {
+        if (urlsToDelete.has(oldChapters[i].url)) continue;
+        survivingContent.push(await loadChapterFromFile(novelId, i));
       }
-      onProgress?.(i + 1, total);
-    }
 
-    // Re-point lastRead at the surviving chapter's new index, or clear it
-    // entirely if the chapter the user was on got deleted.
-    let newLastRead = novel.lastRead;
-    if (novel.lastRead) {
-      const oldChapter = oldChapters[novel.lastRead.chapterIndex];
-      if (!oldChapter || urlsToDelete.has(oldChapter.url)) {
-        newLastRead = undefined;
-      } else {
-        const newIndex = newChapters.findIndex(ch => ch.url === oldChapter.url);
-        newLastRead = newIndex >= 0
-          ? { ...novel.lastRead, chapterIndex: newIndex }
-          : undefined;
+      const newChapters = oldChapters.filter((ch) => !urlsToDelete.has(ch.url));
+      const total = survivingContent.length;
+
+      await deleteNovelChapters(novelId);
+      onProgress?.(0, total);
+      for (let i = 0; i < survivingContent.length; i++) {
+        const data = survivingContent[i];
+        if (data?.content) {
+          await saveChapterToFile(novelId, i, {
+            title: data.title,
+            url: data.url,
+            content: data.content,
+            chapterNumber: data.chapterNumber,
+          });
+        }
+        onProgress?.(i + 1, total);
       }
-    }
 
-    const updatedNovels = novelsRef.current.map(n =>
-      n.id === novelId ? { ...n, chapters: newChapters, lastRead: newLastRead } : n
-    );
-    novelsRef.current = updatedNovels;
-    setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
-  }, []);
+      // Re-point lastRead at the surviving chapter's new index, or clear it
+      // entirely if the chapter the user was on got deleted.
+      let newLastRead = novel.lastRead;
+      if (novel.lastRead) {
+        const oldChapter = oldChapters[novel.lastRead.chapterIndex];
+        if (!oldChapter || urlsToDelete.has(oldChapter.url)) {
+          newLastRead = undefined;
+        } else {
+          const newIndex = newChapters.findIndex((ch) => ch.url === oldChapter.url);
+          newLastRead = newIndex >= 0 ? { ...novel.lastRead, chapterIndex: newIndex } : undefined;
+        }
+      }
+
+      const updatedNovels = novelsRef.current.map((n) =>
+        n.id === novelId ? { ...n, chapters: newChapters, lastRead: newLastRead } : n,
+      );
+      novelsRef.current = updatedNovels;
+      setNovels(updatedNovels);
+      await saveLibraryToFile(updatedNovels);
+    },
+    [],
+  );
 
   // ── Refresh library from disk ────────────────────────────────────────────
 
@@ -815,14 +859,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       refreshLibrary,
       purgeOrphanedDataCb,
       deleteChapters,
-    ]
+    ],
   );
 
-  return (
-    <LibraryContext.Provider value={contextValue}>
-      {children}
-    </LibraryContext.Provider>
-  );
+  return <LibraryContext.Provider value={contextValue}>{children}</LibraryContext.Provider>;
 }
 
 export function useLibrary() {
