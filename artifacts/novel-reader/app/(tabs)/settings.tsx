@@ -675,7 +675,7 @@ export default function SettingsScreen() {
 
     addBackupLog("🧹 Purging orphaned data...");
     try {
-      const validIds = new Set((backup.libraryData || []).map((n: any) => n.id));
+      const validIds = new Set<string>((backup.libraryData || []).map((n: any) => String(n.id)));
       const { dirs, files } = await purgeOrphanedData(backup.libraryData);
       const purgedCovers = await purgeOrphanedCovers(validIds);
       addBackupLog(`✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`);
