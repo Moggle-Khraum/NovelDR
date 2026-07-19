@@ -16,7 +16,20 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { WebView as RNWebView, WebViewMessageEvent, WebViewProps } from 'react-native-webview';
+
+// react-native-webview's published root index.d.ts declares
+// `class WebView<P = undefined> extends Component<WebViewProps & P>`. JSX can't
+// infer `P` from usage, so it defaults to `undefined`, and `WebViewProps & undefined`
+// collapses to `never` — rejecting every prop passed to <WebView />. This is a known
+// typing bug in the package itself (the correct functional-component declaration
+// lives at `lib/WebView.d.ts`, but plain Node module resolution picks up the root
+// `index.d.ts` instead). Casting to a plain component type sidesteps it without
+// touching runtime behavior — `RNWebView` is still the real thing underneath, and
+// still what `useRef<RNWebView>` below tracks for the instance/ref type.
+const WebView = RNWebView as unknown as React.ComponentType<
+  WebViewProps & React.RefAttributes<RNWebView>
+>;
 
 type PendingJob = {
   url: string;
@@ -117,7 +130,7 @@ export function WebViewFetchBridge() {
   const currentRef = useRef<PendingJob | null>(null);
   const settledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<RNWebView>(null);
 
   const finish = useCallback((job: PendingJob, result: { html: string } | { error: Error }) => {
     if (settledRef.current) return;
