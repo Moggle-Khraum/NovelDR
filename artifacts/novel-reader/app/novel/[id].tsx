@@ -367,6 +367,7 @@ export default function NovelDetailScreen() {
   const [confirmDeleteChaptersVisible, setConfirmDeleteChaptersVisible] = useState(false);
   const [chapterListRefreshKey, setChapterListRefreshKey] = useState(0);
   const [deletingChapters, setDeletingChapters] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState({ done: 0, total: 0 });
 
   const novel = getNovel(id);
 
@@ -485,10 +486,16 @@ export default function NovelDetailScreen() {
     setConfirmDeleteChaptersVisible(false);
 
     const showLoadingModal = selectedChapterUrls.length > BULK_DELETE_LOADING_THRESHOLD;
-    if (showLoadingModal) setDeletingChapters(true);
+    const survivorCount = novel.chapters.length - selectedChapterUrls.length;
+    if (showLoadingModal) {
+      setDeleteProgress({ done: 0, total: survivorCount });
+      setDeletingChapters(true);
+    }
 
     try {
-      await deleteChapters(novel.id, selectedChapterUrls);
+      await deleteChapters(novel.id, selectedChapterUrls, (done, total) => {
+        setDeleteProgress({ done, total });
+      });
       setChapterSelectionMode(false);
       setSelectedChapterUrls([]);
       // Force a full remount of the chapter FlatList — getNovel(id) already
@@ -821,7 +828,10 @@ export default function NovelDetailScreen() {
         <View style={styles.menuOverlay}>
           <View style={[styles.progressModal, { backgroundColor: colors.card }]}>
             <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.progressText, { color: colors.text }]}>Deleting chapters...</Text>
+            <Text style={[styles.progressText, { color: colors.text }]}>Please Wait</Text>
+            <Text style={[styles.progressSubText, { color: colors.textSecondary }]}>
+              {deleteProgress.total > 0 ? `${deleteProgress.done} / ${deleteProgress.total}` : ""}
+            </Text>
           </View>
         </View>
       </Modal>
