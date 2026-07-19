@@ -4,7 +4,6 @@ import React, { useRef, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -330,7 +329,7 @@ export default function AddNovelScreen() {
       try {
         const isUp = await checkSiteHealth(site.baseUrl);
         updatedStatuses[site.name] = isUp ? 'online' : 'offline';
-      } catch (error) {
+      } catch {
         updatedStatuses[site.name] = 'offline';
       }
 
@@ -371,6 +370,10 @@ export default function AddNovelScreen() {
   };
 
   // --- Setup automatic health checks ---
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-only:
+  // checkAllSites/runHealthChecks aren't memoized and checkAllSites reads
+  // isCheckingSites state, so including them would re-fire this effect (and
+  // reset the 12h interval) every time a check starts/stops.
   useEffect(() => {
     // Initial check: Wait 2 seconds, then load saved or check
     const initialTimeout = setTimeout(async () => {
@@ -708,7 +711,7 @@ export default function AddNovelScreen() {
             // OPTIMIZATION: cache the validated fetch so the download loop
             // doesn't request the exact same URL a second time.
             prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
-          } catch (err) {
+          } catch {
             addLog(`Direct skip guess was invalid, falling back to crawl...`, "warning");
           }
         }

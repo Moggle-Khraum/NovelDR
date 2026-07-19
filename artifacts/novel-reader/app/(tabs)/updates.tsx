@@ -904,7 +904,7 @@ export default function UpdatesScreen() {
               </Text>
             ) : filteredNovels.length === 0 ? (
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No novels matching "{novelSearchQuery}"
+                No novels matching &quot;{novelSearchQuery}&quot;
               </Text>
             ) : (
               <ScrollView

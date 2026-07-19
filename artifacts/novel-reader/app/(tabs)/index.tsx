@@ -791,7 +791,7 @@ export default function LibraryScreen() {
             <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
               This will permanently delete {selectedNovels.length} novel(s) and all related chapters.{"\n\n"}
               Are you sure about this? {"\n\n"}
-              If YES, click the 'DELETE' button.
+              If YES, click the &apos;DELETE&apos; button.
             </Text>
 
             <View style={styles.modalButtons}>

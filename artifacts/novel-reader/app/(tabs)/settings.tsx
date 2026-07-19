@@ -173,6 +173,9 @@ export default function SettingsScreen() {
 
   const getAsyncStorage = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- intentionally
+      // dynamic: wrapped in try/catch so a missing module fails gracefully to null,
+      // which a static top-level import would not allow.
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       return AsyncStorage;
     } catch { return null; }
@@ -207,6 +210,10 @@ export default function SettingsScreen() {
   // there's no silent "skip" anymore.
   const WARNING_RECHECK_DAYS = 21;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount +
+  // AppState-driven only: loadAppSettings is a plain (non-memoized) function also
+  // called from several other places, so adding it here would re-subscribe to
+  // AppState on every render since its identity changes each render.
   useEffect(() => {
     const checkWarningStatus = async () => {
       try {
@@ -366,7 +373,7 @@ export default function SettingsScreen() {
                     chapters[novelId][chapterIndex] = chapterData;
                     totalChaptersFound++;
                   }
-                } catch (err) {
+                } catch {
                   addBackupLog(`⚠️ Skipped corrupted: ${chapterFile}`);
                 }
               }
@@ -476,7 +483,7 @@ export default function SettingsScreen() {
               } else {
                 addBackupLog(`   ⚠️ Cover too small or empty: ${novel.title}`);
               }
-            } catch (e) {
+            } catch {
               addBackupLog(`   ⚠️ Could not fetch cover for: ${novel.title}`);
             }
           }
@@ -500,7 +507,7 @@ export default function SettingsScreen() {
           if (value !== null) asyncStorageData[key] = value;
         }
         addBackupLog("✅ Legacy preferences saved");
-      } catch (e) {
+      } catch {
         addBackupLog("⚠️ Could not read all legacy settings");
       }
     }
@@ -608,7 +615,7 @@ export default function SettingsScreen() {
           try {
             await FileSystem.writeAsStringAsync(chapterPath, JSON.stringify(novelChapters[chapterIndex]));
             totalChaptersRestored++;
-          } catch (err) {
+          } catch {
             addBackupLog(`⚠️ Failed chapter ${chapterIndex}`);
           }
         }
@@ -779,7 +786,7 @@ export default function SettingsScreen() {
       if (preview.metadata?.includesCovers) {
         coverInfo = `\n🖼️ Includes ${preview.covers?.length || 0} novel covers (${(preview.metadata.totalCoverSize / (1024 * 1024)).toFixed(2)} MB)`;
       }
-    } catch (e) {}
+    } catch {}
 
     Alert.alert(
       "Restore Backup",
@@ -906,16 +913,16 @@ export default function SettingsScreen() {
       try {
         await IntentLauncher.startActivityAsync('android.settings.MANAGE_UNUSED_APPS');
         await acknowledgeWarning();
-      } catch (error) {
+      } catch {
         try {
           const packageName = Application.applicationId;
           await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', { data: `package:${packageName}` });
           await acknowledgeWarning();
-        } catch (e) {
+        } catch {
           try {
             await IntentLauncher.startActivityAsync('android.settings.SETTINGS');
             await acknowledgeWarning();
-          } catch (finalError) {
+          } catch {
             Alert.alert(
               'Manual Steps Required',
               'Go to Settings > Apps > Novel DR\nTurn off "Pause app activity if unused" to keep your library from being removed.',
@@ -962,9 +969,9 @@ export default function SettingsScreen() {
             </View>
             <Text style={[styles.warningText, { color: colors.textSecondary }]}>
               Novel DR stores your entire library on this device only, with no cloud backup.{' '}
-              If Android's <Text style={{ fontWeight: '700' }}>'Remove unused apps'</Text> feature
+              If Android&apos;s <Text style={{ fontWeight: '700' }}>&apos;Remove unused apps&apos;</Text> feature
               uninstalls it after months of inactivity, your novels and chapters go with it.{' '}
-              Turn off <Text style={{ fontWeight: '700' }}>'Pause app activity if unused'</Text> for Novel DR to prevent this.
+              Turn off <Text style={{ fontWeight: '700' }}>&apos;Pause app activity if unused&apos;</Text> for Novel DR to prevent this.
             </Text>
             <Text style={[styles.warningTapHint, { color: '#ffb300' }]}>👆 Tap here to open settings</Text>
           </Pressable>
@@ -1236,7 +1243,7 @@ export default function SettingsScreen() {
               value={alias}
               onChangeText={setAlias}
             />
-            <Text style={[styles.bugLabel, { color: colors.textSecondary }]}>What's the problem?</Text>
+            <Text style={[styles.bugLabel, { color: colors.textSecondary }]}>What&apos;s the problem?</Text>
             <TextInput
               style={[styles.bugTextArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Please describe the issue in detail..."
