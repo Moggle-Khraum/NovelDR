@@ -1,9 +1,15 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   checkForUpdate,
   skipVersion as skipVersionHelper,
   UpdateInfo,
-} from '@/hooks/useUpdateChecker';
+} from "@/hooks/useUpdateChecker";
 
 type UpdateContextType = {
   updateInfo: UpdateInfo | null;

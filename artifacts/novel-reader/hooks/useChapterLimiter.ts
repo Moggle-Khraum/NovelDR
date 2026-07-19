@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 
 // ─── Chapter Limiter thresholds ──────────────────────────────────────────
 // Below CAUTION: totally normal, no visual change.
@@ -9,17 +9,20 @@ export const CHAPTER_LIMIT_MAX = 500;
 export const CHAPTER_LIMIT_DANGER_THRESHOLD = 450;
 export const CHAPTER_LIMIT_CAUTION_THRESHOLD = 400;
 
-export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => void) {
+export function useChapterLimiter(
+  maxChStr: string,
+  setMaxChStr: (v: string) => void,
+) {
   const [dangerModalVisible, setDangerModalVisible] = useState(false);
   // Tracks the last value we evaluated so the modal only pops once per
   // "crossing" into the danger zone, not on every keystroke while typing in it.
   const lastValueRef = useRef<number | null>(null);
 
   const onMaxChStrChange = (text: string) => {
-    const digitsOnly = text.replace(/[^0-9]/g, '');
+    const digitsOnly = text.replace(/[^0-9]/g, "");
 
-    if (digitsOnly === '') {
-      setMaxChStr('');
+    if (digitsOnly === "") {
+      setMaxChStr("");
       lastValueRef.current = null;
       return;
     }
@@ -29,7 +32,8 @@ export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => 
     setMaxChStr(String(num));
 
     const wasBelowDanger =
-      lastValueRef.current === null || lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
+      lastValueRef.current === null ||
+      lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
     if (num >= CHAPTER_LIMIT_DANGER_THRESHOLD && wasBelowDanger) {
       setDangerModalVisible(true);
     }

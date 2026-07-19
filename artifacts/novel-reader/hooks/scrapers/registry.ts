@@ -3,11 +3,11 @@
 // then add it to REGISTERED_SCRAPERS below (order matters — first
 // canHandle() match wins).
 
-import type { SourceScraper } from './types';
-import { novelPhoenixScraper } from './sources/novelphoenix';
-import { novelArrowScraper } from './sources/novelarrow';
-import { novelBinScraper } from './sources/novel-bin';
-import { novelBinCcScraper } from './sources/novelbincc';
+import type { SourceScraper } from "./types";
+import { novelPhoenixScraper } from "./sources/novelphoenix";
+import { novelArrowScraper } from "./sources/novelarrow";
+import { novelBinScraper } from "./sources/novel-bin";
+import { novelBinCcScraper } from "./sources/novelbincc";
 // import { exampleScraper } from './sources/exampleScraper'; // <-- keep commented until it's a real source
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [

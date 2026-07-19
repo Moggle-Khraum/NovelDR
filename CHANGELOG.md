@@ -10,6 +10,7 @@ they landed on.
 ## [Unreleased] — Prod-Dev
 
 ### Fixed
+
 - **Reader showing blank chapter text for previously-downloaded novels,
   across all sources.** `LibraryContext.tsx`'s orphan-file purge
   (`purgeOrphanedChapterFiles`) was running automatically on every app
@@ -29,6 +30,7 @@ they landed on.
   function had been removed from `LibraryContext.tsx` entirely — restored.
 
 ### Added
+
 - `scripts/test-scrapers.ts` — regression test for chapter-content
   extraction, run in CI via the `scraper-regression` job.
 - `typecheck`, `format`, `format:check`, `test:scrapers` npm scripts.
@@ -38,6 +40,7 @@ they landed on.
 ## Production-3
 
 ### Fixed
+
 - `novel-bin.com` / `novelbin.cc` synopsis extraction matching the wrong
   `<meta itemprop="description">` tag in `<head>` instead of the real
   `div.desc-text` content block — anchored to `class="desc-text"` instead.
@@ -46,6 +49,7 @@ they landed on.
   issue on the same two sources.
 
 ### Added
+
 - `sync-lockfile.yml` — regenerates `pnpm-lock.yaml` via
   `workflow_dispatch`, since there's no local CLI to run `pnpm install`.
 - `add.tsx` health-check system: `getSitesNeedingCheck()`,
@@ -54,11 +58,13 @@ they landed on.
 ## Production-1
 
 ### Fixed
+
 - `useUpdateChecker` compared semver `version` instead of
   `android.versionCode`, causing permanent false "update available"
   notifications.
 
 ### Added
+
 - Stale-skip ceilings (`MAX_STALE_SKIPS`), URL loop detection, and a
   zero-network skip system (`existingUrlIndex`) in the update pipeline.
 - Orphaned data purging at startup, pre-backup, and post-checkpoint.

@@ -1,7 +1,7 @@
-import { directFetchNovelMeta, directFetchChapter } from './useDirectScraper';
-import { findExternalScraper } from './scrapers/registry';
+import { directFetchNovelMeta, directFetchChapter } from "./useDirectScraper";
+import { findExternalScraper } from "./scrapers/registry";
 
-export type { NovelMeta, ChapterData } from './useDirectScraper';
+export type { NovelMeta, ChapterData } from "./useDirectScraper";
 
 // Check the external scraper registry first; if a registered source
 // claims the URL, use it. Otherwise fall through to the existing
@@ -12,7 +12,10 @@ export const fetchNovelMeta: typeof directFetchNovelMeta = async (url) => {
   return directFetchNovelMeta(url);
 };
 
-export const fetchChapter: typeof directFetchChapter = async (url, chapterNum) => {
+export const fetchChapter: typeof directFetchChapter = async (
+  url,
+  chapterNum,
+) => {
   const external = findExternalScraper(url);
   if (external) return external.fetchChapter(url, chapterNum);
   return directFetchChapter(url, chapterNum);
@@ -30,7 +33,11 @@ export const fetchChapter: typeof directFetchChapter = async (url, chapterNum) =
  * underlying fetch may still be dangling in the background, but the caller
  * is guaranteed to move on.
  */
-const withHardTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+const withHardTimeout = <T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Hard timeout after ${ms}ms: ${label}`));
@@ -78,23 +85,23 @@ const fetchWithBoundedTimeout = (
 export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
   try {
     // Clean up the URL
-    const cleanUrl = baseUrl.trim().replace(/\/+$/, '');
+    const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
 
     const baseHeaders = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      Connection: 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      Connection: "keep-alive",
+      "Upgrade-Insecure-Requests": "1",
     };
 
     // Try HEAD request first (faster, less data transfer)
     try {
       const response = await fetchWithBoundedTimeout(
         cleanUrl,
-        { method: 'HEAD', headers: baseHeaders, redirect: 'follow' as any },
+        { method: "HEAD", headers: baseHeaders, redirect: "follow" as any },
         10000, // soft (abort) timeout
         12000, // hard timeout - always wins even if abort doesn't work
         `HEAD ${cleanUrl}`,
@@ -117,9 +124,9 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
       const response = await fetchWithBoundedTimeout(
         cleanUrl,
         {
-          method: 'GET',
-          headers: { ...baseHeaders, 'Cache-Control': 'no-cache' },
-          redirect: 'follow' as any,
+          method: "GET",
+          headers: { ...baseHeaders, "Cache-Control": "no-cache" },
+          redirect: "follow" as any,
         },
         15000,
         17000,
@@ -131,13 +138,13 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
     } catch (error) {
       // GET also failed, try one more time with a different endpoint
       // Some sites block the root but allow specific paths
-      const testPaths = ['/', '/novel', '/browse', '/books', '/fiction'];
+      const testPaths = ["/", "/novel", "/browse", "/books", "/fiction"];
 
       for (const path of testPaths) {
         try {
           const response = await fetchWithBoundedTimeout(
             `${cleanUrl}${path}`,
-            { method: 'GET', headers: baseHeaders, redirect: 'follow' as any },
+            { method: "GET", headers: baseHeaders, redirect: "follow" as any },
             10000,
             12000,
             `GET ${cleanUrl}${path}`,
@@ -175,23 +182,24 @@ export const checkSiteHealthDetailed = async (
   const startTime = Date.now();
 
   try {
-    const cleanUrl = baseUrl.trim().replace(/\/+$/, '');
+    const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch(cleanUrl, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        Connection: 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        Connection: "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
       },
       // @ts-ignore
-      redirect: 'follow',
+      redirect: "follow",
       signal: controller.signal,
     });
 
@@ -208,7 +216,7 @@ export const checkSiteHealthDetailed = async (
     return {
       isUp: false,
       responseTime,
-      error: error.message || 'Unknown error',
+      error: error.message || "Unknown error",
     };
   }
 };

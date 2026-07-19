@@ -1,12 +1,12 @@
-import type { SourceScraper, NovelMeta, ChapterData } from '../types';
-import { fetchHtmlWithFallback } from '../shared/http';
+import type { SourceScraper, NovelMeta, ChapterData } from "../types";
+import { fetchHtmlWithFallback } from "../shared/http";
 import {
   stripTags,
   decodeEntities,
   safeMatch,
   extractByDepth,
   makeAbsoluteUrl,
-} from '../shared/html';
+} from "../shared/html";
 
 // novelbin.cc runs the exact same template as novel-bin.com (see
 // novelbin.ts) — only the host (www.novelbin.cc vs novel-bin.com) and the
@@ -15,7 +15,7 @@ import {
 // unrelated domains that just happen to share a template today; if one
 // changes its markup independently later, they shouldn't drag each other
 // down.
-const BASE_HOST = 'novelbin.cc';
+const BASE_HOST = "novelbin.cc";
 
 /**
  * novelbin.cc doesn't wrap synopsis text in <p> tags — it's raw text
@@ -27,7 +27,7 @@ const extractBrSeparatedText = (html: string): string => {
     .split(/<br\s*\/?>/gi)
     .map((chunk) => decodeEntities(stripTags(chunk)))
     .filter(Boolean)
-    .join('\n\n');
+    .join("\n\n");
 };
 
 /**
@@ -44,13 +44,13 @@ const extractBrSeparatedText = (html: string): string => {
  * scripts/test-scrapers.ts.
  */
 export const extractChapterBody = (rawContentBlock: string): string => {
-  const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, '');
+  const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
   return extractBrSeparatedText(contentBlock);
 };
 
 export const novelBinCcScraper: SourceScraper = {
-  id: 'novelbincc',
-  name: 'NovelBin.cc',
+  id: "novelbincc",
+  name: "NovelBin.cc",
 
   canHandle: (url: string) => {
     try {
@@ -65,12 +65,17 @@ export const novelBinCcScraper: SourceScraper = {
 
     // <meta itemprop="image" content="https://www.novelbin.cc/files/image/....jpg">
     const coverUrl =
-      safeMatch(html, /<meta[\s\S]*?itemprop="image"[\s\S]*?content="([^"]+)"/i) ?? '';
+      safeMatch(
+        html,
+        /<meta[\s\S]*?itemprop="image"[\s\S]*?content="([^"]+)"/i,
+      ) ?? "";
 
     // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
     const title = decodeEntities(
-      safeMatch(html, /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i) ??
-        'Unknown Title',
+      safeMatch(
+        html,
+        /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i,
+      ) ?? "Unknown Title",
     );
 
     // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
@@ -79,7 +84,7 @@ export const novelBinCcScraper: SourceScraper = {
       safeMatch(
         html,
         /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i,
-      ) ?? 'Unknown Author',
+      ) ?? "Unknown Author",
     );
 
     // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
@@ -88,7 +93,7 @@ export const novelBinCcScraper: SourceScraper = {
     // unrelated <meta name="description" ...> tags in <head>, and matching
     // those would make extractByDepth's <div>/</div> counter run wild over
     // the rest of the page.
-    const descBlock = extractByDepth(html, 'class="desc-text"') ?? '';
+    const descBlock = extractByDepth(html, 'class="desc-text"') ?? "";
     const synopsis = extractBrSeparatedText(descBlock);
 
     // Try to find the first chapter link. novelbin.cc markup has changed over time,
@@ -118,7 +123,9 @@ export const novelBinCcScraper: SourceScraper = {
       );
     }
 
-    const firstChapterUrl = firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
+    const firstChapterUrl = firstChapterPath
+      ? makeAbsoluteUrl(firstChapterPath, url)
+      : null;
 
     return {
       title,
@@ -126,36 +133,40 @@ export const novelBinCcScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ['fetched via external scraper: novelbincc'],
+      debugInfo: ["fetched via external scraper: novelbincc"],
     };
   },
 
-  fetchChapter: async (url: string, _chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    _chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
     // Fallback: look for any h2/h3 with "chapter" in it if the class selector doesn't work
     let title = decodeEntities(
-      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? '',
+      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? "",
     );
     if (!title) {
       title = decodeEntities(
-        safeMatch(html, /<h[23][^>]*>[\s\S]{0,150}?(?:chapter|Chapter)/i) ?? '',
+        safeMatch(html, /<h[23][^>]*>[\s\S]{0,150}?(?:chapter|Chapter)/i) ?? "",
       );
     }
 
     // <div id="chr-content" class="chr-c" ...>...</div>
-    const contentBlock = extractByDepth(html, 'id="chr-content"') ?? '';
+    const contentBlock = extractByDepth(html, 'id="chr-content"') ?? "";
     const content = extractChapterBody(contentBlock);
 
     // <a title="Chapter 2: ..." href="..." class="btn btn-success" id="next_chap">
     // Gets a `disabled=""` attribute (no href change) on the last chapter.
     // Note: safeMatch() returns capture group 1, so it can't be used to
     // grab the whole tag with no group — use a plain match for that.
-    const nextTag = html.match(/<a[^>]*id="next_chap"[^>]*>/i)?.[0] ?? '';
+    const nextTag = html.match(/<a[^>]*id="next_chap"[^>]*>/i)?.[0] ?? "";
     const nextHref = safeMatch(nextTag, /href="([^"]+)"/i);
     const isDisabled = /disabled=""/i.test(nextTag);
-    const nextUrl = nextHref && !isDisabled ? makeAbsoluteUrl(nextHref, url) : null;
+    const nextUrl =
+      nextHref && !isDisabled ? makeAbsoluteUrl(nextHref, url) : null;
 
     return {
       url,
@@ -165,4 +176,3 @@ export const novelBinCcScraper: SourceScraper = {
     };
   },
 };
-

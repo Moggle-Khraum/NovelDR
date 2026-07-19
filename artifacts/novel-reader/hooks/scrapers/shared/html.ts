@@ -3,20 +3,20 @@
 // private copies) so this layer never reaches into its internals and stays
 // safe to evolve independently.
 
-import { decodeHTML } from 'entities';
+import { decodeHTML } from "entities";
 
 /** Strip HTML tags and collapse whitespace */
 export const stripTags = (html: string): string => {
-  if (!html) return '';
+  if (!html) return "";
   return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 };
 
 /** Decode HTML entities safely, e.g. &amp; -> & */
 export const decodeEntities = (text: string): string => {
-  if (!text) return '';
+  if (!text) return "";
   try {
     return decodeHTML(text);
   } catch {
@@ -36,10 +36,13 @@ export const safeMatch = (text: string, pattern: RegExp): string | null => {
 };
 
 /** Resolve a possibly-relative URL against a base URL */
-export const makeAbsoluteUrl = (relativeUrl: string, baseUrl: string): string => {
+export const makeAbsoluteUrl = (
+  relativeUrl: string,
+  baseUrl: string,
+): string => {
   if (!relativeUrl) return baseUrl;
-  if (relativeUrl.startsWith('http')) return relativeUrl;
-  if (relativeUrl.startsWith('/')) {
+  if (relativeUrl.startsWith("http")) return relativeUrl;
+  if (relativeUrl.startsWith("/")) {
     try {
       const parsed = new URL(baseUrl);
       return `${parsed.protocol}//${parsed.host}${relativeUrl}`;
@@ -105,7 +108,10 @@ export const extractFlightTChunks = (raw: string): Map<string, string> => {
  * found or its value isn't an array/object. Caller is expected to
  * JSON.parse() the result.
  */
-export const extractJsonValueAfterKey = (raw: string, key: string): string | null => {
+export const extractJsonValueAfterKey = (
+  raw: string,
+  key: string,
+): string | null => {
   const marker = `"${key}":`;
   const keyIndex = raw.indexOf(marker);
   if (keyIndex === -1) return null;
@@ -114,7 +120,7 @@ export const extractJsonValueAfterKey = (raw: string, key: string): string | nul
   while (i < raw.length && /\s/.test(raw[i])) i++;
 
   const openChar = raw[i];
-  const closeChar = openChar === '[' ? ']' : openChar === '{' ? '}' : null;
+  const closeChar = openChar === "[" ? "]" : openChar === "{" ? "}" : null;
   if (!closeChar) return null;
 
   const start = i;
@@ -124,7 +130,7 @@ export const extractJsonValueAfterKey = (raw: string, key: string): string | nul
   for (; i < raw.length; i++) {
     const ch = raw[i];
     if (inString) {
-      if (ch === '\\') {
+      if (ch === "\\") {
         i++; // skip escaped character (handles \" correctly)
         continue;
       }
@@ -157,7 +163,7 @@ export const extractJsonValueAfterKey = (raw: string, key: string): string | nul
  * the actual <head>, so meta extraction can keep matching raw `html`.)
  */
 export const extractNextFlightPayload = (html: string): string => {
-  if (!html) return '';
+  if (!html) return "";
   const pushRe = /self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g;
   const chunks: string[] = [];
   let match: RegExpExecArray | null;
@@ -172,32 +178,32 @@ export const extractNextFlightPayload = (html: string): string => {
     } catch {
       // Fallback for malformed/partial matches: hand-roll the common escapes.
       content = content
-        .replace(/\\u003c/gi, '<')
-        .replace(/\\u003e/gi, '>')
-        .replace(/\\u0026/gi, '&')
-        .replace(/\\n/g, '\n')
+        .replace(/\\u003c/gi, "<")
+        .replace(/\\u003e/gi, ">")
+        .replace(/\\u0026/gi, "&")
+        .replace(/\\n/g, "\n")
         .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
+        .replace(/\\\\/g, "\\");
     }
     chunks.push(content);
   }
 
   // Joined with real newlines so extractFlightTChunks' (?:^|\n) anchor
   // matches between pushes just like it would between chunks in one push.
-  return chunks.join('\n');
+  return chunks.join("\n");
 };
 
 /** Extract the first inner text/HTML block between a start marker and its matching close tag by simple depth counting (for div-based selectors) */
 export const extractByDepth = (
   html: string,
   startMarker: string,
-  openTag = '<div',
-  closeTag = '</div',
+  openTag = "<div",
+  closeTag = "</div",
 ): string | null => {
   const start = html.indexOf(startMarker);
   if (start === -1) return null;
 
-  const openTagEnd = html.indexOf('>', start);
+  const openTagEnd = html.indexOf(">", start);
   if (openTagEnd === -1) return null;
 
   let depth = 1;

@@ -17,8 +17,8 @@
  * against fixture HTML, not fetchHtmlWithFallback.
  */
 
-import { extractChapterBody as novelBinExtract } from '../hooks/scrapers/sources/novel-bin';
-import { extractChapterBody as novelBinCcExtract } from '../hooks/scrapers/sources/novelbincc';
+import { extractChapterBody as novelBinExtract } from "../hooks/scrapers/sources/novel-bin";
+import { extractChapterBody as novelBinCcExtract } from "../hooks/scrapers/sources/novelbincc";
 
 // Mirrors the real div#chr-content structure: a leading empty <p></p>, an
 // <h4> repeating the chapter title, then the actual body as raw text nodes
@@ -36,59 +36,65 @@ type Check = { name: string; run: () => void };
 
 const checks: Check[] = [
   {
-    name: 'novel-bin.ts: extracts non-empty content from <br>-separated chr-content',
-    run: () => {
-      const result = novelBinExtract(FIXTURE_CHR_CONTENT);
-      assert(result.length > 0, `expected non-empty content, got: ${JSON.stringify(result)}`);
-    },
-  },
-  {
-    name: 'novel-bin.ts: strips the repeated <h4> chapter title from the body',
+    name: "novel-bin.ts: extracts non-empty content from <br>-separated chr-content",
     run: () => {
       const result = novelBinExtract(FIXTURE_CHR_CONTENT);
       assert(
-        !result.includes('The Water Mansion'),
+        result.length > 0,
+        `expected non-empty content, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novel-bin.ts: strips the repeated <h4> chapter title from the body",
+    run: () => {
+      const result = novelBinExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        !result.includes("The Water Mansion"),
         `expected <h4> title to be stripped, but it leaked into content: ${JSON.stringify(result)}`,
       );
     },
   },
   {
-    name: 'novel-bin.ts: preserves actual paragraph text',
+    name: "novel-bin.ts: preserves actual paragraph text",
     run: () => {
       const result = novelBinExtract(FIXTURE_CHR_CONTENT);
       assert(
-        result.includes('Chen Mobai stepped through the gate.'),
+        result.includes("Chen Mobai stepped through the gate."),
         `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
       );
       assert(
-        result.includes('this place is different'),
+        result.includes("this place is different"),
         `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
       );
     },
   },
   {
-    name: 'novelbincc.ts: extracts non-empty content from <br>-separated chr-content',
-    run: () => {
-      const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
-      assert(result.length > 0, `expected non-empty content, got: ${JSON.stringify(result)}`);
-    },
-  },
-  {
-    name: 'novelbincc.ts: strips the repeated <h4> chapter title from the body',
+    name: "novelbincc.ts: extracts non-empty content from <br>-separated chr-content",
     run: () => {
       const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
       assert(
-        !result.includes('The Water Mansion'),
+        result.length > 0,
+        `expected non-empty content, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: strips the repeated <h4> chapter title from the body",
+    run: () => {
+      const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        !result.includes("The Water Mansion"),
         `expected <h4> title to be stripped, but it leaked into content: ${JSON.stringify(result)}`,
       );
     },
   },
   {
-    name: 'novelbincc.ts: preserves actual paragraph text',
+    name: "novelbincc.ts: preserves actual paragraph text",
     run: () => {
       const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
       assert(
-        result.includes('Chen Mobai stepped through the gate.'),
+        result.includes("Chen Mobai stepped through the gate."),
         `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
       );
     },

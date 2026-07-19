@@ -4,7 +4,9 @@
   <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/repo%20card.png?raw=true" alt="NovelDR banner">
 </p>
 
-----
+---
+
+-
 
 # Novel DR
 
@@ -21,11 +23,13 @@
 - [⚠️ Disclaimer](#disclaimer)
 
 <a id="about"></a>
+
 ## 📖 About
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
 
 <a id="download-counts"></a>
+
 ## 📈 Download Counts
 
 <div align="center">
@@ -41,44 +45,49 @@ NovelDR is a free, open-source Android application that lets you download webnov
 </div>
 
 <a id="app-screenshots"></a>
+
 ## 🖼️ App Screenshots
 
 <div align="center">
 
-| Library | Download | Updates | Settings |
-| ----------- | ------------ | ----------- | ------------- |
+| Library                                                                                                                   | Download                                                                                                                   | Updates                                                                                                                   | Settings                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Library.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Download.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Updates.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Settings.jpg?raw=true" width="200"> |
 
-| Novel Index | Novel Export| Reader | Reader Settings |
-|-------------|-------------|--------|-----------------|
-| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Index.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Export.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader.jpg?raw=true"  width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader%20Settings.jpg?raw=true"  width="200">                 |
+| Novel Index                                                                                                                     | Novel Export                                                                                                                     | Reader                                                                                                                    | Reader Settings                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Index.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Novel%20Export.jpg?raw=true" width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader.jpg?raw=true"  width="200"> | <img src="https://github.com/Moggle-Khraum/resources_for_display/blob/main/screenshots/Reader%20Settings.jpg?raw=true"  width="200"> |
 
 </div>
 
 ##
 
 <a id="supported-sources"></a>
+
 ## 🌐 Supported Sources
 
-| Source Domain| Status | Source Domain | Status | Source Domain| Status |
-|--------|--------|-------|--------|-------|--------|
-| [ReadNovelFull](https://readnovelfull.com/) | ✅ Site Active     | [NovelFull.com](https://novelfull.com/) | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/)  | ✅ Site Active |
-| [NovelFull.net](https://novelfull.net/) | ✅ Site Active      | [AllNovel](https://allnovel.org/) | ✅ Site Active |
-| [FreeWebNovel](https://freewebnovel.com/) | ✅ Site Active    | [NovGo](https://novgo.net/) | ✅ Site Active  |
-| [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active   | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active  |
-| [RoyalRoad](https://www.royalroad.com/) | ✅ Site Active      | [AsiaNovel](https://www.asianovel.net/)  | ✅ Site Active   |
-| [NovelPhoenix](https://novelphoenix.com/) | ✅ Site Active  | [Novel-bin](https://novel-bin.com/)  | ✅ Site Active  |
-|  |  |   |       |  |   |
-|  |  |   |    |    |   |
+| Source Domain                                   | Status         | Source Domain                               | Status         | Source Domain                          | Status         |
+| ----------------------------------------------- | -------------- | ------------------------------------------- | -------------- | -------------------------------------- | -------------- |
+| [ReadNovelFull](https://readnovelfull.com/)     | ✅ Site Active | [NovelFull.com](https://novelfull.com/)     | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
+| [NovelFull.net](https://novelfull.net/)         | ✅ Site Active | [AllNovel](https://allnovel.org/)           | ✅ Site Active |
+| [FreeWebNovel](https://freewebnovel.com/)       | ✅ Site Active | [NovGo](https://novgo.net/)                 | ✅ Site Active |
+| [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active |
+| [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active |
+| [NovelPhoenix](https://novelphoenix.com/)       | ✅ Site Active | [Novel-bin](https://novel-bin.com/)         | ✅ Site Active |
+|                                                 |                |                                             |                |                                        |                |
+|                                                 |                |                                             |                |                                        |                |
 
 <a id="dead-sources"></a>
+
 ## 💀 Deprecated Sources
-| Source Domain| Status | Source Domain | Status |
-|--------|--------|-------|--------|
-| [Novelbin.me](https://novelbin.me/) | ❌ Site Dead  | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
-| |       |  |  |
+
+| Source Domain                       | Status       | Source Domain                         | Status       |
+| ----------------------------------- | ------------ | ------------------------------------- | ------------ |
+| [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
+|                                     |              |                                       |              |
 
 <a id="wiki-add-or-requestsource"></a>
+
 ## 📚 Wiki: Adding a Source or Requesting One
 
 Got a webnovel site you want NovelDR to support? There are two paths, depending on whether you want to build it yourself or have someone else add it.
@@ -108,14 +117,19 @@ If you'd rather not build the scraper yourself, open a request on the project's 
 That's it — once submitted, it'll be picked up and worked on.
 
 <a id="appreciation"></a>
+
 ## 🌟 Appreciation
+
 If this project helps you somehow, please dont forget to Star the Repo~!
 
 <a id="license"></a>
+
 ## 📜 License
+
 This project is licensed under the MIT License
 
 <a id="disclaimer"></a>
+
 ## ⚠️ Disclaimer
 
 NovelDR is a tool for downloading publicly available web content. Users are responsible for ensuring their downloads comply with applicable copyright laws. We encourage supporting authors by purchasing official releases when available.

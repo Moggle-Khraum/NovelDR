@@ -14,7 +14,7 @@
         box-sizing: border-box;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin: 0;
         padding: 32px 20px;
         text-align: center;
@@ -350,7 +350,9 @@
               <div class="step-number">1</div>
               <h2 class="step-title">Download Expo Go</h2>
             </div>
-            <p class="step-description">Expo Go is a free app to test mobile apps</p>
+            <p class="step-description">
+              Expo Go is a free app to test mobile apps
+            </p>
             <div class="store-buttons" id="store-buttons">
               <a
                 id="app-store-btn"
@@ -388,7 +390,9 @@
             </div>
             <p class="step-description">Use your phone's camera or Expo Go</p>
             <div class="qr-code" id="qr-code"></div>
-            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button">Open in Expo Go</a>
+            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
+              >Open in Expo Go</a
+            >
           </div>
         </div>
       </div>
@@ -398,26 +402,26 @@
     <script>
       (function () {
         const ua = navigator.userAgent;
-        const loadingEl = document.getElementById('loading');
-        const contentEl = document.getElementById('content');
+        const loadingEl = document.getElementById("loading");
+        const contentEl = document.getElementById("content");
 
         const isAndroid = /Android/i.test(ua);
         const isIOS =
           /iPhone|iPad|iPod/i.test(ua) ||
-          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-        const deepLink = 'exps://EXPS_URL_PLACEHOLDER';
+        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
 
         // Adjust store buttons based on platform
-        const appStoreBtn = document.getElementById('app-store-btn');
-        const playStoreBtn = document.getElementById('play-store-btn');
-        const storeButtonsContainer = document.getElementById('store-buttons');
+        const appStoreBtn = document.getElementById("app-store-btn");
+        const playStoreBtn = document.getElementById("play-store-btn");
+        const storeButtonsContainer = document.getElementById("store-buttons");
 
         if (isIOS) {
-          playStoreBtn.className = 'store-link';
+          playStoreBtn.className = "store-link";
           storeButtonsContainer.appendChild(playStoreBtn);
         } else if (isAndroid) {
-          appStoreBtn.className = 'store-link';
+          appStoreBtn.className = "store-link";
           storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
         }
 
@@ -426,32 +430,32 @@
           height: 400,
           data: deepLink,
           dotsOptions: {
-            color: '#333333',
-            type: 'rounded',
+            color: "#333333",
+            type: "rounded",
           },
           backgroundOptions: {
-            color: '#ffffff',
+            color: "#ffffff",
           },
           cornersSquareOptions: {
-            type: 'extra-rounded',
+            type: "extra-rounded",
           },
           cornersDotOptions: {
-            type: 'dot',
+            type: "dot",
           },
           qrOptions: {
-            errorCorrectionLevel: 'H',
+            errorCorrectionLevel: "H",
           },
         });
 
-        qrCode.append(document.getElementById('qr-code'));
+        qrCode.append(document.getElementById("qr-code"));
 
         if (isAndroid || isIOS) {
-          loadingEl.style.display = 'block';
-          contentEl.style.display = 'none';
+          loadingEl.style.display = "block";
+          contentEl.style.display = "none";
           window.location.href = deepLink;
           setTimeout(function () {
-            loadingEl.style.display = 'none';
-            contentEl.style.display = 'block';
+            loadingEl.style.display = "none";
+            contentEl.style.display = "block";
           }, 500);
         }
       })();

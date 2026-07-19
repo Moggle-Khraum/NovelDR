@@ -31,7 +31,7 @@ minimumReleaseAgeExclude:
   # Exclude @replit scoped packages from the minimum release age check.
   # These are published by Replit and trusted — the supply-chain attack vector
   # this setting guards against does not apply to our own packages.
-  - '@replit/*'
+  - "@replit/*"
   - stripe-replit-sync
 
 packages:
@@ -41,15 +41,15 @@ packages:
   - scripts
 
 catalog:
-  '@replit/vite-plugin-cartographer': ^0.5.1
-  '@replit/vite-plugin-dev-banner': ^0.1.1
-  '@replit/vite-plugin-runtime-error-modal': ^0.0.6
-  '@tailwindcss/vite': ^4.1.14
-  '@tanstack/react-query': ^5.90.21
-  '@types/node': ^25.3.3
-  '@types/react': ^19.2.0
-  '@types/react-dom': ^19.2.0
-  '@vitejs/plugin-react': ^5.0.4
+  "@replit/vite-plugin-cartographer": ^0.5.1
+  "@replit/vite-plugin-dev-banner": ^0.1.1
+  "@replit/vite-plugin-runtime-error-modal": ^0.0.6
+  "@tailwindcss/vite": ^4.1.14
+  "@tanstack/react-query": ^5.90.21
+  "@types/node": ^25.3.3
+  "@types/react": ^19.2.0
+  "@types/react-dom": ^19.2.0
+  "@vitejs/plugin-react": ^5.0.4
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   drizzle-orm: ^0.45.1
@@ -68,7 +68,7 @@ catalog:
 autoInstallPeers: false
 
 onlyBuiltDependencies:
-  - '@swc/core'
+  - "@swc/core"
   - esbuild
   - msw
   - unrs-resolver
@@ -95,11 +95,11 @@ overrides:
   "esbuild>@esbuild/win32-arm64": "-"
   "esbuild>@esbuild/win32-ia32": "-"
   "esbuild>@esbuild/win32-x64": "-"
-  "esbuild>@esbuild/aix-ppc64": '-'
-  "esbuild>@esbuild/android-arm": '-'
-  "esbuild>@esbuild/android-arm64": '-'
-  "esbuild>@esbuild/android-x64": '-'
-  "esbuild>@esbuild/openharmony-arm64": '-'
+  "esbuild>@esbuild/aix-ppc64": "-"
+  "esbuild>@esbuild/android-arm": "-"
+  "esbuild>@esbuild/android-arm64": "-"
+  "esbuild>@esbuild/android-x64": "-"
+  "esbuild>@esbuild/openharmony-arm64": "-"
   "lightningcss>lightningcss-android-arm64": "-"
   "lightningcss>lightningcss-darwin-arm64": "-"
   "lightningcss>lightningcss-darwin-x64": "-"

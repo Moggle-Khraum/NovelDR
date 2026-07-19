@@ -1,11 +1,11 @@
-import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system';
-import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system";
+import * as IntentLauncher from "expo-intent-launcher";
 
-const RELEASE_REPO = 'Moggle-Khraum/NovelDR-site'; // release repo, not this code repo
-const LAST_CHECK_KEY = 'update_last_check_v1';
-const REQUEST_LOG_KEY = 'update_request_log_v1';
-const DISMISSED_KEY = 'update_dismissed_version_v1';
+const RELEASE_REPO = "Moggle-Khraum/NovelDR-site"; // release repo, not this code repo
+const LAST_CHECK_KEY = "update_last_check_v1";
+const REQUEST_LOG_KEY = "update_request_log_v1";
+const DISMISSED_KEY = "update_dismissed_version_v1";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 20;
@@ -20,24 +20,33 @@ export interface UpdateInfo {
 
 const getAsyncStorage = async () => {
   try {
-    return require('@react-native-async-storage/async-storage').default;
+    return require("@react-native-async-storage/async-storage").default;
   } catch {
     return null;
   }
 };
 
 function parseVersion(tag: string) {
-  const clean = tag.replace(/^v/i, '');
+  const clean = tag.replace(/^v/i, "");
   const match = clean.match(/^(\d+)\.(\d+)\.(\d+)(?:rev(\d+))?/);
   if (!match) return null;
-  return { major: +match[1], minor: +match[2], patch: +match[3], rev: match[4] ? +match[4] : 0 };
+  return {
+    major: +match[1],
+    minor: +match[2],
+    patch: +match[3],
+    rev: match[4] ? +match[4] : 0,
+  };
 }
 
 // `currentBuildNumber` is the real installed android.versionCode (== the `rev`
 // baked in by the build workflow), NOT parsed from the semver string — the
 // semver string never carries a rev suffix, so parsing it always yielded 0
 // and made every release look newer than whatever was actually installed.
-function isNewerVersion(current: string, currentBuildNumber: number, latest: string): boolean {
+function isNewerVersion(
+  current: string,
+  currentBuildNumber: number,
+  latest: string,
+): boolean {
   const c = parseVersion(current);
   const l = parseVersion(latest);
   if (!c || !l) return false;
@@ -64,26 +73,35 @@ async function logRequest(AsyncStorage: any) {
   await AsyncStorage.setItem(REQUEST_LOG_KEY, JSON.stringify(recent));
 }
 
-export async function checkForUpdate(force = false): Promise<UpdateInfo | null> {
+export async function checkForUpdate(
+  force = false,
+): Promise<UpdateInfo | null> {
   const AsyncStorage = await getAsyncStorage();
-  const currentVersion = Constants.expoConfig?.version ?? '0.0.0';
+  const currentVersion = Constants.expoConfig?.version ?? "0.0.0";
   const currentBuildNumber =
-    Constants.expoConfig?.android?.versionCode ?? Number(Constants.nativeBuildVersion) ?? 0;
+    Constants.expoConfig?.android?.versionCode ??
+    Number(Constants.nativeBuildVersion) ??
+    0;
 
   if (!force && AsyncStorage) {
     const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY);
-    if (lastCheck && Date.now() - Number(lastCheck) < CHECK_INTERVAL_MS) return null;
+    if (lastCheck && Date.now() - Number(lastCheck) < CHECK_INTERVAL_MS)
+      return null;
   }
 
   if (!(await withinRequestBudget(AsyncStorage))) return null;
 
   try {
     await logRequest(AsyncStorage);
-    if (AsyncStorage) await AsyncStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+    if (AsyncStorage)
+      await AsyncStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
 
-    const res = await fetch(`https://api.github.com/repos/${RELEASE_REPO}/releases/latest`, {
-      headers: { Accept: 'application/vnd.github+json' },
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${RELEASE_REPO}/releases/latest`,
+      {
+        headers: { Accept: "application/vnd.github+json" },
+      },
+    );
     if (!res.ok) return null;
     const data = await res.json();
     const tag: string = data.tag_name;
@@ -95,12 +113,14 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
       if (dismissed === tag) return null;
     }
 
-    const apkAsset = (data.assets || []).find((a: any) => a.name?.toLowerCase().endsWith('.apk'));
+    const apkAsset = (data.assets || []).find((a: any) =>
+      a.name?.toLowerCase().endsWith(".apk"),
+    );
     if (!apkAsset) return null;
 
     return {
       tag,
-      notes: data.body ?? '',
+      notes: data.body ?? "",
       apkUrl: apkAsset.browser_download_url,
       apkName: apkAsset.name,
       apkSize: apkAsset.size,
@@ -148,14 +168,16 @@ export async function downloadApk(
       if (!onProgress) return;
       const { totalBytesWritten, totalBytesExpectedToWrite } = progressEvent;
       if (totalBytesExpectedToWrite > 0) {
-        onProgress(Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100));
+        onProgress(
+          Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100),
+        );
       }
     },
   );
 
   const result = await downloadResumable.downloadAsync();
   if (!result?.uri) {
-    throw new Error('APK download did not complete');
+    throw new Error("APK download did not complete");
   }
   return result.uri;
 }
@@ -167,9 +189,9 @@ export async function downloadApk(
  */
 export async function installApk(fileUri: string): Promise<void> {
   const contentUri = await FileSystem.getContentUriAsync(fileUri);
-  await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+  await IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
     data: contentUri,
     flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-    type: 'application/vnd.android.package-archive',
+    type: "application/vnd.android.package-archive",
   });
 }
