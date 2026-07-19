@@ -35,8 +35,7 @@ SplashScreen.preventAutoHideAsync();
 // device access or logcat needed to read them; view them in the Sentry
 // dashboard instead.
 Sentry.init({
-  dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648", // TODO: replace with your project's DSN from sentry.io
-  enableNative: true,
+  dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648",
   tracesSampleRate: 0.2,
   // Keep breadcrumbs of nav/console so a crash report shows what led up to it
   // (e.g. "reading" vs "backup" vs "download") without needing repro steps.
