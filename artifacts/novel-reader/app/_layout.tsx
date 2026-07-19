@@ -85,7 +85,7 @@ function InitScreen() {
     }
     
     return () => animation.stop();
-  }, [initComplete]);
+  }, [initComplete, spinAnim]);
 
   const spinInterpolation = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -108,7 +108,7 @@ function InitScreen() {
         }),
       ]).start();
     }
-  }, [initComplete]);
+  }, [initComplete, fadeAnim, slideAnim]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -296,7 +296,6 @@ const initStyles = StyleSheet.create({
 // ── Root Layout Components ──────────────────────────────────────────────────
 
 function RootLayoutNav() {
-  const { colors } = useTheme();
   const { loading } = useLibrary();
   
   // Show init screen while loading
