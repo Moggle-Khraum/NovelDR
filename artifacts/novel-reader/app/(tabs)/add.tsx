@@ -403,6 +403,7 @@ export default function AddNovelScreen() {
   // and checkAllSites reads isCheckingSites state, so including them would
   // re-fire this effect (and reset the 12h interval) every time a check
   // starts/stops.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Initial check: Wait 2 seconds, then load saved or check
     const initialTimeout = setTimeout(async () => {
