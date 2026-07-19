@@ -1,15 +1,15 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - main
       - Prod-Dev
+      - main
   pull_request:
     branches:
-      - main
       - Prod-Dev
-  workflow_dispatch:
+      - main
 
 jobs:
   sync-lockfile:
@@ -24,18 +24,17 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 10.26.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: 24
 
       - name: Sync lockfile
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Check for lockfile changes
         id: verify-changed-files
@@ -55,35 +54,103 @@ jobs:
           git commit -m "chore: sync lockfile"
           git push
 
-  lint-test:
+  lint:
     runs-on: ubuntu-latest
     needs: sync-lockfile
-    permissions:
-      contents: read
     continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10.26.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test
+      - name: Run ESLint
+        working-directory: artifacts/novel-reader
+        run: pnpm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    needs: lint
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run TypeScript check
+        working-directory: artifacts/novel-reader
+        run: pnpm run typecheck
+
+  format:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Check formatting
-        run: pnpm format:check
+        working-directory: artifacts/novel-reader
+        run: pnpm run format:check
+
+  scraper-regression:
+    runs-on: ubuntu-latest
+    needs: format
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run scraper content-extraction regression tests
+        working-directory: artifacts/novel-reader
+        run: pnpm run test:scrapers
         
