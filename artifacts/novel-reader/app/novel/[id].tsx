@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -77,13 +78,12 @@ async function loadFullNovelContent(
   // Pre-load AsyncStorage data once
   let legacyNovel: any = null;
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     const libraryData = await AsyncStorage.getItem('novel_library_v1');
     if (libraryData) {
       const novels = JSON.parse(libraryData);
       legacyNovel = novels.find((n: any) => n.id === novelId);
     }
-  } catch (e) {}
+  } catch {}
 
   for (let i = 0; i < sortedChapters.length; i++) {
     const ch = sortedChapters[i];
@@ -102,7 +102,7 @@ async function loadFullNovelContent(
           if (chapterData.title) title = chapterData.title;
         }
       }
-    } catch (e) {}
+    } catch {}
 
     // Fallback to AsyncStorage (only if real content exists)
     if (!content && legacyNovel?.chapters) {
@@ -354,7 +354,7 @@ const mimeTypes: Record<ExportFormat, string> = {
 
 export default function NovelDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getNovel, loadChapterContent, sortOrder, toggleSortOrder, getSortedChapters, deleteChapters } = useLibrary();
+  const { getNovel, sortOrder, toggleSortOrder, getSortedChapters, deleteChapters } = useLibrary();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
@@ -370,6 +370,67 @@ export default function NovelDetailScreen() {
   const [deleteProgress, setDeleteProgress] = useState({ done: 0, total: 0 });
 
   const novel = getNovel(id);
+
+  // ── Hooks below must run unconditionally on every render, so they're
+  // declared before the early "novel not found" return. They no-op via
+  // optional chaining when `novel` is undefined; in that case the FlatList
+  // that would use them is never rendered anyway (see early return below).
+  const renderChapterItem = useCallback(({ item: ch, index: i }: { item: NonNullable<typeof novel>['chapters'][number], index: number }) => {
+    const originalIndex = novel?.chapters.findIndex(c => c.url === ch.url) ?? -1;
+    const isCurrent = novel?.lastRead?.chapterIndex === originalIndex;
+    const isSelected = selectedChapterUrls.includes(ch.url);
+    return (
+      <Pressable
+        style={[
+          styles.chapterRow,
+          chapterSelectionMode
+            ? {
+                backgroundColor: isSelected ? colors.accent + "20" : colors.card,
+                borderColor: isSelected ? colors.accent : colors.border,
+              }
+            : {
+                backgroundColor: isCurrent ? colors.accent + "18" : colors.card,
+                borderColor: isCurrent ? colors.accent : colors.border,
+              },
+        ]}
+        onPress={() => {
+          if (chapterSelectionMode) {
+            toggleChapterSelection(ch.url);
+            return;
+          }
+          Haptics.selectionAsync();
+          router.push({
+            pathname: "/reader/[id]",
+            params: { id: novel?.id, chapterIndex: originalIndex.toString() },
+          });
+        }}
+        onLongPress={() => {
+          if (chapterSelectionMode) {
+            toggleChapterSelection(ch.url);
+          } else {
+            enterChapterSelectionMode(ch.url);
+          }
+        }}
+      >
+        <Text style={[styles.chapterTitle, { color: isCurrent && !chapterSelectionMode ? colors.accent : colors.text }]} numberOfLines={1}>
+          {isCurrent && !chapterSelectionMode ? "► " : ""}{ch.title}
+        </Text>
+        {!chapterSelectionMode && (
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        )}
+      </Pressable>
+    );
+  }, [novel?.chapters, novel?.lastRead?.chapterIndex, novel?.id, colors.accent, colors.text, colors.card, colors.border, colors.textMuted, chapterSelectionMode, selectedChapterUrls]);
+
+  const keyExtractor = useCallback((item: NonNullable<typeof novel>['chapters'][number], index: number) => {
+    return `${item.url}-${index}`;
+  }, []);
+
+  const getItemLayout = useCallback((_data: any, index: number) => ({
+    length: 48,
+    offset: 48 * index,
+    index,
+  }), []);
 
   if (!novel) {
     return (
@@ -509,63 +570,6 @@ export default function NovelDetailScreen() {
       if (showLoadingModal) setDeletingChapters(false);
     }
   };
-
-  const renderChapterItem = useCallback(({ item: ch, index: i }: { item: typeof sortedChapters[0], index: number }) => {
-    const originalIndex = novel.chapters.findIndex(c => c.url === ch.url);
-    const isCurrent = novel.lastRead?.chapterIndex === originalIndex;
-    const isSelected = selectedChapterUrls.includes(ch.url);
-    return (
-      <Pressable
-        style={[
-          styles.chapterRow,
-          chapterSelectionMode
-            ? {
-                backgroundColor: isSelected ? colors.accent + "20" : colors.card,
-                borderColor: isSelected ? colors.accent : colors.border,
-              }
-            : {
-                backgroundColor: isCurrent ? colors.accent + "18" : colors.card,
-                borderColor: isCurrent ? colors.accent : colors.border,
-              },
-        ]}
-        onPress={() => {
-          if (chapterSelectionMode) {
-            toggleChapterSelection(ch.url);
-            return;
-          }
-          Haptics.selectionAsync();
-          router.push({
-            pathname: "/reader/[id]",
-            params: { id: novel.id, chapterIndex: originalIndex.toString() },
-          });
-        }}
-        onLongPress={() => {
-          if (chapterSelectionMode) {
-            toggleChapterSelection(ch.url);
-          } else {
-            enterChapterSelectionMode(ch.url);
-          }
-        }}
-      >
-        <Text style={[styles.chapterTitle, { color: isCurrent && !chapterSelectionMode ? colors.accent : colors.text }]} numberOfLines={1}>
-          {isCurrent && !chapterSelectionMode ? "► " : ""}{ch.title}
-        </Text>
-        {!chapterSelectionMode && (
-          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-        )}
-      </Pressable>
-    );
-  }, [novel.chapters, novel.lastRead?.chapterIndex, novel.id, colors.accent, colors.text, colors.card, colors.border, colors.textMuted, chapterSelectionMode, selectedChapterUrls]);
-
-  const keyExtractor = useCallback((item: typeof sortedChapters[0], index: number) => {
-    return `${item.url}-${index}`;
-  }, []);
-
-  const getItemLayout = useCallback((_data: any, index: number) => ({
-    length: 48,
-    offset: 48 * index,
-    index,
-  }), []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -803,7 +807,7 @@ export default function NovelDetailScreen() {
             <Text style={[styles.confirmModalMessage, { color: colors.textSecondary }]}>
               This will permanently delete {selectedChapterUrls.length} chapter{selectedChapterUrls.length !== 1 ? "s" : ""}.{"\n\n"}
               Are you sure about this? {"\n\n"}
-              If YES, click the 'DELETE' button.
+              If YES, click the &apos;DELETE&apos; button.
             </Text>
 
             <View style={styles.confirmModalButtons}>
