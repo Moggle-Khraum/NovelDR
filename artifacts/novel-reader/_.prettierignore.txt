@@ -1,7 +1,0 @@
-node_modules
-.expo
-dist
-android
-ios
-pnpm-lock.yaml
-*.md
