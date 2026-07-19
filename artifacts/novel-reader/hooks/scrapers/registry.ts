@@ -7,14 +7,14 @@ import type { SourceScraper } from './types';
 import { novelPhoenixScraper } from './sources/novelphoenix';
 import { novelArrowScraper } from './sources/novelarrow';
 import { novelBinScraper } from './sources/novel-bin';
-import { novelBinCCScraper } from './sources/novelbincc';
+import { novelBinCcScraper } from './sources/novelbincc';
 // import { exampleScraper } from './sources/exampleScraper'; // <-- keep commented until it's a real source
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
   novelArrowScraper,
   novelBinScraper,
-  novelBinCCScraper,
+  novelBinCcScraper,
 ];
 
 /** Find the first registered external scraper that can handle this URL, or null */
