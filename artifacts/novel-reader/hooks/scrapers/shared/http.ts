@@ -2,18 +2,18 @@
 // falls back to a CORS proxy if that fails. Self-contained — does not
 // import the axios instance/headers from useDirectScraper.ts.
 
-import axios from "axios";
+import axios from 'axios';
 
 const DEFAULT_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,image/jpeg,image/jpg,image/png,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,image/jpeg,image/jpg,image/png,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
 };
 
 const httpClient = axios.create({
-  timeout: 15000,
+  timeout: 50000,
   headers: DEFAULT_HEADERS,
 });
 
@@ -24,8 +24,7 @@ export interface FetchOptions {
   buildProxyUrl?: (url: string) => string;
 }
 
-const defaultBuildProxyUrl = (url: string) =>
-  `https://corsproxy.io/?${encodeURIComponent(url)}`;
+const defaultBuildProxyUrl = (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
 /**
  * Fetch a URL's HTML, trying direct first then falling back to a proxy
@@ -38,12 +37,9 @@ export const fetchHtmlWithFallback = async (
   const buildProxyUrl = options.buildProxyUrl ?? defaultBuildProxyUrl;
 
   const tryDirect = () => httpClient.get(url).then((res) => res.data);
-  const tryProxy = () =>
-    httpClient.get(buildProxyUrl(url)).then((res) => res.data);
+  const tryProxy = () => httpClient.get(buildProxyUrl(url)).then((res) => res.data);
 
-  const [first, second] = options.proxyFirst
-    ? [tryProxy, tryDirect]
-    : [tryDirect, tryProxy];
+  const [first, second] = options.proxyFirst ? [tryProxy, tryDirect] : [tryDirect, tryProxy];
 
   try {
     return await first();
