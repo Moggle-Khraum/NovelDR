@@ -25,7 +25,7 @@ export function InitScreen() {
         }),
       ]).start();
     }
-  }, [initComplete]);
+  }, [initComplete, fadeAnim, slideAnim]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
