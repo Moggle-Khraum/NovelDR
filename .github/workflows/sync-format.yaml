@@ -1,4 +1,4 @@
-name: Auto-Format Code
+name: Sync Lockfile & Format Code
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  format:
+  sync-and-format:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,8 +33,8 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Sync lockfile
+        run: pnpm install
 
       - name: Run Prettier
         run: pnpm prettier --write .
@@ -54,5 +54,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "github-actions[bot]"
           git add -A
-          git commit -m "style: auto-format code with Prettier"
+          git commit -m "chore: sync lockfile and format code"
           git push
+          
