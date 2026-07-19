@@ -16,7 +16,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import WebView, { WebViewMessageEvent } from 'react-native-webview';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 type PendingJob = {
   url: string;
