@@ -1,6 +1,12 @@
 import type { SourceScraper, NovelMeta, ChapterData } from '../types';
 import { fetchHtmlWithFallback } from '../shared/http';
-import { stripTags, decodeEntities, safeMatch, extractByDepth, makeAbsoluteUrl } from '../shared/html';
+import {
+  stripTags,
+  decodeEntities,
+  safeMatch,
+  extractByDepth,
+  makeAbsoluteUrl,
+} from '../shared/html';
 
 // novelbin.cc runs the exact same template as novel-bin.com (see
 // novelbin.ts) — only the host (www.novelbin.cc vs novel-bin.com) and the
@@ -63,14 +69,17 @@ export const novelBinCcScraper: SourceScraper = {
 
     // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
     const title = decodeEntities(
-      safeMatch(html, /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i) ?? 'Unknown Title',
+      safeMatch(html, /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i) ??
+        'Unknown Title',
     );
 
     // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
     // NOTE: The span and meta may be on separate lines, so use [\s\S] to match newlines
     const author = decodeEntities(
-      safeMatch(html, /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i) ??
-        'Unknown Author',
+      safeMatch(
+        html,
+        /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i,
+      ) ?? 'Unknown Author',
     );
 
     // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
@@ -88,16 +97,25 @@ export const novelBinCcScraper: SourceScraper = {
     //    NOTE: href may be split across multiple lines, so use [\s\S] instead of . to match newlines
     // 2. Flexible: <a ...class contains "btn"... href contains "/chapter"
     // 3. Last resort: any <a> with href to /book/.../chapter-1 that contains "READ"
-    let firstChapterPath = safeMatch(html, /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i);
+    let firstChapterPath = safeMatch(
+      html,
+      /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i,
+    );
 
     if (!firstChapterPath) {
       // Fallback: look for any link with chapter in the href and "read" text nearby
-      firstChapterPath = safeMatch(html, /<a[\s\S]*?href="([^"]*\/chapter-[0-9]+[^"]*)"[\s\S]*?(?:class="[^"]*btn[^"]*")?[\s\S]*?>[\s\S]{0,100}?(?:READ|read)/i);
+      firstChapterPath = safeMatch(
+        html,
+        /<a[\s\S]*?href="([^"]*\/chapter-[0-9]+[^"]*)"[\s\S]*?(?:class="[^"]*btn[^"]*")?[\s\S]*?>[\s\S]{0,100}?(?:READ|read)/i,
+      );
     }
 
     if (!firstChapterPath) {
       // Last resort: any /book/.../chapter-1 link
-      firstChapterPath = safeMatch(html, /<a[\s\S]*?href="([^"]*\/book\/[^"]*\/chapter-1[^"]*)"[\s\S]*?>/i);
+      firstChapterPath = safeMatch(
+        html,
+        /<a[\s\S]*?href="([^"]*\/book\/[^"]*\/chapter-1[^"]*)"[\s\S]*?>/i,
+      );
     }
 
     const firstChapterUrl = firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
@@ -117,9 +135,13 @@ export const novelBinCcScraper: SourceScraper = {
 
     // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
     // Fallback: look for any h2/h3 with "chapter" in it if the class selector doesn't work
-    let title = decodeEntities(safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? '');
+    let title = decodeEntities(
+      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? '',
+    );
     if (!title) {
-      title = decodeEntities(safeMatch(html, /<h[23][^>]*>[\s\S]{0,150}?(?:chapter|Chapter)/i) ?? '');
+      title = decodeEntities(
+        safeMatch(html, /<h[23][^>]*>[\s\S]{0,150}?(?:chapter|Chapter)/i) ?? '',
+      );
     }
 
     // <div id="chr-content" class="chr-c" ...>...</div>
@@ -143,3 +165,4 @@ export const novelBinCcScraper: SourceScraper = {
     };
   },
 };
+
