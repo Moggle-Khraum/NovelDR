@@ -25,16 +25,21 @@ const extractBrSeparatedText = (html: string): string => {
 };
 
 /**
- * Chapter content on this site *is* wrapped in <p>...</p> (with an <h4>
- * restating the chapter title mixed in, plus empty leading <p></p>), so
- * pulling just the <p> tags naturally skips the heading and blank ones.
+ * Chapter content on this site is NOT wrapped in individual <p> tags —
+ * div#chr-content starts with a leading empty <p></p>, then an <h4>
+ * restating the chapter title, then the real body as raw text nodes
+ * separated by bare <br> tags. Pulling <p>...</p> matches (extractParagraphs,
+ * the previous approach here) only ever finds that one empty <p></p> and
+ * returns nothing — this is the same <br>-separated style as the synopsis,
+ * so reuse that same splitting approach instead, after stripping the
+ * leading <h4> title repeat.
+ *
+ * Exported for the scraper content-extraction regression test — see
+ * scripts/test-scrapers.ts.
  */
-const extractParagraphs = (html: string): string => {
-  const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
-  return matches
-    .map((m) => decodeEntities(stripTags(m[1])))
-    .filter(Boolean)
-    .join('\n\n');
+export const extractChapterBody = (rawContentBlock: string): string => {
+  const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, '');
+  return extractBrSeparatedText(contentBlock);
 };
 
 export const novelBinCcScraper: SourceScraper = {
@@ -84,17 +89,17 @@ export const novelBinCcScraper: SourceScraper = {
     // 2. Flexible: <a ...class contains "btn"... href contains "/chapter"
     // 3. Last resort: any <a> with href to /book/.../chapter-1 that contains "READ"
     let firstChapterPath = safeMatch(html, /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i);
-    
+
     if (!firstChapterPath) {
       // Fallback: look for any link with chapter in the href and "read" text nearby
       firstChapterPath = safeMatch(html, /<a[\s\S]*?href="([^"]*\/chapter-[0-9]+[^"]*)"[\s\S]*?(?:class="[^"]*btn[^"]*")?[\s\S]*?>[\s\S]{0,100}?(?:READ|read)/i);
     }
-    
+
     if (!firstChapterPath) {
       // Last resort: any /book/.../chapter-1 link
       firstChapterPath = safeMatch(html, /<a[\s\S]*?href="([^"]*\/book\/[^"]*\/chapter-1[^"]*)"[\s\S]*?>/i);
     }
-    
+
     const firstChapterUrl = firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
 
     return {
@@ -118,10 +123,8 @@ export const novelBinCcScraper: SourceScraper = {
     }
 
     // <div id="chr-content" class="chr-c" ...>...</div>
-    // Contains a leading empty <p></p> and an <h4> restating the chapter
-    // title before the real paragraphs, so pull only the <p> tags.
     const contentBlock = extractByDepth(html, 'id="chr-content"') ?? '';
-    const content = extractParagraphs(contentBlock);
+    const content = extractChapterBody(contentBlock);
 
     // <a title="Chapter 2: ..." href="..." class="btn btn-success" id="next_chap">
     // Gets a `disabled=""` attribute (no href change) on the last chapter.
