@@ -826,5 +826,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useLibrary() {
-  return useContext(LibraryContext);
+  const context = useContext(LibraryContext);
+  if (!context) {
+    throw new Error('useLibrary must be used within a LibraryProvider');
+  }
+  return context;
 }
