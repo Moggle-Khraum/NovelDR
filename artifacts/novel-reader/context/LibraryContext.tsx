@@ -309,6 +309,81 @@ const recoverDataIfNeeded = async (onStep: (step: InitStep) => void): Promise<bo
   }
 };
 
+// Deletes chapter_N.json files left on disk whose index N falls outside the
+// novel's current chapters array (N >= validChapterCount). This happens when
+// a run downloads and writes content to disk but crashes/gets interrupted
+// before the chapters metadata array itself gets persisted — the files exist,
+// but nothing in the library index points to them. They're otherwise
+// invisible (not shown in the reader, not counted anywhere) but sit there
+// as dead weight and can confuse anything that scans the directory directly.
+const purgeOrphanedChapterFiles = async (novelId: string, validChapterCount: number): Promise<number> => {
+  try {
+    const dir = getNovelChaptersPath(novelId);
+    const dirInfo = await FileSystem.getInfoAsync(dir);
+    if (!dirInfo.exists) return 0;
+
+    const files = await FileSystem.readDirectoryAsync(dir);
+    let purged = 0;
+
+    for (const file of files) {
+      const match = file.match(/^chapter_(\d+)\.json$/);
+      if (!match) continue; // leave any non-chapter file alone
+
+      const idx = parseInt(match[1], 10);
+      if (idx >= validChapterCount) {
+        await FileSystem.deleteAsync(`${dir}${file}`, { idempotent: true });
+        purged++;
+      }
+    }
+
+    return purged;
+  } catch (error) {
+    console.error('[Storage] Error purging orphaned chapter files:', error);
+    return 0;
+  }
+};
+
+// Deletes entire chapters/{novelId}/ directories for novels that no longer
+// exist in the loaded library index — e.g. a novel that was removed, or one
+// that crashed mid-add before ever making it into the index.
+const purgeOrphanedNovelDirectories = async (validNovelIds: Set<string>): Promise<number> => {
+  try {
+    const chaptersRoot = getChaptersPath();
+    const rootInfo = await FileSystem.getInfoAsync(chaptersRoot);
+    if (!rootInfo.exists) return 0;
+
+    const dirs = await FileSystem.readDirectoryAsync(chaptersRoot);
+    let purged = 0;
+
+    for (const dir of dirs) {
+      if (!validNovelIds.has(dir)) {
+        await FileSystem.deleteAsync(getNovelChaptersPath(dir), { idempotent: true });
+        purged++;
+      }
+    }
+
+    return purged;
+  } catch (error) {
+    console.error('[Storage] Error purging orphaned novel directories:', error);
+    return 0;
+  }
+};
+
+// Runs both orphan-cleanup passes against a freshly-loaded library: whole
+// directories for novels no longer in the index, and stray chapter_N.json
+// files within each remaining novel's directory.
+const purgeOrphanedDataOnStartup = async (loadedNovels: Novel[]): Promise<{ dirs: number; files: number }> => {
+  const validIds = new Set(loadedNovels.map(n => n.id));
+  const purgedDirs = await purgeOrphanedNovelDirectories(validIds);
+
+  let purgedFiles = 0;
+  for (const novel of loadedNovels) {
+    purgedFiles += await purgeOrphanedChapterFiles(novel.id, novel.chapters.length);
+  }
+
+  return { dirs: purgedDirs, files: purgedFiles };
+};
+
 const extractChapterNumber = (chapter: Chapter): number | null => {
   const titleMatch = (chapter.title || '').match(/chapter\s*(\d+)/i);
   if (titleMatch) return parseInt(titleMatch[1], 10);
@@ -340,9 +415,9 @@ type LibraryContextType = {
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (novelId: string, chapterIndex: number, title: string, url: string, content: string, chapterNumber?: number) => Promise<void>;
   saveAllChaptersToFile: (novelId: string, chapters: Chapter[], offset?: number) => Promise<void>;
-  deleteChapters: (novelId: string, chapterUrls: string[]) => Promise<void>;
   loadChapterContent: (novelId: string, chapterIndex: number) => Promise<Chapter | null>;
   refreshLibrary: () => Promise<void>;
+  purgeOrphanedData: (loadedNovels?: Novel[]) => Promise<{ dirs: number; files: number }>;
   library: Novel[];
 };
 
@@ -387,22 +462,20 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initializeStorage = async () => {
-      const initialized = await isInitialized();
-
-      if (initialized) {
-        addInitStep({ id: 'start', message: 'Loading library...', status: 'done', detail: 'Already initialized' });
-        try {
-          const { novels: loaded, sortOrder: order } = await loadNovelsFromDisk();
-          setSortOrder(order);
-          setNovels(loaded);
-        } catch {}
-        setInitComplete(true);
-        setLoading(false);
-        return;
-      }
-
+      // Every launch now runs the full checklist below, instead of only
+      // running it once on first install and taking a silent shortcut on
+      // every launch after. `alreadyInitialized` just changes the wording
+      // of the first/last step — it no longer skips any checks. Each check
+      // (migrate/recover in particular) is already cheap once the app is
+      // past its first run, since they early-out internally as soon as they
+      // confirm there's nothing to do.
       try {
-        addInitStep({ id: 'start', message: 'Initializing storage...', status: 'running' });
+        const alreadyInitialized = await isInitialized();
+        addInitStep({
+          id: 'start',
+          message: alreadyInitialized ? 'Loading library...' : 'Initializing storage...',
+          status: 'running',
+        });
 
         const migrated = await migrateFromLegacyStorage(addInitStep);
         const recovered = await recoverDataIfNeeded(addInitStep);
@@ -417,6 +490,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           setSortOrder(order);
           setNovels(loaded);
           addInitStep({ id: 'preferences', message: 'Preferences loaded', status: 'done' });
+
+          const { dirs, files } = await purgeOrphanedDataOnStartup(loaded);
+          if (dirs > 0 || files > 0) {
+            addInitStep({
+              id: 'purge',
+              message: 'Cleaned up orphaned data',
+              status: 'done',
+              detail: `${dirs} stray folder${dirs !== 1 ? 's' : ''}, ${files} orphaned file${files !== 1 ? 's' : ''}`,
+            });
+          }
 
           try {
             const novelDirs = await FileSystem.readDirectoryAsync(getChaptersPath());
@@ -438,6 +521,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         } catch {
           addInitStep({ id: 'library', message: 'Library repair needed', status: 'error' });
         }
+
+        addInitStep({
+          id: 'start',
+          message: alreadyInitialized ? 'Loading library...' : 'Initializing storage...',
+          status: 'done',
+        });
 
         await markInitialized();
 
@@ -522,61 +611,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     ids.forEach(id => deleteNovelChapters(id));
   }, []);
 
-  const deleteChapters = useCallback(async (novelId: string, chapterUrls: string[]) => {
-    const novel = novelsRef.current.find(n => n.id === novelId);
-    if (!novel) return;
-
-    const urlsToDelete = new Set(chapterUrls);
-    const oldChapters = novel.chapters;
-
-    // Load full content for every chapter that's surviving BEFORE we wipe the
-    // directory below — chapters are stored positionally (chapter_N.json), so
-    // once we delete some, the remaining files need to be rewritten starting
-    // back at index 0 to close the gap left by the deleted ones.
-    const survivingContent: (Chapter | null)[] = [];
-    for (let i = 0; i < oldChapters.length; i++) {
-      if (urlsToDelete.has(oldChapters[i].url)) continue;
-      survivingContent.push(await loadChapterFromFile(novelId, i));
-    }
-
-    const newChapters = oldChapters.filter(ch => !urlsToDelete.has(ch.url));
-
-    await deleteNovelChapters(novelId);
-    for (let i = 0; i < survivingContent.length; i++) {
-      const data = survivingContent[i];
-      if (data?.content) {
-        await saveChapterToFile(novelId, i, {
-          title: data.title,
-          url: data.url,
-          content: data.content,
-          chapterNumber: data.chapterNumber,
-        });
-      }
-    }
-
-    // Re-point lastRead at the surviving chapter's new index, or clear it
-    // entirely if the chapter the user was on got deleted.
-    let newLastRead = novel.lastRead;
-    if (novel.lastRead) {
-      const oldChapter = oldChapters[novel.lastRead.chapterIndex];
-      if (!oldChapter || urlsToDelete.has(oldChapter.url)) {
-        newLastRead = undefined;
-      } else {
-        const newIndex = newChapters.findIndex(ch => ch.url === oldChapter.url);
-        newLastRead = newIndex >= 0
-          ? { ...novel.lastRead, chapterIndex: newIndex }
-          : undefined;
-      }
-    }
-
-    const updatedNovels = novelsRef.current.map(n =>
-      n.id === novelId ? { ...n, chapters: newChapters, lastRead: newLastRead } : n
-    );
-    novelsRef.current = updatedNovels;
-    setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
-  }, []);
-
   const getNovel = useCallback((id: string) => novels.find(n => n.id === id), [novels]);
 
   const saveReadingProgress = useCallback(async (
@@ -651,6 +685,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     return await loadChapterFromFile(novelId, chapterIndex);
   }, []);
 
+  // Exposed so any screen (startup, backup, manual maintenance) can trigger
+  // the same orphan cleanup against the current in-memory library — defaults
+  // to `novels` state if the caller doesn't pass a specific list.
+  const purgeOrphanedDataCb = useCallback(async (loadedNovels?: Novel[]) => {
+    return await purgeOrphanedDataOnStartup(loadedNovels ?? novelsRef.current);
+  }, []);
+
   // ── Refresh library from disk ────────────────────────────────────────────
 
   const refreshLibrary = useCallback(async () => {
@@ -681,9 +722,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       getSortedChapters,
       saveChapterContent,
       saveAllChaptersToFile,
-      deleteChapters,
       loadChapterContent,
       refreshLibrary,
+      purgeOrphanedData: purgeOrphanedDataCb,
       library: novels,
     }),
     [
@@ -702,9 +743,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       toggleSortOrder,
       getSortedChapters,
       saveChapterContent,
-      deleteChapters,
       loadChapterContent,
       refreshLibrary,
+      purgeOrphanedDataCb,
     ]
   );
 
