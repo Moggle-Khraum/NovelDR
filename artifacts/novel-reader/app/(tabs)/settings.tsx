@@ -255,6 +255,7 @@ export default function SettingsScreen() {
   // (non-memoized) function also called from several other places, so adding
   // it here would re-subscribe to AppState on every render since its
   // identity changes each render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkWarningStatus = async () => {
       try {
