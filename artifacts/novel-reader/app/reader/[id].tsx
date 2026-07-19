@@ -725,6 +725,7 @@ export default function ReaderScreen() {
   // chapter/novel object refs, which can change identity on unrelated re-renders.
   // Depending on the objects would re-trigger this load (spinner + fetch)
   // whenever that happens, not just on actual chapter navigation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Create a new AbortController for this load
     const abortController = new AbortController();
