@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  AppStateStatus,
   Modal,
   Platform,
   Pressable,
@@ -219,7 +220,7 @@ export default function ReaderScreen() {
   const scrollYRef = useRef(0);
   const contentHeightRef = useRef(0);
   const scrollViewHeightRef = useRef(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasRestoredScrollRef = useRef(false);
   const restoredChapterRef = useRef<number>(-1);
@@ -696,7 +697,7 @@ export default function ReaderScreen() {
   }, [persistChapterContent, saveReadingProgress]);
 
   useEffect(() => {
-    const handleAppStateChange = async (nextAppState: string) => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (
         (appStateRef.current === 'active' && nextAppState.match(/inactive|background/)) ||
         nextAppState === 'background'
@@ -1740,7 +1741,7 @@ export default function ReaderScreen() {
               <TextInput
                 style={[
                   styles.searchInput,
-                  { color: adaptiveColors.text, borderColor: adaptiveColors.border, backgroundColor: adaptiveColors.background },
+                  { color: adaptiveColors.text, borderColor: adaptiveColors.border, backgroundColor: themeColors.background },
                 ]}
                 placeholder="Search chapters..."
                 placeholderTextColor={adaptiveColors.textSecondary}
