@@ -6,8 +6,6 @@
 
 ---
 
--
-
 # Novel DR
 
 ## 📑 Table of Contents
