@@ -170,7 +170,7 @@ export function WebViewFetchBridge() {
       finish(job, { html: event.nativeEvent.data });
       startNext();
     },
-    [finish, startNext]
+    [finish, startNext],
   );
 
   const handleError = useCallback(() => {
