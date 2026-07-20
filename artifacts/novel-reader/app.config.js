@@ -1,4 +1,30 @@
 // artifacts/novel-reader/app.config.js
+import { withDangerousMod } from "@expo/config-plugins";
+import fs from "fs";
+import path from "path";
+
+// Patch gradle-wrapper.properties to pin Gradle to 8.10.2,
+// avoiding the AGP 8.5+ components.release breakage in expo-notifications 0.27.x
+const withGradle810 = (config) =>
+  withDangerousMod(config, [
+    "android",
+    (cfg) => {
+      const wrapperPath = path.join(
+        cfg.modRequest.platformProjectRoot,
+        "gradle/wrapper/gradle-wrapper.properties"
+      );
+      if (fs.existsSync(wrapperPath)) {
+        let contents = fs.readFileSync(wrapperPath, "utf8");
+        contents = contents.replace(
+          /distributionUrl=.*/,
+          "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip"
+        );
+        fs.writeFileSync(wrapperPath, contents);
+      }
+      return cfg;
+    },
+  ]);
+
 export default () => {
   const buildNumber = process.env.APP_BUILD_NUMBER || "1";
 
@@ -7,7 +33,7 @@ export default () => {
       name: "Novel DR",
       slug: "novel-reader",
       version: "3.10.25",
-      owner: "moggstones-stash", // 🔧 Add this line
+      owner: "moggstones-stash",
       orientation: "portrait",
       icon: "./assets/images/icon.png",
       scheme: "novel-reader",
@@ -31,6 +57,7 @@ export default () => {
         favicon: "./assets/images/icon.png",
       },
       plugins: [
+        withGradle810,
         [
           "expo-router",
           {
