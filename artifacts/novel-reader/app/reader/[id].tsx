@@ -33,6 +33,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
+import {
+  updateTTSNotification,
+  clearTTSNotification,
+  setupNotificationChannels,
+  type TTSNotificationState,
+} from "@/lib/TTSNotificationManager";
+import * as Notifications from "expo-notifications";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -1008,6 +1015,50 @@ export default function ReaderScreen() {
     };
   }, [persistChapterContent]);
 
+  // ─── Notification setup ───────────────────────────────────────────────
+  useEffect(() => {
+    setupNotificationChannels();
+  }, []);
+
+  // Listen for notification actions (play/pause/next/prev)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const action = response.actionIdentifier;
+        if (action === "pause") {
+          toggleTTS();
+        } else if (action === "next") {
+          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
+            goChapter(1);
+          }
+        } else if (action === "prev") {
+          if (chapterIndex > 0) {
+            goChapter(-1);
+          }
+        }
+      },
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
+
+  // Update notification as TTS plays
+  useEffect(() => {
+    if (!novel || !chapter) return;
+
+    if (ttsActive) {
+      updateTTSNotification({
+        novelTitle: novel.title,
+        chapterNumber: chapterIndex + 1,
+        chapterTitle: chapter.title,
+        progressPercent: Math.round(readingProgress),
+        isPlaying: true,
+      });
+    }
+  }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
+
   // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
     ttsActiveRef.current = false;
@@ -1042,6 +1093,17 @@ export default function ReaderScreen() {
           Haptics.notificationAsync(
             Haptics.NotificationFeedbackType.Success,
           ).catch(() => {});
+
+          // Announce next chapter via TTS
+          try {
+            Speech.speak("Loading next chapter", {
+              language: "en",
+              pitch: 1.0,
+              rate: ttsRateRef.current,
+              voice: ttsVoiceIdRef.current,
+            });
+          } catch {}
+
           autoNextTimerRef.current = setTimeout(() => {
             autoNextTimerRef.current = null;
             setAutoNextCountdownActive(false);
@@ -1384,6 +1446,13 @@ export default function ReaderScreen() {
       updateReadingProgress();
     }
   };
+
+  // ─── Cleanup on unmount ───────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      clearTTSNotification();
+    };
+  }, []);
 
   // ─── Initial loading state ────────────────────────────────────────────
   if (!novel || !chapter || !settingsLoaded) {
