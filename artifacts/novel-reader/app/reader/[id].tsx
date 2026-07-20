@@ -716,13 +716,18 @@ export default function ReaderScreen() {
     const paraHeight = paraHeightsRef.current.get(currentParaIdx);
     if (paraY === undefined) return;
     const centerOfParagraph = paraY + (paraHeight ?? 0) / 2;
+    // Offset by ~2 text-block heights so the highlighted paragraph lands
+    // above dead-center, clear of the TTS status overlay and floating
+    // buttons docked at the bottom of the screen.
+    const blockHeightEstimate = fontSize * lineSpacing * 1.8;
+    const centerOffset = blockHeightEstimate * 2;
     const targetY = Math.max(
       0,
-      centerOfParagraph - scrollViewHeightRef.current / 2,
+      centerOfParagraph - scrollViewHeightRef.current / 2 + centerOffset,
     );
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
     scrollYRef.current = targetY;
-  }, [currentParaIdx, ttsActive]);
+  }, [currentParaIdx, ttsActive, fontSize, lineSpacing]);
 
   // ─── Load effect with AbortController and request ID ──────────────────
   const loadIdRef = useRef(0);
@@ -1418,6 +1423,17 @@ export default function ReaderScreen() {
                   const isLastParagraph =
                     paraIdx === paragraphSentences.length - 1;
                   const isCurrentParagraph = paraIdx === currentParaIdx;
+                  // Quote-aware highlight scope: dialogue sentences often get
+                  // split oddly by the TTS sentence splitter vs. the render
+                  // splitter (quote marks throw off the boundary regex), so a
+                  // single quoted sentence can end up isolated with no exact
+                  // match. When the currently-spoken sentence contains a
+                  // quote mark, widen the highlight to the whole paragraph;
+                  // otherwise keep it tight to just the matching sentence.
+                  const currentTtsHasQuote =
+                    ttsActive && currentSentence
+                      ? /["“”]/.test(currentSentence)
+                      : false;
                   return (
                     <View
                       key={paraIdx}
@@ -1449,6 +1465,11 @@ export default function ReaderScreen() {
                           marginBottom += fontSize * 0.2;
 
                         const renderKey = `${paraIdx}-${sentIdx}`;
+                        const isExactSentenceMatch =
+                          currentHighlightKey === renderKey;
+                        const isHighlighted = currentTtsHasQuote
+                          ? isCurrentParagraph
+                          : isExactSentenceMatch;
 
                         return (
                           <Text
@@ -1462,12 +1483,13 @@ export default function ReaderScreen() {
                             style={[
                               styles.content,
                               {
-                                color: isCurrentParagraph
+                                color: isHighlighted
                                   ? adaptiveColors.accent
                                   : adaptiveColors.text,
-                                backgroundColor: isCurrentParagraph
+                                backgroundColor: isHighlighted
                                   ? `${adaptiveColors.accent}20`
                                   : "transparent",
+                                fontWeight: isHighlighted ? "bold" : "normal",
                                 fontSize,
                                 lineHeight: fontSize * lineSpacing,
                                 marginBottom,
@@ -1489,26 +1511,6 @@ export default function ReaderScreen() {
             )}
           </ScrollView>
 
-          {/* Quick jump buttons */}
-          <Pressable
-            style={[
-              styles.jumpTopBtn,
-              {
-                backgroundColor: adaptiveColors.card + "CC",
-                borderColor: adaptiveColors.border,
-              },
-            ]}
-            onPress={() => {
-              scrollRef.current?.scrollTo({ y: 0, animated: true });
-              scrollYRef.current = 0;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
-                () => {},
-              );
-            }}
-          >
-            <Ionicons name="arrow-up" size={16} color={adaptiveColors.text} />
-          </Pressable>
-
           {/* TTS Help Button */}
           {ttsAvailable && (
             <Pressable
@@ -1523,7 +1525,7 @@ export default function ReaderScreen() {
             >
               <Ionicons
                 name="book-outline"
-                size={20}
+                size={16}
                 color={adaptiveColors.text}
               />
             </Pressable>
@@ -1547,7 +1549,7 @@ export default function ReaderScreen() {
             >
               <Ionicons
                 name={ttsActive ? "pause" : "volume-high"}
-                size={22}
+                size={18}
                 color="#fff"
               />
             </Pressable>
@@ -2867,25 +2869,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 40,
   },
-  jumpTopBtn: {
-    position: "absolute",
-    bottom: 74,
-    left: 18,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    elevation: 3,
-  },
   ttsHelpBtn: {
     position: "absolute",
-    bottom: 74,
+    bottom: 70,
     right: 18,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -2893,11 +2883,11 @@ const styles = StyleSheet.create({
   },
   ttsFloatingBtn: {
     position: "absolute",
-    bottom: 20,
+    bottom: 18,
     right: 18,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
     elevation: 4,
