@@ -12,13 +12,13 @@ module.exports = (config) =>
     (cfg) => {
       const wrapperPath = path.join(
         cfg.modRequest.platformProjectRoot,
-        "gradle/wrapper/gradle-wrapper.properties"
+        "gradle/wrapper/gradle-wrapper.properties",
       );
       if (fs.existsSync(wrapperPath)) {
         let contents = fs.readFileSync(wrapperPath, "utf8");
         contents = contents.replace(
           /distributionUrl=.+/,
-          "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip"
+          "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip",
         );
         fs.writeFileSync(wrapperPath, contents);
       }
