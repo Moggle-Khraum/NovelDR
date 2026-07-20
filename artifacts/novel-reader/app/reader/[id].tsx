@@ -321,6 +321,8 @@ export default function ReaderScreen() {
 
   const [fontSizeIdx, setFontSizeIdx] = useState(3);
   const [lineSpacingIdx, setLineSpacingIdx] = useState(2);
+  const fontSize = FONT_SIZES[fontSizeIdx];
+  const lineSpacing = LINE_SPACINGS[lineSpacingIdx];
   const [marginPresetIdx, setMarginPresetIdx] = useState(1);
   const [autoScrollSpeedIdx, setAutoScrollSpeedIdx] = useState(1);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -400,7 +402,8 @@ export default function ReaderScreen() {
   // continue hands-free across chapter boundaries.
   const [ttsAutoNext, setTtsAutoNext] = useState(false);
   const ttsAutoNextRef = useRef(false);
-  const [autoNextCountdownActive, setAutoNextCountdownActive] = useState(false);
+  const [autoNextCountdownActive, setAutoNextCountdownActive] =
+    useState(false);
   const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextResumeRef = useRef(false);
 
@@ -834,7 +837,8 @@ export default function ReaderScreen() {
           if (processed.sentences.length > 0) {
             setTimeout(() => {
               if (!isMountedRef.current) return;
-              if (signal.aborted || currentLoadId !== loadIdRef.current) return;
+              if (signal.aborted || currentLoadId !== loadIdRef.current)
+                return;
               ttsActiveRef.current = true;
               ttsScrollCounterRef.current = 0;
               setTtsActive(true);
@@ -1394,8 +1398,6 @@ export default function ReaderScreen() {
     );
   }
 
-  const fontSize = FONT_SIZES[fontSizeIdx];
-  const lineSpacing = LINE_SPACINGS[lineSpacingIdx];
   const currentSpeed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
   const ttsAvailable = chapterContent.trim().length >= TTS_MIN_CHARS;
   const currentSentence = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
