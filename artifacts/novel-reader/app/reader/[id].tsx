@@ -262,11 +262,7 @@ function splitIntoSentences(text: string): string[] {
         if (seg.length >= 2) sentences.push(seg);
       });
     } else {
-      const sub = trimmed.match(/[^,;]+[,;]?/g) ?? [trimmed];
-      for (const s of sub) {
-        const st = s.trim();
-        if (st.length >= 2) sentences.push(st);
-      }
+      if (trimmed.length >= 2) sentences.push(trimmed);
     }
   }
   return sentences;
@@ -366,6 +362,7 @@ export default function ReaderScreen() {
   // populated via onLayout (cheap, fires once per layout, not per render).
   // Used to scroll precisely to the sentence currently being read by TTS.
   const paraYPositionsRef = useRef<Map<number, number>>(new Map());
+  const paraHeightsRef = useRef<Map<number, number>>(new Map());
   const sentenceYPositionsRef = useRef<Map<string, number>>(new Map());
 
   const [chapterContent, setChapterContent] = useState<string>("");
@@ -697,24 +694,35 @@ export default function ReaderScreen() {
   // so old y-positions from a previous chapter can't be scrolled to.
   useEffect(() => {
     paraYPositionsRef.current.clear();
+    paraHeightsRef.current.clear();
     sentenceYPositionsRef.current.clear();
   }, [processedParagraphs]);
 
-  // Auto-scroll to keep the sentence currently being read by TTS in view.
-  // Replaces the old blind "+120px every 4 sentences" scroll, which had no
-  // idea where the actual sentence was on screen.
+  // The paragraph index currently being read by TTS. Derived from
+  // currentHighlightKey so the scroll effect below can key off paragraph
+  // changes only, not every individual sentence within the same paragraph.
+  const currentParaIdx = currentHighlightKey
+    ? parseInt(currentHighlightKey.split("-")[0], 10)
+    : -1;
+
+  // Auto-scroll so the paragraph currently being read by TTS is centered on
+  // screen. Triggers once per paragraph change (not per sentence, since the
+  // whole block is highlighted together) — once a block finishes speaking
+  // and TTS moves to the next one, the view scrolls to bring the new block
+  // to the vertical center of the screen.
   useEffect(() => {
-    if (!ttsActive || !currentHighlightKey) return;
-    const [paraIdxStr] = currentHighlightKey.split("-");
-    const paraIdx = parseInt(paraIdxStr, 10);
-    const paraY = paraYPositionsRef.current.get(paraIdx);
-    const sentY = sentenceYPositionsRef.current.get(currentHighlightKey);
-    if (paraY === undefined || sentY === undefined) return;
-    const absoluteY = paraY + sentY;
-    const targetY = Math.max(0, absoluteY - scrollViewHeightRef.current * 0.3);
+    if (!ttsActive || currentParaIdx < 0) return;
+    const paraY = paraYPositionsRef.current.get(currentParaIdx);
+    const paraHeight = paraHeightsRef.current.get(currentParaIdx);
+    if (paraY === undefined) return;
+    const centerOfParagraph = paraY + (paraHeight ?? 0) / 2;
+    const targetY = Math.max(
+      0,
+      centerOfParagraph - scrollViewHeightRef.current / 2,
+    );
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
     scrollYRef.current = targetY;
-  }, [currentHighlightKey, ttsActive]);
+  }, [currentParaIdx, ttsActive]);
 
   // ─── Load effect with AbortController and request ID ──────────────────
   const loadIdRef = useRef(0);
@@ -1409,6 +1417,7 @@ export default function ReaderScreen() {
                 {paragraphSentences.map((sentences, paraIdx) => {
                   const isLastParagraph =
                     paraIdx === paragraphSentences.length - 1;
+                  const isCurrentParagraph = paraIdx === currentParaIdx;
                   return (
                     <View
                       key={paraIdx}
@@ -1419,6 +1428,10 @@ export default function ReaderScreen() {
                         paraYPositionsRef.current.set(
                           paraIdx,
                           e.nativeEvent.layout.y,
+                        );
+                        paraHeightsRef.current.set(
+                          paraIdx,
+                          e.nativeEvent.layout.height,
                         );
                       }}
                     >
@@ -1436,8 +1449,6 @@ export default function ReaderScreen() {
                           marginBottom += fontSize * 0.2;
 
                         const renderKey = `${paraIdx}-${sentIdx}`;
-                        const isCurrentSentence =
-                          renderKey === currentHighlightKey;
 
                         return (
                           <Text
@@ -1451,17 +1462,17 @@ export default function ReaderScreen() {
                             style={[
                               styles.content,
                               {
-                                color: isCurrentSentence
+                                color: isCurrentParagraph
                                   ? adaptiveColors.accent
                                   : adaptiveColors.text,
-                                backgroundColor: isCurrentSentence
+                                backgroundColor: isCurrentParagraph
                                   ? `${adaptiveColors.accent}20`
                                   : "transparent",
                                 fontSize,
                                 lineHeight: fontSize * lineSpacing,
                                 marginBottom,
-                                paddingVertical: isCurrentSentence ? 2 : 0,
-                                paddingHorizontal: isCurrentSentence ? 6 : 0,
+                                paddingVertical: 2,
+                                paddingHorizontal: 6,
                                 borderRadius: 6,
                                 letterSpacing: 0.2,
                               },
