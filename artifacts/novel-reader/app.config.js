@@ -49,14 +49,6 @@ export default () => {
           },
         ],
         [
-          "expo-build-properties",
-          {
-            android: {
-              compileSdkVersion: 34,
-            },
-          },
-        ],
-        [
           "@sentry/react-native/expo",
           {
             organization: process.env.SENTRY_ORG,
