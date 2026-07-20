@@ -25,7 +25,10 @@ export default () => {
       android: {
         package: "com.noveldr.app",
         versionCode: parseInt(buildNumber, 10),
-        permissions: ["REQUEST_INSTALL_PACKAGES"], "POST_NOTIFICATIONS",  // Required for Android 13+
+        permissions: [
+          "REQUEST_INSTALL_PACKAGES",
+          "POST_NOTIFICATIONS",
+        ],
       },
       web: {
         favicon: "./assets/images/icon.png",
@@ -39,6 +42,15 @@ export default () => {
         ],
         "expo-font",
         "expo-web-browser",
+        [
+          "expo-notifications",
+          {
+            icon: "./assets/images/icon.png",
+            color: "#FFFFFF",
+            sounds: [],
+            modes: "production",
+          },
+        ],
         [
           "@sentry/react-native/expo",
           {
