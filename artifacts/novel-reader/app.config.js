@@ -31,7 +31,6 @@ export default () => {
         favicon: "./assets/images/icon.png",
       },
       plugins: [
-        "./plugins/withGradle810",
         [
           "expo-router",
           {
@@ -47,14 +46,6 @@ export default () => {
             color: "#FFFFFF",
             sounds: [],
             modes: "production",
-          },
-        ],
-        [
-          "expo-build-properties",
-          {
-            android: {
-              compileSdkVersion: 34,
-            },
           },
         ],
         [
