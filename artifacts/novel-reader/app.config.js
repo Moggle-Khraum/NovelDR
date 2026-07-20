@@ -2,33 +2,6 @@
 export default () => {
   const buildNumber = process.env.APP_BUILD_NUMBER || "1";
 
-  // Patch gradle-wrapper.properties to pin Gradle to 8.10.2,
-  // avoiding the AGP 8.5+ components.release breakage in expo-notifications 0.27.x.
-  // Lazy require so this only runs during prebuild (not during EAS config eval).
-  const withGradle810 = (config) => {
-    const { withDangerousMod } = require("@expo/config-plugins");
-    const fs = require("fs");
-    const path = require("path");
-    return withDangerousMod(config, [
-      "android",
-      (cfg) => {
-        const wrapperPath = path.join(
-          cfg.modRequest.platformProjectRoot,
-          "gradle/wrapper/gradle-wrapper.properties",
-        );
-        if (fs.existsSync(wrapperPath)) {
-          let contents = fs.readFileSync(wrapperPath, "utf8");
-          contents = contents.replace(
-            /distributionUrl=.*/,
-            "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip",
-          );
-          fs.writeFileSync(wrapperPath, contents);
-        }
-        return cfg;
-      },
-    ]);
-  };
-
   return {
     expo: {
       name: "Novel DR",
@@ -58,7 +31,7 @@ export default () => {
         favicon: "./assets/images/icon.png",
       },
       plugins: [
-        withGradle810,
+        "./plugins/withGradle810",
         [
           "expo-router",
           {
