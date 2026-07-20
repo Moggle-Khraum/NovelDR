@@ -25,7 +25,10 @@ export default () => {
       android: {
         package: "com.noveldr.app",
         versionCode: parseInt(buildNumber, 10),
-        permissions: ["REQUEST_INSTALL_PACKAGES", "POST_NOTIFICATIONS"],
+        permissions: [
+          "REQUEST_INSTALL_PACKAGES",
+          "POST_NOTIFICATIONS",
+        ],
       },
       web: {
         favicon: "./assets/images/icon.png",
@@ -46,6 +49,14 @@ export default () => {
             color: "#FFFFFF",
             sounds: [],
             modes: "production",
+          },
+        ],
+        [
+          "expo-build-properties",
+          {
+            android: {
+              compileSdkVersion: 34,
+            },
           },
         ],
         [
