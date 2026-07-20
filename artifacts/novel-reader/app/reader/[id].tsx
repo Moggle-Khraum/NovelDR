@@ -1370,20 +1370,33 @@ export default function ReaderScreen() {
     };
   }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
 
-  // Update notification as TTS plays
+  // Update notification as TTS plays. readingProgress changes continuously
+  // (many times per second during autoscroll), so this is keyed off the
+  // rounded percent via a ref rather than the raw float dependency — the
+  // notification only actually needs to change when the displayed number
+  // would change.
+  const lastNotifiedPercentRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!novel || !chapter) return;
+    if (!novel || !chapter || !ttsActive) return;
 
-    if (ttsActive) {
-      updateTTSNotification({
-        novelTitle: novel.title,
-        chapterNumber: chapterIndex + 1,
-        chapterTitle: chapter.title,
-        progressPercent: Math.round(readingProgress),
-        isPlaying: true,
-      });
-    }
+    const roundedPercent = Math.round(readingProgress);
+    if (lastNotifiedPercentRef.current === roundedPercent) return;
+    lastNotifiedPercentRef.current = roundedPercent;
+
+    updateTTSNotification({
+      novelTitle: novel.title,
+      chapterNumber: chapterIndex + 1,
+      chapterTitle: chapter.title,
+      progressPercent: roundedPercent,
+      isPlaying: true,
+    });
   }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
+
+  // Reset the dedup tracker whenever TTS stops so the next playback session
+  // starts clean (otherwise resuming at the same percent would post nothing).
+  useEffect(() => {
+    if (!ttsActive) lastNotifiedPercentRef.current = null;
+  }, [ttsActive]);
 
   const handleChapterSelect = (index: number) => {
     cancelAutoNext();
