@@ -393,6 +393,37 @@ export default function ReaderScreen() {
   const [ttsRate, setTtsRate] = useState(1.0);
   const ttsRateRef = useRef(1.0);
 
+  // ─── TTS Auto Next ──────────────────────────────────────────────────────
+  // When on, once TTS naturally finishes reading the last sentence of a
+  // chapter, a short countdown fires "Next" automatically and (if content
+  // loads successfully) resumes TTS on the new chapter — so listening can
+  // continue hands-free across chapter boundaries.
+  const [ttsAutoNext, setTtsAutoNext] = useState(false);
+  const ttsAutoNextRef = useRef(false);
+  const [autoNextCountdownActive, setAutoNextCountdownActive] =
+    useState(false);
+  const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoNextResumeRef = useRef(false);
+
+  const cancelAutoNext = useCallback(() => {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    setAutoNextCountdownActive(false);
+  }, []);
+
+  const toggleTtsAutoNext = useCallback(() => {
+    setTtsAutoNext((prev) => {
+      const next = !prev;
+      ttsAutoNextRef.current = next;
+      if (!next) cancelAutoNext();
+      saveTtsSettings(ttsVoiceIdRef.current, ttsRateRef.current, next);
+      return next;
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  }, [cancelAutoNext]);
+
   const novel = getNovel(id);
   const chapter = novel?.chapters[chapterIndex];
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -587,6 +618,10 @@ export default function ReaderScreen() {
             setTtsRate(s.rate);
             ttsRateRef.current = s.rate;
           }
+          if (s.autoNext !== undefined) {
+            setTtsAutoNext(!!s.autoNext);
+            ttsAutoNextRef.current = !!s.autoNext;
+          }
         }
       } catch (e) {
         console.warn("[TTS] Failed to load TTS settings:", e);
@@ -603,7 +638,11 @@ export default function ReaderScreen() {
     })();
   }, []);
 
-  const saveTtsSettings = async (voiceId: string | undefined, rate: number) => {
+  const saveTtsSettings = async (
+    voiceId: string | undefined,
+    rate: number,
+    autoNext?: boolean,
+  ) => {
     try {
       const dir = `${FileSystem.documentDirectory}NovelDR/`;
       const dirInfo = await FileSystem.getInfoAsync(dir);
@@ -611,7 +650,11 @@ export default function ReaderScreen() {
         await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       await FileSystem.writeAsStringAsync(
         TTS_SETTINGS_FILE,
-        JSON.stringify({ voiceId, rate }),
+        JSON.stringify({
+          voiceId,
+          rate,
+          autoNext: autoNext ?? ttsAutoNextRef.current,
+        }),
       );
     } catch (e) {
       console.warn("[TTS] Failed to save settings:", e);
@@ -785,6 +828,26 @@ export default function ReaderScreen() {
         setProcessedParagraphs(processed.paragraphs);
         setTtsSentences(processed.sentences);
 
+        // If this chapter change was triggered by TTS Auto Next, resume
+        // reading aloud from the top of the new chapter once it's ready.
+        if (autoNextResumeRef.current) {
+          autoNextResumeRef.current = false;
+          if (processed.sentences.length > 0) {
+            setTimeout(() => {
+              if (!isMountedRef.current) return;
+              if (signal.aborted || currentLoadId !== loadIdRef.current)
+                return;
+              ttsActiveRef.current = true;
+              ttsScrollCounterRef.current = 0;
+              setTtsActive(true);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                () => {},
+              );
+              speakSentence(processed.sentences, 0);
+            }, 150);
+          }
+        }
+
         // Preload the next chapter's raw content if not already preloaded for this chapterIndex
         if (
           preloadedIndexRef.current !== chapterIndex &&
@@ -908,6 +971,7 @@ export default function ReaderScreen() {
       Speech.stop();
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
+      if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -964,7 +1028,28 @@ export default function ReaderScreen() {
     (sentences: string[], index: number) => {
       if (!isMountedRef.current) return;
       if (index >= sentences.length || !ttsActiveRef.current) {
+        const finishedNaturally =
+          index >= sentences.length && ttsActiveRef.current;
         stopTTS();
+        if (
+          finishedNaturally &&
+          ttsAutoNextRef.current &&
+          novelRef.current &&
+          chapterIndexRef.current + 1 < novelRef.current.chapters.length
+        ) {
+          if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+          setAutoNextCountdownActive(true);
+          Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          ).catch(() => {});
+          autoNextTimerRef.current = setTimeout(() => {
+            autoNextTimerRef.current = null;
+            setAutoNextCountdownActive(false);
+            if (!isMountedRef.current || !ttsAutoNextRef.current) return;
+            autoNextResumeRef.current = true;
+            goChapterRef.current(1);
+          }, 3000);
+        }
         return;
       }
       ttsIndexRef.current = index;
@@ -1185,6 +1270,7 @@ export default function ReaderScreen() {
 
   // ─── Navigation helpers ──────────────────────────────────────────────
   const goChapter = (dir: 1 | -1) => {
+    cancelAutoNext();
     const next = chapterIndex + dir;
     if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
       Alert.alert(
@@ -1229,7 +1315,16 @@ export default function ReaderScreen() {
     setReadingProgress(0);
   };
 
+  // speakSentence is memoized once (deps never change) and its closure is
+  // frozen to the render it was created on, so it can't safely call
+  // goChapter directly (that would always navigate relative to a stale
+  // chapterIndex). This ref is reassigned every render so the latest
+  // goChapter closure is always reachable from inside that older callback.
+  const goChapterRef = useRef(goChapter);
+  goChapterRef.current = goChapter;
+
   const handleChapterSelect = (index: number) => {
+    cancelAutoNext();
     if (novel && chapter)
       saveReadingProgress(
         novel.id,
@@ -1592,6 +1687,42 @@ export default function ReaderScreen() {
               </Text>
             </View>
           </View>
+        )}
+
+        {/* TTS Auto Next countdown banner */}
+        {autoNextCountdownActive && (
+          <Pressable
+            onPress={cancelAutoNext}
+            style={[
+              styles.ttsSentenceBox,
+              {
+                backgroundColor: adaptiveColors.accent + "12",
+                borderColor: adaptiveColors.accent + "40",
+              },
+            ]}
+          >
+            <Ionicons
+              name="play-skip-forward-outline"
+              size={14}
+              color={adaptiveColors.accent}
+              style={{ marginTop: 2 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  styles.ttsSentenceLabel,
+                  { color: adaptiveColors.accent },
+                ]}
+              >
+                Chapter finished
+              </Text>
+              <Text
+                style={[styles.ttsSentenceText, { color: adaptiveColors.text }]}
+              >
+                Moving to next chapter in 3s — tap to cancel
+              </Text>
+            </View>
+          </Pressable>
         )}
 
         {/* Bottom navigation */}
@@ -1987,6 +2118,50 @@ export default function ReaderScreen() {
                     />
                   </Pressable>
                 </View>
+
+                {/* TTS AUTO NEXT — only visible while TTS is speaking */}
+                {ttsActive && (
+                  <View style={styles.rowGroup}>
+                    <Text
+                      style={[
+                        styles.rowGroupLabel,
+                        { color: adaptiveColors.textSecondary },
+                      ]}
+                    >
+                      TTS AUTO NEXT
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.autoNextToggleBtn,
+                        {
+                          backgroundColor: ttsAutoNext
+                            ? adaptiveColors.accent
+                            : adaptiveColors.card,
+                          borderColor: adaptiveColors.border,
+                        },
+                      ]}
+                      onPress={toggleTtsAutoNext}
+                    >
+                      <Ionicons
+                        name={
+                          ttsAutoNext ? "checkmark-circle" : "ellipse-outline"
+                        }
+                        size={15}
+                        color={ttsAutoNext ? "#fff" : adaptiveColors.text}
+                      />
+                      <Text
+                        style={[
+                          styles.autoNextToggleText,
+                          {
+                            color: ttsAutoNext ? "#fff" : adaptiveColors.text,
+                          },
+                        ]}
+                      >
+                        {ttsAutoNext ? "On" : "Off"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
 
                 {/* 4. MARGINS */}
                 <Text
@@ -3066,6 +3241,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 8,
   },
+  autoNextToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  autoNextToggleText: { fontSize: 13, fontWeight: "600" },
 
   // OLD BACKGROUND LAYOUT STYLES
   controlRow: {
