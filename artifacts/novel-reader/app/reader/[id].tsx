@@ -400,8 +400,7 @@ export default function ReaderScreen() {
   // continue hands-free across chapter boundaries.
   const [ttsAutoNext, setTtsAutoNext] = useState(false);
   const ttsAutoNextRef = useRef(false);
-  const [autoNextCountdownActive, setAutoNextCountdownActive] =
-    useState(false);
+  const [autoNextCountdownActive, setAutoNextCountdownActive] = useState(false);
   const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextResumeRef = useRef(false);
 
@@ -835,8 +834,7 @@ export default function ReaderScreen() {
           if (processed.sentences.length > 0) {
             setTimeout(() => {
               if (!isMountedRef.current) return;
-              if (signal.aborted || currentLoadId !== loadIdRef.current)
-                return;
+              if (signal.aborted || currentLoadId !== loadIdRef.current) return;
               ttsActiveRef.current = true;
               ttsScrollCounterRef.current = 0;
               setTtsActive(true);
