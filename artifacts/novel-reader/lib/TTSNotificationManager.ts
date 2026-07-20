@@ -19,20 +19,40 @@ export interface TTSNotificationState {
   isPlaying: boolean;
 }
 
-let currentNotificationId: string | null = null;
+// Fixed identifier so re-scheduling REPLACES the existing notification
+// in place (Android treats same-id notifications as an update) instead of
+// creating a brand new one each time. This is what actually prevents the
+// flood — the old dismiss-then-recreate approach raced with itself because
+// currentNotificationId was only assigned after the previous await resolved,
+// so overlapping calls could each see a stale/null id and both schedule.
+const TTS_NOTIFICATION_ID = "tts_playback_notification";
+
+let lastPostedSignature: string | null = null;
+let updateInFlight = false;
+let pendingState: TTSNotificationState | null = null;
+
+const buildSignature = (state: TTSNotificationState) =>
+  `${state.novelTitle}|${state.chapterNumber}|${state.chapterTitle}|${state.progressPercent}|${state.isPlaying}`;
 
 export const updateTTSNotification = async (state: TTSNotificationState) => {
   if (Platform.OS !== "android") return; // Android only for now
 
-  try {
-    // Cancel existing notification
-    if (currentNotificationId) {
-      await Notifications.dismissNotificationAsync(currentNotificationId);
-      currentNotificationId = null;
-    }
+  const signature = buildSignature(state);
+  if (signature === lastPostedSignature) return; // nothing actually changed
 
-    // Create new notification
-    currentNotificationId = await Notifications.scheduleNotificationAsync({
+  if (updateInFlight) {
+    // Another update is already in progress — remember the latest
+    // requested state and let that call pick it up when it finishes,
+    // instead of firing a second overlapping native call.
+    pendingState = state;
+    return;
+  }
+  updateInFlight = true;
+
+  try {
+    lastPostedSignature = signature;
+    await Notifications.scheduleNotificationAsync({
+      identifier: TTS_NOTIFICATION_ID,
       content: {
         title: state.novelTitle,
         subtitle: `Chapter ${state.chapterNumber}: ${state.chapterTitle}`,
@@ -80,17 +100,25 @@ export const updateTTSNotification = async (state: TTSNotificationState) => {
     });
   } catch (error) {
     console.warn("[TTS Notification] Failed to update:", error);
+  } finally {
+    updateInFlight = false;
+    if (pendingState) {
+      const next = pendingState;
+      pendingState = null;
+      // Fire and forget — this re-enters updateTTSNotification with
+      // whatever the latest state was while we were busy.
+      updateTTSNotification(next);
+    }
   }
 };
 
 export const clearTTSNotification = async () => {
-  if (currentNotificationId) {
-    try {
-      await Notifications.dismissNotificationAsync(currentNotificationId);
-      currentNotificationId = null;
-    } catch (error) {
-      console.warn("[TTS Notification] Failed to clear:", error);
-    }
+  lastPostedSignature = null;
+  pendingState = null;
+  try {
+    await Notifications.dismissNotificationAsync(TTS_NOTIFICATION_ID);
+  } catch (error) {
+    console.warn("[TTS Notification] Failed to clear:", error);
   }
 };
 
