@@ -1020,45 +1020,6 @@ export default function ReaderScreen() {
     setupNotificationChannels();
   }, []);
 
-  // Listen for notification actions (play/pause/next/prev)
-  useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const action = response.actionIdentifier;
-        if (action === "pause") {
-          toggleTTS();
-        } else if (action === "next") {
-          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
-            goChapter(1);
-          }
-        } else if (action === "prev") {
-          if (chapterIndex > 0) {
-            goChapter(-1);
-          }
-        }
-      },
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
-
-  // Update notification as TTS plays
-  useEffect(() => {
-    if (!novel || !chapter) return;
-
-    if (ttsActive) {
-      updateTTSNotification({
-        novelTitle: novel.title,
-        chapterNumber: chapterIndex + 1,
-        chapterTitle: chapter.title,
-        progressPercent: Math.round(readingProgress),
-        isPlaying: true,
-      });
-    }
-  }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
-
   // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
     ttsActiveRef.current = false;
@@ -1384,6 +1345,45 @@ export default function ReaderScreen() {
   // goChapter closure is always reachable from inside that older callback.
   const goChapterRef = useRef(goChapter);
   goChapterRef.current = goChapter;
+
+  // Listen for notification actions (play/pause/next/prev)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const action = response.actionIdentifier;
+        if (action === "pause") {
+          toggleTTS();
+        } else if (action === "next") {
+          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
+            goChapter(1);
+          }
+        } else if (action === "prev") {
+          if (chapterIndex > 0) {
+            goChapter(-1);
+          }
+        }
+      },
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
+
+  // Update notification as TTS plays
+  useEffect(() => {
+    if (!novel || !chapter) return;
+
+    if (ttsActive) {
+      updateTTSNotification({
+        novelTitle: novel.title,
+        chapterNumber: chapterIndex + 1,
+        chapterTitle: chapter.title,
+        progressPercent: Math.round(readingProgress),
+        isPlaying: true,
+      });
+    }
+  }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
 
   const handleChapterSelect = (index: number) => {
     cancelAutoNext();
