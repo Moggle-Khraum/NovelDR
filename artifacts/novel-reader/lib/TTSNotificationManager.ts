@@ -1,5 +1,5 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -20,10 +20,8 @@ export interface TTSNotificationState {
 
 let currentNotificationId: string | null = null;
 
-export const updateTTSNotification = async (
-  state: TTSNotificationState,
-) => {
-  if (Platform.OS !== 'android') return; // Android only for now
+export const updateTTSNotification = async (state: TTSNotificationState) => {
+  if (Platform.OS !== "android") return; // Android only for now
 
   try {
     // Cancel existing notification
@@ -38,7 +36,7 @@ export const updateTTSNotification = async (
         title: state.novelTitle,
         subtitle: `Chapter ${state.chapterNumber}: ${state.chapterTitle}`,
         body: `${state.progressPercent}% — ${
-          state.isPlaying ? 'Playing' : 'Paused'
+          state.isPlaying ? "Playing" : "Paused"
         }`,
         data: {
           novelTitle: state.novelTitle,
@@ -54,23 +52,23 @@ export const updateTTSNotification = async (
         // Actions for play/pause
         ...{
           android: {
-            channelId: 'tts_playback',
-            priority: 'high',
+            channelId: "tts_playback",
+            priority: "high",
             sticky: true,
             actions: [
               {
-                identifier: 'pause',
-                buttonTitle: state.isPlaying ? 'Pause' : 'Play',
+                identifier: "pause",
+                buttonTitle: state.isPlaying ? "Pause" : "Play",
                 options: { authenticationRequired: false },
               },
               {
-                identifier: 'next',
-                buttonTitle: 'Next',
+                identifier: "next",
+                buttonTitle: "Next",
                 options: { authenticationRequired: false },
               },
               {
-                identifier: 'prev',
-                buttonTitle: 'Previous',
+                identifier: "prev",
+                buttonTitle: "Previous",
                 options: { authenticationRequired: false },
               },
             ],
@@ -80,7 +78,7 @@ export const updateTTSNotification = async (
       trigger: null, // Deliver immediately
     });
   } catch (error) {
-    console.warn('[TTS Notification] Failed to update:', error);
+    console.warn("[TTS Notification] Failed to update:", error);
   }
 };
 
@@ -90,27 +88,27 @@ export const clearTTSNotification = async () => {
       await Notifications.dismissNotificationAsync(currentNotificationId);
       currentNotificationId = null;
     } catch (error) {
-      console.warn('[TTS Notification] Failed to clear:', error);
+      console.warn("[TTS Notification] Failed to clear:", error);
     }
   }
 };
 
 export const setupNotificationChannels = async () => {
-  if (Platform.OS !== 'android') return;
+  if (Platform.OS !== "android") return;
 
   try {
     // Only call for Android 8.0+
     if (Platform.Version >= 26) {
-      await Notifications.setNotificationChannelAsync('tts_playback', {
-        name: 'TTS Playback',
+      await Notifications.setNotificationChannelAsync("tts_playback", {
+        name: "TTS Playback",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0],
-        lightColor: '#FF231F7C',
+        lightColor: "#FF231F7C",
         enableVibrate: false,
         enableLights: false,
       });
     }
   } catch (error) {
-    console.warn('[TTS Notification] Failed to setup channels:', error);
+    console.warn("[TTS Notification] Failed to setup channels:", error);
   }
 };
