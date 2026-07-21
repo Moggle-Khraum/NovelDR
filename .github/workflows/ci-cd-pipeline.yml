@@ -6,10 +6,12 @@ on:
     branches:
       - Prod-Dev
       - main
+      - Prod
   pull_request:
     branches:
       - Prod-Dev
       - main
+      - Prod
 
 jobs:
   sync-lockfile:
