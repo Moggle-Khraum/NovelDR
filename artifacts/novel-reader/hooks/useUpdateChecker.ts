@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as IntentLauncher from "expo-intent-launcher";
 
 const RELEASE_REPO = "Moggle-Khraum/NovelDR-site"; // release repo, not this code repo
