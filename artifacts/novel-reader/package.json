@@ -14,6 +14,7 @@
     "expo-file-system": "~18.0.0",
     "expo-image-manipulator": "~14.0.8",
     "expo-intent-launcher": "~12.0.2",
+    "expo-keep-awake": "~15.0.8",
     "expo-document-picker": "^13.1.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-webview": "^14.0.1",
