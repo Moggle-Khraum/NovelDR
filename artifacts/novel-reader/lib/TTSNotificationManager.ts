@@ -1,11 +1,14 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-// Configure notification behavior
+// Show the notification even while the app is in the foreground — this is
+// a persistent playback control (like a media-player notification), not a
+// one-off alert, so it needs to stay visible the whole time TTS is active,
+// not just while backgrounded.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: false,
-    shouldShowList: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
@@ -19,6 +22,9 @@ export interface TTSNotificationState {
   isPlaying: boolean;
 }
 
+const TTS_CHANNEL_ID = "tts_playback";
+const TTS_CATEGORY_ID = "tts_playback_controls";
+
 // Fixed identifier so re-scheduling REPLACES the existing notification
 // in place (Android treats same-id notifications as an update) instead of
 // creating a brand new one each time. This is what actually prevents the
@@ -30,9 +36,39 @@ const TTS_NOTIFICATION_ID = "tts_playback_notification";
 let lastPostedSignature: string | null = null;
 let updateInFlight = false;
 let pendingState: TTSNotificationState | null = null;
+let categoryRegisteredForIsPlaying: boolean | null = null;
 
 const buildSignature = (state: TTSNotificationState) =>
   `${state.novelTitle}|${state.chapterNumber}|${state.chapterTitle}|${state.progressPercent}|${state.isPlaying}`;
+
+// Action buttons only exist on Android/iOS via a registered "category" —
+// there is no `content.android.actions` field in expo-notifications (that
+// shape was silently ignored, which is why the notification only ever
+// showed the bare title/body with no buttons). The Pause/Play button's
+// label needs to flip with playback state, so the category gets
+// re-registered whenever isPlaying changes, and the notification content
+// then just references it via `categoryIdentifier`.
+const ensureTTSCategoryAsync = async (isPlaying: boolean) => {
+  if (categoryRegisteredForIsPlaying === isPlaying) return;
+  await Notifications.setNotificationCategoryAsync(TTS_CATEGORY_ID, [
+    {
+      identifier: "pause",
+      buttonTitle: isPlaying ? "Pause" : "Play",
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: "next",
+      buttonTitle: "Next",
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: "prev",
+      buttonTitle: "Previous",
+      options: { opensAppToForeground: false },
+    },
+  ]);
+  categoryRegisteredForIsPlaying = isPlaying;
+};
 
 export const updateTTSNotification = async (state: TTSNotificationState) => {
   if (Platform.OS !== "android") return; // Android only for now
@@ -51,6 +87,7 @@ export const updateTTSNotification = async (state: TTSNotificationState) => {
 
   try {
     lastPostedSignature = signature;
+    await ensureTTSCategoryAsync(state.isPlaying);
     await Notifications.scheduleNotificationAsync({
       identifier: TTS_NOTIFICATION_ID,
       content: {
@@ -66,37 +103,16 @@ export const updateTTSNotification = async (state: TTSNotificationState) => {
           progressPercent: state.progressPercent,
           isPlaying: state.isPlaying,
         },
-        // Set as persistent notification
-        sticky: true,
-        // Show progress as a custom field (will be rendered as subtitle)
+        sticky: true, // Can't be swiped away while TTS is active
         autoDismiss: false,
-        // Actions for play/pause
-        ...{
-          android: {
-            channelId: "tts_playback",
-            priority: "high",
-            sticky: true,
-            actions: [
-              {
-                identifier: "pause",
-                buttonTitle: state.isPlaying ? "Pause" : "Play",
-                options: { authenticationRequired: false },
-              },
-              {
-                identifier: "next",
-                buttonTitle: "Next",
-                options: { authenticationRequired: false },
-              },
-              {
-                identifier: "prev",
-                buttonTitle: "Previous",
-                options: { authenticationRequired: false },
-              },
-            ],
-          },
-        },
+        priority: "high",
+        categoryIdentifier: TTS_CATEGORY_ID, // wires up the action buttons
       },
-      trigger: null, // Deliver immediately
+      // A ChannelAwareTriggerInput — this is what actually routes the
+      // notification through the "tts_playback" channel (high importance,
+      // no sound/vibration). `trigger: null` posts to the default channel
+      // instead, which is why priority/importance never took effect before.
+      trigger: { channelId: TTS_CHANNEL_ID },
     });
   } catch (error) {
     console.warn("[TTS Notification] Failed to update:", error);
@@ -128,7 +144,7 @@ export const setupNotificationChannels = async () => {
   try {
     // Only call for Android 8.0+
     if (Platform.Version >= 26) {
-      await Notifications.setNotificationChannelAsync("tts_playback", {
+      await Notifications.setNotificationChannelAsync(TTS_CHANNEL_ID, {
         name: "TTS Playback",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0],
@@ -139,5 +155,48 @@ export const setupNotificationChannels = async () => {
     }
   } catch (error) {
     console.warn("[TTS Notification] Failed to setup channels:", error);
+  }
+};
+
+// Android 13+ (API 33) requires the POST_NOTIFICATIONS runtime permission,
+// which is never granted automatically — without this call, every
+// scheduleNotificationAsync above just silently does nothing. Call this
+// once, up front, before TTS starts (not after backgrounding — Android
+// gives an app no way to show a permission prompt once it's no longer in
+// the foreground, so this has to happen while the user is still looking
+// at the screen for it to have any chance of taking effect before they
+// background the app).
+export const ensureTTSNotificationPermissionAsync = async (): Promise<
+  "granted" | "denied" | "undetermined"
+> => {
+  if (Platform.OS !== "android") return "granted";
+
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return "granted";
+
+    // Once denied, Android won't show the system dialog again on repeat
+    // calls — canAskAgain tells us whether it's still worth asking or
+    // whether we need to send the user to system Settings instead.
+    if (current.canAskAgain === false) return "denied";
+
+    const requested = await Notifications.requestPermissionsAsync();
+    return requested.granted ? "granted" : "denied";
+  } catch (error) {
+    console.warn("[TTS Notification] Permission check failed:", error);
+    return "undetermined";
+  }
+};
+
+export const getTTSNotificationPermissionStatusAsync = async (): Promise<
+  "granted" | "denied" | "undetermined"
+> => {
+  if (Platform.OS !== "android") return "granted";
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return "granted";
+    return current.canAskAgain === false ? "denied" : "undetermined";
+  } catch {
+    return "undetermined";
   }
 };
