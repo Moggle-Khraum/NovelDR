@@ -34,12 +34,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
-  updateTTSNotification,
-  clearTTSNotification,
-  setupNotificationChannels,
-  type TTSNotificationState,
-} from "@/lib/TTSNotificationManager";
-import * as Notifications from "expo-notifications";
+  updateMediaSession,
+  clearMediaSession,
+  setupMediaSession,
+  setRemoteHandlers,
+} from "@/lib/TTSMediaSession";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -1015,9 +1014,9 @@ export default function ReaderScreen() {
     };
   }, [persistChapterContent]);
 
-  // ─── Notification setup ───────────────────────────────────────────────
+  // ─── Media session setup ──────────────────────────────────────────────
   useEffect(() => {
-    setupNotificationChannels();
+    setupMediaSession();
   }, []);
 
   // ─── TTS methods ──────────────────────────────────────────────────────
@@ -1346,49 +1345,70 @@ export default function ReaderScreen() {
   const goChapterRef = useRef(goChapter);
   goChapterRef.current = goChapter;
 
-  // Listen for notification actions (play/pause/next/prev)
+  // Wire lock-screen / notification media controls (play, pause, next,
+  // previous) to the same TTS actions the in-app buttons use. These run
+  // from the headless playback service (service.js), which reads
+  // whatever was last registered here via getRemoteHandlers().
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const action = response.actionIdentifier;
-        if (action === "pause") {
-          toggleTTS();
-        } else if (action === "next") {
-          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
-            goChapter(1);
-          }
-        } else if (action === "prev") {
-          if (chapterIndex > 0) {
-            goChapter(-1);
-          }
+    setRemoteHandlers({
+      onPlay: () => toggleTTS(),
+      onPause: () => toggleTTS(),
+      onNext: () => {
+        if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
+          goChapter(1);
         }
       },
-    );
+      onPrevious: () => {
+        if (chapterIndex > 0) {
+          goChapter(-1);
+        }
+      },
+      onStop: () => stopTTS(),
+    });
 
     return () => {
-      subscription.remove();
+      setRemoteHandlers({});
     };
-  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
+  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter, stopTTS]);
 
-  // Update notification as TTS plays. readingProgress changes continuously
-  // (many times per second during autoscroll), so this is keyed off the
-  // rounded percent via a ref rather than the raw float dependency — the
-  // notification only actually needs to change when the displayed number
-  // would change.
+  // Update the media session as TTS plays. readingProgress changes
+  // continuously (many times per second during autoscroll), so this is
+  // keyed off the rounded percent via a ref rather than the raw float
+  // dependency — the session only actually needs to update when the
+  // displayed number would change.
   const lastNotifiedPercentRef = useRef<number | null>(null);
+  const hasActiveSessionRef = useRef(false);
   useEffect(() => {
     if (!novel || !chapter || !ttsActive) return;
 
     const roundedPercent = Math.round(readingProgress);
     if (lastNotifiedPercentRef.current === roundedPercent) return;
     lastNotifiedPercentRef.current = roundedPercent;
+    hasActiveSessionRef.current = true;
 
-    updateTTSNotification({
+    updateMediaSession({
       novelTitle: novel.title,
       chapterNumber: chapterIndex + 1,
       chapterTitle: chapter.title,
       progressPercent: roundedPercent,
       isPlaying: true,
+    });
+  }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
+
+  // Mirror pause into the media session too — otherwise the lock-screen
+  // play/pause glyph would keep showing "playing" after the user pauses
+  // in-app, since the effect above only ever sends isPlaying: true.
+  useEffect(() => {
+    if (ttsActive) return;
+    if (!hasActiveSessionRef.current) return; // never actually started
+    if (!novel || !chapter) return;
+
+    updateMediaSession({
+      novelTitle: novel.title,
+      chapterNumber: chapterIndex + 1,
+      chapterTitle: chapter.title,
+      progressPercent: Math.round(readingProgress),
+      isPlaying: false,
     });
   }, [ttsActive, novel, chapter, chapterIndex, readingProgress]);
 
@@ -1463,7 +1483,7 @@ export default function ReaderScreen() {
   // ─── Cleanup on unmount ───────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      clearTTSNotification();
+      clearMediaSession();
     };
   }, []);
 
