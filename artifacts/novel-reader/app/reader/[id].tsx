@@ -1033,7 +1033,7 @@ export default function ReaderScreen() {
     setTtsActive(false);
     setTtsIndex(-1);
     try {
-      KeepAwake.deactivateKeepAwakeAsync();
+      KeepAwake.deactivateKeepAwake();
     } catch {}
     try {
       Speech.stop();
@@ -1047,11 +1047,15 @@ export default function ReaderScreen() {
   // Prevent screen sleep while TTS is active
   useEffect(() => {
     if (ttsActive) {
-      KeepAwake.activateKeepAwakeAsync().catch(err => {
+      try {
+        KeepAwake.activateKeepAwake();
+      } catch (err) {
         console.warn('[TTS] Keep-awake activation failed:', err);
-      });
+      }
     } else {
-      KeepAwake.deactivateKeepAwakeAsync().catch(() => {});
+      try {
+        KeepAwake.deactivateKeepAwake();
+      } catch {}
     }
   }, [ttsActive]);
 
