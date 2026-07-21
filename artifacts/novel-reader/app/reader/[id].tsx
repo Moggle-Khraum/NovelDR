@@ -1099,7 +1099,8 @@ export default function ReaderScreen() {
                   data: { action: "auto_next_chapter" },
                 },
                 trigger: {
-                  type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                  type: Notifications.SchedulableTriggerInputTypes
+                    .TIME_INTERVAL,
                   seconds: 3,
                   repeats: false,
                 },
