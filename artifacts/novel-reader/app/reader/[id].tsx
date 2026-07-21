@@ -16,6 +16,7 @@ import {
   Alert,
   AppState,
   AppStateStatus,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -37,6 +38,8 @@ import {
   updateTTSNotification,
   clearTTSNotification,
   setupNotificationChannels,
+  ensureTTSNotificationPermissionAsync,
+  getTTSNotificationPermissionStatusAsync,
   type TTSNotificationState,
 } from "@/lib/TTSNotificationManager";
 import * as Notifications from "expo-notifications";
@@ -386,6 +389,7 @@ export default function ReaderScreen() {
   const [nextChapterContent, setNextChapterContent] = useState<string>("");
 
   const [ttsActive, setTtsActive] = useState(false);
+  const [showNotificationNudge, setShowNotificationNudge] = useState(false);
   const [ttsSentences, setTtsSentences] = useState<string[]>([]);
   const [ttsIndex, setTtsIndex] = useState(-1);
   const ttsIndexRef = useRef(-1);
@@ -711,6 +715,17 @@ export default function ReaderScreen() {
   // that visually corresponds to it. Computed once per chapter/TTS-sentence
   // change instead of doing string .includes() matching for every sentence on
   // every render (which is what caused the highlight lookup to be so expensive).
+  //
+  // The pointer only moves forward and never re-syncs. If the render-side
+  // splitter and the TTS-side splitter disagree on sentence count for a
+  // stretch (dialogue/quotes are the usual culprit — see the quote-aware
+  // widening below), a match can be missed and the pointer permanently
+  // falls out of the lookahead window for the rest of the chapter, with
+  // every later ttsIndex left unmapped. A wider window makes that less
+  // likely; the fallback lookup below (nearest earlier mapped index) makes
+  // sure a miss just makes the highlight lag slightly instead of vanishing
+  // outright and staying gone for the rest of the chapter.
+  const TTS_MATCH_LOOKAHEAD = 20;
   const ttsToRenderKeyMap = useMemo(() => {
     const map = new Map<number, string>();
     if (ttsSentences.length === 0) return map;
@@ -721,7 +736,10 @@ export default function ReaderScreen() {
         const normalizedRender = sentences[sentIdx]
           .trim()
           .replace(/[""'']/g, '"');
-        const searchLimit = Math.min(ttsSentences.length, ttsPointer + 5);
+        const searchLimit = Math.min(
+          ttsSentences.length,
+          ttsPointer + TTS_MATCH_LOOKAHEAD,
+        );
         for (let t = ttsPointer; t < searchLimit; t++) {
           const normalizedTts = ttsSentences[t].replace(/[""'']/g, '"');
           if (
@@ -738,8 +756,27 @@ export default function ReaderScreen() {
     return map;
   }, [paragraphSentences, ttsSentences]);
 
+  // Falls back to the nearest earlier mapped index when ttsIndex itself has
+  // no exact entry, so a splitter mismatch makes the highlight lag by a
+  // sentence or two instead of disappearing for the rest of the chapter.
+  const resolveHighlightKey = useCallback(
+    (index: number): string | undefined => {
+      if (ttsToRenderKeyMap.has(index)) return ttsToRenderKeyMap.get(index);
+      for (
+        let i = index - 1;
+        i >= 0 && i >= index - TTS_MATCH_LOOKAHEAD;
+        i--
+      ) {
+        const key = ttsToRenderKeyMap.get(i);
+        if (key) return key;
+      }
+      return undefined;
+    },
+    [ttsToRenderKeyMap],
+  );
+
   const currentHighlightKey =
-    ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
+    ttsIndex >= 0 ? resolveHighlightKey(ttsIndex) : undefined;
 
   // Clear stale layout measurements whenever the chapter's paragraphs change,
   // so old y-positions from a previous chapter can't be scrolled to.
@@ -995,14 +1032,30 @@ export default function ReaderScreen() {
 
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (
-        (appStateRef.current === "active" &&
-          nextAppState.match(/inactive|background/)) ||
-        nextAppState === "background"
-      ) {
+      const wasBackgrounded =
+        appStateRef.current === "active" &&
+        nextAppState.match(/inactive|background/);
+
+      if (wasBackgrounded || nextAppState === "background") {
         console.log("[Reader] App backgrounding - saving chapter content...");
         await persistChapterContent();
       }
+
+      // Returning from Home/Recents (background/inactive -> active). If TTS
+      // is still going and notification permission still isn't granted,
+      // surface the nudge again — this is as close as Android allows to
+      // "detecting" the Home/Recents round-trip, since there's no way to
+      // intercept the button press itself or show UI while backgrounded.
+      const isReturningToForeground =
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === "active";
+      if (isReturningToForeground && ttsActiveRef.current) {
+        const status = await getTTSNotificationPermissionStatusAsync();
+        if (isMountedRef.current) {
+          setShowNotificationNudge(status !== "granted");
+        }
+      }
+
       appStateRef.current = nextAppState;
     };
 
@@ -1122,6 +1175,15 @@ export default function ReaderScreen() {
       return;
     }
     if (!chapterContent || ttsSentences.length === 0) return;
+
+    // Fire this off now, not after backgrounding — Android gives no way to
+    // show a permission dialog once the app isn't in the foreground, so
+    // this is the only point where asking can actually succeed.
+    ensureTTSNotificationPermissionAsync().then((status) => {
+      if (!isMountedRef.current) return;
+      setShowNotificationNudge(status !== "granted");
+    });
+
     setTimeout(() => {
       if (!isMountedRef.current) return;
       if (ttsActiveRef.current) return;
@@ -1765,6 +1827,65 @@ export default function ReaderScreen() {
                   ? currentSentence.substring(0, 100) + "..."
                   : currentSentence}
               </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Notification permission nudge — without this, backgrounding the
+            app via Home/Recents can cut TTS off mid-sentence, and there's
+            no way to prompt for the permission again once already backgrounded. */}
+        {ttsActive && showNotificationNudge && Platform.OS === "android" && (
+          <View
+            style={[
+              styles.notificationNudge,
+              {
+                backgroundColor: adaptiveColors.card,
+                borderColor: adaptiveColors.accent + "50",
+              },
+            ]}
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={16}
+              color={adaptiveColors.accent}
+              style={{ marginTop: 1 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  styles.notificationNudgeText,
+                  { color: adaptiveColors.text },
+                ]}
+              >
+                Enable notifications so TTS keeps playing smoothly if you
+                switch apps or hit Home.
+              </Text>
+              <View style={styles.notificationNudgeActions}>
+                <Pressable
+                  onPress={() => {
+                    Linking.openSettings().catch(() => {});
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.notificationNudgeAction,
+                      { color: adaptiveColors.accent },
+                    ]}
+                  >
+                    Open Settings
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => setShowNotificationNudge(false)}>
+                  <Text
+                    style={[
+                      styles.notificationNudgeAction,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Dismiss
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         )}
@@ -3165,6 +3286,30 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   ttsSentenceText: { fontSize: 13, lineHeight: 19 },
+  notificationNudge: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginHorizontal: 14,
+    marginBottom: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  notificationNudgeText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  notificationNudgeActions: {
+    flexDirection: "row",
+    gap: 20,
+    marginTop: 6,
+  },
+  notificationNudgeAction: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   bottomNav: {
     flexDirection: "row",
     alignItems: "center",
