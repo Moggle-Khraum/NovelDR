@@ -40,6 +40,7 @@ import {
   type TTSNotificationState,
 } from "@/lib/TTSNotificationManager";
 import * as Notifications from "expo-notifications";
+import * as KeepAwake from "expo-keep-awake";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -979,6 +980,10 @@ export default function ReaderScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
       if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+      
+      // Cancel any pending auto-next notifications
+      Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+      
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -1028,6 +1033,9 @@ export default function ReaderScreen() {
     setTtsActive(false);
     setTtsIndex(-1);
     try {
+      KeepAwake.deactivateKeepAwakeAsync();
+    } catch {}
+    try {
       Speech.stop();
     } catch {}
   }, []);
@@ -1035,6 +1043,17 @@ export default function ReaderScreen() {
   useEffect(() => {
     stopTTS();
   }, [chapterIndex, stopTTS]);
+
+  // Prevent screen sleep while TTS is active
+  useEffect(() => {
+    if (ttsActive) {
+      KeepAwake.activateKeepAwakeAsync().catch(err => {
+        console.warn('[TTS] Keep-awake activation failed:', err);
+      });
+    } else {
+      KeepAwake.deactivateKeepAwakeAsync().catch(() => {});
+    }
+  }, [ttsActive]);
 
   const speakSentence = useCallback(
     (sentences: string[], index: number) => {
@@ -1065,6 +1084,24 @@ export default function ReaderScreen() {
             });
           } catch {}
 
+          // Schedule background-safe notification for auto-next
+          (async () => {
+            try {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: 'Chapter Complete',
+                  body: 'Moving to next chapter in 3 seconds...',
+                  sound: false,
+                  data: { action: 'auto_next_chapter' },
+                },
+                trigger: { seconds: 3 },
+              });
+            } catch (e) {
+              console.warn('[Auto-Next] Failed to schedule notification:', e);
+            }
+          })();
+
+          // Keep local timer for on-screen countdown UI
           autoNextTimerRef.current = setTimeout(() => {
             autoNextTimerRef.current = null;
             setAutoNextCountdownActive(false);
@@ -1351,6 +1388,7 @@ export default function ReaderScreen() {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const action = response.actionIdentifier;
+        const data = response.notification.request.content.data;
         if (action === "pause") {
           toggleTTS();
         } else if (action === "next") {
@@ -1360,6 +1398,12 @@ export default function ReaderScreen() {
         } else if (action === "prev") {
           if (chapterIndex > 0) {
             goChapter(-1);
+          }
+        } else if (data?.action === 'auto_next_chapter') {
+          // Handle auto-next triggered from notification (even in background)
+          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
+            autoNextResumeRef.current = true;
+            goChapter(1);
           }
         }
       },
