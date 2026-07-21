@@ -21,11 +21,19 @@ export default () => {
       ios: {
         supportsTablet: false,
         buildNumber: buildNumber,
+        infoPlist: {
+          UIBackgroundModes: ["audio"],
+        },
       },
       android: {
         package: "com.noveldr.app",
         versionCode: parseInt(buildNumber, 10),
-        permissions: ["REQUEST_INSTALL_PACKAGES", "POST_NOTIFICATIONS"],
+        permissions: [
+          "REQUEST_INSTALL_PACKAGES",
+          "POST_NOTIFICATIONS",
+          "FOREGROUND_SERVICE",
+          "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        ],
       },
       web: {
         favicon: "./assets/images/icon.png",
@@ -39,15 +47,6 @@ export default () => {
         ],
         "expo-font",
         "expo-web-browser",
-        [
-          "expo-notifications",
-          {
-            icon: "./assets/images/icon.png",
-            color: "#FFFFFF",
-            sounds: [],
-            modes: "production",
-          },
-        ],
         [
           "@sentry/react-native/expo",
           {
