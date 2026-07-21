@@ -6,6 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
@@ -156,7 +157,7 @@ function InitScreen() {
 
         <Text style={[initStyles.title, { color: colors.text }]}>Novel DR</Text>
         <Text style={[initStyles.version, { color: colors.textSecondary }]}>
-          v1.3.12
+          v{Constants.expoConfig?.version ?? ""}
         </Text>
 
         {/* Progress Steps */}
