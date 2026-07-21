@@ -1,5 +1,5 @@
 // artifacts/novel-reader/app.config.js
-import { withGradleProperties } from "expo/config-plugins";
+import { withGradleProperties, withMainApplication } from "expo/config-plugins";
 
 // Fixes EAS Android build failures where the Kotlin compiler worker for
 // react-native-track-player dies with "Compilation error. See log for more
@@ -14,7 +14,7 @@ function withKotlinMemoryFix(config) {
 
     const upsert = (key, value) => {
       const existing = props.find(
-        (p) => p.type === "property" && p.key === key,
+        (p) => p.type === "property" && p.key === key
       );
       if (existing) {
         existing.value = value;
@@ -25,10 +25,62 @@ function withKotlinMemoryFix(config) {
 
     upsert(
       "org.gradle.jvmargs",
-      "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError",
+      "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
     );
     upsert("org.gradle.workers.max", "2");
     upsert("kotlin.daemon.jvm.options", "-Xmx3072m");
+
+    return config;
+  });
+}
+
+// TEMPORARY DIAGNOSTIC — remove once the crash is found.
+//
+// The app is crashing on launch before Sentry's native handler ever gets
+// a chance to run, and there's no CLI/adb access to pull logcat off the
+// device. This plugin injects plain Kotlin into the generated
+// MainApplication.onCreate() (regenerated fresh every prebuild, so this
+// works with zero android/ folder committed to the repo) that:
+//   1. Writes a timestamped line every time onCreate() is reached, so we
+//      can tell whether the app gets that far at all.
+//   2. Installs an uncaught-exception handler that appends the full stack
+//      trace to the same file, then chains to whatever handler was
+//      already installed (Sentry's included) so nothing else breaks.
+// The file lands at a path readable by any file manager with no root and
+// no special permissions: Android/data/com.noveldr.app/files/crash-log.txt
+function withNativeCrashLogger(config) {
+  return withMainApplication(config, (config) => {
+    const anchor = "override fun onCreate() {";
+    if (!config.modResults.contents.includes(anchor)) {
+      // Template shape changed — bail out rather than corrupt the file.
+      return config;
+    }
+
+    const injected = `${anchor}
+    // --- Crash logger (temporary, phone-only debugging) ---
+    try {
+      val crashLogFile = java.io.File(applicationContext.getExternalFilesDir(null), "crash-log.txt")
+      crashLogFile.appendText("\\n----- onCreate() reached at \${java.util.Date()} -----\\n")
+      val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+      Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        try {
+          val sw = java.io.StringWriter()
+          throwable.printStackTrace(java.io.PrintWriter(sw))
+          crashLogFile.appendText("\\n===== CRASH at \${java.util.Date()} =====\\nThread: \${thread.name}\\n\$sw\\n")
+        } catch (loggingError: Throwable) {
+          // Logging must never itself throw.
+        }
+        previousHandler?.uncaughtException(thread, throwable)
+      }
+    } catch (setupError: Throwable) {
+      // Never let the logger block startup.
+    }
+`;
+
+    config.modResults.contents = config.modResults.contents.replace(
+      anchor,
+      injected
+    );
 
     return config;
   });
@@ -90,6 +142,7 @@ export default () => {
           },
         ],
         withKotlinMemoryFix,
+        withNativeCrashLogger,
       ],
       experiments: {
         typedRoutes: true,
