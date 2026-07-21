@@ -762,11 +762,7 @@ export default function ReaderScreen() {
   const resolveHighlightKey = useCallback(
     (index: number): string | undefined => {
       if (ttsToRenderKeyMap.has(index)) return ttsToRenderKeyMap.get(index);
-      for (
-        let i = index - 1;
-        i >= 0 && i >= index - TTS_MATCH_LOOKAHEAD;
-        i--
-      ) {
+      for (let i = index - 1; i >= 0 && i >= index - TTS_MATCH_LOOKAHEAD; i--) {
         const key = ttsToRenderKeyMap.get(i);
         if (key) return key;
       }
@@ -1857,8 +1853,8 @@ export default function ReaderScreen() {
                   { color: adaptiveColors.text },
                 ]}
               >
-                Enable notifications so TTS keeps playing smoothly if you
-                switch apps or hit Home.
+                Enable notifications so TTS keeps playing smoothly if you switch
+                apps or hit Home.
               </Text>
               <View style={styles.notificationNudgeActions}>
                 <Pressable
