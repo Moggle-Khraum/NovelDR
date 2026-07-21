@@ -1,4 +1,39 @@
 // artifacts/novel-reader/app.config.js
+import { withGradleProperties } from "expo/config-plugins";
+
+// Fixes EAS Android build failures where the Kotlin compiler worker for
+// react-native-track-player dies with "Compilation error. See log for more
+// details" and no actual diagnostic line printed above it. That pattern
+// means the Kotlin daemon ran out of memory mid-compile on the build
+// machine, not a real code error. Raising the Gradle/Kotlin daemon heap
+// fixes it. This is a managed-workflow plugin, so it applies automatically
+// during every EAS prebuild — no android/ folder needs to exist in the repo.
+function withKotlinMemoryFix(config) {
+  return withGradleProperties(config, (config) => {
+    const props = config.modResults;
+
+    const upsert = (key, value) => {
+      const existing = props.find(
+        (p) => p.type === "property" && p.key === key
+      );
+      if (existing) {
+        existing.value = value;
+      } else {
+        props.push({ type: "property", key, value });
+      }
+    };
+
+    upsert(
+      "org.gradle.jvmargs",
+      "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
+    );
+    upsert("org.gradle.workers.max", "2");
+    upsert("kotlin.daemon.jvm.options", "-Xmx3072m");
+
+    return config;
+  });
+}
+
 export default () => {
   const buildNumber = process.env.APP_BUILD_NUMBER || "1";
 
@@ -54,6 +89,7 @@ export default () => {
             project: process.env.SENTRY_PROJECT,
           },
         ],
+        withKotlinMemoryFix,
       ],
       experiments: {
         typedRoutes: true,
