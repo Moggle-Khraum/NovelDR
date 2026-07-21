@@ -14,7 +14,7 @@ function withKotlinMemoryFix(config) {
 
     const upsert = (key, value) => {
       const existing = props.find(
-        (p) => p.type === "property" && p.key === key
+        (p) => p.type === "property" && p.key === key,
       );
       if (existing) {
         existing.value = value;
@@ -25,7 +25,7 @@ function withKotlinMemoryFix(config) {
 
     upsert(
       "org.gradle.jvmargs",
-      "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
+      "-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError",
     );
     upsert("org.gradle.workers.max", "2");
     upsert("kotlin.daemon.jvm.options", "-Xmx3072m");
