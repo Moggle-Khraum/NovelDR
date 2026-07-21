@@ -1098,7 +1098,11 @@ export default function ReaderScreen() {
                   sound: false,
                   data: { action: "auto_next_chapter" },
                 },
-                trigger: { seconds: 3 },
+                trigger: {
+                  type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                  seconds: 3,
+                  repeats: false,
+                },
               });
             } catch (e) {
               console.warn("[Auto-Next] Failed to schedule notification:", e);
