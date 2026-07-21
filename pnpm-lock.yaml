@@ -150,6 +150,11 @@ overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
 
+patchedDependencies:
+  react-native-track-player@4.1.2:
+    hash: 1a1fffa79b385c4897e9c52808b12f274e2d5d2429d8d2cc5ff09e7ea74b53da
+    path: patches/react-native-track-player@4.1.2.patch
+
 importers:
 
   .:
@@ -575,7 +580,7 @@ importers:
         version: 15.12.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-track-player:
         specifier: ^4.1.2
-        version: 4.1.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 4.1.2(patch_hash=1a1fffa79b385c4897e9c52808b12f274e2d5d2429d8d2cc5ff09e7ea74b53da)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-web:
         specifier: ^0.21.0
         version: 0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -13249,7 +13254,7 @@ snapshots:
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
       warn-once: 0.1.1
 
-  react-native-track-player@4.1.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  react-native-track-player@4.1.2(patch_hash=1a1fffa79b385c4897e9c52808b12f274e2d5d2429d8d2cc5ff09e7ea74b53da)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
