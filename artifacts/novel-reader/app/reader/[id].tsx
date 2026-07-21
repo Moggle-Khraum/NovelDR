@@ -980,10 +980,10 @@ export default function ReaderScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
       if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
-      
+
       // Cancel any pending auto-next notifications
       Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
-      
+
       const n = novelRef.current;
       const ch = chapterRef.current;
       if (n && ch) {
@@ -1050,7 +1050,7 @@ export default function ReaderScreen() {
       try {
         KeepAwake.activateKeepAwake();
       } catch (err) {
-        console.warn('[TTS] Keep-awake activation failed:', err);
+        console.warn("[TTS] Keep-awake activation failed:", err);
       }
     } else {
       try {
@@ -1093,15 +1093,15 @@ export default function ReaderScreen() {
             try {
               await Notifications.scheduleNotificationAsync({
                 content: {
-                  title: 'Chapter Complete',
-                  body: 'Moving to next chapter in 3 seconds...',
+                  title: "Chapter Complete",
+                  body: "Moving to next chapter in 3 seconds...",
                   sound: false,
-                  data: { action: 'auto_next_chapter' },
+                  data: { action: "auto_next_chapter" },
                 },
                 trigger: { seconds: 3 },
               });
             } catch (e) {
-              console.warn('[Auto-Next] Failed to schedule notification:', e);
+              console.warn("[Auto-Next] Failed to schedule notification:", e);
             }
           })();
 
@@ -1403,7 +1403,7 @@ export default function ReaderScreen() {
           if (chapterIndex > 0) {
             goChapter(-1);
           }
-        } else if (data?.action === 'auto_next_chapter') {
+        } else if (data?.action === "auto_next_chapter") {
           // Handle auto-next triggered from notification (even in background)
           if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
             autoNextResumeRef.current = true;
