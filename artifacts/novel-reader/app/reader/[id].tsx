@@ -763,8 +763,7 @@ export default function ReaderScreen() {
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
     if (paraY === undefined) return;
 
-    const sentenceRelY =
-      sentenceYPositionsRef.current.get(currentHighlightKey);
+    const sentenceRelY = sentenceYPositionsRef.current.get(currentHighlightKey);
     // Sentence not measured yet (e.g. just came into the tree) — fall
     // back to the paragraph position rather than skipping the scroll.
     const targetCenter = paraY + (sentenceRelY ?? 0);
