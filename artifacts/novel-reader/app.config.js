@@ -83,7 +83,6 @@ export default () => {
             modes: "production",
           },
         ],
-        "@notifee/react-native",
         withNotifeeForegroundServiceType,
         [
           "@sentry/react-native/expo",
