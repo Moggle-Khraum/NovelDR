@@ -35,6 +35,61 @@ export const safeMatch = (text: string, pattern: RegExp): string | null => {
   }
 };
 
+/**
+ * Split two lines of dialogue that end up glued onto the same line/chunk —
+ * a closing quote (straight " or curly ”) immediately followed, optionally
+ * after whitespace, by an opening quote (straight " or curly “) — onto
+ * separate paragraphs. E.g. `..."supporting us." "No... and my father..."`
+ * becomes two lines instead of reading as one squashed-together line.
+ * Curly apostrophes (You've, It's) are deliberately not matched, so
+ * contractions inside a line of dialogue don't trigger a false split.
+ */
+export const splitAdjacentDialogue = (text: string): string => {
+  return text.replace(/(["\u201D])(\s*)(["\u201C])/g, "$1\n\n$3");
+};
+
+/**
+ * Some sources ship synopsis text as one run-on blob with zero <br> tags:
+ * bracketed [Tag] callouts and sentence-ending punctuation glued directly
+ * onto the next word with no whitespace at all, e.g.:
+ *   [Strange Tales of Rules]Lin Feng was drawn into a bizarre tale of rules!The game starts...
+ * Insert paragraph breaks at those glued boundaries so it reads as
+ * separate lines instead of a wall of text:
+ *  - A "[Tag]" glued directly onto preceding text (no space before it)
+ *    starts its own paragraph.
+ *  - A "]" glued directly onto the next word (no space after) ends its
+ *    paragraph right there — carrying over an immediately-following
+ *    !/?/. first, since that punctuation belongs to the tag's own
+ *    "sentence" rather than the paragraph that follows.
+ *  - A sentence ending in ! or ? that's immediately glued (no space) to
+ *    the next sentence's capital letter or opening quote gets a break
+ *    inserted between them.
+ * Bracket segments used inline within a normally-spaced sentence (e.g.
+ * "bound to the [Many Children, Many Blessings] system") are left alone —
+ * only the glued/no-space cases indicate a real paragraph boundary in the
+ * source, not every use of square brackets.
+ */
+// A straight ASCII quote " is used for both opening and closing dialogue in
+// these sources (unlike curly “ ” which are unambiguous), so a bare quote
+// can't be trusted as "a new sentence is starting" on its own — a quote
+// glued onto the very end of the text (nothing after it) is a closer, not
+// an opener. Only treat a straight quote as an opener when a letter
+// actually follows it; curly “ needs no such check since it only ever opens.
+const NEW_SENTENCE_LOOKAHEAD = String.raw`[A-Za-z]|["\u201C](?=[A-Za-z])`;
+
+export const splitGluedSentences = (text: string): string => {
+  return text
+    .replace(/(?<=\S)\[/g, "\n\n[")
+    .replace(
+      new RegExp(String.raw`\](!|\?|\.)?(?=${NEW_SENTENCE_LOOKAHEAD})`, "g"),
+      "]$1\n\n",
+    )
+    .replace(
+      new RegExp(String.raw`([!?])(?=${NEW_SENTENCE_LOOKAHEAD})`, "g"),
+      "$1\n\n",
+    );
+};
+
 /** Resolve a possibly-relative URL against a base URL */
 export const makeAbsoluteUrl = (
   relativeUrl: string,
@@ -193,7 +248,25 @@ export const extractNextFlightPayload = (html: string): string => {
   return chunks.join("\n");
 };
 
-/** Extract the first inner text/HTML block between a start marker and its matching close tag by simple depth counting (for div-based selectors) */
+/**
+ * Extract the first inner text/HTML block between a start marker and its
+ * matching close tag by simple depth counting (for div-based selectors).
+ *
+ * NOTE on the returned boundary: when depth reaches 0 we've found the
+ * *real* matching close tag, so the returned content must stop right
+ * before that tag starts (`nextClose`) — not after it. An earlier version
+ * of this function sliced up to `i` (= nextClose + closeTag.length),
+ * which is the position right after "</div" but still *before* its ">",
+ * since closeTag is "</div" without the trailing bracket (deliberately,
+ * so a same-prefix variant like "</divider>" can't false-match). That off-
+ * by-one meant every caller's result ended with a literal stray "</div"
+ * baked into the text — stripTags' tag-matching regex requires a closing
+ * ">" to recognize something as a tag, so an unterminated "</div" (missing
+ * its ">") slipped straight through as visible text instead of being
+ * stripped. Track the true content end (contentEnd) separately from the
+ * scan cursor (i, which legitimately needs to move past closeTag.length
+ * to keep searching for nested divs) and slice up to contentEnd instead.
+ */
 export const extractByDepth = (
   html: string,
   startMarker: string,
@@ -208,6 +281,7 @@ export const extractByDepth = (
 
   let depth = 1;
   let i = openTagEnd + 1;
+  let contentEnd = -1;
 
   while (i < html.length && depth > 0) {
     const nextOpen = html.indexOf(openTag, i);
@@ -218,9 +292,15 @@ export const extractByDepth = (
       i = nextOpen + openTag.length;
     } else {
       depth--;
+      if (depth === 0) contentEnd = nextClose;
       i = nextClose + closeTag.length;
     }
   }
 
-  return html.slice(openTagEnd + 1, i);
+  // Never found the real matching close (malformed/truncated HTML) — fall
+  // back to the old best-effort behavior of returning everything scanned
+  // so far, rather than losing content outright.
+  if (contentEnd === -1) return html.slice(openTagEnd + 1, i);
+
+  return html.slice(openTagEnd + 1, contentEnd);
 };
