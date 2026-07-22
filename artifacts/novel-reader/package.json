@@ -2,7 +2,7 @@
   "name": "@workspace/novel-reader",
   "version": "3.15.35",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "dependencies": {
     "axios": "^1.6.0",
     "entities": "^4.5.0",
@@ -37,6 +37,7 @@
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@expo/config-plugins": "~9.0.0",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@sentry/react-native": "^6.10.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
