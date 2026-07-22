@@ -33,16 +33,21 @@ const extractBrSeparatedText = (html: string): string => {
  * the previous approach here) only ever finds that one empty <p></p> and
  * returns nothing — this is the same <br>-separated style as the synopsis,
  * so reuse that same splitting approach instead, after stripping the
- * leading <h4> title repeat. Dialogue lines squashed together on the same
- * <br>-separated chunk (see shared/html.ts splitAdjacentDialogue) are then
- * broken apart so each line of dialogue reads on its own line.
+ * leading <h4> title repeat. Sentence/tag punctuation that ends up glued
+ * directly onto the next word with no space (see shared/html.ts
+ * splitGluedSentences — the same run-on-blob issue seen in this site's
+ * synopsis text) and dialogue lines squashed onto the same <br>-separated
+ * chunk (splitAdjacentDialogue) are then broken apart so each line reads
+ * on its own line.
  *
  * Exported for the scraper content-extraction regression test — see
  * scripts/test-scrapers.ts.
  */
 export const extractChapterBody = (rawContentBlock: string): string => {
   const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
-  return splitAdjacentDialogue(extractBrSeparatedText(contentBlock));
+  return splitAdjacentDialogue(
+    splitGluedSentences(extractBrSeparatedText(contentBlock)),
+  );
 };
 
 export const novelBinScraper: SourceScraper = {
