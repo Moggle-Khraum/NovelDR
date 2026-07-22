@@ -8,10 +8,17 @@ import {
   makeAbsoluteUrl,
 } from "../shared/html";
 
-const BASE_HOST = "novel-bin.com";
+// novelbin.cc runs the exact same template as novel-bin.com (see
+// novelbin.ts) — only the host (www.novelbin.cc vs novel-bin.com) and the
+// novel URL path prefix (/book/ vs /novel-bin/) differ. Kept as a separate
+// file rather than merged with novelbin.ts since the two sites are
+// unrelated domains that just happen to share a template today; if one
+// changes its markup independently later, they shouldn't drag each other
+// down.
+const BASE_HOST = "novelbin.cc";
 
 /**
- * novel-bin.com doesn't wrap synopsis text in <p> tags — it's raw text
+ * novelbin.cc doesn't wrap synopsis text in <p> tags — it's raw text
  * nodes separated by bare <br> tags inside div.desc-text. Split on <br>,
  * strip/decode each fragment, drop empties, join with double newlines.
  */
@@ -41,9 +48,9 @@ export const extractChapterBody = (rawContentBlock: string): string => {
   return extractBrSeparatedText(contentBlock);
 };
 
-export const novelBinScraper: SourceScraper = {
-  id: "novelbin",
-  name: "Novel-Bin",
+export const novelBinCcScraper: SourceScraper = {
+  id: "novelbincc",
+  name: "NovelBin.cc",
 
   canHandle: (url: string) => {
     try {
@@ -56,41 +63,68 @@ export const novelBinScraper: SourceScraper = {
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // <meta itemprop="image" content="https://novel-bin.com/files/image/....jpg">
+    // <meta itemprop="image" content="https://www.novelbin.cc/files/image/....jpg">
     const coverUrl =
-      safeMatch(html, /<meta[^>]*itemprop="image"[^>]*content="([^"]+)"/i) ??
-      "";
+      safeMatch(
+        html,
+        /<meta[\s\S]*?itemprop="image"[\s\S]*?content="([^"]+)"/i,
+      ) ?? "";
 
     // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
     const title = decodeEntities(
       safeMatch(
         html,
-        /<h3[^>]*class="title"[^>]*itemprop="name"[^>]*>([^<]+)<\/h3>/i,
+        /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i,
       ) ?? "Unknown Title",
     );
 
     // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
+    // NOTE: The span and meta may be on separate lines, so use [\s\S] to match newlines
     const author = decodeEntities(
       safeMatch(
         html,
-        /<span[^>]*itemprop="author"[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i,
+        /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i,
       ) ?? "Unknown Author",
     );
 
     // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
     // NOTE: match on class="desc-text" specifically, not the bare
-    // itemprop="description" string — that also appears twice earlier in
+    // itemprop="description" string — that also appears earlier in
     // unrelated <meta name="description" ...> tags in <head>, and matching
     // those would make extractByDepth's <div>/</div> counter run wild over
     // the rest of the page.
+    // extractByDepth returns content including the closing </div>, so strip it.
     const descBlock = extractByDepth(html, 'class="desc-text"') ?? "";
-    const synopsis = extractBrSeparatedText(descBlock);
+    const cleanDescBlock = descBlock.replace(/<\/div>\s*$/i, "");
+    const synopsis = extractBrSeparatedText(cleanDescBlock);
 
-    // <a class="btn btn-danger btn-read-now" title="READ NOW" href="/novel-bin/{slug}/chapter-1">
-    const firstChapterPath = safeMatch(
+    // Try to find the first chapter link. novelbin.cc markup has changed over time,
+    // so try multiple patterns with fallbacks:
+    // 1. Original: <a class="btn btn-danger btn-read-now" ... href="/book/{slug}/chapter-1">
+    //    NOTE: href may be split across multiple lines, so use [\s\S] instead of . to match newlines
+    // 2. Flexible: <a ...class contains "btn"... href contains "/chapter"
+    // 3. Last resort: any <a> with href to /book/.../chapter-1 that contains "READ"
+    let firstChapterPath = safeMatch(
       html,
-      /<a[^>]*class="btn btn-danger btn-read-now"[^>]*href="([^"]+)"/i,
+      /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i,
     );
+
+    if (!firstChapterPath) {
+      // Fallback: look for any link with chapter in the href and "read" text nearby
+      firstChapterPath = safeMatch(
+        html,
+        /<a[\s\S]*?href="([^"]*\/chapter-[0-9]+[^"]*)"[\s\S]*?(?:class="[^"]*btn[^"]*")?[\s\S]*?>[\s\S]{0,100}?(?:READ|read)/i,
+      );
+    }
+
+    if (!firstChapterPath) {
+      // Last resort: any /book/.../chapter-1 link
+      firstChapterPath = safeMatch(
+        html,
+        /<a[\s\S]*?href="([^"]*\/book\/[^"]*\/chapter-1[^"]*)"[\s\S]*?>/i,
+      );
+    }
+
     const firstChapterUrl = firstChapterPath
       ? makeAbsoluteUrl(firstChapterPath, url)
       : null;
@@ -101,7 +135,7 @@ export const novelBinScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ["fetched via external scraper: novelbin"],
+      debugInfo: ["fetched via external scraper: novelbincc"],
     };
   },
 
@@ -112,9 +146,15 @@ export const novelBinScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
-    const title = decodeEntities(
+    // Fallback: look for any h2/h3 with "chapter" in it if the class selector doesn't work
+    let title = decodeEntities(
       safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? "",
     );
+    if (!title) {
+      title = decodeEntities(
+        safeMatch(html, /<h[23][^>]*>[\s\S]{0,150}?(?:chapter|Chapter)/i) ?? "",
+      );
+    }
 
     // <div id="chr-content" class="chr-c" ...>...</div>
     const contentBlock = extractByDepth(html, 'id="chr-content"') ?? "";
