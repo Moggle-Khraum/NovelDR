@@ -252,29 +252,27 @@ function removeDuplicateSpacing(text: string): string {
     .trim();
 }
 
-function splitIntoSentences(text: string): string[] {
-  let cleanText = text.replace(/[""'']/g, '"');
-  cleanText = cleanText.replace(/→|->|=>|→/g, " to ");
-  cleanText = cleanText.replace(/←|<-|<=/g, " from ");
-  cleanText = cleanText.replace(/↔|<->/g, " between ");
-  const raw = cleanText.match(/[^.!?…\n]+[.!?…]*|[^\n]+/g) ?? [];
-  const sentences: string[] = [];
-  for (const chunk of raw) {
-    const trimmed = chunk.trim();
-    if (trimmed.length <= 1) continue;
-    if (trimmed.includes("\n") || trimmed.match(/\s{2,}/)) {
-      const segments = trimmed
-        .split(/\n+|\s{2,}/)
-        .filter((s) => s.trim().length > 0);
-      segments.forEach((segment) => {
-        const seg = segment.trim();
-        if (seg.length >= 2) sentences.push(seg);
-      });
-    } else {
-      if (trimmed.length >= 2) sentences.push(trimmed);
-    }
-  }
-  return sentences;
+// Cleans up a single sentence for speech synthesis (symbol pronunciation,
+// smart-quote normalization). This is applied AFTER splitting, on top of
+// the exact same per-paragraph splitSentencesWithLineBreaks() output the
+// renderer uses for highlighting — never as an independent split of the
+// raw content. Two independent splitters (this one used to run its own
+// regex-based chunking over the whole chapter, separately from the
+// per-paragraph splitter used for on-screen highlighting) drift apart
+// after enough sentences, since their boundary rules aren't identical.
+// Once that drift exceeds the highlight mapper's lookahead window, the
+// highlight silently stops resolving for the rest of the chapter, even
+// though narration keeps playing — this is what caused highlights to
+// disappear a minute or so into a chapter. Deriving both TTS and render
+// sentences from one splitter makes that class of bug impossible: index i
+// in ttsSentences always corresponds to the exact same sentence as index i
+// in the flattened paragraphSentences.
+function normalizeForSpeech(text: string): string {
+  let clean = text.replace(/[""'']/g, '"');
+  clean = clean.replace(/→|->|=>/g, " to ");
+  clean = clean.replace(/←|<-|<=/g, " from ");
+  clean = clean.replace(/↔|<->/g, " between ");
+  return clean.trim();
 }
 
 function splitSentencesWithLineBreaks(text: string): string[] {
@@ -684,7 +682,9 @@ export default function ReaderScreen() {
       }
 
       const paragraphs = detectParagraphs(content);
-      const sentences = splitIntoSentences(content);
+      const sentences = paragraphs.flatMap((p) =>
+        splitSentencesWithLineBreaks(p).map(normalizeForSpeech),
+      );
       const wordCount = content.split(/\s+/).length;
       return {
         content,
@@ -710,35 +710,22 @@ export default function ReaderScreen() {
   );
 
   // Maps each ttsSentences[] index to the render-sentence key ("paraIdx-sentIdx")
-  // that visually corresponds to it. Computed once per chapter/TTS-sentence
-  // change instead of doing string .includes() matching for every sentence on
-  // every render (which is what caused the highlight lookup to be so expensive).
+  // that visually corresponds to it. ttsSentences is derived from the exact
+  // same per-paragraph split as paragraphSentences (see processChapterContent),
+  // so this is a direct structural correspondence, not a text-matching guess —
+  // no drift is possible, and there's no lookahead window to fall outside of.
   const ttsToRenderKeyMap = useMemo(() => {
     const map = new Map<number, string>();
-    if (ttsSentences.length === 0) return map;
-    let ttsPointer = 0;
+    let i = 0;
     for (let paraIdx = 0; paraIdx < paragraphSentences.length; paraIdx++) {
       const sentences = paragraphSentences[paraIdx];
       for (let sentIdx = 0; sentIdx < sentences.length; sentIdx++) {
-        const normalizedRender = sentences[sentIdx]
-          .trim()
-          .replace(/[""'']/g, '"');
-        const searchLimit = Math.min(ttsSentences.length, ttsPointer + 5);
-        for (let t = ttsPointer; t < searchLimit; t++) {
-          const normalizedTts = ttsSentences[t].replace(/[""'']/g, '"');
-          if (
-            normalizedRender.includes(normalizedTts) ||
-            normalizedTts.includes(normalizedRender)
-          ) {
-            map.set(t, `${paraIdx}-${sentIdx}`);
-            ttsPointer = t;
-            break;
-          }
-        }
+        map.set(i, `${paraIdx}-${sentIdx}`);
+        i++;
       }
     }
     return map;
-  }, [paragraphSentences, ttsSentences]);
+  }, [paragraphSentences]);
 
   const currentHighlightKey =
     ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
