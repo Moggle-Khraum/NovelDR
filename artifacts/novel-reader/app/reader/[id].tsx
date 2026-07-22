@@ -202,6 +202,7 @@ function detectParagraphs(text: string): string[] {
   let normalized = text.replace(/\r\n?/g, "\n").replace(/\t/g, " ").trim();
   normalized = smartQuoteFormatting(normalized);
   normalized = removeDuplicateSpacing(normalized);
+  normalized = isolateBracketBlocks(normalized);
 
   const patterns = [
     /\n\s*\n+/,
@@ -229,6 +230,32 @@ function detectParagraphs(text: string): string[] {
       paragraph.replace(/\n+/g, " ").replace(/ {2,}/g, " ").trim(),
     )
     .filter(Boolean);
+}
+
+// System/status messages in system-style novels ("[Suitable host detected...]",
+// "[Congratulations, host!]", etc.) are frequently glued directly onto
+// surrounding narrative text with no blank line or sentence break in the
+// raw source — see the "Chapter 1" screenshots where a wall of bracketed
+// callouts all run together as one paragraph. Force every such block onto
+// its own paragraph line (blank line before and after) so each bracket
+// reads as a separate beat instead of merging into the prose around it.
+// Runs BEFORE the sentence-boundary patterns below so a bracket forces a
+// break even mid-sentence, regardless of punctuation.
+//
+// Differentiator: only isolate brackets that actually look like a system
+// message — 3+ words, or internal punctuation (a comma/period/!/?/:/;) —
+// not short inline asides like "the giant [rare] item" or an item name
+// like "[Legendary Sword]", which stay glued into their sentence.
+function isolateBracketBlocks(text: string): string {
+  return text
+    .replace(/\[[^\[\]]*\]/g, (match) => {
+      const inner = match.slice(1, -1).trim();
+      const wordCount = inner.split(/\s+/).filter(Boolean).length;
+      const isSystemMessage = wordCount >= 3 || /[.,!?:;]/.test(inner);
+      return isSystemMessage ? `\n\n${match}\n\n` : match;
+    })
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function smartQuoteFormatting(text: string): string {
