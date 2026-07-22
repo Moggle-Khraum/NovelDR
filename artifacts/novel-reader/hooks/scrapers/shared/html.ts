@@ -43,9 +43,21 @@ export const safeMatch = (text: string, pattern: RegExp): string | null => {
  * becomes two lines instead of reading as one squashed-together line.
  * Curly apostrophes (You've, It's) are deliberately not matched, so
  * contractions inside a line of dialogue don't trigger a false split.
+ *
+ * Also splits a closing curly quote followed by an "…" ellipsis — e.g.
+ * `...every move!" … Lin Feng took a deep breath...` — onto a new
+ * paragraph. That ellipsis marks a scene/beat transition back to
+ * narration in this site's text, distinct from an ellipsis mid-sentence
+ * (`dozed off… Just as he was looking around`, left untouched since it has
+ * no closing quote before it) or a short same-beat dialogue tag with no
+ * ellipsis (`"Where am I?" Lin Feng's temples throbbed.`, also untouched).
+ * Scoped to the curly closing quote specifically (not straight ") since
+ * straight quotes can't be reliably told apart as opening vs. closing.
  */
 export const splitAdjacentDialogue = (text: string): string => {
-  return text.replace(/(["\u201D])(\s*)(["\u201C])/g, "$1\n\n$3");
+  return text
+    .replace(/(["\u201D])(\s*)(["\u201C])/g, "$1\n\n$3")
+    .replace(/(\u201D)\s*(\u2026)\s*/g, "$1\n\n$2 ");
 };
 
 /**
