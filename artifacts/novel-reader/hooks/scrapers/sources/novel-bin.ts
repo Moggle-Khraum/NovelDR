@@ -6,6 +6,8 @@ import {
   safeMatch,
   extractByDepth,
   makeAbsoluteUrl,
+  splitAdjacentDialogue,
+  splitGluedSentences,
 } from "../shared/html";
 
 const BASE_HOST = "novel-bin.com";
@@ -31,14 +33,16 @@ const extractBrSeparatedText = (html: string): string => {
  * the previous approach here) only ever finds that one empty <p></p> and
  * returns nothing — this is the same <br>-separated style as the synopsis,
  * so reuse that same splitting approach instead, after stripping the
- * leading <h4> title repeat.
+ * leading <h4> title repeat. Dialogue lines squashed together on the same
+ * <br>-separated chunk (see shared/html.ts splitAdjacentDialogue) are then
+ * broken apart so each line of dialogue reads on its own line.
  *
  * Exported for the scraper content-extraction regression test — see
  * scripts/test-scrapers.ts.
  */
 export const extractChapterBody = (rawContentBlock: string): string => {
   const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
-  return extractBrSeparatedText(contentBlock);
+  return splitAdjacentDialogue(extractBrSeparatedText(contentBlock));
 };
 
 export const novelBinScraper: SourceScraper = {
@@ -84,7 +88,14 @@ export const novelBinScraper: SourceScraper = {
     // those would make extractByDepth's <div>/</div> counter run wild over
     // the rest of the page.
     const descBlock = extractByDepth(html, 'class="desc-text"') ?? "";
-    const synopsis = extractBrSeparatedText(descBlock);
+    // Some novels' synopsis text has no <br> tags at all — it's one run-on
+    // blob with [Tag] callouts and sentence punctuation glued directly onto
+    // the next word (see splitGluedSentences in shared/html.ts). Apply that
+    // normalization, then split any dialogue lines that end up glued
+    // together the same way chapter bodies do.
+    const synopsis = splitAdjacentDialogue(
+      splitGluedSentences(extractBrSeparatedText(descBlock)),
+    );
 
     // <a class="btn btn-danger btn-read-now" title="READ NOW" href="/novel-bin/{slug}/chapter-1">
     const firstChapterPath = safeMatch(
