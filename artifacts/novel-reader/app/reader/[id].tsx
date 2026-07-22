@@ -34,11 +34,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
-  updateTTSNotification,
-  clearTTSNotification,
-  setupNotificationChannels,
+  updateMediaSession,
+  clearMediaSession,
+  setupMediaSession,
+  setRemoteHandlers,
   type TTSNotificationState,
-} from "@/lib/TTSNotificationManager";
+} from "@/lib/TTSMediaSession";
 import * as Notifications from "expo-notifications";
 import * as KeepAwake from "expo-keep-awake";
 
@@ -757,29 +758,57 @@ export default function ReaderScreen() {
     ? parseInt(currentHighlightKey.split("-")[0], 10)
     : -1;
 
-  // Auto-scroll so the paragraph currently being read by TTS is centered on
-  // screen. Triggers once per paragraph change (not per sentence, since the
-  // whole block is highlighted together) — once a block finishes speaking
-  // and TTS moves to the next one, the view scrolls to bring the new block
-  // to the vertical center of the screen.
+  // Auto-scroll to follow the highlight as TTS reads. Triggers on every
+  // highlight change (currentHighlightKey), not just paragraph changes, so
+  // the scroll position tracks the actual sentence being spoken instead of
+  // jumping once per paragraph and then sitting still while the highlight
+  // drifts further down the block.
+  //
+  // Quote-containing sentences widen the highlight to the whole paragraph
+  // (see isHighlighted / currentTtsHasQuote below in the render), so in
+  // that case we still center on the paragraph as a whole rather than a
+  // single sentence line.
   useEffect(() => {
-    if (!ttsActive || currentParaIdx < 0) return;
+    if (!ttsActive || currentParaIdx < 0 || !currentHighlightKey) return;
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
-    const paraHeight = paraHeightsRef.current.get(currentParaIdx);
     if (paraY === undefined) return;
-    const centerOfParagraph = paraY + (paraHeight ?? 0) / 2;
-    // Offset by ~2 text-block heights so the highlighted paragraph lands
-    // above dead-center, clear of the TTS status overlay and floating
-    // buttons docked at the bottom of the screen.
+
+    const sentenceText = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
+    const currentTtsHasQuote = sentenceText ? /["“”]/.test(sentenceText) : false;
+
+    let targetCenter: number;
+    if (currentTtsHasQuote) {
+      const paraHeight = paraHeightsRef.current.get(currentParaIdx);
+      targetCenter = paraY + (paraHeight ?? 0) / 2;
+    } else {
+      const sentenceRelY = sentenceYPositionsRef.current.get(
+        currentHighlightKey,
+      );
+      // Sentence not measured yet (e.g. just came into the tree) — fall
+      // back to the paragraph position rather than skipping the scroll.
+      targetCenter = paraY + (sentenceRelY ?? 0);
+    }
+
+    // Offset by ~2 text-block heights so the highlighted line lands above
+    // dead-center, clear of the TTS status overlay and floating buttons
+    // docked at the bottom of the screen.
     const blockHeightEstimate = fontSize * lineSpacing * 1.8;
     const centerOffset = blockHeightEstimate * 2;
     const targetY = Math.max(
       0,
-      centerOfParagraph - scrollViewHeightRef.current / 2 + centerOffset,
+      targetCenter - scrollViewHeightRef.current / 2 + centerOffset,
     );
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
     scrollYRef.current = targetY;
-  }, [currentParaIdx, ttsActive, fontSize, lineSpacing]);
+  }, [
+    currentHighlightKey,
+    currentParaIdx,
+    ttsIndex,
+    ttsSentences,
+    ttsActive,
+    fontSize,
+    lineSpacing,
+  ]);
 
   // ─── Load effect with AbortController and request ID ──────────────────
   const loadIdRef = useRef(0);
@@ -1022,7 +1051,7 @@ export default function ReaderScreen() {
 
   // ─── Notification setup ───────────────────────────────────────────────
   useEffect(() => {
-    setupNotificationChannels();
+    setupMediaSession();
   }, []);
 
   // ─── TTS methods ──────────────────────────────────────────────────────
@@ -1392,24 +1421,15 @@ export default function ReaderScreen() {
   const goChapterRef = useRef(goChapter);
   goChapterRef.current = goChapter;
 
-  // Listen for notification actions (play/pause/next/prev)
+  // Listen for the auto-next-chapter notification (scheduled a few
+  // sentences before end-of-chapter — see "Loading next chapter" in
+  // speakSentence below). This is a one-off expo-notifications alert,
+  // separate from the persistent TTS playback notification.
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const action = response.actionIdentifier;
         const data = response.notification.request.content.data;
-        if (action === "pause") {
-          toggleTTS();
-        } else if (action === "next") {
-          if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
-            goChapter(1);
-          }
-        } else if (action === "prev") {
-          if (chapterIndex > 0) {
-            goChapter(-1);
-          }
-        } else if (data?.action === "auto_next_chapter") {
-          // Handle auto-next triggered from notification (even in background)
+        if (data?.action === "auto_next_chapter") {
           if (chapterIndex + 1 < (novel?.chapters.length || 0)) {
             autoNextResumeRef.current = true;
             goChapter(1);
@@ -1421,14 +1441,29 @@ export default function ReaderScreen() {
     return () => {
       subscription.remove();
     };
-  }, [chapterIndex, novel?.chapters.length, toggleTTS, goChapter]);
+  }, [chapterIndex, novel?.chapters.length, goChapter]);
+
+  // Wire the persistent TTS notification's Play/Pause and Stop buttons to
+  // the same actions the in-app buttons use. These run from either the
+  // foreground or background event handler in lib/TTSMediaSession.ts,
+  // which reads whatever was last registered here via getRemoteHandlers().
+  useEffect(() => {
+    setRemoteHandlers({
+      onPlayPause: () => toggleTTS(),
+      onStop: () => stopTTS(),
+    });
+
+    return () => {
+      setRemoteHandlers({});
+    };
+  }, [toggleTTS, stopTTS]);
 
   // Update notification as TTS plays
   useEffect(() => {
     if (!novel || !chapter) return;
 
     if (ttsActive) {
-      updateTTSNotification({
+      updateMediaSession({
         novelTitle: novel.title,
         chapterNumber: chapterIndex + 1,
         chapterTitle: chapter.title,
@@ -1503,7 +1538,7 @@ export default function ReaderScreen() {
   // ─── Cleanup on unmount ───────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      clearTTSNotification();
+      clearMediaSession();
     };
   }, []);
 
