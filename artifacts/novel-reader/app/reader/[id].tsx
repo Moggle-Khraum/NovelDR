@@ -357,6 +357,13 @@ export default function ReaderScreen() {
   const [autoScrollActive, setAutoScrollActive] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
   const scrollYRef = useRef(0);
+  // True while the user has a finger on the ScrollView (or shortly after
+  // lifting it), used to suppress the TTS follow-scroll effect below so it
+  // doesn't fight a manual scroll gesture.
+  const isUserScrollingRef = useRef(false);
+  const userScrollResumeTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const contentHeightRef = useRef(0);
   const scrollViewHeightRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -750,32 +757,17 @@ export default function ReaderScreen() {
   // the scroll position tracks the actual sentence being spoken instead of
   // jumping once per paragraph and then sitting still while the highlight
   // drifts further down the block.
-  //
-  // Quote-containing sentences widen the highlight to the whole paragraph
-  // (see isHighlighted / currentTtsHasQuote below in the render), so in
-  // that case we still center on the paragraph as a whole rather than a
-  // single sentence line.
   useEffect(() => {
     if (!ttsActive || currentParaIdx < 0 || !currentHighlightKey) return;
+    if (isUserScrollingRef.current) return;
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
     if (paraY === undefined) return;
 
-    const sentenceText = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
-    const currentTtsHasQuote = sentenceText
-      ? /["“”]/.test(sentenceText)
-      : false;
-
-    let targetCenter: number;
-    if (currentTtsHasQuote) {
-      const paraHeight = paraHeightsRef.current.get(currentParaIdx);
-      targetCenter = paraY + (paraHeight ?? 0) / 2;
-    } else {
-      const sentenceRelY =
-        sentenceYPositionsRef.current.get(currentHighlightKey);
-      // Sentence not measured yet (e.g. just came into the tree) — fall
-      // back to the paragraph position rather than skipping the scroll.
-      targetCenter = paraY + (sentenceRelY ?? 0);
-    }
+    const sentenceRelY =
+      sentenceYPositionsRef.current.get(currentHighlightKey);
+    // Sentence not measured yet (e.g. just came into the tree) — fall
+    // back to the paragraph position rather than skipping the scroll.
+    const targetCenter = paraY + (sentenceRelY ?? 0);
 
     // Offset by ~2 text-block heights so the highlighted line lands above
     // dead-center, clear of the TTS status overlay and floating buttons
@@ -997,6 +989,8 @@ export default function ReaderScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (restoreTimeoutRef.current) clearTimeout(restoreTimeoutRef.current);
       if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+      if (userScrollResumeTimeoutRef.current)
+        clearTimeout(userScrollResumeTimeoutRef.current);
 
       // Cancel any pending auto-next notifications
       Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
@@ -1024,6 +1018,23 @@ export default function ReaderScreen() {
       ) {
         console.log("[Reader] App backgrounding - saving chapter content...");
         await persistChapterContent();
+
+        // Also persist the current scroll position (including wherever TTS's
+        // follow-scroll has gotten to) so that if the OS kills the process
+        // while backgrounded — which can happen even with the TTS foreground
+        // service running — resuming lands back where narration actually
+        // left off instead of an older, stale scrollOffset from the last
+        // chapter change or manual close.
+        const n = novelRef.current;
+        const ch = chapterRef.current;
+        if (n && ch) {
+          saveReadingProgress(
+            n.id,
+            chapterIndexRef.current,
+            ch.title,
+            scrollYRef.current,
+          );
+        }
       }
       appStateRef.current = nextAppState;
     };
@@ -1035,7 +1046,7 @@ export default function ReaderScreen() {
     return () => {
       subscription.remove();
     };
-  }, [persistChapterContent]);
+  }, [persistChapterContent, saveReadingProgress]);
 
   // ─── Notification setup ───────────────────────────────────────────────
   useEffect(() => {
@@ -1271,8 +1282,28 @@ export default function ReaderScreen() {
     updateReadingProgress();
   };
 
+  const USER_SCROLL_RESUME_DELAY = 2500;
+
   const handleScrollBeginDrag = () => {
     if (autoScrollActive) stopAutoScroll();
+    isUserScrollingRef.current = true;
+    if (userScrollResumeTimeoutRef.current) {
+      clearTimeout(userScrollResumeTimeoutRef.current);
+      userScrollResumeTimeoutRef.current = null;
+    }
+  };
+
+  // Give the TTS follow-scroll a short grace period after the user lets go
+  // (rather than resuming the instant the finger lifts) so a quick flick to
+  // re-read a line doesn't get immediately yanked back by the next
+  // highlight tick.
+  const handleScrollEndDrag = () => {
+    if (userScrollResumeTimeoutRef.current)
+      clearTimeout(userScrollResumeTimeoutRef.current);
+    userScrollResumeTimeoutRef.current = setTimeout(() => {
+      isUserScrollingRef.current = false;
+      userScrollResumeTimeoutRef.current = null;
+    }, USER_SCROLL_RESUME_DELAY);
   };
 
   // Restoring scroll position is tricky because content renders progressively —
@@ -1633,6 +1664,8 @@ export default function ReaderScreen() {
             ]}
             onScroll={handleScroll}
             onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleScrollEndDrag}
             onContentSizeChange={handleContentSizeChange}
             onLayout={handleScrollViewLayout}
             scrollEventThrottle={16}
@@ -1660,18 +1693,6 @@ export default function ReaderScreen() {
                 {paragraphSentences.map((sentences, paraIdx) => {
                   const isLastParagraph =
                     paraIdx === paragraphSentences.length - 1;
-                  const isCurrentParagraph = paraIdx === currentParaIdx;
-                  // Quote-aware highlight scope: dialogue sentences often get
-                  // split oddly by the TTS sentence splitter vs. the render
-                  // splitter (quote marks throw off the boundary regex), so a
-                  // single quoted sentence can end up isolated with no exact
-                  // match. When the currently-spoken sentence contains a
-                  // quote mark, widen the highlight to the whole paragraph;
-                  // otherwise keep it tight to just the matching sentence.
-                  const currentTtsHasQuote =
-                    ttsActive && currentSentence
-                      ? /["“”]/.test(currentSentence)
-                      : false;
                   return (
                     <View
                       key={paraIdx}
@@ -1703,11 +1724,7 @@ export default function ReaderScreen() {
                           marginBottom += fontSize * 0.2;
 
                         const renderKey = `${paraIdx}-${sentIdx}`;
-                        const isExactSentenceMatch =
-                          currentHighlightKey === renderKey;
-                        const isHighlighted = currentTtsHasQuote
-                          ? isCurrentParagraph
-                          : isExactSentenceMatch;
+                        const isHighlighted = currentHighlightKey === renderKey;
 
                         return (
                           <Text
