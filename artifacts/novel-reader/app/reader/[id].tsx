@@ -774,16 +774,17 @@ export default function ReaderScreen() {
     if (paraY === undefined) return;
 
     const sentenceText = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
-    const currentTtsHasQuote = sentenceText ? /["“”]/.test(sentenceText) : false;
+    const currentTtsHasQuote = sentenceText
+      ? /["“”]/.test(sentenceText)
+      : false;
 
     let targetCenter: number;
     if (currentTtsHasQuote) {
       const paraHeight = paraHeightsRef.current.get(currentParaIdx);
       targetCenter = paraY + (paraHeight ?? 0) / 2;
     } else {
-      const sentenceRelY = sentenceYPositionsRef.current.get(
-        currentHighlightKey,
-      );
+      const sentenceRelY =
+        sentenceYPositionsRef.current.get(currentHighlightKey);
       // Sentence not measured yet (e.g. just came into the tree) — fall
       // back to the paragraph position rather than skipping the scroll.
       targetCenter = paraY + (sentenceRelY ?? 0);
