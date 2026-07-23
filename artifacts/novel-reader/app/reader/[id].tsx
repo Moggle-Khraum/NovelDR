@@ -202,6 +202,9 @@ function detectParagraphs(text: string): string[] {
   let normalized = text.replace(/\r\n?/g, "\n").replace(/\t/g, " ").trim();
   normalized = smartQuoteFormatting(normalized);
   normalized = removeDuplicateSpacing(normalized);
+  normalized = stripDotLeaders(normalized);
+  normalized = isolateStatLabels(normalized);
+  normalized = isolateRuleHeadings(normalized);
   normalized = isolateBracketBlocks(normalized);
 
   const patterns = [
@@ -232,6 +235,77 @@ function detectParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+// Decorative dot/ellipsis "leaders" used as a visual scene-break in raw
+// source text — e.g. "…………" or "..........." sitting between two
+// sentences with no other separator. These carry no meaning (unlike a
+// normal 3-dot "..." trailing-off ellipsis in dialogue, which we leave
+// alone) — they're just noise once real paragraph breaks are in place.
+// Only strips runs of 4+ dot/ellipsis characters to avoid touching
+// legitimate short ellipses.
+function stripDotLeaders(text: string): string {
+  return text
+    .replace(/[.\u2026]{4,}/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+// "Character stat block" dumps ("[Strangeness Level]: S-level Overall
+// Rating: 95 points [Strategy Index]: ★★★★★ [Height]: 172cm 【weight】:
+// ??kg ...") pack several "Label: value" fields onto one glued line, with
+// no punctuation or 3+ word content inside the brackets to trip the
+// isolateBracketBlocks differentiator — "[Height]" and "[weight]" are
+// just single words. What actually marks these as data fields (not a
+// narrative aside like "the giant [rare] item") is the colon
+// immediately following the bracket. So: a bracket (ASCII [ ] or
+// full-width 【 】) directly followed by ":" always starts a new line,
+// regardless of word count. We also break before short, unbracketed
+// Title-Case labels (e.g. "Overall Rating:") when what follows the
+// colon looks like a value (a number, a star rating, or another
+// capitalized word) — this catches the plain labels sitting between
+// bracketed ones in the same stat dump without matching ordinary
+// dialogue-attribution colons like `she said: "..."`.
+function isolateStatLabels(text: string): string {
+  let result = text.replace(
+    /(?:\[[^\[\]]*\]|【[^【】]*】)\s*:/g,
+    (match) => `\n\n${match}`,
+  );
+  result = result.replace(
+    /\b[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*){0,3}\s*:\s*(?=[\d★☆]|[A-Z][a-zA-Z])/g,
+    (match) => `\n\n${match}`,
+  );
+  // A run of rating stars (e.g. "★★★★★") is a value, not a label, so the
+  // above passes don't touch it — but it usually marks the tail end of a
+  // stat block, with prose narration resuming right after ("[Danger
+  // Level]: ★★★★★ Lin Feng subconsciously swallowed..."). Break after the
+  // stars so that narration starts on its own line. Skip when the stars
+  // are immediately followed by another label (already gets its own
+  // break above) to avoid an extra blank paragraph.
+  result = result.replace(
+    /([★☆]+)[ \t]+(?!\n|\[|【)/g,
+    (_match, stars) => `${stars}\n\n`,
+  );
+  return result.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// "Rule Two: [Irregular Gifts]" style labeled headings (common in
+// "system"/rulebook-style novels) show up glued mid-paragraph in the raw
+// text, e.g. "...filled with terror. Rule Two: [Irregular Gifts] The
+// flight attendant continued...". These function as section headings,
+// not just a bracket aside, so — unlike a bare inline bracket — they
+// always get isolated onto their own paragraph line regardless of the
+// word-count/punctuation differentiator used for plain brackets. Runs
+// before isolateBracketBlocks so the heading's bracket is consumed here
+// and not re-evaluated by the plainer bracket rule.
+function isolateRuleHeadings(text: string): string {
+  return text
+    .replace(
+      /\s*(\bRule\s+[A-Za-z0-9]+\s*:\s*(?:\[[^\[\]]*\]|【[^【】]*】)?)\s*/g,
+      "\n\n$1\n\n",
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // System/status messages in system-style novels ("[Suitable host detected...]",
 // "[Congratulations, host!]", etc.) are frequently glued directly onto
 // surrounding narrative text with no blank line or sentence break in the
@@ -248,7 +322,7 @@ function detectParagraphs(text: string): string[] {
 // like "[Legendary Sword]", which stay glued into their sentence.
 function isolateBracketBlocks(text: string): string {
   return text
-    .replace(/\[[^\[\]]*\]/g, (match) => {
+    .replace(/\[[^\[\]]*\]|【[^【】]*】/g, (match) => {
       const inner = match.slice(1, -1).trim();
       const wordCount = inner.split(/\s+/).filter(Boolean).length;
       const isSystemMessage = wordCount >= 3 || /[.,!?:;]/.test(inner);
