@@ -38,12 +38,11 @@ import {
   clearMediaSession,
   setupMediaSession,
   setRemoteHandlers,
-  type TTSNotificationState,
 } from "@/lib/TTSMediaSession";
 import * as Notifications from "expo-notifications";
 import * as KeepAwake from "expo-keep-awake";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26];
 const LINE_SPACINGS = [1.2, 1.3, 1.5, 1.8, 2.0, 2.5];
@@ -1029,7 +1028,7 @@ export default function ReaderScreen() {
   // chapter/novel object refs, which can change identity on unrelated re-renders.
   // Depending on the objects would re-trigger this load (spinner + fetch)
   // whenever that happens, not just on actual chapter navigation.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     // Create a new AbortController for this load
     const abortController = new AbortController();
@@ -1133,6 +1132,7 @@ export default function ReaderScreen() {
       abortController.abort();
     };
   }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
@@ -1633,51 +1633,62 @@ export default function ReaderScreen() {
   };
 
   // ─── Navigation helpers ──────────────────────────────────────────────
-  const goChapter = (dir: 1 | -1) => {
-    cancelAutoNext();
-    const next = chapterIndex + dir;
-    if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
-      Alert.alert(
-        "Navigation",
-        dir === -1 ? "First chapter reached" : "Last chapter reached",
-      );
-      return;
-    }
-    if (novel && chapter)
-      saveReadingProgress(
-        novel.id,
-        chapterIndex,
-        chapter.title,
-        scrollYRef.current,
-      );
+  const goChapter = useCallback(
+    (dir: 1 | -1) => {
+      cancelAutoNext();
+      const next = chapterIndex + dir;
+      if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
+        Alert.alert(
+          "Navigation",
+          dir === -1 ? "First chapter reached" : "Last chapter reached",
+        );
+        return;
+      }
+      if (novel && chapter)
+        saveReadingProgress(
+          novel.id,
+          chapterIndex,
+          chapter.title,
+          scrollYRef.current,
+        );
 
-    // Abort any pending load
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+      // Abort any pending load
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
 
-    stopAutoScroll();
-    stopTTS();
+      stopAutoScroll();
+      stopTTS();
 
-    // Clear content and show loading immediately
-    setChapterContent("");
-    setProcessedParagraphs([]);
-    setTtsSentences([]);
-    setContentLoading(true);
+      // Clear content and show loading immediately
+      setChapterContent("");
+      setProcessedParagraphs([]);
+      setTtsSentences([]);
+      setContentLoading(true);
 
-    scrollYRef.current = 0;
-    hasRestoredScrollRef.current = false;
-    restoreAttemptsRef.current = 0;
-    lastRestoreHeightRef.current = 0;
-    if (restoreTimeoutRef.current) {
-      clearTimeout(restoreTimeoutRef.current);
-      restoreTimeoutRef.current = null;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setChapterIndex(next);
-    setReadingProgress(0);
-  };
+      scrollYRef.current = 0;
+      hasRestoredScrollRef.current = false;
+      restoreAttemptsRef.current = 0;
+      lastRestoreHeightRef.current = 0;
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+        restoreTimeoutRef.current = null;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setChapterIndex(next);
+      setReadingProgress(0);
+    },
+    [
+      cancelAutoNext,
+      chapterIndex,
+      novel,
+      chapter,
+      saveReadingProgress,
+      stopAutoScroll,
+      stopTTS,
+    ],
+  );
 
   // speakSentence is memoized once (deps never change) and its closure is
   // frozen to the render it was created on, so it can't safely call
@@ -3434,7 +3445,7 @@ export default function ReaderScreen() {
                   { color: adaptiveColors.text, textAlign: "center" },
                 ]}
               >
-                You're tapping a bit fast
+                You&apos;re tapping a bit fast
               </Text>
               <Text
                 style={{
