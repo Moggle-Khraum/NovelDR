@@ -28,6 +28,10 @@ import {
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
 
+// Fallback used when Max Chapters is left blank (mirrors Start Chapter's
+// fallback to 1).
+const DEFAULT_MAX_CHAPTERS = 30;
+
 // --- SUPPORTED SITES ---
 const SUPPORTED_SITES = [
   { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
@@ -404,7 +408,7 @@ export default function AddNovelScreen() {
   // and checkAllSites reads isCheckingSites state, so including them would
   // re-fire this effect (and reset the 12h interval) every time a check
   // starts/stops.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     // Initial check: Wait 2 seconds, then load saved or check
     const initialTimeout = setTimeout(async () => {
@@ -437,6 +441,7 @@ export default function AddNovelScreen() {
       }
     };
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Detect chapter URL and auto-fill Start Chapter
   const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
@@ -605,9 +610,8 @@ export default function AddNovelScreen() {
     }
 
     const startCh = Math.max(1, parseInt(startChStr) || 1);
-    const parsedMaxCh = parseInt(maxChStr) || null;
-    const maxCh =
-      parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
+    const parsedMaxCh = parseInt(maxChStr) || DEFAULT_MAX_CHAPTERS;
+    const maxCh = Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX);
 
     // ── Detect if a chapter URL was pasted directly ──────────────────────────
     const chapterUrlPattern = /\/chapter[-/](\d+)/i;
@@ -880,14 +884,14 @@ export default function AddNovelScreen() {
       // to just re-download the same chapter over and over, quietly burning
       // through maxCh on duplicates instead of failing loudly.
       const visitedThisRun = new Set<string>();
-      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      const ITERATION_CEILING = maxCh * 5 + 50;
       let iterations = 0;
 
       addLog(`Starting from chapter ${startCh}...`, "downloading");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       while (currentUrl && !stopRef.current) {
-        if (maxCh !== null && downloaded >= maxCh) {
+        if (downloaded >= maxCh) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(`Reached max chapter limit (${maxCh})`, "success");
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -898,7 +902,7 @@ export default function AddNovelScreen() {
         if (iterations > ITERATION_CEILING) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(
-            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh}). ` +
               `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
             "error",
           );
@@ -1295,7 +1299,7 @@ export default function AddNovelScreen() {
                 ]}
                 value={maxChStr}
                 onChangeText={chapterLimiter.onMaxChStrChange}
-                placeholder="All"
+                placeholder={`${DEFAULT_MAX_CHAPTERS}`}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 maxLength={3}
