@@ -61,6 +61,29 @@ export const splitAdjacentDialogue = (text: string): string => {
 };
 
 /**
+ * novel-bin.com specific: this site formats internal-thought asides with
+ * single curly quotes ('...') rather than the double curly quotes ("...")
+ * splitAdjacentDialogue already handles, e.g.:
+ *   ...'But what is such a talented mage doing in this godforsaken place?'
+ *   When the wounds finally closed completely...
+ * The closing '?' ' run stays glued directly onto the next sentence
+ * ("When the wounds...") with no paragraph break, unlike this site's
+ * double-quote dialogue which does get a <br>/blank-line boundary from the
+ * source HTML. Insert a break after a closing single curly quote (\u2019)
+ * that immediately follows terminal punctuation (., !, ?, or an ellipsis
+ * run of dots) and is followed by a capital letter — e.g. also
+ * "...as her front...' Ethan thought" -> break after the quote.
+ * Deliberately scoped to punctuation-then-quote (not every \u2019) so
+ * ordinary contractions/possessives (It's, wounds') are never touched —
+ * NOT called from the shared splitGluedSentences/splitAdjacentDialogue
+ * pipeline, only from novel-bin.ts, since novelbincc.ts's dialogue
+ * formatting doesn't exhibit this pattern and shouldn't be affected.
+ */
+export const splitInnerThoughtClose = (text: string): string => {
+  return text.replace(/([.!?]+)(\u2019)\s*(?=[A-Z])/g, "$1$2\n\n");
+};
+
+/**
  * Some sources ship synopsis text as one run-on blob with zero <br> tags:
  * bracketed [Tag] callouts and sentence-ending punctuation glued directly
  * onto the next word with no whitespace at all, e.g.:
