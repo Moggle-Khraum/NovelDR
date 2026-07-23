@@ -39,7 +39,7 @@
     "@expo/config-plugins": "~9.0.0",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@sentry/react-native": "^6.10.0",
+    "@sentry/react-native": "^8.5.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@tanstack/react-query": "catalog:",
     "@types/react": "~19.1.10",
