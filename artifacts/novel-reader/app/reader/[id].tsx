@@ -381,6 +381,137 @@ function splitSentencesWithLineBreaks(text: string): string[] {
   return sentences.filter((s) => s.trim().length > 0);
 }
 
+// ── ParagraphBlock ───────────────────────────────────────────────────────────
+// Renders a single paragraph as its own small component, memoized so that
+// only the paragraph containing the active TTS sentence re-renders when
+// ttsIndex/currentHighlightKey advances, instead of the entire sentence
+// tree across every paragraph in the chapter. This is a fallback mitigation
+// for the RN new-architecture scheduler SIGSEGV (RuntimeScheduler_Modern)
+// caused by rendering hundreds of individually-updating <Text> nodes.
+type ParagraphBlockProps = {
+  sentences: string[];
+  paraIdx: number;
+  highlightedSentIdx: number; // -1 if no sentence in this paragraph is active
+  isLastParagraph: boolean;
+  fontSize: number;
+  lineSpacing: number;
+  accentColor: string;
+  textColor: string;
+  contentStyle: any;
+  onParaLayout: (paraIdx: number, y: number, height: number) => void;
+};
+
+const ParagraphBlock = React.memo(
+  function ParagraphBlock({
+    sentences,
+    paraIdx,
+    highlightedSentIdx,
+    isLastParagraph,
+    fontSize,
+    lineSpacing,
+    accentColor,
+    textColor,
+    contentStyle,
+    onParaLayout,
+  }: ParagraphBlockProps) {
+    return (
+      <View
+        style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}
+        onLayout={(e) =>
+          onParaLayout(
+            paraIdx,
+            e.nativeEvent.layout.y,
+            e.nativeEvent.layout.height,
+          )
+        }
+      >
+        {sentences.map((sentence, sentIdx) => {
+          const trimmed = sentence.trim();
+          const endsWithPeriod = /[.!?]$/.test(trimmed);
+          const isExclamation = /[!?]$/.test(trimmed);
+          const isQuestion = /\?$/.test(trimmed);
+          let marginBottom = fontSize * 0.3;
+          if (isQuestion) marginBottom = fontSize * 0.7;
+          else if (isExclamation) marginBottom = fontSize * 0.8;
+          else if (endsWithPeriod) marginBottom = fontSize * 0.5;
+          const hasDialogue = /^["'“”‘’]/.test(trimmed);
+          if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
+
+          const isHighlighted = sentIdx === highlightedSentIdx;
+
+          return (
+            <Text
+              key={sentIdx}
+              style={[
+                contentStyle,
+                {
+                  color: isHighlighted ? accentColor : textColor,
+                  backgroundColor: isHighlighted
+                    ? `${accentColor}20`
+                    : "transparent",
+                  fontWeight: isHighlighted ? "bold" : "normal",
+                  fontSize,
+                  lineHeight: fontSize * lineSpacing,
+                  marginBottom,
+                  paddingVertical: 2,
+                  paddingHorizontal: 6,
+                  borderRadius: 6,
+                  letterSpacing: 0.2,
+                },
+              ]}
+            >
+              {trimmed}
+            </Text>
+          );
+        })}
+      </View>
+    );
+  },
+  (prev, next) =>
+    prev.sentences === next.sentences &&
+    prev.highlightedSentIdx === next.highlightedSentIdx &&
+    prev.isLastParagraph === next.isLastParagraph &&
+    prev.fontSize === next.fontSize &&
+    prev.lineSpacing === next.lineSpacing &&
+    prev.accentColor === next.accentColor &&
+    prev.textColor === next.textColor,
+);
+
+// ── Rapid-tap guard ──────────────────────────────────────────────────────────
+// Tracks tap timestamps and flags when 4+ taps land within RAPID_TAP_WINDOW_MS.
+// This is a workaround, not a fix: it reduces the odds of hitting the
+// scheduler/Skia crashes by removing "user mashing buttons" as a contributing
+// factor, but a long chapter + sustained TTS alone can still stress the
+// scheduler without any taps at all.
+const RAPID_TAP_THRESHOLD = 4;
+const RAPID_TAP_WINDOW_MS = 1500;
+
+function useRapidTapGuard(onTripped: () => void) {
+  const tapTimestampsRef = useRef<number[]>([]);
+  const trippedRef = useRef(false);
+
+  const registerTap = useCallback(() => {
+    const now = Date.now();
+    const recent = tapTimestampsRef.current.filter(
+      (t) => now - t < RAPID_TAP_WINDOW_MS,
+    );
+    recent.push(now);
+    tapTimestampsRef.current = recent;
+
+    if (recent.length >= RAPID_TAP_THRESHOLD && !trippedRef.current) {
+      trippedRef.current = true;
+      onTripped();
+    }
+  }, [onTripped]);
+
+  const reset = useCallback(() => {
+    tapTimestampsRef.current = [];
+    trippedRef.current = false;
+  }, []);
+
+  return { registerTap, reset };
+}
+
 const ContentWrapper = ({
   children,
   bgImageUri,
@@ -438,6 +569,7 @@ export default function ReaderScreen() {
   const [showTOC, setShowTOC] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showBgModal, setShowBgModal] = useState(false);
+  const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
@@ -480,7 +612,6 @@ export default function ReaderScreen() {
   // Used to scroll precisely to the sentence currently being read by TTS.
   const paraYPositionsRef = useRef<Map<number, number>>(new Map());
   const paraHeightsRef = useRef<Map<number, number>>(new Map());
-  const sentenceYPositionsRef = useRef<Map<string, number>>(new Map());
 
   const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
@@ -843,7 +974,6 @@ export default function ReaderScreen() {
   useEffect(() => {
     paraYPositionsRef.current.clear();
     paraHeightsRef.current.clear();
-    sentenceYPositionsRef.current.clear();
   }, [processedParagraphs]);
 
   // The paragraph index currently being read by TTS. Derived from
@@ -864,10 +994,10 @@ export default function ReaderScreen() {
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
     if (paraY === undefined) return;
 
-    const sentenceRelY = sentenceYPositionsRef.current.get(currentHighlightKey);
-    // Sentence not measured yet (e.g. just came into the tree) — fall
-    // back to the paragraph position rather than skipping the scroll.
-    const targetCenter = paraY + (sentenceRelY ?? 0);
+    // Scroll to the paragraph position. Individual sentence y-positions are
+    // no longer tracked (no per-sentence onLayout) to avoid flooding the RN
+    // new architecture scheduler with hundreds of native layout events.
+    const targetCenter = paraY;
 
     // Offset by ~2 text-block heights so the highlighted line lands above
     // dead-center, clear of the TTS status overlay and floating buttons
@@ -1356,6 +1486,23 @@ export default function ReaderScreen() {
     setAutoScrollActive(false);
   }, []);
 
+  // Rapid-tap guard: workaround for the RN new-arch scheduler SIGSEGV and the
+  // Android 16 Skia/libhwui crash, both of which are made more likely by
+  // concurrent state updates from mashing buttons while TTS/auto-scroll are
+  // actively re-rendering the sentence tree. Tripping this pauses playback
+  // and surfaces a warning rather than letting taps pile up unbounded.
+  const handleRapidTapTripped = useCallback(() => {
+    stopTTS();
+    stopAutoScroll();
+    setShowRapidTapWarning(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+      () => {},
+    );
+  }, [stopTTS, stopAutoScroll]);
+
+  const { registerTap: registerRapidTap, reset: resetRapidTapGuard } =
+    useRapidTapGuard(handleRapidTapTripped);
+
   const startAutoScroll = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     const speed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
@@ -1732,6 +1879,7 @@ export default function ReaderScreen() {
             { backgroundColor: adaptiveColors.border },
           ]}
           onPress={(e) => {
+            registerRapidTap();
             const { locationX } = e.nativeEvent;
             const percentage = (locationX / SCREEN_W) * 100;
             jumpToPercentage(percentage);
@@ -1793,73 +1941,37 @@ export default function ReaderScreen() {
                 {paragraphSentences.map((sentences, paraIdx) => {
                   const isLastParagraph =
                     paraIdx === paragraphSentences.length - 1;
+
+                  // Derive which sentence within this paragraph is
+                  // highlighted as a scalar. This is what lets
+                  // React.memo actually bail out: two paragraphs with
+                  // highlightedSentIdx=-1 are prop-equal and skip
+                  // re-rendering entirely when TTS advances elsewhere.
+                  let highlightedSentIdx = -1;
+                  if (currentHighlightKey) {
+                    const [hPara, hSent] = currentHighlightKey.split("-");
+                    if (parseInt(hPara, 10) === paraIdx) {
+                      highlightedSentIdx = parseInt(hSent, 10);
+                    }
+                  }
+
                   return (
-                    <View
+                    <ParagraphBlock
                       key={paraIdx}
-                      style={{
-                        marginBottom: isLastParagraph ? 0 : fontSize * 1.5,
+                      sentences={sentences}
+                      paraIdx={paraIdx}
+                      highlightedSentIdx={highlightedSentIdx}
+                      isLastParagraph={isLastParagraph}
+                      fontSize={fontSize}
+                      lineSpacing={lineSpacing}
+                      accentColor={adaptiveColors.accent}
+                      textColor={adaptiveColors.text}
+                      contentStyle={styles.content}
+                      onParaLayout={(idx, y, height) => {
+                        paraYPositionsRef.current.set(idx, y);
+                        paraHeightsRef.current.set(idx, height);
                       }}
-                      onLayout={(e) => {
-                        paraYPositionsRef.current.set(
-                          paraIdx,
-                          e.nativeEvent.layout.y,
-                        );
-                        paraHeightsRef.current.set(
-                          paraIdx,
-                          e.nativeEvent.layout.height,
-                        );
-                      }}
-                    >
-                      {sentences.map((sentence, sentIdx) => {
-                        const trimmed = sentence.trim();
-                        const endsWithPeriod = /[.!?]$/.test(trimmed);
-                        const isExclamation = /[!?]$/.test(trimmed);
-                        const isQuestion = /\?$/.test(trimmed);
-                        let marginBottom = fontSize * 0.3;
-                        if (isQuestion) marginBottom = fontSize * 0.7;
-                        else if (isExclamation) marginBottom = fontSize * 0.8;
-                        else if (endsWithPeriod) marginBottom = fontSize * 0.5;
-                        const hasDialogue = /^["'“”‘’]/.test(trimmed);
-                        if (hasDialogue && sentIdx > 0)
-                          marginBottom += fontSize * 0.2;
-
-                        const renderKey = `${paraIdx}-${sentIdx}`;
-                        const isHighlighted = currentHighlightKey === renderKey;
-
-                        return (
-                          <Text
-                            key={sentIdx}
-                            onLayout={(e) => {
-                              sentenceYPositionsRef.current.set(
-                                renderKey,
-                                e.nativeEvent.layout.y,
-                              );
-                            }}
-                            style={[
-                              styles.content,
-                              {
-                                color: isHighlighted
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.text,
-                                backgroundColor: isHighlighted
-                                  ? `${adaptiveColors.accent}20`
-                                  : "transparent",
-                                fontWeight: isHighlighted ? "bold" : "normal",
-                                fontSize,
-                                lineHeight: fontSize * lineSpacing,
-                                marginBottom,
-                                paddingVertical: 2,
-                                paddingHorizontal: 6,
-                                borderRadius: 6,
-                                letterSpacing: 0.2,
-                              },
-                            ]}
-                          >
-                            {trimmed}
-                          </Text>
-                        );
-                      })}
-                    </View>
+                    />
                   );
                 })}
               </View>
@@ -1893,7 +2005,10 @@ export default function ReaderScreen() {
                 styles.ttsFloatingBtn,
                 { backgroundColor: adaptiveColors.accent },
               ]}
-              onPress={toggleTTS}
+              onPress={() => {
+                registerRapidTap();
+                toggleTTS();
+              }}
               onLongPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
                   () => {},
@@ -2007,7 +2122,10 @@ export default function ReaderScreen() {
                 borderColor: adaptiveColors.border,
               },
             ]}
-            onPress={() => goChapter(-1)}
+            onPress={() => {
+              registerRapidTap();
+              goChapter(-1);
+            }}
             disabled={chapterIndex === 0}
           >
             <Ionicons
@@ -2065,7 +2183,10 @@ export default function ReaderScreen() {
                     : adaptiveColors.accent,
               },
             ]}
-            onPress={() => goChapter(1)}
+            onPress={() => {
+              registerRapidTap();
+              goChapter(1);
+            }}
             disabled={chapterIndex === novel.chapters.length - 1}
           >
             <Text
@@ -3267,6 +3388,80 @@ export default function ReaderScreen() {
               </Pressable>
             </View>
           </View>
+        </Modal>
+
+        {/* Rapid-tap warning — workaround for the scheduler/Skia crashes.
+            Tapping this rapidly won't re-trip it further; dismissing resets
+            the tap-timestamp window so normal use resumes immediately. */}
+        <Modal
+          visible={showRapidTapWarning}
+          animationType="fade"
+          transparent
+          onRequestClose={() => {
+            setShowRapidTapWarning(false);
+            resetRapidTapGuard();
+          }}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={() => {
+              setShowRapidTapWarning(false);
+              resetRapidTapGuard();
+            }}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Ionicons
+                name="warning-outline"
+                size={28}
+                color={adaptiveColors.accent}
+                style={{ alignSelf: "center", marginBottom: 8 }}
+              />
+              <Text
+                style={[
+                  styles.ttsModalTitle,
+                  { color: adaptiveColors.text, textAlign: "center" },
+                ]}
+              >
+                You're tapping a bit fast
+              </Text>
+              <Text
+                style={{
+                  color: adaptiveColors.textSecondary,
+                  fontSize: 13,
+                  textAlign: "center",
+                  marginBottom: 20,
+                  lineHeight: 18,
+                }}
+              >
+                TTS and auto-scroll have been paused to keep things stable.
+                Give it a second, then continue reading.
+              </Text>
+              <Pressable
+                style={[
+                  styles.closeSearchBtn,
+                  { backgroundColor: adaptiveColors.card },
+                ]}
+                onPress={() => {
+                  setShowRapidTapWarning(false);
+                  resetRapidTapGuard();
+                }}
+              >
+                <Text style={{ color: adaptiveColors.text }}>Got it</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
         </Modal>
       </View>
     </ContentWrapper>
