@@ -24,6 +24,10 @@ import {
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
 
+// Fallback used when Max Chapters is left blank (mirrors Start Chapter's
+// fallback to the next expected chapter).
+const DEFAULT_MAX_CHAPTERS = 30;
+
 // Detects when a saved novel's sourceUrl is actually a chapter page rather than
 // the novel's info/homepage page (can happen with novels added via a pasted
 // chapter link before add.tsx started normalizing sourceUrl to the homepage).
@@ -345,9 +349,8 @@ export default function UpdatesScreen() {
       1,
       parseInt(startChStr) || getNextStartChapter(selectedNovel),
     );
-    const parsedMaxCh = parseInt(maxChStr) || null;
-    const maxCh =
-      parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
+    const parsedMaxCh = parseInt(maxChStr) || DEFAULT_MAX_CHAPTERS;
+    const maxCh = Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX);
 
     stopRef.current = false;
     setIsUpdating(true);
@@ -577,7 +580,7 @@ export default function UpdatesScreen() {
       // Hard iteration ceiling so a broken nextUrl chain (site pagination bug,
       // redirect loop, etc.) can never spin forever without ever incrementing
       // `downloaded` — which is the only thing the maxCh check below looks at.
-      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      const ITERATION_CEILING = maxCh * 5 + 50;
       let iterations = 0;
 
       // Tracks every URL actually fetched in this run (new chapters AND
@@ -590,7 +593,7 @@ export default function UpdatesScreen() {
       const visitedThisRun = new Set<string>();
 
       while (currentUrl && !stopRef.current) {
-        if (maxCh !== null && downloaded >= maxCh) {
+        if (downloaded >= maxCh) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(`Reached max chapter limit (${maxCh})`, "success");
           break;
@@ -600,7 +603,7 @@ export default function UpdatesScreen() {
         if (iterations > ITERATION_CEILING) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(
-            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh}). ` +
               `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
             "error",
           );
@@ -1160,7 +1163,7 @@ export default function UpdatesScreen() {
                 ]}
                 value={maxChStr}
                 onChangeText={chapterLimiter.onMaxChStrChange}
-                placeholder="All"
+                placeholder={`${DEFAULT_MAX_CHAPTERS}`}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 maxLength={3}
