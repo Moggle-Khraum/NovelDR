@@ -8,6 +8,7 @@ import {
   makeAbsoluteUrl,
   splitAdjacentDialogue,
   splitGluedSentences,
+  splitInnerThoughtClose,
 } from "../shared/html";
 
 const BASE_HOST = "novel-bin.com";
@@ -45,8 +46,10 @@ const extractBrSeparatedText = (html: string): string => {
  */
 export const extractChapterBody = (rawContentBlock: string): string => {
   const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
-  return splitAdjacentDialogue(
-    splitGluedSentences(extractBrSeparatedText(contentBlock)),
+  return splitInnerThoughtClose(
+    splitAdjacentDialogue(
+      splitGluedSentences(extractBrSeparatedText(contentBlock)),
+    ),
   );
 };
 
@@ -98,8 +101,10 @@ export const novelBinScraper: SourceScraper = {
     // the next word (see splitGluedSentences in shared/html.ts). Apply that
     // normalization, then split any dialogue lines that end up glued
     // together the same way chapter bodies do.
-    const synopsis = splitAdjacentDialogue(
-      splitGluedSentences(extractBrSeparatedText(descBlock)),
+    const synopsis = splitInnerThoughtClose(
+      splitAdjacentDialogue(
+        splitGluedSentences(extractBrSeparatedText(descBlock)),
+      ),
     );
 
     // <a class="btn btn-danger btn-read-now" title="READ NOW" href="/novel-bin/{slug}/chapter-1">
