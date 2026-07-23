@@ -393,7 +393,7 @@ const ContentWrapper = ({
         source={{ uri: bgImageUri }}
         style={{ flex: 1 }}
         resizeMode="cover"
-        imageStyle={{ width: SCREEN_W, height: SCREEN_H }}
+        imageStyle={{ flex: 1 }}
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}>
           {children}
