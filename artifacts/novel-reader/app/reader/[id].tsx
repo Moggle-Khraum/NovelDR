@@ -393,7 +393,7 @@ const ContentWrapper = ({
         source={{ uri: bgImageUri }}
         style={{ flex: 1 }}
         resizeMode="cover"
-        imageStyle={{ width: SCREEN_W, height: SCREEN_H }}
+        imageStyle={{ flex: 1 }}
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}>
           {children}
@@ -1117,6 +1117,24 @@ export default function ReaderScreen() {
         nextAppState === "background"
       ) {
         console.log("[Reader] App backgrounding - saving chapter content...");
+
+        // Stop all active rendering work (TTS and auto-scroll) before the
+        // Android HWUI surface is torn down. Leaving these running triggers
+        // state updates and Skia re-renders on an already-invalidated surface,
+        // which causes a SIGSEGV in SkColorInfo::operator= (libhwui.so).
+        if (ttsActiveRef.current) {
+          ttsActiveRef.current = false;
+          ttsIndexRef.current = -1;
+          setTtsActive(false);
+          setTtsIndex(-1);
+          try { Speech.stop(); } catch {}
+        }
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          setAutoScrollActive(false);
+        }
+
         await persistChapterContent();
 
         // Also persist the current scroll position (including wherever TTS's
