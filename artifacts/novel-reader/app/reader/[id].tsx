@@ -1127,7 +1127,9 @@ export default function ReaderScreen() {
           ttsIndexRef.current = -1;
           setTtsActive(false);
           setTtsIndex(-1);
-          try { Speech.stop(); } catch {}
+          try {
+            Speech.stop();
+          } catch {}
         }
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
