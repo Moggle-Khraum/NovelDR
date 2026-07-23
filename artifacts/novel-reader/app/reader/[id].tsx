@@ -3456,8 +3456,8 @@ export default function ReaderScreen() {
                   lineHeight: 18,
                 }}
               >
-                TTS and auto-scroll have been paused to keep things stable.
-                Give it a second, then continue reading.
+                TTS and auto-scroll have been paused to keep things stable. Give
+                it a second, then continue reading.
               </Text>
               <Pressable
                 style={[
