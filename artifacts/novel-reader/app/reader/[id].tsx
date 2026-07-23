@@ -381,6 +381,80 @@ function splitSentencesWithLineBreaks(text: string): string[] {
 }
 
 // ── ParagraphBlock ───────────────────────────────────────────────────────────
+// ── ParagraphBlock ───────────────────────────────────────────────────────────
+// Renders a single paragraph as inline <Text> spans within one parent <Text>.
+// Memoized so that only the paragraph containing the active TTS sentence
+// re-renders when ttsIndex advances, instead of the entire sentence tree.
+type ParagraphBlockProps = {
+  sentences: string[];
+  paraIdx: number;
+  highlightedSentIdx: number; // -1 if no sentence in this paragraph is active
+  isLastParagraph: boolean;
+  fontSize: number;
+  lineSpacing: number;
+  accentColor: string;
+  textColor: string;
+  onParaLayout: (paraIdx: number, y: number, height: number) => void;
+};
+
+const ParagraphBlock = React.memo(function ParagraphBlock({
+  sentences,
+  paraIdx,
+  highlightedSentIdx,
+  isLastParagraph,
+  fontSize,
+  lineSpacing,
+  accentColor,
+  textColor,
+  onParaLayout,
+}: ParagraphBlockProps) {
+  return (
+    <View
+      style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}
+      onLayout={(e) =>
+        onParaLayout(paraIdx, e.nativeEvent.layout.y, e.nativeEvent.layout.height)
+      }
+    >
+      {sentences.map((sentence, sentIdx) => {
+        const trimmed = sentence.trim();
+        const endsWithPeriod = /[.!?]$/.test(trimmed);
+        const isExclamation = /[!?]$/.test(trimmed);
+        const isQuestion = /\?$/.test(trimmed);
+        let marginBottom = fontSize * 0.3;
+        if (isQuestion) marginBottom = fontSize * 0.7;
+        else if (isExclamation) marginBottom = fontSize * 0.8;
+        else if (endsWithPeriod) marginBottom = fontSize * 0.5;
+        const hasDialogue = /^["'""'']/.test(trimmed);
+        if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
+
+        const isHighlighted = sentIdx === highlightedSentIdx;
+
+        return (
+          <Text
+            key={sentIdx}
+            style={[
+              {
+                color: isHighlighted ? accentColor : textColor,
+                backgroundColor: isHighlighted ? `${accentColor}20` : "transparent",
+                fontWeight: isHighlighted ? "bold" : "normal",
+                fontSize,
+                lineHeight: fontSize * lineSpacing,
+                marginBottom,
+                paddingVertical: 2,
+                paddingHorizontal: 6,
+                borderRadius: 6,
+                letterSpacing: 0.2,
+              },
+            ]}
+          >
+            {trimmed}
+          </Text>
+        );
+      })}
+    </View>
+  );
+});
+
 // Renders a single paragraph as its own small component, memoized so that
 // only the paragraph containing the active TTS sentence re-renders when
 // ttsIndex/currentHighlightKey advances, instead of the entire sentence
@@ -480,7 +554,6 @@ const ParagraphBlock = React.memo(
 // Tracks tap timestamps and flags when 4+ taps land within RAPID_TAP_WINDOW_MS.
 // This is a workaround, not a fix: it reduces the odds of hitting the
 // scheduler/Skia crashes by removing "user mashing buttons" as a contributing
-// factor, but a long chapter + sustained TTS alone can still stress the
 // scheduler without any taps at all.
 const RAPID_TAP_THRESHOLD = 4;
 const RAPID_TAP_WINDOW_MS = 1500;
@@ -843,7 +916,6 @@ export default function ReaderScreen() {
   };
 
   const selectPreset = (preset: BgPreset) => {
-    setBgPresetId(preset.id);
     setBgCustomUri(null);
     setShowBgModal(false);
     saveBgSettings(preset.id, null);
@@ -864,10 +936,10 @@ export default function ReaderScreen() {
             setTtsRate(s.rate);
             ttsRateRef.current = s.rate;
           }
-          if (s.autoNext !== undefined) {
-            setTtsAutoNext(!!s.autoNext);
-            ttsAutoNextRef.current = !!s.autoNext;
-          }
+    // Scroll to the paragraph position. Individual sentence y-positions are
+    // no longer tracked to avoid flooding the RN new architecture scheduler
+    // with hundreds of onLayout native→JS events.
+    const targetCenter = paraY;
         }
       } catch (e) {
         console.warn("[TTS] Failed to load TTS settings:", e);
@@ -1793,6 +1865,16 @@ export default function ReaderScreen() {
       setTimeout(() => {
         if (lastRead.scrollOffset > 0) {
           scrollRef.current?.scrollTo({
+                  // Derive which sentence within this paragraph is highlighted.
+                  // Comparing only a scalar lets each paragraph's inner map avoid
+                  // a re-render when TTS moves to a sentence in a different paragraph.
+                  let highlightedSentIdx = -1;
+                  if (currentHighlightKey) {
+                    const [hPara, hSent] = currentHighlightKey.split("-");
+                    if (parseInt(hPara, 10) === paraIdx) {
+                      highlightedSentIdx = parseInt(hSent, 10);
+                    }
+                  }
             y: lastRead.scrollOffset,
             animated: true,
           });
@@ -1823,18 +1905,11 @@ export default function ReaderScreen() {
   if (!novel || !chapter || !settingsLoaded) {
     return (
       <View
-        style={[styles.center, { backgroundColor: themeColors.background }]}
-      >
+                        const isHighlighted = sentIdx === highlightedSentIdx;
         <ActivityIndicator size="large" color={themeColors.accent} />
       </View>
     );
   }
-
-  const currentSpeed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
-  const ttsAvailable = chapterContent.trim().length >= TTS_MIN_CHARS;
-  const currentSentence = ttsIndex >= 0 ? ttsSentences[ttsIndex] : null;
-
-  return (
     <ContentWrapper
       bgImageUri={bgImageUri}
       bgSolidColor={bgSolidColor}
