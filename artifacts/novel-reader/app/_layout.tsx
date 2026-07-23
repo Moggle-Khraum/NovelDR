@@ -41,9 +41,9 @@ Sentry.init({
   // Keep breadcrumbs of nav/console so a crash report shows what led up to it
   // (e.g. "reading" vs "backup" vs "download") without needing repro steps.
   enableTombstone: true,
-  // Android, when the app hard-crashes (native crash, not a JS error), 
-  // Android generates a "tombstone" file with the native crash dump. This flag tells the Sentry Android SDK 
-  // to read and attach that file to the crash report, giving you native stack traces instead 
+  // Android, when the app hard-crashes (native crash, not a JS error),
+  // Android generates a "tombstone" file with the native crash dump. This flag tells the Sentry Android SDK
+  // to read and attach that file to the crash report, giving you native stack traces instead
   // of just "app crashed" with no detail.
   enableAutoSessionTracking: true,
   // Session Replay — records a masked visual replay of user sessions.
