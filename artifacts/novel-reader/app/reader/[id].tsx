@@ -38,11 +38,12 @@ import {
   clearMediaSession,
   setupMediaSession,
   setRemoteHandlers,
+  type TTSNotificationState,
 } from "@/lib/TTSMediaSession";
 import * as Notifications from "expo-notifications";
 import * as KeepAwake from "expo-keep-awake";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26];
 const LINE_SPACINGS = [1.2, 1.3, 1.5, 1.8, 2.0, 2.5];
@@ -398,6 +399,10 @@ type ParagraphBlockProps = {
   textColor: string;
   contentStyle: any;
   onParaLayout: (paraIdx: number, y: number, height: number) => void;
+  // Fires only for the sentence matching highlightedSentIdx — every other
+  // sentence in the tree has no onLayout at all. Keeps the guard tight:
+  // at most 1 extra native layout callback active at any time, not O(sentences).
+  onHighlightedSentenceLayout: (relY: number) => void;
 };
 
 const ParagraphBlock = React.memo(
@@ -412,6 +417,7 @@ const ParagraphBlock = React.memo(
     textColor,
     contentStyle,
     onParaLayout,
+    onHighlightedSentenceLayout,
   }: ParagraphBlockProps) {
     return (
       <View
@@ -441,6 +447,11 @@ const ParagraphBlock = React.memo(
           return (
             <Text
               key={sentIdx}
+              onLayout={
+                isHighlighted
+                  ? (e) => onHighlightedSentenceLayout(e.nativeEvent.layout.y)
+                  : undefined
+              }
               style={[
                 contentStyle,
                 {
@@ -611,6 +622,13 @@ export default function ReaderScreen() {
   // Used to scroll precisely to the sentence currently being read by TTS.
   const paraYPositionsRef = useRef<Map<number, number>>(new Map());
   const paraHeightsRef = useRef<Map<number, number>>(new Map());
+  // Tracks the on-screen Y position of ONLY the sentence currently
+  // highlighted by TTS (relative to its paragraph). Deliberately not a Map
+  // of every sentence — only the active <Text> gets an onLayout callback at
+  // any given time (see ParagraphBlock), so this stays O(1) instead of
+  // reintroducing the O(sentences) layout-event flood that caused the
+  // RN new-arch scheduler SIGSEGV.
+  const highlightedSentenceRelYRef = useRef<number | null>(null);
 
   const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
@@ -982,6 +1000,33 @@ export default function ReaderScreen() {
     ? parseInt(currentHighlightKey.split("-")[0], 10)
     : -1;
 
+  // Reset the tracked offset whenever the highlight moves — otherwise the
+  // scroll effect below could briefly use last sentence's relY for one
+  // frame before the new sentence's onLayout fires.
+  useEffect(() => {
+    highlightedSentenceRelYRef.current = null;
+  }, [currentHighlightKey]);
+
+  // Bumped whenever the highlighted sentence's layout is measured, so the
+  // scroll effect below re-runs with the fresh offset even though it lives
+  // in a ref (refs don't trigger effects on their own).
+  const [highlightLayoutVersion, setHighlightLayoutVersion] = useState(0);
+
+  // Stable across renders so ParagraphBlock's React.memo isn't defeated by
+  // a freshly-created function identity on every parent re-render.
+  const handleParaLayout = useCallback(
+    (idx: number, y: number, height: number) => {
+      paraYPositionsRef.current.set(idx, y);
+      paraHeightsRef.current.set(idx, height);
+    },
+    [],
+  );
+
+  const handleHighlightedSentenceLayout = useCallback((relY: number) => {
+    highlightedSentenceRelYRef.current = relY;
+    setHighlightLayoutVersion((v) => v + 1);
+  }, []);
+
   // Auto-scroll to follow the highlight as TTS reads. Triggers on every
   // highlight change (currentHighlightKey), not just paragraph changes, so
   // the scroll position tracks the actual sentence being spoken instead of
@@ -991,12 +1036,11 @@ export default function ReaderScreen() {
     if (!ttsActive || currentParaIdx < 0 || !currentHighlightKey) return;
     if (isUserScrollingRef.current) return;
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
-    if (paraY === undefined) return;
-
-    // Scroll to the paragraph position. Individual sentence y-positions are
-    // no longer tracked (no per-sentence onLayout) to avoid flooding the RN
-    // new architecture scheduler with hundreds of native layout events.
-    const targetCenter = paraY;
+    if (paraY === undefined) return;    // Only the currently-highlighted sentence is ever measured (see
+    // ParagraphBlock), so this ref always reflects the active sentence's
+    // offset within its paragraph — not stale data from a different one.
+    const sentenceRelY = highlightedSentenceRelYRef.current;
+    const targetCenter = paraY + (sentenceRelY ?? 0);
 
     // Offset by ~2 text-block heights so the highlighted line lands above
     // dead-center, clear of the TTS status overlay and floating buttons
@@ -1017,6 +1061,7 @@ export default function ReaderScreen() {
     ttsActive,
     fontSize,
     lineSpacing,
+    highlightLayoutVersion,
   ]);
 
   // ─── Load effect with AbortController and request ID ──────────────────
@@ -1028,7 +1073,7 @@ export default function ReaderScreen() {
   // chapter/novel object refs, which can change identity on unrelated re-renders.
   // Depending on the objects would re-trigger this load (spinner + fetch)
   // whenever that happens, not just on actual chapter navigation.
-  /* eslint-disable react-hooks/exhaustive-deps */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Create a new AbortController for this load
     const abortController = new AbortController();
@@ -1132,7 +1177,6 @@ export default function ReaderScreen() {
       abortController.abort();
     };
   }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
@@ -1633,62 +1677,51 @@ export default function ReaderScreen() {
   };
 
   // ─── Navigation helpers ──────────────────────────────────────────────
-  const goChapter = useCallback(
-    (dir: 1 | -1) => {
-      cancelAutoNext();
-      const next = chapterIndex + dir;
-      if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
-        Alert.alert(
-          "Navigation",
-          dir === -1 ? "First chapter reached" : "Last chapter reached",
-        );
-        return;
-      }
-      if (novel && chapter)
-        saveReadingProgress(
-          novel.id,
-          chapterIndex,
-          chapter.title,
-          scrollYRef.current,
-        );
+  const goChapter = (dir: 1 | -1) => {
+    cancelAutoNext();
+    const next = chapterIndex + dir;
+    if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
+      Alert.alert(
+        "Navigation",
+        dir === -1 ? "First chapter reached" : "Last chapter reached",
+      );
+      return;
+    }
+    if (novel && chapter)
+      saveReadingProgress(
+        novel.id,
+        chapterIndex,
+        chapter.title,
+        scrollYRef.current,
+      );
 
-      // Abort any pending load
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+    // Abort any pending load
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
 
-      stopAutoScroll();
-      stopTTS();
+    stopAutoScroll();
+    stopTTS();
 
-      // Clear content and show loading immediately
-      setChapterContent("");
-      setProcessedParagraphs([]);
-      setTtsSentences([]);
-      setContentLoading(true);
+    // Clear content and show loading immediately
+    setChapterContent("");
+    setProcessedParagraphs([]);
+    setTtsSentences([]);
+    setContentLoading(true);
 
-      scrollYRef.current = 0;
-      hasRestoredScrollRef.current = false;
-      restoreAttemptsRef.current = 0;
-      lastRestoreHeightRef.current = 0;
-      if (restoreTimeoutRef.current) {
-        clearTimeout(restoreTimeoutRef.current);
-        restoreTimeoutRef.current = null;
-      }
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setChapterIndex(next);
-      setReadingProgress(0);
-    },
-    [
-      cancelAutoNext,
-      chapterIndex,
-      novel,
-      chapter,
-      saveReadingProgress,
-      stopAutoScroll,
-      stopTTS,
-    ],
-  );
+    scrollYRef.current = 0;
+    hasRestoredScrollRef.current = false;
+    restoreAttemptsRef.current = 0;
+    lastRestoreHeightRef.current = 0;
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+      restoreTimeoutRef.current = null;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setChapterIndex(next);
+    setReadingProgress(0);
+  };
 
   // speakSentence is memoized once (deps never change) and its closure is
   // frozen to the render it was created on, so it can't safely call
@@ -1978,10 +2011,10 @@ export default function ReaderScreen() {
                       accentColor={adaptiveColors.accent}
                       textColor={adaptiveColors.text}
                       contentStyle={styles.content}
-                      onParaLayout={(idx, y, height) => {
-                        paraYPositionsRef.current.set(idx, y);
-                        paraHeightsRef.current.set(idx, height);
-                      }}
+                      onParaLayout={handleParaLayout}
+                      onHighlightedSentenceLayout={
+                        handleHighlightedSentenceLayout
+                      }
                     />
                   );
                 })}
@@ -3445,7 +3478,7 @@ export default function ReaderScreen() {
                   { color: adaptiveColors.text, textAlign: "center" },
                 ]}
               >
-                You&apos;re tapping a bit fast
+                You're tapping a bit fast
               </Text>
               <Text
                 style={{
@@ -3456,8 +3489,8 @@ export default function ReaderScreen() {
                   lineHeight: 18,
                 }}
               >
-                TTS and auto-scroll have been paused to keep things stable. Give
-                it a second, then continue reading.
+                TTS and auto-scroll have been paused to keep things stable.
+                Give it a second, then continue reading.
               </Text>
               <Pressable
                 style={[
