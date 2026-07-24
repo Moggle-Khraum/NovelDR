@@ -938,13 +938,20 @@ export default function SettingsScreen() {
       addBackupLog(`📄 Restoring ${tasks.length} chapters in parallel...`);
 
       // Write chapters with concurrency=12
-      await runConcurrent(tasks, 12, async ({ novelId, chapterIndex, data }) => {
-        const novelChapterDir = `${chaptersDir}${novelId}/`;
-        await ensureDir(novelChapterDir);
-        const chapterPath = `${novelChapterDir}chapter_${chapterIndex}.json`;
-        await FileSystem.writeAsStringAsync(chapterPath, JSON.stringify(data));
-        return true;
-      });
+      await runConcurrent(
+        tasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          const novelChapterDir = `${chaptersDir}${novelId}/`;
+          await ensureDir(novelChapterDir);
+          const chapterPath = `${novelChapterDir}chapter_${chapterIndex}.json`;
+          await FileSystem.writeAsStringAsync(
+            chapterPath,
+            JSON.stringify(data),
+          );
+          return true;
+        },
+      );
       addBackupLog(`📊 Restored ${tasks.length} chapters.`);
     } else {
       addBackupLog("⚠️ No chapters to restore");
@@ -1070,8 +1077,11 @@ export default function SettingsScreen() {
       );
 
       // Collect all chapter tasks
-      const chapterTasks: { novelId: string; chapterIndex: number; data: any }[] =
-        [];
+      const chapterTasks: {
+        novelId: string;
+        chapterIndex: number;
+        data: any;
+      }[] = [];
       for (const partFile of partFiles) {
         const partRaw = await FileSystem.readAsStringAsync(
           `${backupChaptersDir}${partFile}`,
@@ -1096,15 +1106,19 @@ export default function SettingsScreen() {
         `📄 Restoring ${chapterTasks.length} chapters in parallel...`,
       );
       const chaptersDir = `${APP_DATA_DIR}chapters/`;
-      await runConcurrent(chapterTasks, 12, async ({ novelId, chapterIndex, data }) => {
-        const novelChapterDir = `${chaptersDir}${novelId}/`;
-        await ensureDir(novelChapterDir);
-        await FileSystem.writeAsStringAsync(
-          `${novelChapterDir}chapter_${chapterIndex}.json`,
-          JSON.stringify(data),
-        );
-        return true;
-      });
+      await runConcurrent(
+        chapterTasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          const novelChapterDir = `${chaptersDir}${novelId}/`;
+          await ensureDir(novelChapterDir);
+          await FileSystem.writeAsStringAsync(
+            `${novelChapterDir}chapter_${chapterIndex}.json`,
+            JSON.stringify(data),
+          );
+          return true;
+        },
+      );
       addBackupLog(`📊 Restored ${chapterTasks.length} chapters.`);
     } else {
       addBackupLog("⚠️ No chapters to restore");
