@@ -270,6 +270,85 @@ export default function SettingsScreen() {
   const { checkNow, checkingUpdate } = useUpdateContext();
 
   // --------------------------------------------------------------------------
+  // Live operation timer (drives the 00:00:00 readout during backup/restore)
+  // --------------------------------------------------------------------------
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const operationStartRef = useRef<number>(0);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
+  const startOperationTimer = () => {
+    operationStartRef.current = Date.now();
+    setElapsedMs(0);
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - operationStartRef.current);
+    }, 1000);
+  };
+
+  const stopOperationTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  };
+
+  // Safety net: don't leave a stale interval running if the screen unmounts
+  // mid-operation.
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, []);
+
+  const formatTimer = (ms: number): string => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  };
+
+  // --------------------------------------------------------------------------
+  // Progress bar (done/total). Counts live in a ref so the pooled workers
+  // below can increment them from concurrent callbacks without fighting each
+  // other; the ref is only flushed into state at the same batch cadence as
+  // the activity log, so a restore with thousands of files doesn't re-render
+  // once per file — see logBatchSize below.
+  // --------------------------------------------------------------------------
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [progressDone, setProgressDone] = useState(0);
+  const progressRef = useRef({ done: 0, total: 0 });
+
+  const startProgress = (total: number, label?: string) => {
+    progressRef.current = { done: 0, total };
+    setProgressTotal(total);
+    setProgressDone(0);
+    if (label) setOperationProgress(label);
+  };
+
+  const bumpProgress = (increment: number = 1) => {
+    const p = progressRef.current;
+    p.done += increment;
+    if (p.done >= p.total || p.done % logBatchSize === 0) {
+      setProgressDone(p.done);
+    }
+  };
+
+  const endProgress = () => {
+    setProgressDone(progressRef.current.total);
+  };
+
+  const resetProgress = () => {
+    progressRef.current = { done: 0, total: 0 };
+    setProgressTotal(0);
+    setProgressDone(0);
+    setOperationProgress("");
+  };
+
+  // --------------------------------------------------------------------------
   // Batched logger
   // --------------------------------------------------------------------------
   const pendingLogsRef = useRef<string[]>([]);
@@ -511,6 +590,15 @@ export default function SettingsScreen() {
     const path = `${APP_DATA_DIR}novel_library_v1.json`;
     const tempPath = path + ".tmp";
     await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
+    // Android's moveAsync goes through java.io.File#renameTo, which fails
+    // when the destination already exists (iOS overwrites fine on its own).
+    // novel_library_v1.json exists after the very first save, so without
+    // this delete the "atomic" write would break on Android on every write
+    // after the first.
+    const destInfo = await FileSystem.getInfoAsync(path);
+    if (destInfo.exists) {
+      await FileSystem.deleteAsync(path, { idempotent: true });
+    }
     await FileSystem.moveAsync({ from: tempPath, to: path });
   };
 
@@ -937,22 +1025,39 @@ export default function SettingsScreen() {
       }
       addBackupLog(`📄 Restoring ${tasks.length} chapters in parallel...`);
 
-      // Write chapters with concurrency=12
-      await runConcurrent(
-        tasks,
-        12,
-        async ({ novelId, chapterIndex, data }) => {
-          const novelChapterDir = `${chaptersDir}${novelId}/`;
-          await ensureDir(novelChapterDir);
-          const chapterPath = `${novelChapterDir}chapter_${chapterIndex}.json`;
-          await FileSystem.writeAsStringAsync(
-            chapterPath,
-            JSON.stringify(data),
-          );
-          return true;
-        },
+      // Pre-create every novel's chapter directory *before* the pool runs.
+      // ensureDir() is check-then-act (getInfoAsync then makeDirectoryAsync),
+      // not atomic — if it's left inside the pooled worker, up to 12
+      // concurrent chapters from the same novel race to create the same
+      // directory, which can throw on-device and abort the whole restore.
+      const novelIds = new Set(tasks.map((t) => t.novelId));
+      for (const novelId of novelIds) {
+        await ensureDir(`${chaptersDir}${novelId}/`);
+      }
+      startProgress(
+        tasks.length,
+        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
       );
-      addBackupLog(`📊 Restored ${tasks.length} chapters.`);
+
+      // Write chapters with concurrency=12. Each task is wrapped in its own
+      // try/catch so a single corrupt/unwritable chapter doesn't reject the
+      // whole pool and abort the restore.
+      let chaptersFailed = 0;
+      await runConcurrent(tasks, 12, async ({ novelId, chapterIndex, data }) => {
+        try {
+          const chapterPath = `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`;
+          await FileSystem.writeAsStringAsync(chapterPath, JSON.stringify(data));
+        } catch {
+          chaptersFailed++;
+          addBackupLog(`⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`);
+        } finally {
+          bumpProgress();
+        }
+      });
+      endProgress();
+      addBackupLog(
+        `📊 Restored ${tasks.length - chaptersFailed}/${tasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
+      );
     } else {
       addBackupLog("⚠️ No chapters to restore");
     }
@@ -961,6 +1066,7 @@ export default function SettingsScreen() {
     if (backup.covers && backup.covers.length > 0) {
       addBackupLog(`🖼️ Restoring ${backup.covers.length} novel covers...`);
       await ensureDir(COVERS_DIR);
+      startProgress(backup.covers.length, "Restoring novel covers...");
 
       // Update cover references in mergedLibrary
       const coverMap = new Map(
@@ -973,14 +1079,35 @@ export default function SettingsScreen() {
         }
       }
 
-      // Write covers in parallel
+      // Write covers in parallel — same per-item try/catch as chapters above.
+      let coversFailed = 0;
       await runConcurrent(backup.covers, 12, async (cover) => {
-        if (cover.coverBase64) {
-          const coverPath = `${COVERS_DIR}${cover.fileName}`;
-          await saveBase64AsImage(cover.coverBase64, coverPath);
+        try {
+          if (cover.coverBase64) {
+            const coverPath = `${COVERS_DIR}${cover.fileName}`;
+            const success = await saveBase64AsImage(
+              cover.coverBase64,
+              coverPath,
+            );
+            if (!success) {
+              coversFailed++;
+              addBackupLog(`❌ Failed: ${cover.fileName}`);
+            }
+          } else {
+            coversFailed++;
+            addBackupLog(`⚠️ No image data for ${cover.fileName}`);
+          }
+        } catch {
+          coversFailed++;
+          addBackupLog(`❌ Failed: ${cover.fileName}`);
+        } finally {
+          bumpProgress();
         }
       });
-      addBackupLog(`✅ Covers restored.`);
+      endProgress();
+      addBackupLog(
+        `✅ Covers restored: ${backup.covers.length - coversFailed}/${backup.covers.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
+      );
     } else {
       addBackupLog("⚠️ No covers to restore");
     }
@@ -1077,11 +1204,8 @@ export default function SettingsScreen() {
       );
 
       // Collect all chapter tasks
-      const chapterTasks: {
-        novelId: string;
-        chapterIndex: number;
-        data: any;
-      }[] = [];
+      const chapterTasks: { novelId: string; chapterIndex: number; data: any }[] =
+        [];
       for (const partFile of partFiles) {
         const partRaw = await FileSystem.readAsStringAsync(
           `${backupChaptersDir}${partFile}`,
@@ -1106,20 +1230,36 @@ export default function SettingsScreen() {
         `📄 Restoring ${chapterTasks.length} chapters in parallel...`,
       );
       const chaptersDir = `${APP_DATA_DIR}chapters/`;
-      await runConcurrent(
-        chapterTasks,
-        12,
-        async ({ novelId, chapterIndex, data }) => {
-          const novelChapterDir = `${chaptersDir}${novelId}/`;
-          await ensureDir(novelChapterDir);
+
+      // Pre-create every novel's chapter directory before the pool runs —
+      // same race avoided as in the legacy restore path above.
+      const novelIds = new Set(chapterTasks.map((t) => t.novelId));
+      for (const novelId of novelIds) {
+        await ensureDir(`${chaptersDir}${novelId}/`);
+      }
+      startProgress(
+        chapterTasks.length,
+        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
+      );
+
+      let chaptersFailed = 0;
+      await runConcurrent(chapterTasks, 12, async ({ novelId, chapterIndex, data }) => {
+        try {
           await FileSystem.writeAsStringAsync(
-            `${novelChapterDir}chapter_${chapterIndex}.json`,
+            `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`,
             JSON.stringify(data),
           );
-          return true;
-        },
+        } catch {
+          chaptersFailed++;
+          addBackupLog(`⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`);
+        } finally {
+          bumpProgress();
+        }
+      });
+      endProgress();
+      addBackupLog(
+        `📊 Restored ${chapterTasks.length - chaptersFailed}/${chapterTasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
       );
-      addBackupLog(`📊 Restored ${chapterTasks.length} chapters.`);
     } else {
       addBackupLog("⚠️ No chapters to restore");
     }
@@ -1135,6 +1275,7 @@ export default function SettingsScreen() {
       );
       addBackupLog(`🖼️ Restoring ${coverEntries.length} novel covers...`);
       await ensureDir(COVERS_DIR);
+      startProgress(coverEntries.length, "Restoring novel covers...");
 
       // Update cover references in mergedLibrary
       const coverMap = new Map(
@@ -1147,15 +1288,26 @@ export default function SettingsScreen() {
         }
       }
 
-      // Copy covers in parallel
+      // Copy covers in parallel — per-item try/catch so one missing/corrupt
+      // cover file doesn't abort the whole restore.
+      let coversFailed = 0;
       await runConcurrent(coverEntries, 12, async (cover) => {
-        await FileSystem.copyAsync({
-          from: `${backupCoversDir}${cover.fileName}`,
-          to: `${COVERS_DIR}${cover.fileName}`,
-        });
-        return true;
+        try {
+          await FileSystem.copyAsync({
+            from: `${backupCoversDir}${cover.fileName}`,
+            to: `${COVERS_DIR}${cover.fileName}`,
+          });
+        } catch {
+          coversFailed++;
+          addBackupLog(`❌ Failed: ${cover.fileName}`);
+        } finally {
+          bumpProgress();
+        }
       });
-      addBackupLog(`✅ Covers restored.`);
+      endProgress();
+      addBackupLog(
+        `✅ Covers restored: ${coverEntries.length - coversFailed}/${coverEntries.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
+      );
     } else {
       addBackupLog("⚠️ No covers to restore");
     }
@@ -1253,6 +1405,7 @@ export default function SettingsScreen() {
     try {
       closePanel();
       setExporting(true);
+      startOperationTimer();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setBackupLogs([]);
       pendingLogsRef.current = [];
@@ -1335,6 +1488,8 @@ export default function SettingsScreen() {
       Alert.alert("Export Failed", String(e));
     } finally {
       setExporting(false);
+      stopOperationTimer();
+      resetProgress();
       flushLogs();
     }
   };
@@ -1413,6 +1568,7 @@ export default function SettingsScreen() {
               setImporting(true);
               // Acquire restore lock
               setRestoring(true);
+              startOperationTimer();
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               const metadata = await restoreFromAnyFormat(backupPath);
               const durationMs = Date.now() - startTime;
@@ -1424,7 +1580,7 @@ export default function SettingsScreen() {
                 `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n` +
                   (metadata.includesCovers ? `🖼️ covers included\n` : "") +
                   `⏱️ Finished in ${formatDuration(durationMs)}\n\n` +
-                  `The library has been refreshed with the restored data.`,
+                  `Tap the reload button (or pull to refresh) on the Library screen to see the restored data.`,
                 [
                   {
                     text: "OK",
@@ -1442,8 +1598,11 @@ export default function SettingsScreen() {
               Alert.alert("Import Failed", String(e));
             } finally {
               setImporting(false);
-              // Release restore lock - will auto-refresh
+              // Release restore lock — refreshing is now manual (reload
+              // button / pull-to-refresh on the Library screen), not automatic.
               setRestoring(false);
+              stopOperationTimer();
+              resetProgress();
               flushLogs();
             }
           },
@@ -1476,6 +1635,7 @@ export default function SettingsScreen() {
               try {
                 setImporting(true);
                 setRestoring(true);
+                startOperationTimer();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 const metadata = await restoreFromAnyFormat(
                   result.assets[0].uri,
@@ -1486,7 +1646,7 @@ export default function SettingsScreen() {
                 );
                 Alert.alert(
                   "Restore Complete ✓",
-                  `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n⏱️ Finished in ${formatDuration(durationMs)}\n\nThe library has been refreshed with the restored data.`,
+                  `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n⏱️ Finished in ${formatDuration(durationMs)}\n\nTap the reload button (or pull to refresh) on the Library screen to see the restored data.`,
                   [{ text: "OK" }],
                 );
               } catch (e) {
@@ -1494,6 +1654,8 @@ export default function SettingsScreen() {
               } finally {
                 setImporting(false);
                 setRestoring(false);
+                stopOperationTimer();
+                resetProgress();
                 flushLogs();
               }
             },
@@ -1776,6 +1938,38 @@ export default function SettingsScreen() {
               >
                 {operationProgress ||
                   (exporting ? "Creating backup..." : "Restoring...")}
+              </Text>
+            </View>
+          )}
+
+          {(exporting || importing) && (
+            <View style={styles.progressBarRow}>
+              <View
+                style={[
+                  styles.progressBarTrack,
+                  { backgroundColor: colors.surface },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      backgroundColor: colors.accent,
+                      // Indeterminate sliver while a phase hasn't reported a
+                      // total yet (e.g. still scanning/merging), real
+                      // percentage once startProgress() has a total.
+                      width:
+                        progressTotal > 0
+                          ? `${Math.min(100, (progressDone / progressTotal) * 100)}%`
+                          : "8%",
+                    },
+                  ]}
+                />
+              </View>
+              <Text
+                style={[styles.progressTimerText, { color: colors.text }]}
+              >
+                {formatTimer(elapsedMs)}
               </Text>
             </View>
           )}
@@ -2790,6 +2984,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   progressText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  progressBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  progressBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressTimerText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    fontVariant: ["tabular-nums"],
+    minWidth: 64,
+    textAlign: "right",
+  },
   backupRow: { flexDirection: "row", gap: 8 },
   backupBtn: {
     flex: 1,
