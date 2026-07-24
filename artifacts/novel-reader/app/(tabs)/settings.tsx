@@ -662,6 +662,12 @@ export default function SettingsScreen() {
             from: compressed.uri,
             to: `${backupCoversDir}${destFileName}`,
           });
+          // ImageManipulator writes its output to app cache — copyAsync above
+          // duplicates it into the backup folder, so the cache original is
+          // now dead weight. Left uncleaned, this piles up across every
+          // cover of every backup and was spiking memory/disk enough to get
+          // the app OOM-killed shortly after a backup finished.
+          await FileSystem.deleteAsync(compressed.uri, { idempotent: true });
           coverEntries.push({
             novelId,
             fileName: destFileName,
@@ -706,6 +712,9 @@ export default function SettingsScreen() {
                   await FileSystem.copyAsync({
                     from: compressed.uri,
                     to: `${backupCoversDir}${destFileName}`,
+                  });
+                  await FileSystem.deleteAsync(compressed.uri, {
+                    idempotent: true,
                   });
                   coverEntries.push({
                     novelId: novel.id,
