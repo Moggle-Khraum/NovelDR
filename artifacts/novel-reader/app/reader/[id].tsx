@@ -3478,7 +3478,7 @@ export default function ReaderScreen() {
                   { color: adaptiveColors.text, textAlign: "center" },
                 ]}
               >
-                You're tapping a bit fast
+                You&apos;re tapping a bit fast
               </Text>
               <Text
                 style={{
