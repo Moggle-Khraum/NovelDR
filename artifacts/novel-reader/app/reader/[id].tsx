@@ -1036,7 +1036,7 @@ export default function ReaderScreen() {
     if (!ttsActive || currentParaIdx < 0 || !currentHighlightKey) return;
     if (isUserScrollingRef.current) return;
     const paraY = paraYPositionsRef.current.get(currentParaIdx);
-    if (paraY === undefined) return;    // Only the currently-highlighted sentence is ever measured (see
+    if (paraY === undefined) return; // Only the currently-highlighted sentence is ever measured (see
     // ParagraphBlock), so this ref always reflects the active sentence's
     // offset within its paragraph — not stale data from a different one.
     const sentenceRelY = highlightedSentenceRelYRef.current;
@@ -3489,8 +3489,8 @@ export default function ReaderScreen() {
                   lineHeight: 18,
                 }}
               >
-                TTS and auto-scroll have been paused to keep things stable.
-                Give it a second, then continue reading.
+                TTS and auto-scroll have been paused to keep things stable. Give
+                it a second, then continue reading.
               </Text>
               <Pressable
                 style={[
