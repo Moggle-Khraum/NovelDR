@@ -208,8 +208,8 @@ export default function SettingsScreen() {
     try {
       // Intentionally dynamic: wrapped in try/catch so a missing module fails
       // gracefully to null, which a static top-level import would not allow.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const AsyncStorage =
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@react-native-async-storage/async-storage").default;
       return AsyncStorage;
     } catch {
@@ -255,7 +255,7 @@ export default function SettingsScreen() {
   // (non-memoized) function also called from several other places, so adding
   // it here would re-subscribe to AppState on every render since its
   // identity changes each render.
-  /* eslint-disable react-hooks/exhaustive-deps */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkWarningStatus = async () => {
       try {
@@ -277,7 +277,6 @@ export default function SettingsScreen() {
     });
     return () => subscription.remove();
   }, []);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   const ensureDir = async (dirPath: string) => {
     const info = await FileSystem.getInfoAsync(dirPath);
