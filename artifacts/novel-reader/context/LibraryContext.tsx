@@ -113,9 +113,17 @@ const copyDirectory = async (fromPath: string, toPath: string) => {
   }
 };
 
+// Atomic write: write to .tmp then move
+const writeFileAtomic = async (filePath: string, data: any) => {
+  const tempPath = filePath + ".tmp";
+  await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
+  // Move replaces the target if it exists
+  await FileSystem.moveAsync({ from: tempPath, to: filePath });
+};
+
 const saveToFile = async (filePath: string, data: any) => {
   await ensureAppDirectoryExists();
-  await FileSystem.writeAsStringAsync(filePath, JSON.stringify(data));
+  await writeFileAtomic(filePath, data);
 };
 
 const loadFromFile = async (filePath: string): Promise<string | null> => {
@@ -187,10 +195,6 @@ const saveAllChaptersToFile = async (
   chapters: Chapter[],
   offset: number = 0,
 ) => {
-  // `offset` is the absolute index (within the novel's full chapter list) that
-  // `chapters[0]` corresponds to. Callers that pass a partial/incremental batch
-  // (e.g. addNovel appending to an existing novel) MUST pass the correct offset,
-  // otherwise this silently overwrites chapter_0.json, chapter_1.json, etc.
   for (let i = 0; i < chapters.length; i++) {
     if (chapters[i].content) {
       await saveChapterToFile(novelId, offset + i, {
@@ -371,13 +375,6 @@ const recoverDataIfNeeded = async (
   }
 };
 
-// Deletes chapter_N.json files left on disk whose index N falls outside the
-// novel's current chapters array (N >= validChapterCount). This happens when
-// a run downloads and writes content to disk but crashes/gets interrupted
-// before the chapters metadata array itself gets persisted — the files exist,
-// but nothing in the library index points to them. They're otherwise
-// invisible (not shown in the reader, not counted anywhere) but sit there
-// as dead weight and can confuse anything that scans the directory directly.
 const purgeOrphanedChapterFiles = async (
   novelId: string,
   validChapterCount: number,
@@ -392,7 +389,7 @@ const purgeOrphanedChapterFiles = async (
 
     for (const file of files) {
       const match = file.match(/^chapter_(\d+)\.json$/);
-      if (!match) continue; // leave any non-chapter file alone
+      if (!match) continue;
 
       const idx = parseInt(match[1], 10);
       if (idx >= validChapterCount) {
@@ -408,9 +405,6 @@ const purgeOrphanedChapterFiles = async (
   }
 };
 
-// Deletes entire chapters/{novelId}/ directories for novels that no longer
-// exist in the loaded library index — e.g. a novel that was removed, or one
-// that crashed mid-add before ever making it into the index.
 const purgeOrphanedNovelDirectories = async (
   validNovelIds: Set<string>,
 ): Promise<number> => {
@@ -438,9 +432,6 @@ const purgeOrphanedNovelDirectories = async (
   }
 };
 
-// Runs both orphan-cleanup passes against a freshly-loaded library: whole
-// directories for novels no longer in the index, and stray chapter_N.json
-// files within each remaining novel's directory.
 const purgeOrphanedDataOnStartup = async (
   loadedNovels: Novel[],
 ): Promise<{ dirs: number; files: number }> => {
@@ -519,6 +510,9 @@ type LibraryContextType = {
     onProgress?: (done: number, total: number) => void,
   ) => Promise<void>;
   library: Novel[];
+  // Restore lock API
+  isRestoring: boolean;
+  setRestoring: (restoring: boolean) => void;
 };
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -553,6 +547,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [initSteps, setInitSteps] = useState<InitStep[]>([]);
   const [initComplete, setInitComplete] = useState(false);
 
+  // Restore lock state
+  const [isRestoring, setIsRestoring] = useState(false);
+  const isRestoringRef = useRef(false);
+
   const addInitStep = (step: InitStep) => {
     setInitSteps((prev) => {
       const idx = prev.findIndex((s) => s.id === step.id);
@@ -565,15 +563,42 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // ── Refresh library from disk ────────────────────────────────────────────
+
+  const refreshLibrary = useCallback(async () => {
+    // Do not refresh while a restore is in progress
+    if (isRestoringRef.current) {
+      console.log("[Library] Refresh skipped during restore");
+      return;
+    }
+    try {
+      const { novels: refreshed, sortOrder: order } =
+        await loadNovelsFromDisk();
+      setSortOrder(order);
+      setNovels(refreshed);
+    } catch (error) {
+      console.error("[Library] Refresh failed:", error);
+    }
+  }, []);
+
+  // ── Restore lock methods ─────────────────────────────────────────────────
+
+  const setRestoring = useCallback(
+    (restoring: boolean) => {
+      isRestoringRef.current = restoring;
+      setIsRestoring(restoring);
+      if (!restoring) {
+        // Automatically refresh when restore finishes
+        refreshLibrary();
+      }
+    },
+    [refreshLibrary],
+  );
+
+  // ── Initialization ────────────────────────────────────────────────────────
+
   useEffect(() => {
     const initializeStorage = async () => {
-      // Every launch now runs the full checklist below, instead of only
-      // running it once on first install and taking a silent shortcut on
-      // every launch after. `alreadyInitialized` just changes the wording
-      // of the first/last step — it no longer skips any checks. Each check
-      // (migrate/recover in particular) is already cheap once the app is
-      // past its first run, since they early-out internally as soon as they
-      // confirm there's nothing to do.
       try {
         const alreadyInitialized = await isInitialized();
         addInitStep({
@@ -606,14 +631,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
             message: "Preferences loaded",
             status: "done",
           });
-
-          // NOTE: orphan purge no longer runs automatically here. It deletes
-          // chapter_N.json files whose index is >= a novel's recorded chapter
-          // count, and that count can legitimately drift from what's on disk
-          // (migrations, restores, interrupted downloads) without the extra
-          // files actually being orphaned — auto-running this on every launch
-          // was silently deleting real chapter content. It's now exposed as
-          // `purgeOrphanedData` for manual use from Settings only.
 
           try {
             const novelDirs =
@@ -709,8 +726,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       };
       updatedNovels = current.map((n) => (n.id === novel.id ? merged : n));
       newChaptersToSave = newChapters;
-      // Existing novel already has files 0..existing.chapters.length-1 on disk —
-      // the new batch must be written starting after those, not from 0 again.
       saveOffset = existing.chapters.length;
     } else {
       updatedNovels = [novel, ...current];
@@ -845,19 +860,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  // Exposed so any screen (startup, backup, manual maintenance) can trigger
-  // the same orphan cleanup against the current in-memory library — defaults
-  // to `novels` state if the caller doesn't pass a specific list.
   const purgeOrphanedDataCb = useCallback(async (loadedNovels?: Novel[]) => {
     return await purgeOrphanedDataOnStartup(loadedNovels ?? novelsRef.current);
   }, []);
 
-  // Deletes the given chapters (by url) from a novel. Chapters are stored
-  // positionally on disk (chapter_N.json), so surviving content has to be
-  // loaded before the directory is wiped, then re-saved sequentially from
-  // index 0 to close the gap left by the deleted ones. `onProgress` fires
-  // once per surviving chapter re-save so callers (e.g. a "Please Wait"
-  // modal) can show done/total instead of hanging with no feedback.
   const deleteChapters = useCallback(
     async (
       novelId: string,
@@ -894,8 +900,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         onProgress?.(i + 1, total);
       }
 
-      // Re-point lastRead at the surviving chapter's new index, or clear it
-      // entirely if the chapter the user was on got deleted.
       let newLastRead = novel.lastRead;
       if (novel.lastRead) {
         const oldChapter = oldChapters[novel.lastRead.chapterIndex];
@@ -924,18 +928,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  // ── Refresh library from disk ────────────────────────────────────────────
-
-  const refreshLibrary = useCallback(async () => {
-    try {
-      const { novels: refreshed, sortOrder: order } =
-        await loadNovelsFromDisk();
-      setSortOrder(order);
-      setNovels(refreshed);
-    } catch (error) {
-      console.error("[Library] Refresh failed:", error);
-    }
-  }, []);
+  // ── Context value ──────────────────────────────────────────────────────
 
   const contextValue = useMemo(
     () => ({
@@ -960,6 +953,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       purgeOrphanedData: purgeOrphanedDataCb,
       deleteChapters,
       library: novels,
+      isRestoring,
+      setRestoring,
     }),
     [
       novels,
@@ -981,6 +976,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       refreshLibrary,
       purgeOrphanedDataCb,
       deleteChapters,
+      isRestoring,
+      setRestoring,
     ],
   );
 
