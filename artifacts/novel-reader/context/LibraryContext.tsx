@@ -39,6 +39,47 @@ export type Novel = {
 export type SortOrder = "ascending" | "descending";
 
 // =============================================================================
+// CONCURRENCY POOL (copied from settings.tsx for self‑containment)
+// =============================================================================
+
+async function runConcurrent<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  const queue = [...items];
+  let active = 0;
+  let index = 0;
+  let reject: (reason?: any) => void;
+
+  return new Promise((resolve, rejectFn) => {
+    reject = rejectFn;
+    const next = async () => {
+      if (queue.length === 0 && active === 0) {
+        resolve(results);
+        return;
+      }
+      while (active < concurrency && queue.length > 0) {
+        const item = queue.shift()!;
+        const idx = index++;
+        active++;
+        fn(item, idx)
+          .then((res) => {
+            results[idx] = res;
+            active--;
+            next();
+          })
+          .catch((err) => {
+            reject(err);
+          });
+      }
+    };
+    next();
+  });
+}
+
+// =============================================================================
 // FILE SYSTEM PATHS
 // =============================================================================
 
@@ -47,6 +88,10 @@ const LIBRARY_FILE_NAME = "novel_library_v1.json";
 const SORT_PREFERENCE_FILE_NAME = "chapter_sort_preference.json";
 const CHAPTERS_FOLDER_NAME = "chapters";
 const INIT_FLAG_FILE_NAME = ".initialized";
+
+// New per‑novel file architecture
+const NOVELS_FOLDER_NAME = "novels";
+const INDEX_FILE_NAME = "novel_index_v2.json";
 
 const POSSIBLE_STORAGE_LOCATIONS = [
   () => `${FileSystem.documentDirectory}${APP_FOLDER_NAME}/`,
@@ -67,6 +112,17 @@ const getNovelChaptersPath = (novelId: string) =>
 const getChapterFilePath = (novelId: string, chapterIndex: number) =>
   `${getNovelChaptersPath(novelId)}chapter_${chapterIndex}.json`;
 const getInitFlagPath = () => `${getAppStoragePath()}${INIT_FLAG_FILE_NAME}`;
+
+// New paths
+const getNovelsPath = () => `${getAppStoragePath()}${NOVELS_FOLDER_NAME}/`;
+const getNovelFilePath = (novelId: string) =>
+  `${getNovelsPath()}${novelId}.json`;
+const getIndexFilePath = () => `${getAppStoragePath()}${INDEX_FILE_NAME}`;
+
+type NovelIndex = {
+  novelIds: string[];
+  sortOrder: SortOrder;
+};
 
 // =============================================================================
 // DIRECTORY & FILE HELPERS
@@ -113,17 +169,21 @@ const copyDirectory = async (fromPath: string, toPath: string) => {
   }
 };
 
-// Atomic write: write to .tmp then move
-const writeFileAtomic = async (filePath: string, data: any) => {
+// Atomic write: write to .tmp then move (delete existing dest for Android)
+const writeJsonFileAtomic = async (filePath: string, data: any) => {
   const tempPath = filePath + ".tmp";
   await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
-  // Move replaces the target if it exists
+  // Android's moveAsync fails if destination exists, so delete it first
+  const destInfo = await FileSystem.getInfoAsync(filePath);
+  if (destInfo.exists) {
+    await FileSystem.deleteAsync(filePath, { idempotent: true });
+  }
   await FileSystem.moveAsync({ from: tempPath, to: filePath });
 };
 
 const saveToFile = async (filePath: string, data: any) => {
   await ensureAppDirectoryExists();
-  await writeFileAtomic(filePath, data);
+  await writeJsonFileAtomic(filePath, data);
 };
 
 const loadFromFile = async (filePath: string): Promise<string | null> => {
@@ -147,6 +207,22 @@ const deleteFile = async (filePath: string) => {
   }
 };
 
+// Per‑novel file writes
+const writeNovelFile = async (novel: Novel) => {
+  await ensureDirectoryExists(getNovelsPath());
+  await writeJsonFileAtomic(getNovelFilePath(novel.id), novel);
+};
+
+const writeIndexFile = async (index: NovelIndex) => {
+  await ensureAppDirectoryExists();
+  await writeJsonFileAtomic(getIndexFilePath(), index);
+};
+
+const deleteNovelFile = async (novelId: string) => {
+  await deleteFile(getNovelFilePath(novelId));
+};
+
+// Chapter file helpers (unchanged)
 const saveChapterToFile = async (
   novelId: string,
   chapterIndex: number,
@@ -243,6 +319,121 @@ type InitStep = {
   detail?: string;
 };
 
+// ── Migration from old monolithic library to per‑novel files ───────────────
+
+const migrateToPerNovelFiles = async (
+  onStep: (step: InitStep) => void,
+): Promise<boolean> => {
+  const stepId = "migrate-per-novel";
+  onStep({
+    id: stepId,
+    message: "Checking for legacy library structure...",
+    status: "running",
+  });
+
+  try {
+    // If index already exists, we're already on the new structure
+    const indexInfo = await FileSystem.getInfoAsync(getIndexFilePath());
+    if (indexInfo.exists) {
+      onStep({
+        id: stepId,
+        message: "Already using per‑novel files",
+        status: "done",
+        detail: "Index exists",
+      });
+      return false;
+    }
+
+    // Check for old library blob
+    const oldLibraryContent = await loadFromFile(getLibraryFilePath());
+    if (!oldLibraryContent) {
+      // No old library – create empty index and novels folder
+      await ensureDirectoryExists(getNovelsPath());
+      await writeIndexFile({ novelIds: [], sortOrder: "ascending" });
+      onStep({
+        id: stepId,
+        message: "No legacy data found – empty library initialized",
+        status: "done",
+      });
+      return false;
+    }
+
+    onStep({
+      id: stepId,
+      message: "Found legacy library – migrating to per‑novel files...",
+      status: "running",
+    });
+
+    const novels: Novel[] = JSON.parse(oldLibraryContent);
+    if (!Array.isArray(novels) || novels.length === 0) {
+      // Empty or invalid library – just create empty index
+      await ensureDirectoryExists(getNovelsPath());
+      await writeIndexFile({ novelIds: [], sortOrder: "ascending" });
+      onStep({
+        id: stepId,
+        message: "Legacy library empty – new structure created",
+        status: "done",
+      });
+      // Rename old file to avoid re‑attempt
+      const backupPath = getLibraryFilePath() + ".migrated";
+      await FileSystem.moveAsync({
+        from: getLibraryFilePath(),
+        to: backupPath,
+      });
+      return true;
+    }
+
+    // Write each novel file
+    await ensureDirectoryExists(getNovelsPath());
+    const novelIds: string[] = [];
+    for (const novel of novels) {
+      await writeNovelFile(novel);
+      novelIds.push(novel.id);
+    }
+
+    // Read old sort preference
+    let sortOrder: SortOrder = "ascending";
+    const sortContent = await loadFromFile(getSortPreferenceFilePath());
+    if (sortContent) {
+      try {
+        sortOrder = JSON.parse(sortContent);
+      } catch {}
+    }
+
+    // Write index
+    await writeIndexFile({ novelIds, sortOrder });
+
+    // Clean up old files (rename to .migrated)
+    const libraryBackup = getLibraryFilePath() + ".migrated";
+    await FileSystem.moveAsync({ from: getLibraryFilePath(), to: libraryBackup });
+    const sortBackup = getSortPreferenceFilePath() + ".migrated";
+    const sortExists = await FileSystem.getInfoAsync(getSortPreferenceFilePath());
+    if (sortExists.exists) {
+      await FileSystem.moveAsync({
+        from: getSortPreferenceFilePath(),
+        to: sortBackup,
+      });
+    }
+
+    onStep({
+      id: stepId,
+      message: `✅ Migrated ${novels.length} novel(s) to per‑novel files`,
+      status: "done",
+    });
+    return true;
+  } catch (error: any) {
+    onStep({
+      id: stepId,
+      message: "Migration failed",
+      status: "error",
+      detail: error.message,
+    });
+    return false;
+  }
+};
+
+// ── Legacy AsyncStorage migration (unchanged) ─────────────────────────────
+
 const migrateFromLegacyStorage = async (
   onStep: (step: InitStep) => void,
 ): Promise<boolean> => {
@@ -322,6 +513,8 @@ const migrateFromLegacyStorage = async (
   }
 };
 
+// ── Recovery (unchanged) ─────────────────────────────────────────────────
+
 const recoverDataIfNeeded = async (
   onStep: (step: InitStep) => void,
 ): Promise<boolean> => {
@@ -374,6 +567,8 @@ const recoverDataIfNeeded = async (
     return false;
   }
 };
+
+// ── Orphan purging (unchanged logic, uses novel ids) ────────────────────
 
 const purgeOrphanedChapterFiles = async (
   novelId: string,
@@ -481,7 +676,7 @@ type LibraryContextType = {
   ) => Promise<void>;
   setNovelStatus: (novelId: string, status: NovelStatus) => Promise<void>;
   sortOrder: SortOrder;
-  toggleSortOrder: () => void;
+  toggleSortOrder: () => Promise<void>;
   getSortedChapters: (chapters: Chapter[]) => Chapter[];
   saveChapterContent: (
     novelId: string,
@@ -510,36 +705,67 @@ type LibraryContextType = {
     onProgress?: (done: number, total: number) => void,
   ) => Promise<void>;
   library: Novel[];
-  // Restore lock API
   isRestoring: boolean;
   setRestoring: (restoring: boolean) => void;
-  // Explicit restore-completion handoff: hands the already-in-memory,
-  // fully-restored novel list straight into state in one atomic update and
-  // releases the restore lock in the same call. This replaces relying on a
-  // disk refresh after the lock lifts, which left a race window where the
-  // Index screen could refresh (or the lock could lift) a moment before the
-  // very last cover/library write had actually settled on disk.
   commitRestoredLibrary: (novels: Novel[], sortOrder?: SortOrder) => void;
-  // Release the restore lock WITHOUT touching novels — for aborted/failed
-  // restores where nothing should change on screen.
   abortRestore: () => void;
+  // New: bulk write for restore (settings.tsx should call this instead of its own atomicWriteLibrary)
+  bulkWriteNovels: (novels: Novel[], sortOrder?: SortOrder) => Promise<void>;
 };
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
+
+// ── Load novels from disk (index + per‑novel files) ──────────────────────
 
 const loadNovelsFromDisk = async (): Promise<{
   novels: Novel[];
   sortOrder: SortOrder;
 }> => {
-  const libraryContent = await loadFromFile(getLibraryFilePath());
-  const novels: Novel[] = libraryContent ? JSON.parse(libraryContent) : [];
+  // Read index
+  let index: NovelIndex = { novelIds: [], sortOrder: "ascending" };
+  try {
+    const indexContent = await loadFromFile(getIndexFilePath());
+    if (indexContent) {
+      index = JSON.parse(indexContent);
+    }
+  } catch {
+    // fallback to empty index
+  }
 
-  const sortContent = await loadFromFile(getSortPreferenceFilePath());
-  const sortOrder: SortOrder = sortContent
-    ? JSON.parse(sortContent)
-    : "ascending";
+  const ids = index.novelIds || [];
+  const novels: Novel[] = [];
 
-  return { novels, sortOrder };
+  if (ids.length === 0) {
+    return { novels, sortOrder: index.sortOrder };
+  }
+
+  // Load novels in parallel with concurrency limit
+  const loadOne = async (id: string): Promise<Novel | null> => {
+    try {
+      const content = await loadFromFile(getNovelFilePath(id));
+      if (content) {
+        const novel = JSON.parse(content) as Novel;
+        // Ensure chapters array exists
+        if (!novel.chapters) novel.chapters = [];
+        return novel;
+      }
+      console.warn(`[Library] Novel file missing for id: ${id}`);
+      return null;
+    } catch (e) {
+      console.error(`[Library] Failed to load novel ${id}:`, e);
+      return null;
+    }
+  };
+
+  const results = await runConcurrent(ids, 12, loadOne);
+  for (const result of results) {
+    if (result) novels.push(result);
+  }
+
+  // If some novels were missing, we could optionally clean the index here,
+  // but we'll leave it to the user to refresh or re‑migrate.
+  // We'll keep the loaded ones.
+  return { novels, sortOrder: index.sortOrder };
 };
 
 // =============================================================================
@@ -557,7 +783,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [initSteps, setInitSteps] = useState<InitStep[]>([]);
   const [initComplete, setInitComplete] = useState(false);
 
-  // Restore lock state
   const [isRestoring, setIsRestoring] = useState(false);
   const isRestoringRef = useRef(false);
 
@@ -573,12 +798,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Holds a fully-restored novel list that's ready to show but hasn't been
-  // revealed yet — populated by commitRestoredLibrary() the instant a
-  // restore finishes, consumed by refreshLibrary() the next time the user
-  // manually pulls-to-refresh or taps the reload button on the Index
-  // screen. Restoration itself is no longer what puts new novels on
-  // screen; it just stages them.
+  // Holds a fully‑restored novel list staged for manual reveal
   const pendingRestoreRef = useRef<{
     novels: Novel[];
     sortOrder?: SortOrder;
@@ -587,15 +807,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   // ── Refresh library from disk ────────────────────────────────────────────
 
   const refreshLibrary = useCallback(async () => {
-    // Do not refresh while a restore is in progress
     if (isRestoringRef.current) {
       console.log("[Library] Refresh skipped during restore");
       return;
     }
-    // A finished restore is waiting in memory — apply it directly instead
-    // of reading disk again. This is the manual "reveal" step: the user
-    // pulling-to-refresh or tapping reload is what makes restored novels
-    // actually appear.
     if (pendingRestoreRef.current) {
       const { novels: restored, sortOrder: order } = pendingRestoreRef.current;
       pendingRestoreRef.current = null;
@@ -618,18 +833,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const setRestoring = useCallback((restoring: boolean) => {
     isRestoringRef.current = restoring;
     setIsRestoring(restoring);
-    // No longer auto-refreshes from disk here — see commitRestoredLibrary.
-    // A disk re-read triggered the instant this flips to false raced against
-    // the last in-flight file write settling, which is exactly how the
-    // Index screen could show backup novels before "Restoring Covers" had
-    // actually finished.
   }, []);
 
   const commitRestoredLibrary = useCallback(
     (restoredNovels: Novel[], order?: SortOrder) => {
-      // Release the lock, but DON'T touch `novels` here — stage the result
-      // in memory instead and let the user reveal it manually (pull to
-      // refresh / reload button), which calls refreshLibrary() above.
       isRestoringRef.current = false;
       setIsRestoring(false);
       pendingRestoreRef.current = { novels: restoredNovels, sortOrder: order };
@@ -657,17 +864,26 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           status: "running",
         });
 
-        const migrated = await migrateFromLegacyStorage(addInitStep);
-        const recovered = await recoverDataIfNeeded(addInitStep);
+        // 1. Legacy AsyncStorage migration (old code)
+        await migrateFromLegacyStorage(addInitStep);
+        // 2. Recover from backup (old code)
+        await recoverDataIfNeeded(addInitStep);
 
+        // 3. Migrate old monolithic library to per‑novel files
+        await migrateToPerNovelFiles(addInitStep);
+
+        // 4. Ensure directories exist
         await ensureAppDirectoryExists();
         await ensureDirectoryExists(getChaptersPath());
+        await ensureDirectoryExists(getNovelsPath());
+
         addInitStep({
           id: "directory",
           message: "Storage ready",
           status: "done",
         });
 
+        // 5. Load novels
         let totalChapters = 0;
         try {
           const { novels: loaded, sortOrder: order } =
@@ -680,6 +896,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
             status: "done",
           });
 
+          // Count chapters for stats
           try {
             const novelDirs =
               await FileSystem.readDirectoryAsync(getChaptersPath());
@@ -702,11 +919,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
             status: "done",
             detail: `${loaded.length} novels, ${totalChapters} chapters`,
           });
-        } catch {
+        } catch (error: any) {
           addInitStep({
             id: "library",
             message: "Library repair needed",
             status: "error",
+            detail: error.message,
           });
         }
 
@@ -722,7 +940,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
         addInitStep({
           id: "complete",
-          message: migrated || recovered ? "✅ Data restored" : "✅ Ready!",
+          message: "✅ Ready!",
           status: "done",
         });
         setInitComplete(true);
@@ -740,21 +958,11 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     };
 
     initializeStorage();
-  }, [addInitStep]);
+  }, []);
 
   // ── Library data management ──────────────────────────────────────────────
 
-  const saveLibraryToFile = async (novelsData: Novel[]) => {
-    const metadataOnly = novelsData.map((novel) => ({
-      ...novel,
-      chapters: novel.chapters.map((ch) => ({
-        title: ch.title,
-        url: ch.url,
-        chapterNumber: ch.chapterNumber,
-      })),
-    }));
-    await saveToFile(getLibraryFilePath(), metadataOnly);
-  };
+  // ── addNovel ──────────────────────────────────────────────────────────────
 
   const addNovel = useCallback(async (novel: Novel) => {
     const current = novelsRef.current;
@@ -762,6 +970,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     let updatedNovels: Novel[];
     let newChaptersToSave: Chapter[];
     let saveOffset = 0;
+
     if (existing) {
       const existingUrls = new Set(existing.chapters.map((ch) => ch.url));
       const newChapters = novel.chapters.filter(
@@ -780,44 +989,83 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       newChaptersToSave = novel.chapters;
       saveOffset = 0;
     }
+
+    // Write novel file (full metadata)
+    const novelToWrite = updatedNovels.find((n) => n.id === novel.id)!;
+    await writeNovelFile(novelToWrite);
+
+    // Update index (add id to front)
+    const currentIds = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: currentIds, sortOrder });
+
+    // Save chapters (content) separately
+    await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
+
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
-    await saveLibraryToFile(updatedNovels);
-  }, []);
+  }, [sortOrder]);
+
+  // ── updateNovel ──────────────────────────────────────────────────────────
 
   const updateNovel = useCallback(
     async (id: string, updates: Partial<Novel>) => {
-      const updatedNovels = novelsRef.current.map((n) =>
-        n.id === id ? { ...n, ...updates } : n,
-      );
+      const current = novelsRef.current;
+      const idx = current.findIndex((n) => n.id === id);
+      if (idx === -1) return;
+
+      const updatedNovel = { ...current[idx], ...updates };
+      const updatedNovels = [...current];
+      updatedNovels[idx] = updatedNovel;
+
+      // Write only this novel's file
+      await writeNovelFile(updatedNovel);
+
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
-      await saveLibraryToFile(updatedNovels);
     },
     [],
   );
 
+  // ── removeNovel ──────────────────────────────────────────────────────────
+
   const removeNovel = useCallback(async (id: string) => {
     const updatedNovels = novelsRef.current.filter((n) => n.id !== id);
+    // Remove novel file
+    await deleteNovelFile(id);
+    // Update index
+    const ids = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: ids, sortOrder: sortOrder });
+    // Delete chapters
+    deleteNovelChapters(id);
+
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
-    deleteNovelChapters(id);
-  }, []);
+  }, [sortOrder]);
+
+  // ── removeNovels ─────────────────────────────────────────────────────────
 
   const removeNovels = useCallback(async (ids: string[]) => {
     const updatedNovels = novelsRef.current.filter((n) => !ids.includes(n.id));
+    // Delete each novel file
+    await Promise.all(ids.map((id) => deleteNovelFile(id)));
+    // Update index
+    const newIds = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
+    // Delete chapters
+    ids.forEach((id) => deleteNovelChapters(id));
+
     novelsRef.current = updatedNovels;
     setNovels(updatedNovels);
-    await saveLibraryToFile(updatedNovels);
-    ids.forEach((id) => deleteNovelChapters(id));
-  }, []);
+  }, [sortOrder]);
+
+  // ── getNovel ─────────────────────────────────────────────────────────────
 
   const getNovel = useCallback(
     (id: string) => novels.find((n) => n.id === id),
     [novels],
   );
+
+  // ── saveReadingProgress ──────────────────────────────────────────────────
 
   const saveReadingProgress = useCallback(
     async (
@@ -834,6 +1082,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [updateNovel],
   );
 
+  // ── setNovelStatus ──────────────────────────────────────────────────────
+
   const setNovelStatus = useCallback(
     async (novelId: string, status: NovelStatus) => {
       await updateNovel(novelId, { status });
@@ -841,13 +1091,17 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [updateNovel],
   );
 
-  const toggleSortOrder = useCallback(() => {
-    setSortOrder((prev) => {
-      const next = prev === "ascending" ? "descending" : "ascending";
-      saveToFile(getSortPreferenceFilePath(), next);
-      return next;
-    });
-  }, []);
+  // ── toggleSortOrder ─────────────────────────────────────────────────────
+
+  const toggleSortOrder = useCallback(async () => {
+    const next = sortOrder === "ascending" ? "descending" : "ascending";
+    setSortOrder(next);
+    // Update index with new sort order
+    const currentIds = novelsRef.current.map((n) => n.id);
+    await writeIndexFile({ novelIds: currentIds, sortOrder: next });
+  }, [sortOrder]);
+
+  // ── getSortedChapters ──────────────────────────────────────────────────
 
   const getSortedChapters = useCallback(
     (chapters: Chapter[]): Chapter[] => {
@@ -865,6 +1119,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [sortOrder],
   );
 
+  // ── saveChapterContent ──────────────────────────────────────────────────
+
   const saveChapterContent = useCallback(
     async (
       novelId: string,
@@ -874,15 +1130,19 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       content: string,
       chapterNumber?: number,
     ) => {
+      // Save chapter content to file
       await saveChapterToFile(novelId, chapterIndex, {
         title,
         url,
         content,
         chapterNumber,
       });
+
+      // Update novel metadata (chapters array)
       const current = novelsRef.current;
       const idx = current.findIndex((n) => n.id === novelId);
       if (idx === -1) return;
+
       const novel = { ...current[idx] };
       const newChapter = { title, url, chapterNumber };
       if (chapterIndex >= novel.chapters.length) {
@@ -892,14 +1152,19 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
         novel.chapters = chapters;
       }
+
       const updatedNovels = [...current];
       updatedNovels[idx] = novel;
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
-      await saveLibraryToFile(updatedNovels);
+
+      // Write the novel file (only this one)
+      await writeNovelFile(novel);
     },
     [],
   );
+
+  // ── loadChapterContent ──────────────────────────────────────────────────
 
   const loadChapterContent = useCallback(
     async (novelId: string, chapterIndex: number) => {
@@ -908,9 +1173,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // ── purgeOrphanedData ──────────────────────────────────────────────────
+
   const purgeOrphanedDataCb = useCallback(async (loadedNovels?: Novel[]) => {
     return await purgeOrphanedDataOnStartup(loadedNovels ?? novelsRef.current);
   }, []);
+
+  // ── deleteChapters ──────────────────────────────────────────────────────
 
   const deleteChapters = useCallback(
     async (
@@ -969,11 +1238,47 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           ? { ...n, chapters: newChapters, lastRead: newLastRead }
           : n,
       );
+      const updatedNovel = updatedNovels.find((n) => n.id === novelId)!;
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
-      await saveLibraryToFile(updatedNovels);
+
+      // Write the updated novel file
+      await writeNovelFile(updatedNovel);
     },
     [],
+  );
+
+  // ── bulkWriteNovels (for restore / import) ─────────────────────────────
+
+  const bulkWriteNovels = useCallback(
+    async (novelsToWrite: Novel[], order?: SortOrder) => {
+      if (!novelsToWrite.length) {
+        // Write empty index
+        await writeIndexFile({
+          novelIds: [],
+          sortOrder: order ?? sortOrder,
+        });
+        return;
+      }
+
+      // Write all novel files in parallel
+      await ensureDirectoryExists(getNovelsPath());
+      await runConcurrent(
+        novelsToWrite,
+        12,
+        async (novel) => {
+          await writeNovelFile(novel);
+        },
+      );
+
+      // Write index
+      const ids = novelsToWrite.map((n) => n.id);
+      await writeIndexFile({
+        novelIds: ids,
+        sortOrder: order ?? sortOrder,
+      });
+    },
+    [sortOrder],
   );
 
   // ── Context value ──────────────────────────────────────────────────────
@@ -1005,6 +1310,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       setRestoring,
       commitRestoredLibrary,
       abortRestore,
+      bulkWriteNovels,
     }),
     [
       novels,
@@ -1022,6 +1328,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       toggleSortOrder,
       getSortedChapters,
       saveChapterContent,
+      saveAllChaptersToFile,
       loadChapterContent,
       refreshLibrary,
       purgeOrphanedDataCb,
@@ -1030,6 +1337,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       setRestoring,
       commitRestoredLibrary,
       abortRestore,
+      bulkWriteNovels,
     ],
   );
 
