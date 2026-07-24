@@ -15,6 +15,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -276,6 +277,10 @@ export default function SettingsScreen() {
   const operationStartRef = useRef<number>(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const logFlushIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
   const startOperationTimer = () => {
     operationStartRef.current = Date.now();
     setElapsedMs(0);
@@ -283,6 +288,15 @@ export default function SettingsScreen() {
     timerIntervalRef.current = setInterval(() => {
       setElapsedMs(Date.now() - operationStartRef.current);
     }, 1000);
+    // Belt-and-suspenders alongside the 25-line batch cap in addBackupLog:
+    // whatever is sitting in pendingLogsRef gets flushed to state at least
+    // every 300ms, so a slow phase (big single file, network fetch, etc.)
+    // never leaves the log looking stalled while still keeping updates
+    // throttled far below per-file re-render frequency.
+    if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
+    logFlushIntervalRef.current = setInterval(() => {
+      flushLogs();
+    }, 300);
   };
 
   const stopOperationTimer = () => {
@@ -290,6 +304,11 @@ export default function SettingsScreen() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (logFlushIntervalRef.current) {
+      clearInterval(logFlushIntervalRef.current);
+      logFlushIntervalRef.current = null;
+    }
+    flushLogs();
   };
 
   // Safety net: don't leave a stale interval running if the screen unmounts
@@ -297,6 +316,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -351,6 +371,7 @@ export default function SettingsScreen() {
   // --------------------------------------------------------------------------
   const pendingLogsRef = useRef<string[]>([]);
   const logBatchSize = 25;
+  const restoreLogListRef = useRef<FlatList<string>>(null);
 
   const flushLogs = () => {
     if (pendingLogsRef.current.length === 0) return;
@@ -1651,6 +1672,10 @@ export default function SettingsScreen() {
               try {
                 setImporting(true);
                 setRestoring(true);
+                // Open the Restore modal so this import's progress and
+                // activity log are visible too (picker-initiated imports
+                // don't otherwise pass through the "browse backups" list).
+                openPanel("restore");
                 startOperationTimer();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 const metadata = await restoreFromAnyFormat(
@@ -1665,6 +1690,7 @@ export default function SettingsScreen() {
                   `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n⏱️ Finished in ${formatDuration(durationMs)}\n\nTap the reload button (or pull to refresh) on the Library screen to see the restored data.`,
                   [{ text: "OK" }],
                 );
+                closePanel();
               } catch (e) {
                 Alert.alert("Import Failed", String(e));
               } finally {
@@ -1946,49 +1972,29 @@ export default function SettingsScreen() {
             sharing and restoration.
           </Text>
 
-          {(exporting || importing) && (
+          {/*
+            Import/restore progress + activity log now live inside the
+            Restore modal (see the "restore" Modal below) so the heavy,
+            frequently-updating log list isn't mounted behind the settings
+            ScrollView. The old fixed-width progress bar has been removed
+            entirely — the batched activity log (flushed every 25 entries /
+            300ms, see addBackupLog/flushLogs) is the single source of
+            truth for "what's happening right now" and is cheaper to render
+            than re-computing a percentage-width bar on every tick.
+          */}
+          {exporting && (
             <View style={styles.progressContainer}>
               <ActivityIndicator size="small" color={colors.accent} />
               <Text
                 style={[styles.progressText, { color: colors.textSecondary }]}
               >
-                {operationProgress ||
-                  (exporting ? "Creating backup..." : "Restoring...")}
-              </Text>
-            </View>
-          )}
-
-          {(exporting || importing) && (
-            <View style={styles.progressBarRow}>
-              <View
-                style={[
-                  styles.progressBarTrack,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      backgroundColor: colors.accent,
-                      // Indeterminate sliver while a phase hasn't reported a
-                      // total yet (e.g. still scanning/merging), real
-                      // percentage once startProgress() has a total.
-                      width:
-                        progressTotal > 0
-                          ? `${Math.min(100, (progressDone / progressTotal) * 100)}%`
-                          : "8%",
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.progressTimerText, { color: colors.text }]}>
+                {operationProgress || "Creating backup..."} ·{" "}
                 {formatTimer(elapsedMs)}
               </Text>
             </View>
           )}
 
-          {backupLogs.length > 0 && (
+          {exporting && backupLogs.length > 0 && (
             <View
               style={[
                 styles.backupActivityLog,
@@ -2017,23 +2023,27 @@ export default function SettingsScreen() {
                   </Text>
                 </Pressable>
               </View>
-              <ScrollView
-                style={styles.backupActivityLogScroll}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator
-              >
-                {backupLogs.map((log, index) => (
+              <FlatList
+                data={backupLogs}
+                keyExtractor={(_, index) => String(index)}
+                renderItem={({ item }) => (
                   <Text
-                    key={index}
                     style={[
                       styles.backupActivityLogLine,
                       { color: colors.text },
                     ]}
                   >
-                    {log}
+                    {item}
                   </Text>
-                ))}
-              </ScrollView>
+                )}
+                style={styles.backupActivityLogScroll}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+                initialNumToRender={30}
+                maxToRenderPerBatch={30}
+                windowSize={5}
+                removeClippedSubviews
+              />
             </View>
           )}
 
@@ -2115,50 +2125,78 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {activePanel === "restore" && (
-          <View
-            style={[
-              styles.backupListCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.backupListHeader}>
-              <Text style={[styles.backupListTitle, { color: colors.text }]}>
-                Saved Backups
-              </Text>
-              <Pressable onPress={closePanel}>
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            {backupList.length === 0 ? (
-              <Text style={[styles.backupHint, { color: colors.textMuted }]}>
-                No backups found.
-              </Text>
-            ) : (
-              backupList.map((backup) => {
-                const { date, time, tag } = parseFilename(backup.name);
-                return (
-                  <Pressable
-                    key={backup.name}
-                    style={[styles.backupItem, { borderColor: colors.border }]}
-                    onPress={() => handleImportBackup(backup.name)}
+        {/*
+          Restore Backup — centered popup Modal instead of an inline card.
+          Keeping it out of the settings ScrollView means the (potentially
+          long) backup list and, during an import, the live activity log
+          are only ever mounted while the modal is open, and they render
+          via FlatList (windowed, only visible rows mounted) rather than
+          `.map()` inside a ScrollView, so opening it or watching a restore
+          progress never blocks the JS thread.
+        */}
+        <Modal
+          visible={activePanel === "restore"}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            if (!importing) closePanel();
+          }}
+        >
+          <View style={styles.restoreModalOverlay}>
+            <View
+              style={[
+                styles.restoreModalCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.backupListHeader}>
+                <Text style={[styles.backupListTitle, { color: colors.text }]}>
+                  {importing ? "Restoring…" : "Saved Backups"}
+                </Text>
+                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={importing ? colors.textMuted : colors.textSecondary}
+                  />
+                </Pressable>
+              </View>
+
+              {importing ? (
+                <>
+                  <View style={styles.progressContainer}>
+                    <ActivityIndicator size="small" color={colors.accent} />
+                    <Text
+                      style={[
+                        styles.progressText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {operationProgress || "Restoring..."} ·{" "}
+                      {formatTimer(elapsedMs)}
+                    </Text>
+                  </View>
+
+                  {/*
+                    Activity Log replaces the old progress bar entirely.
+                    addBackupLog() batches pushes into pendingLogsRef and
+                    only calls setBackupLogs (a state update + re-render)
+                    every 25 entries or on an explicit flushLogs(), so a
+                    restore touching thousands of chapter/cover files still
+                    only triggers a couple dozen re-renders total, not one
+                    per file — that's what keeps this smooth at 60fps.
+                  */}
+                  <View
+                    style={[
+                      styles.backupActivityLog,
+                      styles.restoreModalLog,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
                   >
-                    <View style={styles.backupItemInfo}>
-                      <View style={styles.backupItemMeta}>
-                        <Ionicons
-                          name="time-outline"
-                          size={13}
-                          color={colors.textMuted}
-                        />
-                        <Text
-                          style={[
-                            styles.backupItemDate,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {date} {time}
-                        </Text>
-                      </View>
+                    <View style={styles.backupActivityLogHeader}>
                       <View
                         style={{
                           flexDirection: "row",
@@ -2166,101 +2204,198 @@ export default function SettingsScreen() {
                           gap: 6,
                         }}
                       >
+                        <Ionicons name="sync" size={14} color={colors.accent} />
                         <Text
-                          style={[styles.backupItemTag, { color: colors.text }]}
+                          style={[
+                            styles.backupActivityLogTitle,
+                            { color: colors.textSecondary },
+                          ]}
                         >
-                          {tag || "No label"}
+                          Activity Log
                         </Text>
-                        {backup.format && (
-                          <Text
-                            style={[
-                              styles.backupItemStats,
-                              { color: colors.textMuted },
-                            ]}
-                          >
-                            {BACKUP_FORMAT_LABELS[backup.format]}
-                          </Text>
-                        )}
                       </View>
-                      {backup.metadata && (
-                        <View style={{ gap: 2 }}>
-                          <Text
-                            style={[
-                              styles.backupItemStats,
-                              { color: colors.textMuted },
-                            ]}
+                    </View>
+                    <FlatList
+                      data={backupLogs}
+                      keyExtractor={(_, index) => String(index)}
+                      renderItem={({ item }) => (
+                        <Text
+                          style={[
+                            styles.backupActivityLogLine,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {item}
+                        </Text>
+                      )}
+                      style={styles.backupActivityLogScroll}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator
+                      initialNumToRender={30}
+                      maxToRenderPerBatch={30}
+                      windowSize={5}
+                      removeClippedSubviews
+                      // Auto-scroll to the newest entry each time a batch flushes.
+                      onContentSizeChange={(_, h) => {
+                        restoreLogListRef.current?.scrollToOffset({
+                          offset: h,
+                          animated: true,
+                        });
+                      }}
+                      ref={restoreLogListRef}
+                    />
+                  </View>
+                </>
+              ) : backupList.length === 0 ? (
+                <Text style={[styles.backupHint, { color: colors.textMuted }]}>
+                  No backups found.
+                </Text>
+              ) : (
+                <FlatList
+                  data={backupList}
+                  keyExtractor={(backup) => backup.name}
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={10}
+                  windowSize={7}
+                  removeClippedSubviews
+                  style={styles.restoreModalList}
+                  renderItem={({ item: backup }) => {
+                    const { date, time, tag } = parseFilename(backup.name);
+                    return (
+                      <Pressable
+                        style={[
+                          styles.backupItem,
+                          { borderColor: colors.border },
+                        ]}
+                        onPress={() => handleImportBackup(backup.name)}
+                      >
+                        <View style={styles.backupItemInfo}>
+                          <View style={styles.backupItemMeta}>
+                            <Ionicons
+                              name="time-outline"
+                              size={13}
+                              color={colors.textMuted}
+                            />
+                            <Text
+                              style={[
+                                styles.backupItemDate,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              {date} {time}
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
                           >
-                            {backup.metadata.novelCount} novels •{" "}
-                            {backup.metadata.totalChapters} chapters
-                          </Text>
-                          {backup.metadata.includesCovers && (
                             <Text
                               style={[
-                                styles.backupItemStats,
-                                { color: colors.textMuted },
+                                styles.backupItemTag,
+                                { color: colors.text },
                               ]}
                             >
-                              🖼️ Covers included •{" "}
-                              {(
-                                backup.metadata.totalCoverSize /
-                                (1024 * 1024)
-                              ).toFixed(2)}{" "}
-                              MB
+                              {tag || "No label"}
                             </Text>
-                          )}
-                          {typeof backup.metadata.durationMs === "number" && (
-                            <Text
-                              style={[
-                                styles.backupItemStats,
-                                { color: colors.textMuted },
-                              ]}
-                            >
-                              ⏱️ Took{" "}
-                              {formatDuration(backup.metadata.durationMs)} to
-                              create
-                            </Text>
+                            {backup.format && (
+                              <Text
+                                style={[
+                                  styles.backupItemStats,
+                                  { color: colors.textMuted },
+                                ]}
+                              >
+                                {BACKUP_FORMAT_LABELS[backup.format]}
+                              </Text>
+                            )}
+                          </View>
+                          {backup.metadata && (
+                            <View style={{ gap: 2 }}>
+                              <Text
+                                style={[
+                                  styles.backupItemStats,
+                                  { color: colors.textMuted },
+                                ]}
+                              >
+                                {backup.metadata.novelCount} novels •{" "}
+                                {backup.metadata.totalChapters} chapters
+                              </Text>
+                              {backup.metadata.includesCovers && (
+                                <Text
+                                  style={[
+                                    styles.backupItemStats,
+                                    { color: colors.textMuted },
+                                  ]}
+                                >
+                                  🖼️ Covers included •{" "}
+                                  {(
+                                    backup.metadata.totalCoverSize /
+                                    (1024 * 1024)
+                                  ).toFixed(2)}{" "}
+                                  MB
+                                </Text>
+                              )}
+                              {typeof backup.metadata.durationMs ===
+                                "number" && (
+                                <Text
+                                  style={[
+                                    styles.backupItemStats,
+                                    { color: colors.textMuted },
+                                  ]}
+                                >
+                                  ⏱️ Took{" "}
+                                  {formatDuration(backup.metadata.durationMs)}{" "}
+                                  to create
+                                </Text>
+                              )}
+                            </View>
                           )}
                         </View>
-                      )}
-                    </View>
-                    <View style={styles.backupItemActions}>
-                      <Pressable
-                        onPress={async () => {
-                          const canShare = await Sharing.isAvailableAsync();
-                          const mimeType = backup.name.endsWith(".zip")
-                            ? "application/zip"
-                            : "application/json";
-                          if (canShare)
-                            await Sharing.shareAsync(BACKUP_DIR + backup.name, {
-                              mimeType,
-                              dialogTitle: "Share Backup",
-                            });
-                        }}
-                        style={styles.backupItemAction}
-                      >
-                        <Ionicons
-                          name="share-outline"
-                          size={18}
-                          color={colors.accent}
-                        />
+                        <View style={styles.backupItemActions}>
+                          <Pressable
+                            onPress={async () => {
+                              const canShare = await Sharing.isAvailableAsync();
+                              const mimeType = backup.name.endsWith(".zip")
+                                ? "application/zip"
+                                : "application/json";
+                              if (canShare)
+                                await Sharing.shareAsync(
+                                  BACKUP_DIR + backup.name,
+                                  {
+                                    mimeType,
+                                    dialogTitle: "Share Backup",
+                                  },
+                                );
+                            }}
+                            style={styles.backupItemAction}
+                          >
+                            <Ionicons
+                              name="share-outline"
+                              size={18}
+                              color={colors.accent}
+                            />
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeleteBackup(backup.name)}
+                            style={styles.backupItemAction}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color="#FF4444"
+                            />
+                          </Pressable>
+                        </View>
                       </Pressable>
-                      <Pressable
-                        onPress={() => handleDeleteBackup(backup.name)}
-                        style={styles.backupItemAction}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color="#FF4444"
-                        />
-                      </Pressable>
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
+                    );
+                  }}
+                />
+              )}
+            </View>
           </View>
-        )}
+        </Modal>
 
         {activePanel === "comment" && (
           <View
@@ -2998,28 +3133,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   progressText: { fontFamily: "Inter_400Regular", fontSize: 12 },
-  progressBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  progressBarTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  progressTimerText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    fontVariant: ["tabular-nums"],
-    minWidth: 64,
-    textAlign: "right",
-  },
   backupRow: { flexDirection: "row", gap: 8 },
   backupBtn: {
     flex: 1,
@@ -3062,7 +3175,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   backupClearLog: { fontFamily: "Inter_500Medium", fontSize: 11 },
-  backupActivityLogScroll: { maxHeight: 150 },
+  backupActivityLogScroll: { maxHeight: 260 },
   backupActivityLogLine: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
@@ -3075,6 +3188,30 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 10,
+  },
+  restoreModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  restoreModalCard: {
+    width: "100%",
+    maxWidth: 440,
+    maxHeight: "80%",
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    gap: 10,
+  },
+  restoreModalList: {
+    flexGrow: 0,
+  },
+  restoreModalLog: {
+    flexGrow: 0,
+    maxHeight: 320,
+    minHeight: 180,
   },
   backupListHeader: {
     flexDirection: "row",
