@@ -443,7 +443,11 @@ export default function SettingsScreen() {
         const manifest: BackupManifest = JSON.parse(raw);
         return { format: detected.format, metadata: manifest.metadata || null };
       }
-      if (detected.format === "zip-v4" && detected.tempDir && detected.jsonFile) {
+      if (
+        detected.format === "zip-v4" &&
+        detected.tempDir &&
+        detected.jsonFile
+      ) {
         const raw = await FileSystem.readAsStringAsync(
           `${detected.tempDir}${detected.jsonFile}`,
         );
@@ -522,7 +526,10 @@ export default function SettingsScreen() {
     const flushPart = async () => {
       if (partLines.length === 0) return;
       const partPath = `${backupChaptersDir}part_${String(partIndex).padStart(4, "0")}.ndjson`;
-      await FileSystem.writeAsStringAsync(partPath, partLines.join("\n") + "\n");
+      await FileSystem.writeAsStringAsync(
+        partPath,
+        partLines.join("\n") + "\n",
+      );
       partIndex++;
       partLines = [];
     };
@@ -549,7 +556,8 @@ export default function SettingsScreen() {
           for (const chapterFile of jsonFiles) {
             const chapterPath = `${novelChapterDir}${chapterFile}`;
             try {
-              const chapterRaw = await FileSystem.readAsStringAsync(chapterPath);
+              const chapterRaw =
+                await FileSystem.readAsStringAsync(chapterPath);
               if (chapterRaw) {
                 const chapterData = JSON.parse(chapterRaw);
                 const chapterIndex = chapterFile
@@ -1023,14 +1031,11 @@ export default function SettingsScreen() {
     if (manifest.appSettings) await saveAppSettings(manifest.appSettings);
 
     const backupChaptersDir = `${backupFolder}chapters/`;
-    const backupChaptersDirInfo = await FileSystem.getInfoAsync(
-      backupChaptersDir,
-    );
+    const backupChaptersDirInfo =
+      await FileSystem.getInfoAsync(backupChaptersDir);
     let totalChaptersRestored = 0;
     if (backupChaptersDirInfo.exists && backupChaptersDirInfo.isDirectory) {
-      const partFiles = (
-        await FileSystem.readDirectoryAsync(backupChaptersDir)
-      )
+      const partFiles = (await FileSystem.readDirectoryAsync(backupChaptersDir))
         .filter((f) => f.startsWith("part_") && f.endsWith(".ndjson"))
         .sort();
       addBackupLog(
@@ -1069,9 +1074,8 @@ export default function SettingsScreen() {
 
     const backupCoversDir = `${backupFolder}covers/`;
     const coversManifestPath = `${backupCoversDir}manifest.json`;
-    const coversManifestInfo = await FileSystem.getInfoAsync(
-      coversManifestPath,
-    );
+    const coversManifestInfo =
+      await FileSystem.getInfoAsync(coversManifestPath);
     if (coversManifestInfo.exists) {
       const coverEntries: CoverManifestEntry[] = JSON.parse(
         await FileSystem.readAsStringAsync(coversManifestPath),
@@ -1272,7 +1276,11 @@ export default function SettingsScreen() {
             if (sidecarInfo.exists) {
               const raw = await FileSystem.readAsStringAsync(sidecarPath);
               const metadata: BackupMetadata = JSON.parse(raw);
-              return { name: filename, metadata, format: "ndjson-v5" as BackupFormat };
+              return {
+                name: filename,
+                metadata,
+                format: "ndjson-v5" as BackupFormat,
+              };
             }
             // Slow path: older backup, or a v5 zip imported from elsewhere
             // without its sidecar — unzip/parse to find out what it is.
@@ -1293,13 +1301,19 @@ export default function SettingsScreen() {
   // Shared by both the "Saved Backups" list and "Import from File" — takes
   // any path, figures out which of the three formats it is, and restores
   // through the matching path. Returns the metadata for the success alert.
-  const restoreFromAnyFormat = async (path: string): Promise<BackupMetadata> => {
+  const restoreFromAnyFormat = async (
+    path: string,
+  ): Promise<BackupMetadata> => {
     const detected = await detectBackupFormat(path);
     try {
       if (detected.format === "ndjson-v5" && detected.tempDir) {
         return await restoreBackupFromFolder(detected.tempDir);
       }
-      if (detected.format === "zip-v4" && detected.tempDir && detected.jsonFile) {
+      if (
+        detected.format === "zip-v4" &&
+        detected.tempDir &&
+        detected.jsonFile
+      ) {
         const raw = await FileSystem.readAsStringAsync(
           `${detected.tempDir}${detected.jsonFile}`,
         );
@@ -1889,10 +1903,7 @@ export default function SettingsScreen() {
                         }}
                       >
                         <Text
-                          style={[
-                            styles.backupItemTag,
-                            { color: colors.text },
-                          ]}
+                          style={[styles.backupItemTag, { color: colors.text }]}
                         >
                           {tag || "No label"}
                         </Text>
@@ -1940,8 +1951,9 @@ export default function SettingsScreen() {
                                 { color: colors.textMuted },
                               ]}
                             >
-                              ⏱️ Took {formatDuration(backup.metadata.durationMs)}{" "}
-                              to create
+                              ⏱️ Took{" "}
+                              {formatDuration(backup.metadata.durationMs)} to
+                              create
                             </Text>
                           )}
                         </View>
