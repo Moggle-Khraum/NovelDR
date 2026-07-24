@@ -244,8 +244,13 @@ const CHAPTERS_PER_PART = 40;
 
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
-  const { novels, purgeOrphanedData, setRestoring, commitRestoredLibrary, abortRestore } =
-    useLibrary();
+  const {
+    novels,
+    purgeOrphanedData,
+    setRestoring,
+    commitRestoredLibrary,
+    abortRestore,
+  } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -317,7 +322,8 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current)
+        clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -2169,7 +2175,11 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
+                <Pressable
+                  onPress={closePanel}
+                  disabled={importing}
+                  hitSlop={8}
+                >
                   <Ionicons
                     name="close"
                     size={20}
