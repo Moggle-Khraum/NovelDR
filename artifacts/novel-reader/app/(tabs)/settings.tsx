@@ -316,7 +316,8 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current)
+        clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -2153,7 +2154,11 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
+                <Pressable
+                  onPress={closePanel}
+                  disabled={importing}
+                  hitSlop={8}
+                >
                   <Ionicons
                     name="close"
                     size={20}
