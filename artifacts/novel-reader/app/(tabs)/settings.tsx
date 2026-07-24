@@ -244,7 +244,8 @@ const CHAPTERS_PER_PART = 40;
 
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
-  const { novels, purgeOrphanedData, setRestoring } = useLibrary();
+  const { novels, purgeOrphanedData, setRestoring, commitRestoredLibrary, abortRestore } =
+    useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -316,8 +317,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current)
-        clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -1175,6 +1175,11 @@ export default function SettingsScreen() {
     // Flush any pending logs
     flushLogs();
     addBackupLog("✅ Restore complete!");
+
+    // Hand the final list to LibraryContext directly — no disk re-read,
+    // so there's no window where the Index screen could show these novels
+    // before every chapter/cover write above has actually finished.
+    commitRestoredLibrary(mergedLibrary);
   };
 
   // --------------------------------------------------------------------------
@@ -1383,6 +1388,10 @@ export default function SettingsScreen() {
 
     flushLogs();
     addBackupLog("✅ Restore complete!");
+
+    // Same explicit handoff as the legacy path — commit only once every
+    // file write above is confirmed done, no disk re-read in between.
+    commitRestoredLibrary(mergedLibrary);
     return manifest.metadata;
   };
 
@@ -1618,7 +1627,7 @@ export default function SettingsScreen() {
                 `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n` +
                   (metadata.includesCovers ? `🖼️ covers included\n` : "") +
                   `⏱️ Finished in ${formatDuration(durationMs)}\n\n` +
-                  `Tap the reload button (or pull to refresh) on the Library screen to see the restored data.`,
+                  `Pull to refresh (or tap the reload button) on the Library screen to see the restored data.`,
                 [
                   {
                     text: "OK",
@@ -1636,9 +1645,12 @@ export default function SettingsScreen() {
               Alert.alert("Import Failed", String(e));
             } finally {
               setImporting(false);
-              // Release restore lock — refreshing is now manual (reload
-              // button / pull-to-refresh on the Library screen), not automatic.
-              setRestoring(false);
+              // commitRestoredLibrary() inside restoreFromAnyFormat already
+              // released the lock on success. abortRestore() here is the
+              // fallback for the failure path (or anything that throws
+              // before the commit) — safe to call even if the lock is
+              // already down.
+              abortRestore();
               stopOperationTimer();
               resetProgress();
               flushLogs();
@@ -1688,7 +1700,7 @@ export default function SettingsScreen() {
                 );
                 Alert.alert(
                   "Restore Complete ✓",
-                  `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n⏱️ Finished in ${formatDuration(durationMs)}\n\nTap the reload button (or pull to refresh) on the Library screen to see the restored data.`,
+                  `Successfully restored:\n\n📚 ${metadata.novelCount} novels\n📄 ${metadata.totalChapters} chapters\n⏱️ Finished in ${formatDuration(durationMs)}\n\nPull to refresh (or tap the reload button) on the Library screen to see the restored data.`,
                   [{ text: "OK" }],
                 );
                 closePanel();
@@ -1696,7 +1708,10 @@ export default function SettingsScreen() {
                 Alert.alert("Import Failed", String(e));
               } finally {
                 setImporting(false);
-                setRestoring(false);
+                // See handleImportBackup: commitRestoredLibrary() already
+                // released the lock on success; this is just the failure
+                // fallback.
+                abortRestore();
                 stopOperationTimer();
                 resetProgress();
                 flushLogs();
@@ -2154,11 +2169,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable
-                  onPress={closePanel}
-                  disabled={importing}
-                  hitSlop={8}
-                >
+                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
                   <Ionicons
                     name="close"
                     size={20}
