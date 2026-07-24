@@ -250,6 +250,8 @@ export default function SettingsScreen() {
     setRestoring,
     commitRestoredLibrary,
     abortRestore,
+    bulkWriteNovels,
+    sortOrder,
   } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -277,7 +279,7 @@ export default function SettingsScreen() {
   const { checkNow, checkingUpdate } = useUpdateContext();
 
   // --------------------------------------------------------------------------
-  // Live operation timer (drives the 00:00:00 readout during backup/restore)
+  // Live operation timer
   // --------------------------------------------------------------------------
   const [elapsedMs, setElapsedMs] = useState(0);
   const operationStartRef = useRef<number>(0);
@@ -294,11 +296,6 @@ export default function SettingsScreen() {
     timerIntervalRef.current = setInterval(() => {
       setElapsedMs(Date.now() - operationStartRef.current);
     }, 1000);
-    // Belt-and-suspenders alongside the 25-line batch cap in addBackupLog:
-    // whatever is sitting in pendingLogsRef gets flushed to state at least
-    // every 300ms, so a slow phase (big single file, network fetch, etc.)
-    // never leaves the log looking stalled while still keeping updates
-    // throttled far below per-file re-render frequency.
     if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
     logFlushIntervalRef.current = setInterval(() => {
       flushLogs();
@@ -317,13 +314,10 @@ export default function SettingsScreen() {
     flushLogs();
   };
 
-  // Safety net: don't leave a stale interval running if the screen unmounts
-  // mid-operation.
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current)
-        clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -337,11 +331,7 @@ export default function SettingsScreen() {
   };
 
   // --------------------------------------------------------------------------
-  // Progress bar (done/total). Counts live in a ref so the pooled workers
-  // below can increment them from concurrent callbacks without fighting each
-  // other; the ref is only flushed into state at the same batch cadence as
-  // the activity log, so a restore with thousands of files doesn't re-render
-  // once per file — see logBatchSize below.
+  // Progress bar
   // --------------------------------------------------------------------------
   const [progressTotal, setProgressTotal] = useState(0);
   const [progressDone, setProgressDone] = useState(0);
@@ -357,7 +347,7 @@ export default function SettingsScreen() {
   const bumpProgress = (increment: number = 1) => {
     const p = progressRef.current;
     p.done += increment;
-    if (p.done >= p.total || p.done % logBatchSize === 0) {
+    if (p.done >= p.total || p.done % 25 === 0) {
       setProgressDone(p.done);
     }
   };
@@ -609,71 +599,514 @@ export default function SettingsScreen() {
   };
 
   // --------------------------------------------------------------------------
-  // Atomic write for library
+  // MERGE LIBRARY DATA (no overwrite)
   // --------------------------------------------------------------------------
 
-  const atomicWriteLibrary = async (data: any) => {
-    const path = `${APP_DATA_DIR}novel_library_v1.json`;
-    const tempPath = path + ".tmp";
-    await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
-    // Android's moveAsync goes through java.io.File#renameTo, which fails
-    // when the destination already exists (iOS overwrites fine on its own).
-    // novel_library_v1.json exists after the very first save, so without
-    // this delete the "atomic" write would break on Android on every write
-    // after the first.
-    const destInfo = await FileSystem.getInfoAsync(path);
-    if (destInfo.exists) {
-      await FileSystem.deleteAsync(path, { idempotent: true });
+  const mergeLibraryData = (
+    currentNovels: any[],
+    backupNovels: any[],
+  ): any[] => {
+    const currentMap = new Map(
+      (currentNovels || []).map((n: any) => [n.id, n]),
+    );
+    const backupMap = new Map((backupNovels || []).map((n: any) => [n.id, n]));
+    const allIds = new Set([...currentMap.keys(), ...backupMap.keys()]);
+    const merged: any[] = [];
+
+    for (const id of allIds) {
+      const cur = currentMap.get(id);
+      const bak = backupMap.get(id);
+      if (cur && bak) {
+        const curChapterUrls = new Set(
+          (cur.chapters || []).map((c: any) => c.url),
+        );
+        const extraChapters = (bak.chapters || []).filter(
+          (c: any) => !curChapterUrls.has(c.url),
+        );
+        merged.push({
+          ...bak,
+          ...cur,
+          chapters: [...(cur.chapters || []), ...extraChapters],
+        });
+      } else if (cur) {
+        merged.push(cur);
+      } else if (bak) {
+        merged.push(bak);
+      }
     }
-    await FileSystem.moveAsync({ from: tempPath, to: path });
+    return merged;
   };
 
   // --------------------------------------------------------------------------
-  // Export backup (v5 - NDJSON)
+  // RESTORE LEGACY BACKUP (v3.5 / v4) - now using per‑novel files
+  // --------------------------------------------------------------------------
+
+  const restoreLegacyBackup = async (backup: FullBackup) => {
+    pendingLogsRef.current = [];
+    addBackupLog("🔄 Starting legacy restore...");
+    await ensureDir(APP_DATA_DIR);
+
+    // 1. Merge library data
+    addBackupLog("📚 Merging backup with current library...");
+    const mergedLibrary = mergeLibraryData(
+      novels,
+      Array.isArray(backup.libraryData) ? backup.libraryData : [],
+    );
+    addBackupLog(
+      `✅ ${mergedLibrary.length} novels merged (will write after chapters/covers)`,
+    );
+
+    // 2. Restore other settings (small, can write immediately)
+    if (backup.sortPreference) {
+      // The sort order will be written as part of the index; we'll apply it later
+    }
+    if (backup.readerSettings) {
+      addBackupLog("⚙️ Restoring reader settings...");
+      await FileSystem.writeAsStringAsync(
+        `${APP_DATA_DIR}reader_settings.json`,
+        JSON.stringify(backup.readerSettings),
+      );
+    }
+    if (backup.appSettings) await saveAppSettings(backup.appSettings);
+
+    // 3. Restore chapters (if any) using concurrency pool
+    if (backup.chapters && Object.keys(backup.chapters).length > 0) {
+      const chaptersDir = `${APP_DATA_DIR}chapters/`;
+      await ensureDir(chaptersDir);
+      const tasks: { novelId: string; chapterIndex: number; data: any }[] = [];
+      for (const [novelId, novelChapters] of Object.entries(backup.chapters)) {
+        for (const [chapterIndex, data] of Object.entries(novelChapters)) {
+          tasks.push({
+            novelId,
+            chapterIndex: parseInt(chapterIndex),
+            data,
+          });
+        }
+      }
+      addBackupLog(`📄 Restoring ${tasks.length} chapters in parallel...`);
+
+      const novelIds = new Set(tasks.map((t) => t.novelId));
+      for (const novelId of novelIds) {
+        await ensureDir(`${chaptersDir}${novelId}/`);
+      }
+      startProgress(
+        tasks.length,
+        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
+      );
+
+      let chaptersFailed = 0;
+      await runConcurrent(
+        tasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          try {
+            const chapterPath = `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`;
+            await FileSystem.writeAsStringAsync(
+              chapterPath,
+              JSON.stringify(data),
+            );
+          } catch {
+            chaptersFailed++;
+            addBackupLog(
+              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
+            );
+          } finally {
+            bumpProgress();
+          }
+        },
+      );
+      endProgress();
+      addBackupLog(
+        `📊 Restored ${tasks.length - chaptersFailed}/${tasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
+      );
+    } else {
+      addBackupLog("⚠️ No chapters to restore");
+    }
+
+    // 4. Restore covers (if any) using concurrency
+    if (backup.covers && backup.covers.length > 0) {
+      addBackupLog(`🖼️ Restoring ${backup.covers.length} novel covers...`);
+      await ensureDir(COVERS_DIR);
+      startProgress(backup.covers.length, "Restoring novel covers...");
+
+      const coverMap = new Map(
+        backup.covers.map((c) => [c.novelId, c.fileName]),
+      );
+      for (const novel of mergedLibrary) {
+        const fileName = coverMap.get(novel.id);
+        if (fileName) {
+          novel.coverUrl = `${COVERS_DIR}${fileName}`;
+        }
+      }
+
+      let coversFailed = 0;
+      await runConcurrent(backup.covers, 12, async (cover) => {
+        try {
+          if (cover.coverBase64) {
+            const coverPath = `${COVERS_DIR}${cover.fileName}`;
+            const success = await saveBase64AsImage(
+              cover.coverBase64,
+              coverPath,
+            );
+            if (!success) {
+              coversFailed++;
+              addBackupLog(`❌ Failed: ${cover.fileName}`);
+            }
+          } else {
+            coversFailed++;
+            addBackupLog(`⚠️ No image data for ${cover.fileName}`);
+          }
+        } catch {
+          coversFailed++;
+          addBackupLog(`❌ Failed: ${cover.fileName}`);
+        } finally {
+          bumpProgress();
+        }
+      });
+      endProgress();
+      addBackupLog(
+        `✅ Covers restored: ${backup.covers.length - coversFailed}/${backup.covers.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
+      );
+    } else {
+      addBackupLog("⚠️ No covers to restore");
+    }
+
+    // 5. Now write the final library using bulkWriteNovels (per‑novel files + index)
+    addBackupLog("💾 Writing merged library as per‑novel files...");
+    const sortOrderFromBackup = backup.sortPreference || "ascending";
+    await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
+
+    // 6. Restore AsyncStorage data (if any)
+    if (backup.asyncStorageData) {
+      addBackupLog("📦 Restoring legacy data...");
+      const AsyncStorage = await getAsyncStorage();
+      if (AsyncStorage) {
+        for (const [key, value] of Object.entries(backup.asyncStorageData)) {
+          await AsyncStorage.setItem(key, value);
+        }
+        addBackupLog("✅ Legacy data restored");
+      }
+    }
+
+    // 7. Purge orphans
+    addBackupLog("🧹 Purging orphaned data...");
+    try {
+      const validIds = new Set<string>(
+        mergedLibrary.map((n: any) => String(n.id)),
+      );
+      const { dirs, files } = await purgeOrphanedData(mergedLibrary);
+      const purgedCovers = await purgeOrphanedCovers(validIds);
+      addBackupLog(
+        `✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`,
+      );
+    } catch (e) {
+      addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
+    }
+
+    flushLogs();
+    addBackupLog("✅ Restore complete!");
+
+    commitRestoredLibrary(mergedLibrary, sortOrderFromBackup);
+  };
+
+  // --------------------------------------------------------------------------
+  // RESTORE V5 BACKUP (NDJSON folder) - now using per‑novel files
+  // --------------------------------------------------------------------------
+
+  const restoreBackupFromFolder = async (
+    backupFolder: string,
+  ): Promise<BackupMetadata> => {
+    pendingLogsRef.current = [];
+    addBackupLog("🔄 Starting v5 restore...");
+    await ensureDir(APP_DATA_DIR);
+
+    const manifestRaw = await FileSystem.readAsStringAsync(
+      `${backupFolder}manifest.json`,
+    );
+    const manifest: BackupManifest = JSON.parse(manifestRaw);
+
+    // 1. Merge library data
+    addBackupLog("📚 Merging backup with current library...");
+    const mergedLibrary = mergeLibraryData(
+      novels,
+      Array.isArray(manifest.libraryData) ? manifest.libraryData : [],
+    );
+    addBackupLog(
+      `✅ ${mergedLibrary.length} novels merged (will write after chapters/covers)`,
+    );
+
+    // 2. Restore small settings
+    if (manifest.readerSettings) {
+      addBackupLog("⚙️ Restoring reader settings...");
+      await FileSystem.writeAsStringAsync(
+        `${APP_DATA_DIR}reader_settings.json`,
+        JSON.stringify(manifest.readerSettings),
+      );
+    }
+    if (manifest.appSettings) await saveAppSettings(manifest.appSettings);
+
+    // 3. Chapters: read all part files, build tasks, then write with concurrency
+    const backupChaptersDir = `${backupFolder}chapters/`;
+    const backupChaptersDirInfo =
+      await FileSystem.getInfoAsync(backupChaptersDir);
+    if (backupChaptersDirInfo.exists && backupChaptersDirInfo.isDirectory) {
+      const partFiles = (await FileSystem.readDirectoryAsync(backupChaptersDir))
+        .filter((f) => f.startsWith("part_") && f.endsWith(".ndjson"))
+        .sort();
+
+      addBackupLog(
+        `📄 Reading ${partFiles.length} part file${partFiles.length !== 1 ? "s" : ""}...`,
+      );
+
+      const chapterTasks: {
+        novelId: string;
+        chapterIndex: number;
+        data: any;
+      }[] = [];
+      for (const partFile of partFiles) {
+        const partRaw = await FileSystem.readAsStringAsync(
+          `${backupChaptersDir}${partFile}`,
+        );
+        const lines = partRaw.split("\n").filter(Boolean);
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line);
+            const { novelId, chapterIndex, ...chapterData } = entry;
+            chapterTasks.push({
+              novelId,
+              chapterIndex: parseInt(chapterIndex),
+              data: chapterData,
+            });
+          } catch {
+            addBackupLog(`⚠️ Failed to parse a chapter entry`);
+          }
+        }
+      }
+
+      addBackupLog(
+        `📄 Restoring ${chapterTasks.length} chapters in parallel...`,
+      );
+      const chaptersDir = `${APP_DATA_DIR}chapters/`;
+
+      const novelIds = new Set(chapterTasks.map((t) => t.novelId));
+      for (const novelId of novelIds) {
+        await ensureDir(`${chaptersDir}${novelId}/`);
+      }
+      startProgress(
+        chapterTasks.length,
+        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
+      );
+
+      let chaptersFailed = 0;
+      await runConcurrent(
+        chapterTasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          try {
+            await FileSystem.writeAsStringAsync(
+              `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`,
+              JSON.stringify(data),
+            );
+          } catch {
+            chaptersFailed++;
+            addBackupLog(
+              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
+            );
+          } finally {
+            bumpProgress();
+          }
+        },
+      );
+      endProgress();
+      addBackupLog(
+        `📊 Restored ${chapterTasks.length - chaptersFailed}/${chapterTasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
+      );
+    } else {
+      addBackupLog("⚠️ No chapters to restore");
+    }
+
+    // 4. Covers: read cover manifest, copy cover files
+    const backupCoversDir = `${backupFolder}covers/`;
+    const coversManifestPath = `${backupCoversDir}manifest.json`;
+    const coversManifestInfo =
+      await FileSystem.getInfoAsync(coversManifestPath);
+    if (coversManifestInfo.exists) {
+      const coverEntries: CoverManifestEntry[] = JSON.parse(
+        await FileSystem.readAsStringAsync(coversManifestPath),
+      );
+      addBackupLog(`🖼️ Restoring ${coverEntries.length} novel covers...`);
+      await ensureDir(COVERS_DIR);
+      startProgress(coverEntries.length, "Restoring novel covers...");
+
+      const coverMap = new Map(
+        coverEntries.map((c) => [c.novelId, c.fileName]),
+      );
+      for (const novel of mergedLibrary) {
+        const fileName = coverMap.get(novel.id);
+        if (fileName) {
+          novel.coverUrl = `${COVERS_DIR}${fileName}`;
+        }
+      }
+
+      let coversFailed = 0;
+      await runConcurrent(coverEntries, 12, async (cover) => {
+        try {
+          await FileSystem.copyAsync({
+            from: `${backupCoversDir}${cover.fileName}`,
+            to: `${COVERS_DIR}${cover.fileName}`,
+          });
+        } catch {
+          coversFailed++;
+          addBackupLog(`❌ Failed: ${cover.fileName}`);
+        } finally {
+          bumpProgress();
+        }
+      });
+      endProgress();
+      addBackupLog(
+        `✅ Covers restored: ${coverEntries.length - coversFailed}/${coverEntries.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
+      );
+    } else {
+      addBackupLog("⚠️ No covers to restore");
+    }
+
+    // 5. Write final library using bulkWriteNovels
+    addBackupLog("💾 Writing merged library as per‑novel files...");
+    const sortOrderFromBackup = manifest.sortPreference || "ascending";
+    await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
+
+    // 6. AsyncStorage data
+    if (manifest.asyncStorageData) {
+      addBackupLog("📦 Restoring legacy data...");
+      const AsyncStorage = await getAsyncStorage();
+      if (AsyncStorage) {
+        for (const [key, value] of Object.entries(manifest.asyncStorageData)) {
+          await AsyncStorage.setItem(key, value);
+        }
+        addBackupLog("✅ Legacy data restored");
+      }
+    }
+
+    // 7. Purge orphans
+    addBackupLog("🧹 Purging orphaned data...");
+    try {
+      const validIds = new Set<string>(
+        mergedLibrary.map((n: any) => String(n.id)),
+      );
+      const { dirs, files } = await purgeOrphanedData(mergedLibrary);
+      const purgedCovers = await purgeOrphanedCovers(validIds);
+      addBackupLog(
+        `✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`,
+      );
+    } catch (e) {
+      addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
+    }
+
+    flushLogs();
+    addBackupLog("✅ Restore complete!");
+
+    commitRestoredLibrary(mergedLibrary, sortOrderFromBackup);
+    return manifest.metadata;
+  };
+
+  // --------------------------------------------------------------------------
+  // RESTORE FROM ANY FORMAT (wrapper)
+  // --------------------------------------------------------------------------
+
+  const restoreFromAnyFormat = async (
+    path: string,
+  ): Promise<BackupMetadata> => {
+    const detected = await detectBackupFormat(path);
+    try {
+      if (detected.format === "ndjson-v5" && detected.tempDir) {
+        return await restoreBackupFromFolder(detected.tempDir);
+      }
+      if (
+        detected.format === "zip-v4" &&
+        detected.tempDir &&
+        detected.jsonFile
+      ) {
+        const raw = await FileSystem.readAsStringAsync(
+          `${detected.tempDir}${detected.jsonFile}`,
+        );
+        const backup: FullBackup = JSON.parse(raw);
+        if (!backup.metadata || !backup.libraryData) {
+          throw new Error("This file is not a valid NovelDR backup.");
+        }
+        await restoreLegacyBackup(backup);
+        return backup.metadata;
+      }
+      // json-v3_5
+      const raw = await FileSystem.readAsStringAsync(path);
+      const backup: FullBackup = JSON.parse(raw);
+      if (!backup.metadata || !backup.libraryData) {
+        throw new Error("This file is not a valid NovelDR backup.");
+      }
+      await restoreLegacyBackup(backup);
+      return backup.metadata;
+    } finally {
+      if (detected.tempDir)
+        await FileSystem.deleteAsync(detected.tempDir, { idempotent: true });
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // EXPORT BACKUP (v5 - NDJSON) - now using in‑memory novels and sortOrder
   // --------------------------------------------------------------------------
 
   const exportBackupV5 = async (
     backupFolder: string,
     comment: string,
+    novelsArray: typeof novels,
+    currentSortOrder: typeof sortOrder,
   ): Promise<BackupMetadata> => {
-    addBackupLog("📂 Reading library data...");
+    addBackupLog("📂 Preparing library data from memory...");
 
-    const libraryPath = `${APP_DATA_DIR}novel_library_v1.json`;
-    const sortPath = `${APP_DATA_DIR}chapter_sort_preference.json`;
-    const readerPath = `${APP_DATA_DIR}reader_settings.json`;
+    const libraryData = novelsArray.map((novel) => ({
+      ...novel,
+      chapters: novel.chapters.map((ch) => ({
+        title: ch.title,
+        url: ch.url,
+        chapterNumber: ch.chapterNumber,
+      })),
+    }));
+    const novelCount = libraryData.length;
+    const sortPreference = currentSortOrder;
 
-    let [libraryRaw, sortRaw, readerRaw, settingsData] = await Promise.all([
-      readFileSafe(libraryPath),
-      readFileSafe(sortPath),
-      readFileSafe(readerPath),
-      loadAppSettings(),
-    ]);
+    // Reader settings – read from file or fallback
+    let readerSettings = {};
+    try {
+      const readerRaw = await readFileSafe(
+        `${APP_DATA_DIR}reader_settings.json`,
+      );
+      if (readerRaw) readerSettings = JSON.parse(readerRaw);
+    } catch {}
 
+    // App settings
+    const settingsData = await loadAppSettings();
+
+    // AsyncStorage legacy data
     const AsyncStorage = await getAsyncStorage();
-    if (AsyncStorage && !libraryRaw) {
-      addBackupLog("📦 Checking legacy storage...");
-      libraryRaw = await AsyncStorage.getItem("novel_library_v1");
-      if (libraryRaw) addBackupLog("✅ Found legacy library data");
-    }
-    if (AsyncStorage && !sortRaw)
-      sortRaw = await AsyncStorage.getItem("chapter_sort_preference");
-    if (AsyncStorage && !readerRaw) {
-      const fontSize = await AsyncStorage.getItem("reader_font_size_idx");
-      const lineSpacing = await AsyncStorage.getItem("reader_line_spacing_idx");
-      if (fontSize || lineSpacing) {
-        readerRaw = JSON.stringify({
-          fontSizeIdx: fontSize ? parseInt(fontSize) : 1,
-          lineSpacingIdx: lineSpacing ? parseInt(lineSpacing) : 1,
-        });
+    let asyncStorageData: Record<string, string> = {};
+    if (AsyncStorage) {
+      addBackupLog("📦 Saving legacy preferences...");
+      try {
+        const keys = [
+          "novel_library_v1",
+          "chapter_sort_preference",
+          "reader_font_size_idx",
+          "reader_line_spacing_idx",
+          "noveldr_warning_dismissed",
+        ];
+        for (const key of keys) {
+          const value = await AsyncStorage.getItem(key);
+          if (value !== null) asyncStorageData[key] = value;
+        }
+        addBackupLog("✅ Legacy preferences saved");
+      } catch {
+        addBackupLog("⚠️ Could not read all legacy settings");
       }
     }
-
-    const libraryData = libraryRaw ? JSON.parse(libraryRaw) : [];
-    const novelCount = Array.isArray(libraryData) ? libraryData.length : 0;
-    const sortPreference = sortRaw || "ascending";
-    const readerSettings = readerRaw ? JSON.parse(readerRaw) : {};
-
-    addBackupLog(`📚 Found ${novelCount} novels in library`);
 
     // ── Chapters: stream to NDJSON part files ────────────────────────────
     const chaptersDir = `${APP_DATA_DIR}chapters/`;
@@ -736,9 +1169,7 @@ export default function SettingsScreen() {
               addBackupLog(`⚠️ Skipped corrupted: ${chapterFile}`);
             }
           }
-          const novelData = Array.isArray(libraryData)
-            ? libraryData.find((n: any) => n.id === novelId)
-            : null;
+          const novelData = libraryData.find((n: any) => n.id === novelId);
           const novelTitle = novelData?.title || novelId.slice(0, 12);
           addBackupLog(`   📄 ${novelTitle}: ${novelChapterCount} chapters`);
         }
@@ -746,6 +1177,7 @@ export default function SettingsScreen() {
         addBackupLog(`📊 Total chapters found: ${totalChaptersFound}`);
       } else {
         addBackupLog("⚠️ No chapters folder found");
+        // Fallback: if chapters were stored in memory (e.g., from old backup)
         if (AsyncStorage && Array.isArray(libraryData)) {
           addBackupLog("🔍 Checking AsyncStorage for chapter content...");
           for (const novel of libraryData) {
@@ -801,9 +1233,7 @@ export default function SettingsScreen() {
         for (const coverFile of imageFiles) {
           const coverPath = `${COVERS_DIR}${coverFile}`;
           const novelId = coverFile.replace(/\.(jpg|jpeg|png|webp)$/i, "");
-          const novelExists =
-            Array.isArray(libraryData) &&
-            libraryData.some((n: any) => n.id === novelId);
+          const novelExists = libraryData.some((n: any) => n.id === novelId);
           if (!novelExists) {
             addBackupLog(`   ⏭️ Skipping orphan cover: ${coverFile}`);
             continue;
@@ -841,7 +1271,7 @@ export default function SettingsScreen() {
         addBackupLog("⚠️ No covers directory found - no covers to backup");
       }
 
-      if (coverEntries.length === 0 && Array.isArray(libraryData)) {
+      if (coverEntries.length === 0 && libraryData.length > 0) {
         addBackupLog(
           "🔄 Trying to fetch remote covers for novels without local files...",
         );
@@ -906,27 +1336,6 @@ export default function SettingsScreen() {
     );
 
     // ── Small sections ────────────────────────────────────────────────────
-    let asyncStorageData: Record<string, string> = {};
-    if (AsyncStorage) {
-      addBackupLog("📦 Saving legacy preferences...");
-      try {
-        const keys = [
-          "novel_library_v1",
-          "chapter_sort_preference",
-          "reader_font_size_idx",
-          "reader_line_spacing_idx",
-          "noveldr_warning_dismissed",
-        ];
-        for (const key of keys) {
-          const value = await AsyncStorage.getItem(key);
-          if (value !== null) asyncStorageData[key] = value;
-        }
-        addBackupLog("✅ Legacy preferences saved");
-      } catch {
-        addBackupLog("⚠️ Could not read all legacy settings");
-      }
-    }
-
     const metadata: BackupMetadata = {
       version: 5,
       exportedAt: new Date().toISOString(),
@@ -958,488 +1367,6 @@ export default function SettingsScreen() {
       `✅ Backup ready: ${novelCount} novels, ${totalChaptersFound} chapters, ${coverEntries.length} covers`,
     );
     return metadata;
-  };
-
-  // --------------------------------------------------------------------------
-  // MERGE LIBRARY DATA (no overwrite)
-  // --------------------------------------------------------------------------
-
-  const mergeLibraryData = (
-    currentNovels: any[],
-    backupNovels: any[],
-  ): any[] => {
-    const currentMap = new Map(
-      (currentNovels || []).map((n: any) => [n.id, n]),
-    );
-    const backupMap = new Map((backupNovels || []).map((n: any) => [n.id, n]));
-    const allIds = new Set([...currentMap.keys(), ...backupMap.keys()]);
-    const merged: any[] = [];
-
-    for (const id of allIds) {
-      const cur = currentMap.get(id);
-      const bak = backupMap.get(id);
-      if (cur && bak) {
-        const curChapterUrls = new Set(
-          (cur.chapters || []).map((c: any) => c.url),
-        );
-        const extraChapters = (bak.chapters || []).filter(
-          (c: any) => !curChapterUrls.has(c.url),
-        );
-        merged.push({
-          ...bak,
-          ...cur,
-          chapters: [...(cur.chapters || []), ...extraChapters],
-        });
-      } else if (cur) {
-        merged.push(cur);
-      } else if (bak) {
-        merged.push(bak);
-      }
-    }
-    return merged;
-  };
-
-  // --------------------------------------------------------------------------
-  // RESTORE LEGACY BACKUP (v3.5 / v4) - with concurrency and atomic write
-  // --------------------------------------------------------------------------
-
-  const restoreLegacyBackup = async (backup: FullBackup) => {
-    pendingLogsRef.current = [];
-    addBackupLog("🔄 Starting legacy restore...");
-    await ensureDir(APP_DATA_DIR);
-
-    // 1. Merge library data (but do NOT write yet)
-    addBackupLog("📚 Merging backup with current library...");
-    const mergedLibrary = mergeLibraryData(
-      novels,
-      Array.isArray(backup.libraryData) ? backup.libraryData : [],
-    );
-    addBackupLog(
-      `✅ ${mergedLibrary.length} novels merged (will write after chapters/covers)`,
-    );
-
-    // 2. Restore other settings (small, can write immediately)
-    if (backup.sortPreference) {
-      await FileSystem.writeAsStringAsync(
-        `${APP_DATA_DIR}chapter_sort_preference.json`,
-        JSON.stringify(backup.sortPreference),
-      );
-    }
-    if (backup.readerSettings) {
-      addBackupLog("⚙️ Restoring reader settings...");
-      await FileSystem.writeAsStringAsync(
-        `${APP_DATA_DIR}reader_settings.json`,
-        JSON.stringify(backup.readerSettings),
-      );
-    }
-    if (backup.appSettings) await saveAppSettings(backup.appSettings);
-
-    // 3. Restore chapters (if any) using concurrency pool
-    if (backup.chapters && Object.keys(backup.chapters).length > 0) {
-      const chaptersDir = `${APP_DATA_DIR}chapters/`;
-      await ensureDir(chaptersDir);
-      // Build list of tasks
-      const tasks: { novelId: string; chapterIndex: number; data: any }[] = [];
-      for (const [novelId, novelChapters] of Object.entries(backup.chapters)) {
-        for (const [chapterIndex, data] of Object.entries(novelChapters)) {
-          tasks.push({
-            novelId,
-            chapterIndex: parseInt(chapterIndex),
-            data,
-          });
-        }
-      }
-      addBackupLog(`📄 Restoring ${tasks.length} chapters in parallel...`);
-
-      // Pre-create every novel's chapter directory *before* the pool runs.
-      // ensureDir() is check-then-act (getInfoAsync then makeDirectoryAsync),
-      // not atomic — if it's left inside the pooled worker, up to 12
-      // concurrent chapters from the same novel race to create the same
-      // directory, which can throw on-device and abort the whole restore.
-      const novelIds = new Set(tasks.map((t) => t.novelId));
-      for (const novelId of novelIds) {
-        await ensureDir(`${chaptersDir}${novelId}/`);
-      }
-      startProgress(
-        tasks.length,
-        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
-      );
-
-      // Write chapters with concurrency=12. Each task is wrapped in its own
-      // try/catch so a single corrupt/unwritable chapter doesn't reject the
-      // whole pool and abort the restore.
-      let chaptersFailed = 0;
-      await runConcurrent(
-        tasks,
-        12,
-        async ({ novelId, chapterIndex, data }) => {
-          try {
-            const chapterPath = `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`;
-            await FileSystem.writeAsStringAsync(
-              chapterPath,
-              JSON.stringify(data),
-            );
-          } catch {
-            chaptersFailed++;
-            addBackupLog(
-              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
-            );
-          } finally {
-            bumpProgress();
-          }
-        },
-      );
-      endProgress();
-      addBackupLog(
-        `📊 Restored ${tasks.length - chaptersFailed}/${tasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
-      );
-    } else {
-      addBackupLog("⚠️ No chapters to restore");
-    }
-
-    // 4. Restore covers (if any) using concurrency
-    if (backup.covers && backup.covers.length > 0) {
-      addBackupLog(`🖼️ Restoring ${backup.covers.length} novel covers...`);
-      await ensureDir(COVERS_DIR);
-      startProgress(backup.covers.length, "Restoring novel covers...");
-
-      // Update cover references in mergedLibrary
-      const coverMap = new Map(
-        backup.covers.map((c) => [c.novelId, c.fileName]),
-      );
-      for (const novel of mergedLibrary) {
-        const fileName = coverMap.get(novel.id);
-        if (fileName) {
-          novel.coverUrl = `${COVERS_DIR}${fileName}`;
-        }
-      }
-
-      // Write covers in parallel — same per-item try/catch as chapters above.
-      let coversFailed = 0;
-      await runConcurrent(backup.covers, 12, async (cover) => {
-        try {
-          if (cover.coverBase64) {
-            const coverPath = `${COVERS_DIR}${cover.fileName}`;
-            const success = await saveBase64AsImage(
-              cover.coverBase64,
-              coverPath,
-            );
-            if (!success) {
-              coversFailed++;
-              addBackupLog(`❌ Failed: ${cover.fileName}`);
-            }
-          } else {
-            coversFailed++;
-            addBackupLog(`⚠️ No image data for ${cover.fileName}`);
-          }
-        } catch {
-          coversFailed++;
-          addBackupLog(`❌ Failed: ${cover.fileName}`);
-        } finally {
-          bumpProgress();
-        }
-      });
-      endProgress();
-      addBackupLog(
-        `✅ Covers restored: ${backup.covers.length - coversFailed}/${backup.covers.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
-      );
-    } else {
-      addBackupLog("⚠️ No covers to restore");
-    }
-
-    // 5. Now write the final library atomically
-    addBackupLog("💾 Writing merged library atomically...");
-    await atomicWriteLibrary(mergedLibrary);
-
-    // 6. Restore AsyncStorage data (if any)
-    if (backup.asyncStorageData) {
-      addBackupLog("📦 Restoring legacy data...");
-      const AsyncStorage = await getAsyncStorage();
-      if (AsyncStorage) {
-        for (const [key, value] of Object.entries(backup.asyncStorageData)) {
-          await AsyncStorage.setItem(key, value);
-        }
-        addBackupLog("✅ Legacy data restored");
-      }
-    }
-
-    // 7. Purge orphans
-    addBackupLog("🧹 Purging orphaned data...");
-    try {
-      const validIds = new Set<string>(
-        mergedLibrary.map((n: any) => String(n.id)),
-      );
-      const { dirs, files } = await purgeOrphanedData(mergedLibrary);
-      const purgedCovers = await purgeOrphanedCovers(validIds);
-      addBackupLog(
-        `✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`,
-      );
-    } catch (e) {
-      addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
-    }
-
-    // Flush any pending logs
-    flushLogs();
-    addBackupLog("✅ Restore complete!");
-
-    // Hand the final list to LibraryContext directly — no disk re-read,
-    // so there's no window where the Index screen could show these novels
-    // before every chapter/cover write above has actually finished.
-    commitRestoredLibrary(mergedLibrary);
-  };
-
-  // --------------------------------------------------------------------------
-  // RESTORE V5 BACKUP (NDJSON folder) - with concurrency and atomic write
-  // --------------------------------------------------------------------------
-
-  const restoreBackupFromFolder = async (
-    backupFolder: string,
-  ): Promise<BackupMetadata> => {
-    pendingLogsRef.current = [];
-    addBackupLog("🔄 Starting v5 restore...");
-    await ensureDir(APP_DATA_DIR);
-
-    const manifestRaw = await FileSystem.readAsStringAsync(
-      `${backupFolder}manifest.json`,
-    );
-    const manifest: BackupManifest = JSON.parse(manifestRaw);
-
-    // 1. Merge library data
-    addBackupLog("📚 Merging backup with current library...");
-    const mergedLibrary = mergeLibraryData(
-      novels,
-      Array.isArray(manifest.libraryData) ? manifest.libraryData : [],
-    );
-    addBackupLog(
-      `✅ ${mergedLibrary.length} novels merged (will write after chapters/covers)`,
-    );
-
-    // 2. Restore small settings
-    if (manifest.sortPreference) {
-      await FileSystem.writeAsStringAsync(
-        `${APP_DATA_DIR}chapter_sort_preference.json`,
-        JSON.stringify(manifest.sortPreference),
-      );
-    }
-    if (manifest.readerSettings) {
-      addBackupLog("⚙️ Restoring reader settings...");
-      await FileSystem.writeAsStringAsync(
-        `${APP_DATA_DIR}reader_settings.json`,
-        JSON.stringify(manifest.readerSettings),
-      );
-    }
-    if (manifest.appSettings) await saveAppSettings(manifest.appSettings);
-
-    // 3. Chapters: read all part files, build tasks, then write with concurrency
-    const backupChaptersDir = `${backupFolder}chapters/`;
-    const backupChaptersDirInfo =
-      await FileSystem.getInfoAsync(backupChaptersDir);
-    if (backupChaptersDirInfo.exists && backupChaptersDirInfo.isDirectory) {
-      const partFiles = (await FileSystem.readDirectoryAsync(backupChaptersDir))
-        .filter((f) => f.startsWith("part_") && f.endsWith(".ndjson"))
-        .sort();
-
-      addBackupLog(
-        `📄 Reading ${partFiles.length} part file${partFiles.length !== 1 ? "s" : ""}...`,
-      );
-
-      // Collect all chapter tasks
-      const chapterTasks: {
-        novelId: string;
-        chapterIndex: number;
-        data: any;
-      }[] = [];
-      for (const partFile of partFiles) {
-        const partRaw = await FileSystem.readAsStringAsync(
-          `${backupChaptersDir}${partFile}`,
-        );
-        const lines = partRaw.split("\n").filter(Boolean);
-        for (const line of lines) {
-          try {
-            const entry = JSON.parse(line);
-            const { novelId, chapterIndex, ...chapterData } = entry;
-            chapterTasks.push({
-              novelId,
-              chapterIndex: parseInt(chapterIndex),
-              data: chapterData,
-            });
-          } catch {
-            addBackupLog(`⚠️ Failed to parse a chapter entry`);
-          }
-        }
-      }
-
-      addBackupLog(
-        `📄 Restoring ${chapterTasks.length} chapters in parallel...`,
-      );
-      const chaptersDir = `${APP_DATA_DIR}chapters/`;
-
-      // Pre-create every novel's chapter directory before the pool runs —
-      // same race avoided as in the legacy restore path above.
-      const novelIds = new Set(chapterTasks.map((t) => t.novelId));
-      for (const novelId of novelIds) {
-        await ensureDir(`${chaptersDir}${novelId}/`);
-      }
-      startProgress(
-        chapterTasks.length,
-        `Restoring chapters for ${novelIds.size} novel${novelIds.size !== 1 ? "s" : ""}...`,
-      );
-
-      let chaptersFailed = 0;
-      await runConcurrent(
-        chapterTasks,
-        12,
-        async ({ novelId, chapterIndex, data }) => {
-          try {
-            await FileSystem.writeAsStringAsync(
-              `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`,
-              JSON.stringify(data),
-            );
-          } catch {
-            chaptersFailed++;
-            addBackupLog(
-              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
-            );
-          } finally {
-            bumpProgress();
-          }
-        },
-      );
-      endProgress();
-      addBackupLog(
-        `📊 Restored ${chapterTasks.length - chaptersFailed}/${chapterTasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
-      );
-    } else {
-      addBackupLog("⚠️ No chapters to restore");
-    }
-
-    // 4. Covers: read cover manifest, copy cover files
-    const backupCoversDir = `${backupFolder}covers/`;
-    const coversManifestPath = `${backupCoversDir}manifest.json`;
-    const coversManifestInfo =
-      await FileSystem.getInfoAsync(coversManifestPath);
-    if (coversManifestInfo.exists) {
-      const coverEntries: CoverManifestEntry[] = JSON.parse(
-        await FileSystem.readAsStringAsync(coversManifestPath),
-      );
-      addBackupLog(`🖼️ Restoring ${coverEntries.length} novel covers...`);
-      await ensureDir(COVERS_DIR);
-      startProgress(coverEntries.length, "Restoring novel covers...");
-
-      // Update cover references in mergedLibrary
-      const coverMap = new Map(
-        coverEntries.map((c) => [c.novelId, c.fileName]),
-      );
-      for (const novel of mergedLibrary) {
-        const fileName = coverMap.get(novel.id);
-        if (fileName) {
-          novel.coverUrl = `${COVERS_DIR}${fileName}`;
-        }
-      }
-
-      // Copy covers in parallel — per-item try/catch so one missing/corrupt
-      // cover file doesn't abort the whole restore.
-      let coversFailed = 0;
-      await runConcurrent(coverEntries, 12, async (cover) => {
-        try {
-          await FileSystem.copyAsync({
-            from: `${backupCoversDir}${cover.fileName}`,
-            to: `${COVERS_DIR}${cover.fileName}`,
-          });
-        } catch {
-          coversFailed++;
-          addBackupLog(`❌ Failed: ${cover.fileName}`);
-        } finally {
-          bumpProgress();
-        }
-      });
-      endProgress();
-      addBackupLog(
-        `✅ Covers restored: ${coverEntries.length - coversFailed}/${coverEntries.length}${coversFailed ? ` (${coversFailed} failed)` : ""}.`,
-      );
-    } else {
-      addBackupLog("⚠️ No covers to restore");
-    }
-
-    // 5. Write final library atomically
-    addBackupLog("💾 Writing merged library atomically...");
-    await atomicWriteLibrary(mergedLibrary);
-
-    // 6. AsyncStorage data
-    if (manifest.asyncStorageData) {
-      addBackupLog("📦 Restoring legacy data...");
-      const AsyncStorage = await getAsyncStorage();
-      if (AsyncStorage) {
-        for (const [key, value] of Object.entries(manifest.asyncStorageData)) {
-          await AsyncStorage.setItem(key, value);
-        }
-        addBackupLog("✅ Legacy data restored");
-      }
-    }
-
-    // 7. Purge orphans
-    addBackupLog("🧹 Purging orphaned data...");
-    try {
-      const validIds = new Set<string>(
-        mergedLibrary.map((n: any) => String(n.id)),
-      );
-      const { dirs, files } = await purgeOrphanedData(mergedLibrary);
-      const purgedCovers = await purgeOrphanedCovers(validIds);
-      addBackupLog(
-        `✅ Purged ${dirs} stray folder(s), ${files} orphaned chapter file(s), ${purgedCovers} orphaned cover(s)`,
-      );
-    } catch (e) {
-      addBackupLog(`⚠️ Orphan purge failed: ${String(e)}`);
-    }
-
-    flushLogs();
-    addBackupLog("✅ Restore complete!");
-
-    // Same explicit handoff as the legacy path — commit only once every
-    // file write above is confirmed done, no disk re-read in between.
-    commitRestoredLibrary(mergedLibrary);
-    return manifest.metadata;
-  };
-
-  // --------------------------------------------------------------------------
-  // RESTORE FROM ANY FORMAT (wrapper)
-  // --------------------------------------------------------------------------
-
-  const restoreFromAnyFormat = async (
-    path: string,
-  ): Promise<BackupMetadata> => {
-    const detected = await detectBackupFormat(path);
-    try {
-      if (detected.format === "ndjson-v5" && detected.tempDir) {
-        return await restoreBackupFromFolder(detected.tempDir);
-      }
-      if (
-        detected.format === "zip-v4" &&
-        detected.tempDir &&
-        detected.jsonFile
-      ) {
-        const raw = await FileSystem.readAsStringAsync(
-          `${detected.tempDir}${detected.jsonFile}`,
-        );
-        const backup: FullBackup = JSON.parse(raw);
-        if (!backup.metadata || !backup.libraryData) {
-          throw new Error("This file is not a valid NovelDR backup.");
-        }
-        await restoreLegacyBackup(backup);
-        return backup.metadata;
-      }
-      // json-v3_5
-      const raw = await FileSystem.readAsStringAsync(path);
-      const backup: FullBackup = JSON.parse(raw);
-      if (!backup.metadata || !backup.libraryData) {
-        throw new Error("This file is not a valid NovelDR backup.");
-      }
-      await restoreLegacyBackup(backup);
-      return backup.metadata;
-    } finally {
-      if (detected.tempDir)
-        await FileSystem.deleteAsync(detected.tempDir, { idempotent: true });
-    }
   };
 
   // --------------------------------------------------------------------------
@@ -1485,7 +1412,12 @@ export default function SettingsScreen() {
       const backupFolder = `${BACKUP_DIR}${backupName}/`;
       await ensureDir(backupFolder);
 
-      const metadata = await exportBackupV5(backupFolder, comment);
+      const metadata = await exportBackupV5(
+        backupFolder,
+        comment,
+        novels,
+        sortOrder,
+      );
 
       addBackupLog("🗜️ Zipping backup into a single file...");
       const filename = `${backupName}.zip`;
@@ -1619,7 +1551,6 @@ export default function SettingsScreen() {
             const startTime = Date.now();
             try {
               setImporting(true);
-              // Acquire restore lock
               setRestoring(true);
               startOperationTimer();
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1651,11 +1582,6 @@ export default function SettingsScreen() {
               Alert.alert("Import Failed", String(e));
             } finally {
               setImporting(false);
-              // commitRestoredLibrary() inside restoreFromAnyFormat already
-              // released the lock on success. abortRestore() here is the
-              // fallback for the failure path (or anything that throws
-              // before the commit) — safe to call even if the lock is
-              // already down.
               abortRestore();
               stopOperationTimer();
               resetProgress();
@@ -1691,9 +1617,6 @@ export default function SettingsScreen() {
               try {
                 setImporting(true);
                 setRestoring(true);
-                // Open the Restore modal so this import's progress and
-                // activity log are visible too (picker-initiated imports
-                // don't otherwise pass through the "browse backups" list).
                 openPanel("restore");
                 startOperationTimer();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1714,9 +1637,6 @@ export default function SettingsScreen() {
                 Alert.alert("Import Failed", String(e));
               } finally {
                 setImporting(false);
-                // See handleImportBackup: commitRestoredLibrary() already
-                // released the lock on success; this is just the failure
-                // fallback.
                 abortRestore();
                 stopOperationTimer();
                 resetProgress();
@@ -1994,16 +1914,6 @@ export default function SettingsScreen() {
             sharing and restoration.
           </Text>
 
-          {/*
-            Import/restore progress + activity log now live inside the
-            Restore modal (see the "restore" Modal below) so the heavy,
-            frequently-updating log list isn't mounted behind the settings
-            ScrollView. The old fixed-width progress bar has been removed
-            entirely — the batched activity log (flushed every 25 entries /
-            300ms, see addBackupLog/flushLogs) is the single source of
-            truth for "what's happening right now" and is cheaper to render
-            than re-computing a percentage-width bar on every tick.
-          */}
           {exporting && (
             <View style={styles.progressContainer}>
               <ActivityIndicator size="small" color={colors.accent} />
@@ -2148,13 +2058,7 @@ export default function SettingsScreen() {
         </View>
 
         {/*
-          Restore Backup — centered popup Modal instead of an inline card.
-          Keeping it out of the settings ScrollView means the (potentially
-          long) backup list and, during an import, the live activity log
-          are only ever mounted while the modal is open, and they render
-          via FlatList (windowed, only visible rows mounted) rather than
-          `.map()` inside a ScrollView, so opening it or watching a restore
-          progress never blocks the JS thread.
+          Restore Backup — centered popup Modal
         */}
         <Modal
           visible={activePanel === "restore"}
@@ -2175,11 +2079,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable
-                  onPress={closePanel}
-                  disabled={importing}
-                  hitSlop={8}
-                >
+                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
                   <Ionicons
                     name="close"
                     size={20}
@@ -2203,15 +2103,6 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
 
-                  {/*
-                    Activity Log replaces the old progress bar entirely.
-                    addBackupLog() batches pushes into pendingLogsRef and
-                    only calls setBackupLogs (a state update + re-render)
-                    every 25 entries or on an explicit flushLogs(), so a
-                    restore touching thousands of chapter/cover files still
-                    only triggers a couple dozen re-renders total, not one
-                    per file — that's what keeps this smooth at 60fps.
-                  */}
                   <View
                     style={[
                       styles.backupActivityLog,
@@ -2261,7 +2152,6 @@ export default function SettingsScreen() {
                       maxToRenderPerBatch={30}
                       windowSize={5}
                       removeClippedSubviews
-                      // Auto-scroll to the newest entry each time a batch flushes.
                       onContentSizeChange={(_, h) => {
                         restoreLogListRef.current?.scrollToOffset({
                           offset: h,
