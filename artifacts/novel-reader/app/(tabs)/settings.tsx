@@ -274,9 +274,7 @@ export default function SettingsScreen() {
   // --------------------------------------------------------------------------
   const [elapsedMs, setElapsedMs] = useState(0);
   const operationStartRef = useRef<number>(0);
-  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startOperationTimer = () => {
     operationStartRef.current = Date.now();
@@ -1043,17 +1041,26 @@ export default function SettingsScreen() {
       // try/catch so a single corrupt/unwritable chapter doesn't reject the
       // whole pool and abort the restore.
       let chaptersFailed = 0;
-      await runConcurrent(tasks, 12, async ({ novelId, chapterIndex, data }) => {
-        try {
-          const chapterPath = `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`;
-          await FileSystem.writeAsStringAsync(chapterPath, JSON.stringify(data));
-        } catch {
-          chaptersFailed++;
-          addBackupLog(`⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`);
-        } finally {
-          bumpProgress();
-        }
-      });
+      await runConcurrent(
+        tasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          try {
+            const chapterPath = `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`;
+            await FileSystem.writeAsStringAsync(
+              chapterPath,
+              JSON.stringify(data),
+            );
+          } catch {
+            chaptersFailed++;
+            addBackupLog(
+              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
+            );
+          } finally {
+            bumpProgress();
+          }
+        },
+      );
       endProgress();
       addBackupLog(
         `📊 Restored ${tasks.length - chaptersFailed}/${tasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
@@ -1204,8 +1211,11 @@ export default function SettingsScreen() {
       );
 
       // Collect all chapter tasks
-      const chapterTasks: { novelId: string; chapterIndex: number; data: any }[] =
-        [];
+      const chapterTasks: {
+        novelId: string;
+        chapterIndex: number;
+        data: any;
+      }[] = [];
       for (const partFile of partFiles) {
         const partRaw = await FileSystem.readAsStringAsync(
           `${backupChaptersDir}${partFile}`,
@@ -1243,19 +1253,25 @@ export default function SettingsScreen() {
       );
 
       let chaptersFailed = 0;
-      await runConcurrent(chapterTasks, 12, async ({ novelId, chapterIndex, data }) => {
-        try {
-          await FileSystem.writeAsStringAsync(
-            `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`,
-            JSON.stringify(data),
-          );
-        } catch {
-          chaptersFailed++;
-          addBackupLog(`⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`);
-        } finally {
-          bumpProgress();
-        }
-      });
+      await runConcurrent(
+        chapterTasks,
+        12,
+        async ({ novelId, chapterIndex, data }) => {
+          try {
+            await FileSystem.writeAsStringAsync(
+              `${chaptersDir}${novelId}/chapter_${chapterIndex}.json`,
+              JSON.stringify(data),
+            );
+          } catch {
+            chaptersFailed++;
+            addBackupLog(
+              `⚠️ Failed to restore chapter ${chapterIndex} (${novelId.slice(0, 8)}...)`,
+            );
+          } finally {
+            bumpProgress();
+          }
+        },
+      );
       endProgress();
       addBackupLog(
         `📊 Restored ${chapterTasks.length - chaptersFailed}/${chapterTasks.length} chapters${chaptersFailed ? ` (${chaptersFailed} failed)` : ""}.`,
@@ -1966,9 +1982,7 @@ export default function SettingsScreen() {
                   ]}
                 />
               </View>
-              <Text
-                style={[styles.progressTimerText, { color: colors.text }]}
-              >
+              <Text style={[styles.progressTimerText, { color: colors.text }]}>
                 {formatTimer(elapsedMs)}
               </Text>
             </View>
