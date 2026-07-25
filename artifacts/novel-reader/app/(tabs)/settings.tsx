@@ -322,7 +322,8 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current)
+        clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -775,7 +776,9 @@ export default function SettingsScreen() {
 
     // 5. Now write the final library using bulkWriteNovels (per‑novel files + index)
     addBackupLog("💾 Writing merged library as per‑novel files...");
-    const sortOrderFromBackup = toSortOrder(backup.sortPreference || "ascending");
+    const sortOrderFromBackup = toSortOrder(
+      backup.sortPreference || "ascending",
+    );
     await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
 
     // 6. Restore AsyncStorage data (if any)
@@ -974,7 +977,9 @@ export default function SettingsScreen() {
 
     // 5. Write final library using bulkWriteNovels
     addBackupLog("💾 Writing merged library as per‑novel files...");
-    const sortOrderFromBackup = toSortOrder(manifest.sortPreference || "ascending");
+    const sortOrderFromBackup = toSortOrder(
+      manifest.sortPreference || "ascending",
+    );
     await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
 
     // 6. AsyncStorage data
@@ -2081,7 +2086,11 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
+                <Pressable
+                  onPress={closePanel}
+                  disabled={importing}
+                  hitSlop={8}
+                >
                   <Ionicons
                     name="close"
                     size={20}
