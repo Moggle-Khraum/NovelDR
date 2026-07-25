@@ -39,13 +39,12 @@ import {
   clearMediaSession,
   setupMediaSession,
   setRemoteHandlers,
-  type TTSNotificationState,
 } from "@/lib/TTSMediaSession";
 import * as Notifications from "expo-notifications";
 import * as KeepAwake from "expo-keep-awake";
 import notifee, { AuthorizationStatus } from "@notifee/react-native";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26];
 const LINE_SPACINGS = [1.2, 1.3, 1.5, 1.8, 2.0, 2.5];
@@ -1152,7 +1151,6 @@ export default function ReaderScreen() {
   // chapter/novel object refs, which can change identity on unrelated re-renders.
   // Depending on the objects would re-trigger this load (spinner + fetch)
   // whenever that happens, not just on actual chapter navigation.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Create a new AbortController for this load
     const abortController = new AbortController();
@@ -1255,7 +1253,16 @@ export default function ReaderScreen() {
     return () => {
       abortController.abort();
     };
-  }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
+    // chapter/novel object refs intentionally omitted, see comment above;
+    // speakSentence is stable (memoized on stopTTS/clearWatchdogTimer only).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    chapterIndex,
+    novel?.id,
+    loadChapterContent,
+    processChapterContent,
+    speakSentence,
+  ]);
 
   // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
@@ -1818,51 +1825,62 @@ export default function ReaderScreen() {
   };
 
   // ─── Navigation helpers ──────────────────────────────────────────────
-  const goChapter = (dir: 1 | -1) => {
-    cancelAutoNext();
-    const next = chapterIndex + dir;
-    if (next < 0 || next >= (novel?.chapters.length ?? 0)) {
-      Alert.alert(
-        "Navigation",
-        dir === -1 ? "First chapter reached" : "Last chapter reached",
-      );
-      return;
-    }
-    if (novel && chapter)
-      saveReadingProgress(
-        novel.id,
-        chapterIndex,
-        chapter.title,
-        scrollYRef.current,
-      );
+  // Reads novel/chapterIndex via the refs (kept in sync below) rather than
+  // closing over the `novel`/`chapterIndex`/`chapter` state directly, so this
+  // callback's identity stays stable across renders instead of being
+  // recreated every time (which previously caused the listener effect below
+  // to unsubscribe/resubscribe on every render).
+  const goChapter = useCallback(
+    (dir: 1 | -1) => {
+      cancelAutoNext();
+      const currentNovel = novelRef.current;
+      const currentIndex = chapterIndexRef.current;
+      const next = currentIndex + dir;
+      if (next < 0 || next >= (currentNovel?.chapters.length ?? 0)) {
+        Alert.alert(
+          "Navigation",
+          dir === -1 ? "First chapter reached" : "Last chapter reached",
+        );
+        return;
+      }
+      const currentChapter = currentNovel?.chapters[currentIndex];
+      if (currentNovel && currentChapter)
+        saveReadingProgress(
+          currentNovel.id,
+          currentIndex,
+          currentChapter.title,
+          scrollYRef.current,
+        );
 
-    // Abort any pending load
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+      // Abort any pending load
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
 
-    stopAutoScroll();
-    stopTTS();
+      stopAutoScroll();
+      stopTTS();
 
-    // Clear content and show loading immediately
-    setChapterContent("");
-    setProcessedParagraphs([]);
-    setTtsSentences([]);
-    setContentLoading(true);
+      // Clear content and show loading immediately
+      setChapterContent("");
+      setProcessedParagraphs([]);
+      setTtsSentences([]);
+      setContentLoading(true);
 
-    scrollYRef.current = 0;
-    hasRestoredScrollRef.current = false;
-    restoreAttemptsRef.current = 0;
-    lastRestoreHeightRef.current = 0;
-    if (restoreTimeoutRef.current) {
-      clearTimeout(restoreTimeoutRef.current);
-      restoreTimeoutRef.current = null;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setChapterIndex(next);
-    setReadingProgress(0);
-  };
+      scrollYRef.current = 0;
+      hasRestoredScrollRef.current = false;
+      restoreAttemptsRef.current = 0;
+      lastRestoreHeightRef.current = 0;
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+        restoreTimeoutRef.current = null;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setChapterIndex(next);
+      setReadingProgress(0);
+    },
+    [cancelAutoNext, saveReadingProgress, stopAutoScroll, stopTTS],
+  );
 
   // speakSentence is memoized once (deps never change) and its closure is
   // frozen to the render it was created on, so it can't safely call
@@ -3260,8 +3278,8 @@ export default function ReaderScreen() {
                 Optional. Some phones (Xiaomi/MIUI, Oppo, Vivo, Huawei
                 especially) stop narration a few seconds after you lock the
                 screen or leave the app to save battery. These three
-                settings fix that — we can't change them for you, so tap
-                each one you'd like to open.
+                settings fix that — we can&apos;t change them for you, so tap
+                each one you&apos;d like to open.
               </Text>
 
               {/* Step 1: Notification permission */}
@@ -3377,7 +3395,7 @@ export default function ReaderScreen() {
                       { color: adaptiveColors.textSecondary },
                     ]}
                   >
-                    Tells Android not to restrict NovelDR's background
+                    Tells Android not to restrict NovelDR&apos;s background
                     activity while narrating.
                   </Text>
                   <Pressable
@@ -3433,7 +3451,7 @@ export default function ReaderScreen() {
                         { color: adaptiveColors.textSecondary },
                       ]}
                     >
-                      Your phone's manufacturer (not Android itself) applies
+                      Your phone&apos;s manufacturer (not Android itself) applies
                       this extra restriction on some devices.
                     </Text>
                     <Pressable
