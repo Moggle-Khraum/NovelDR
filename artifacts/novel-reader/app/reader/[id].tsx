@@ -3290,9 +3290,9 @@ export default function ReaderScreen() {
               >
                 Optional. Some phones (Xiaomi/MIUI, Oppo, Vivo, Huawei
                 especially) stop narration a few seconds after you lock the
-                screen or leave the app to save battery. These settings fix
-                that — we can&apos;t change them for you, so tap each one
-                you&apos;d like to open.
+                screen or leave the app to save battery. These settings fix that
+                — we can&apos;t change them for you, so tap each one you&apos;d
+                like to open.
               </Text>
 
               {/* Step 1: Notification permission */}
