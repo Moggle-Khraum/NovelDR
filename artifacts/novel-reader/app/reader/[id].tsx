@@ -707,10 +707,7 @@ export default function ReaderScreen() {
     try {
       await notifee.requestPermission();
     } catch (e) {
-      console.warn(
-        "[BackgroundSetup] Notification permission request failed:",
-        e,
-      );
+      console.warn("[BackgroundSetup] Notification permission request failed:", e);
     }
     // Re-check afterwards — if the user already permanently denied it
     // before, the OS prompt won't reappear and this fetch just confirms
@@ -722,10 +719,7 @@ export default function ReaderScreen() {
     try {
       await notifee.openBatteryOptimizationSettings();
     } catch (e) {
-      console.warn(
-        "[BackgroundSetup] Could not open battery optimization settings:",
-        e,
-      );
+      console.warn("[BackgroundSetup] Could not open battery optimization settings:", e);
     }
   }, []);
 
@@ -733,10 +727,7 @@ export default function ReaderScreen() {
     try {
       await notifee.openPowerManagerSettings();
     } catch (e) {
-      console.warn(
-        "[BackgroundSetup] Could not open power manager settings:",
-        e,
-      );
+      console.warn("[BackgroundSetup] Could not open power manager settings:", e);
     }
   }, []);
   const [ttsVoices, setTtsVoices] = useState<Speech.Voice[]>([]);
@@ -1262,16 +1253,14 @@ export default function ReaderScreen() {
     return () => {
       abortController.abort();
     };
-    // chapter/novel object refs intentionally omitted, see comment above;
-    // speakSentence is stable (memoized on stopTTS/clearWatchdogTimer only).
+    // chapter/novel object refs intentionally omitted, see comment above.
+    // speakSentence is also intentionally omitted: it's declared further
+    // down in this component, so referencing it directly in this array
+    // (unlike inside the deferred `load` closure above, which is safe)
+    // trips a TS "used before declaration" error. Its identity is stable
+    // in practice (memoized on stopTTS/clearWatchdogTimer only).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    chapterIndex,
-    novel?.id,
-    loadChapterContent,
-    processChapterContent,
-    speakSentence,
-  ]);
+  }, [chapterIndex, novel?.id, loadChapterContent, processChapterContent]);
 
   // ─── Search ────────────────────────────────────────────────────────────
   const searchChapters = useCallback(
@@ -1647,13 +1636,7 @@ export default function ReaderScreen() {
       );
       speakSentence(ttsSentences, startIndex);
     }, 100);
-  }, [
-    chapterContent,
-    ttsSentences,
-    speakSentence,
-    stopTTS,
-    clearWatchdogTimer,
-  ]);
+  }, [chapterContent, ttsSentences, speakSentence, stopTTS, clearWatchdogTimer]);
 
   const previewTts = useCallback(() => {
     if (ttsActiveRef.current) stopTTS();
@@ -3292,9 +3275,9 @@ export default function ReaderScreen() {
               >
                 Optional. Some phones (Xiaomi/MIUI, Oppo, Vivo, Huawei
                 especially) stop narration a few seconds after you lock the
-                screen or leave the app to save battery. These three settings
-                fix that — we can&apos;t change them for you, so tap each one
-                you&apos;d like to open.
+                screen or leave the app to save battery. These three
+                settings fix that — we can&apos;t change them for you, so tap
+                each one you&apos;d like to open.
               </Text>
 
               {/* Step 1: Notification permission */}
@@ -3466,8 +3449,8 @@ export default function ReaderScreen() {
                         { color: adaptiveColors.textSecondary },
                       ]}
                     >
-                      Your phone&apos;s manufacturer (not Android itself)
-                      applies this extra restriction on some devices.
+                      Your phone&apos;s manufacturer (not Android itself) applies
+                      this extra restriction on some devices.
                     </Text>
                     <Pressable
                       style={[
