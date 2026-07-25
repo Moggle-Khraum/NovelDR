@@ -238,6 +238,11 @@ interface CoverManifestEntry {
 
 const CHAPTERS_PER_PART = 40;
 
+// Helper to safely cast sort order from backup
+function toSortOrder(value: string): "ascending" | "descending" {
+  return value === "descending" ? "descending" : "ascending";
+}
+
 // =============================================================================
 // MAIN SETTINGS SCREEN
 // =============================================================================
@@ -317,8 +322,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (logFlushIntervalRef.current)
-        clearInterval(logFlushIntervalRef.current);
+      if (logFlushIntervalRef.current) clearInterval(logFlushIntervalRef.current);
     };
   }, []);
 
@@ -658,9 +662,6 @@ export default function SettingsScreen() {
     );
 
     // 2. Restore other settings (small, can write immediately)
-    if (backup.sortPreference) {
-      // The sort order will be written as part of the index; we'll apply it later
-    }
     if (backup.readerSettings) {
       addBackupLog("⚙️ Restoring reader settings...");
       await FileSystem.writeAsStringAsync(
@@ -774,7 +775,7 @@ export default function SettingsScreen() {
 
     // 5. Now write the final library using bulkWriteNovels (per‑novel files + index)
     addBackupLog("💾 Writing merged library as per‑novel files...");
-    const sortOrderFromBackup = backup.sortPreference || "ascending";
+    const sortOrderFromBackup = toSortOrder(backup.sortPreference || "ascending");
     await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
 
     // 6. Restore AsyncStorage data (if any)
@@ -973,7 +974,7 @@ export default function SettingsScreen() {
 
     // 5. Write final library using bulkWriteNovels
     addBackupLog("💾 Writing merged library as per‑novel files...");
-    const sortOrderFromBackup = manifest.sortPreference || "ascending";
+    const sortOrderFromBackup = toSortOrder(manifest.sortPreference || "ascending");
     await bulkWriteNovels(mergedLibrary, sortOrderFromBackup);
 
     // 6. AsyncStorage data
@@ -1178,10 +1179,10 @@ export default function SettingsScreen() {
         addBackupLog(`📊 Total chapters found: ${totalChaptersFound}`);
       } else {
         addBackupLog("⚠️ No chapters folder found");
-        // Fallback: if chapters were stored in memory (e.g., from old backup)
-        if (AsyncStorage && Array.isArray(libraryData)) {
-          addBackupLog("🔍 Checking AsyncStorage for chapter content...");
-          for (const novel of libraryData) {
+        // Fallback: use the original novels (with content) instead of stripped libraryData
+        if (AsyncStorage && Array.isArray(novelsArray)) {
+          addBackupLog("🔍 Checking in‑memory novels for chapter content...");
+          for (const novel of novelsArray) {
             if (novel.chapters && Array.isArray(novel.chapters)) {
               for (let i = 0; i < novel.chapters.length; i++) {
                 if (novel.chapters[i].content) {
@@ -2080,11 +2081,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.backupListTitle, { color: colors.text }]}>
                   {importing ? "Restoring…" : "Saved Backups"}
                 </Text>
-                <Pressable
-                  onPress={closePanel}
-                  disabled={importing}
-                  hitSlop={8}
-                >
+                <Pressable onPress={closePanel} disabled={importing} hitSlop={8}>
                   <Ionicons
                     name="close"
                     size={20}
