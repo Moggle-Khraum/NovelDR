@@ -3290,8 +3290,8 @@ export default function ReaderScreen() {
               >
                 Optional. Some phones (Xiaomi/MIUI, Oppo, Vivo, Huawei
                 especially) stop narration a few seconds after you lock the
-                screen or leave the app to save battery. These three settings
-                fix that — we can&apos;t change them for you, so tap each one
+                screen or leave the app to save battery. These settings fix
+                that — we can&apos;t change them for you, so tap each one
                 you&apos;d like to open.
               </Text>
 
@@ -3565,7 +3565,7 @@ export default function ReaderScreen() {
                     Voice Speed
                   </Text>
                   <View style={styles.speedButtonsRow}>
-                    {[0.5, 1.0, 1.5, 2.0, 2.5].map((rate) => (
+                    {[1.0, 1.3, 1.5, 2.0, 2.5].map((rate) => (
                       <Pressable
                         key={rate}
                         style={[
