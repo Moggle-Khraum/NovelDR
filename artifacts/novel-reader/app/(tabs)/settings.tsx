@@ -8,7 +8,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Application from "expo-application";
 import * as IntentLauncher from "expo-intent-launcher";
 import { zip, unzip } from "react-native-zip-archive";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Alert,
   Image,
@@ -76,19 +76,6 @@ async function runConcurrent<T, R>(
 // =============================================================================
 // IMAGE HELPERS
 // =============================================================================
-
-const imageToBase64 = async (imagePath: string): Promise<string | null> => {
-  try {
-    const info = await FileSystem.getInfoAsync(imagePath);
-    if (!info.exists) return null;
-    return await FileSystem.readAsStringAsync(imagePath, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-  } catch (error) {
-    console.error("Failed to convert image to base64:", error);
-    return null;
-  }
-};
 
 const saveBase64AsImage = async (
   base64: string,
@@ -339,33 +326,23 @@ export default function SettingsScreen() {
   // --------------------------------------------------------------------------
   // Progress bar
   // --------------------------------------------------------------------------
-  const [progressTotal, setProgressTotal] = useState(0);
-  const [progressDone, setProgressDone] = useState(0);
   const progressRef = useRef({ done: 0, total: 0 });
 
   const startProgress = (total: number, label?: string) => {
     progressRef.current = { done: 0, total };
-    setProgressTotal(total);
-    setProgressDone(0);
     if (label) setOperationProgress(label);
   };
 
   const bumpProgress = (increment: number = 1) => {
-    const p = progressRef.current;
-    p.done += increment;
-    if (p.done >= p.total || p.done % 25 === 0) {
-      setProgressDone(p.done);
-    }
+    progressRef.current.done += increment;
   };
 
   const endProgress = () => {
-    setProgressDone(progressRef.current.total);
+    progressRef.current.done = progressRef.current.total;
   };
 
   const resetProgress = () => {
     progressRef.current = { done: 0, total: 0 };
-    setProgressTotal(0);
-    setProgressDone(0);
     setOperationProgress("");
   };
 
@@ -419,15 +396,18 @@ export default function SettingsScreen() {
 
   const getAsyncStorage = async () => {
     try {
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
+      const AsyncStorage = (
+        await import("@react-native-async-storage/async-storage")
+      ).default;
       return AsyncStorage;
     } catch {
       return null;
     }
   };
 
-  const loadAppSettings = async (): Promise<Record<string, any>> => {
+  const loadAppSettings = useCallback(async (): Promise<
+    Record<string, any>
+  > => {
     try {
       const fileInfo = await FileSystem.getInfoAsync(SETTINGS_FILE);
       if (!fileInfo.exists) return {};
@@ -436,7 +416,7 @@ export default function SettingsScreen() {
     } catch {
       return {};
     }
-  };
+  }, [SETTINGS_FILE]);
 
   const saveAppSettings = async (settings: Record<string, any>) => {
     try {
@@ -473,7 +453,7 @@ export default function SettingsScreen() {
       if (nextAppState === "active") checkWarningStatus();
     });
     return () => subscription.remove();
-  }, []);
+  }, [loadAppSettings]);
 
   const ensureDir = async (dirPath: string) => {
     const info = await FileSystem.getInfoAsync(dirPath);
