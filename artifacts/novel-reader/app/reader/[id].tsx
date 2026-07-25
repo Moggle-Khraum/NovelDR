@@ -28,6 +28,7 @@ import {
   AccessibilityInfo,
   ImageBackground,
   Image,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -42,6 +43,7 @@ import {
 } from "@/lib/TTSMediaSession";
 import * as Notifications from "expo-notifications";
 import * as KeepAwake from "expo-keep-awake";
+import notifee, { AuthorizationStatus } from "@notifee/react-native";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -650,8 +652,85 @@ export default function ReaderScreen() {
   const ttsErrorCountRef = useRef(0);
   const isMountedRef = useRef(true);
 
+  // --- TTS stall watchdog state ---
+  const [ttsStalled, setTtsStalled] = useState(false);
+  const ttsStalledRef = useRef(false);
+  const ttsStallRetryCountRef = useRef(0);
+  const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [showTTSSettings, setShowTTSSettings] = useState(false);
   const [showTTSHelp, setShowTTSHelp] = useState(false);
+
+  // --- Quick-actions cluster (collapsible floating button group) ---
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
+
+  // --- Optional background-playback setup (notification + battery) ---
+  const [showBackgroundSetup, setShowBackgroundSetup] = useState(false);
+  const [notifPermGranted, setNotifPermGranted] = useState<boolean | null>(
+    null,
+  );
+  const [batteryOptExempt, setBatteryOptExempt] = useState<boolean | null>(
+    null,
+  );
+  const [powerManagerAvailable, setPowerManagerAvailable] = useState(false);
+
+  const refreshBackgroundSetupStatus = useCallback(async () => {
+    if (Platform.OS !== "android") return;
+    try {
+      const settings = await notifee.getNotificationSettings();
+      setNotifPermGranted(
+        settings.authorizationStatus === AuthorizationStatus.AUTHORIZED,
+      );
+    } catch {
+      setNotifPermGranted(null);
+    }
+    try {
+      const exempt = await notifee.isBatteryOptimizationEnabled();
+      // isBatteryOptimizationEnabled() true means the OS IS restricting the
+      // app (i.e. NOT exempt) — invert for a "good state = true" reading.
+      setBatteryOptExempt(!exempt);
+    } catch {
+      setBatteryOptExempt(null);
+    }
+    try {
+      const info = await notifee.getPowerManagerInfo();
+      setPowerManagerAvailable(!!info?.activity);
+    } catch {
+      setPowerManagerAvailable(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showBackgroundSetup) refreshBackgroundSetupStatus();
+  }, [showBackgroundSetup, refreshBackgroundSetupStatus]);
+
+  const handleRequestNotificationPerm = useCallback(async () => {
+    try {
+      await notifee.requestPermission();
+    } catch (e) {
+      console.warn("[BackgroundSetup] Notification permission request failed:", e);
+    }
+    // Re-check afterwards — if the user already permanently denied it
+    // before, the OS prompt won't reappear and this fetch just confirms
+    // that, so the button below can fall back to opening app settings.
+    await refreshBackgroundSetupStatus();
+  }, [refreshBackgroundSetupStatus]);
+
+  const handleOpenBatteryOptimizationSettings = useCallback(async () => {
+    try {
+      await notifee.openBatteryOptimizationSettings();
+    } catch (e) {
+      console.warn("[BackgroundSetup] Could not open battery optimization settings:", e);
+    }
+  }, []);
+
+  const handleOpenPowerManagerSettings = useCallback(async () => {
+    try {
+      await notifee.openPowerManagerSettings();
+    } catch (e) {
+      console.warn("[BackgroundSetup] Could not open power manager settings:", e);
+    }
+  }, []);
   const [ttsVoices, setTtsVoices] = useState<Speech.Voice[]>([]);
   const [ttsVoiceId, setTtsVoiceId] = useState<string | undefined>(undefined);
   const ttsVoiceIdRef = useRef<string | undefined>(undefined);
@@ -1265,7 +1344,11 @@ export default function ReaderScreen() {
       if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
       if (userScrollResumeTimeoutRef.current)
         clearTimeout(userScrollResumeTimeoutRef.current);
-
+      // Clear watchdog timer
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
       // Cancel any pending auto-next notifications
       Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
 
@@ -1327,6 +1410,14 @@ export default function ReaderScreen() {
     setupMediaSession();
   }, []);
 
+  // ── Watchdog timer helpers ──────────────────────────────────────────
+  const clearWatchdogTimer = useCallback(() => {
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+  }, []);
+
   // ─── TTS methods ──────────────────────────────────────────────────────
   const stopTTS = useCallback(() => {
     ttsActiveRef.current = false;
@@ -1334,32 +1425,17 @@ export default function ReaderScreen() {
     ttsScrollCounterRef.current = 0;
     setTtsActive(false);
     setTtsIndex(-1);
+    clearWatchdogTimer();
+    ttsStalledRef.current = false;
+    setTtsStalled(false);
+    ttsStallRetryCountRef.current = 0;
     try {
       KeepAwake.deactivateKeepAwake();
     } catch {}
     try {
       Speech.stop();
     } catch {}
-  }, []);
-
-  useEffect(() => {
-    stopTTS();
-  }, [chapterIndex, stopTTS]);
-
-  // Prevent screen sleep while TTS is active
-  useEffect(() => {
-    if (ttsActive) {
-      try {
-        KeepAwake.activateKeepAwake();
-      } catch (err) {
-        console.warn("[TTS] Keep-awake activation failed:", err);
-      }
-    } else {
-      try {
-        KeepAwake.deactivateKeepAwake();
-      } catch {}
-    }
-  }, [ttsActive]);
+  }, [clearWatchdogTimer]);
 
   const speakSentence = useCallback(
     (sentences: string[], index: number) => {
@@ -1425,6 +1501,47 @@ export default function ReaderScreen() {
       }
       ttsIndexRef.current = index;
       setTtsIndex(index);
+
+      // Clear any previous watchdog timer
+      clearWatchdogTimer();
+
+      // Estimate duration for watchdog
+      const wordCount = sentences[index].split(/\s+/).length;
+      // Rough estimate: ~3 words per second at 1x, multiply by 2.5 margin, min 5 seconds
+      const estimatedDuration = Math.max(
+        5,
+        (wordCount / 3) * (1 / ttsRateRef.current) * 2.5,
+      );
+
+      // Set watchdog timer
+      watchdogTimerRef.current = setTimeout(() => {
+        // Check if we're still on the same sentence and TTS is active
+        if (!ttsActiveRef.current || ttsIndexRef.current !== index) {
+          return; // not our turn anymore
+        }
+        // We have a stall
+        if (ttsStallRetryCountRef.current < 1) {
+          // First stall: retry once
+          ttsStallRetryCountRef.current += 1;
+          console.log("[TTS] Watchdog: retrying stalled sentence");
+          // Retry by calling speakSentence again with the same index
+          clearWatchdogTimer(); // clear this timer
+          speakSentence(sentences, index);
+        } else {
+          // Retries exhausted: mark stalled
+          console.warn("[TTS] Watchdog: stalled permanently");
+          ttsStalledRef.current = true;
+          setTtsStalled(true);
+          // Stop any audio and stop the loop
+          ttsActiveRef.current = false;
+          setTtsActive(false);
+          try {
+            Speech.stop();
+          } catch {}
+          clearWatchdogTimer();
+        }
+      }, estimatedDuration * 1000);
+
       AccessibilityInfo.announceForAccessibility(
         `Reading: ${sentences[index].substring(0, 100)}`,
       );
@@ -1441,6 +1558,9 @@ export default function ReaderScreen() {
           onDone: () => {
             if (!isMountedRef.current) return;
             if (!ttsActiveRef.current) return;
+            // Clear watchdog and reset retry counter on success
+            clearWatchdogTimer();
+            ttsStallRetryCountRef.current = 0;
             ttsErrorCountRef.current = 0;
             speakSentence(sentences, index + 1);
           },
@@ -1448,11 +1568,13 @@ export default function ReaderScreen() {
             console.warn("[TTS] Error speaking sentence:", err);
             if (!isMountedRef.current) return;
             if (!ttsActiveRef.current) return;
+            clearWatchdogTimer();
             ttsErrorCountRef.current += 1;
             if (ttsErrorCountRef.current > 3) {
               stopTTS();
               return;
             }
+            // On error, skip the sentence (as before)
             speakSentence(sentences, index + 1);
           },
         });
@@ -1461,12 +1583,31 @@ export default function ReaderScreen() {
         stopTTS();
       }
     },
-    [stopTTS],
+    [stopTTS, clearWatchdogTimer],
   );
 
   const toggleTTS = useCallback(() => {
     if (ttsActiveRef.current) {
       stopTTS();
+      return;
+    }
+    // If stalled, resume from current index
+    if (ttsStalledRef.current && ttsIndexRef.current >= 0) {
+      ttsStalledRef.current = false;
+      setTtsStalled(false);
+      ttsStallRetryCountRef.current = 0;
+      ttsActiveRef.current = true;
+      setTtsActive(true);
+      clearWatchdogTimer();
+      // Resume from current index
+      if (ttsIndexRef.current < ttsSentences.length) {
+        speakSentence(ttsSentences, ttsIndexRef.current);
+      } else {
+        // If index out of range, restart from beginning
+        if (ttsSentences.length > 0) {
+          speakSentence(ttsSentences, 0);
+        }
+      }
       return;
     }
     if (!chapterContent || ttsSentences.length === 0) return;
@@ -1490,7 +1631,7 @@ export default function ReaderScreen() {
       );
       speakSentence(ttsSentences, startIndex);
     }, 100);
-  }, [chapterContent, ttsSentences, speakSentence, stopTTS]);
+  }, [chapterContent, ttsSentences, speakSentence, stopTTS, clearWatchdogTimer]);
 
   const previewTts = useCallback(() => {
     if (ttsActiveRef.current) stopTTS();
@@ -2022,51 +2163,144 @@ export default function ReaderScreen() {
             )}
           </ScrollView>
 
-          {/* TTS Help Button */}
-          {ttsAvailable && (
+          {/* Stall banner */}
+          {ttsStalled && (
             <Pressable
               style={[
-                styles.ttsHelpBtn,
+                styles.ttsStalledBanner,
+                {
+                  backgroundColor: adaptiveColors.accent + "20",
+                  borderColor: adaptiveColors.accent,
+                },
+              ]}
+              onPress={() => {
+                // Resume from current index
+                if (
+                  ttsIndexRef.current >= 0 &&
+                  ttsIndexRef.current < ttsSentences.length
+                ) {
+                  ttsStalledRef.current = false;
+                  setTtsStalled(false);
+                  ttsStallRetryCountRef.current = 0;
+                  ttsActiveRef.current = true;
+                  setTtsActive(true);
+                  clearWatchdogTimer();
+                  speakSentence(ttsSentences, ttsIndexRef.current);
+                } else {
+                  // If index invalid, just restart
+                  stopTTS();
+                }
+              }}
+            >
+              <Ionicons
+                name="alert-circle-outline"
+                size={14}
+                color={adaptiveColors.accent}
+              />
+              <Text
+                style={{
+                  color: adaptiveColors.text,
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
+              >
+                Narration stalled — tap to resume
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Quick-actions cluster: collapsible group of floating buttons */}
+          {ttsAvailable && (
+            <View
+              style={[
+                styles.ttsQuickActionsContainer,
                 {
                   backgroundColor: adaptiveColors.card,
                   borderColor: adaptiveColors.border,
                 },
               ]}
-              onPress={() => setShowTTSHelp(true)}
             >
-              <Ionicons
-                name="book-outline"
-                size={16}
-                color={adaptiveColors.text}
-              />
-            </Pressable>
-          )}
+              {/* Collapse/expand toggle. Down arrow = buttons are showing
+                  (default state); tapping it hides the buttons below and
+                  flips the icon to an up arrow, which then re-expands
+                  them. */}
+              <Pressable
+                style={styles.ttsQuickActionsToggle}
+                onPress={() => setQuickActionsExpanded((v) => !v)}
+                accessibilityLabel={
+                  quickActionsExpanded
+                    ? "Hide quick actions"
+                    : "Show quick actions"
+                }
+              >
+                <Ionicons
+                  name={quickActionsExpanded ? "chevron-down" : "chevron-up"}
+                  size={16}
+                  color={adaptiveColors.text}
+                />
+              </Pressable>
 
-          {/* TTS Floating Button */}
-          {ttsAvailable && (
-            <Pressable
-              style={[
-                styles.ttsFloatingBtn,
-                { backgroundColor: adaptiveColors.accent },
-              ]}
-              onPress={() => {
-                registerRapidTap();
-                toggleTTS();
-              }}
-              onLongPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
-                  () => {},
-                );
-                setShowTTSSettings(true);
-              }}
-              delayLongPress={400}
-            >
-              <Ionicons
-                name={ttsActive ? "pause" : "volume-high"}
-                size={18}
-                color="#fff"
-              />
-            </Pressable>
+              {quickActionsExpanded && (
+                <>
+                  {/* Optional: background-playback (notification + battery)
+                      setup. Entirely opt-in — nothing here runs on its own,
+                      it just opens a guide the user can choose to follow. */}
+                  <Pressable
+                    style={styles.ttsQuickActionBtn}
+                    onPress={() => setShowBackgroundSetup(true)}
+                    accessibilityLabel="Background playback setup"
+                  >
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={16}
+                      color={adaptiveColors.text}
+                    />
+                  </Pressable>
+
+                  {/* Guidebook */}
+                  <Pressable
+                    style={styles.ttsQuickActionBtn}
+                    onPress={() => setShowTTSHelp(true)}
+                    accessibilityLabel="TTS guidebook"
+                  >
+                    <Ionicons
+                      name="book-outline"
+                      size={16}
+                      color={adaptiveColors.text}
+                    />
+                  </Pressable>
+
+                  {/* TTS play/pause */}
+                  <Pressable
+                    style={[
+                      styles.ttsQuickActionBtn,
+                      styles.ttsPlayBtnInner,
+                      { backgroundColor: adaptiveColors.accent },
+                    ]}
+                    onPress={() => {
+                      registerRapidTap();
+                      toggleTTS();
+                    }}
+                    onLongPress={() => {
+                      Haptics.impactAsync(
+                        Haptics.ImpactFeedbackStyle.Medium,
+                      ).catch(() => {});
+                      setShowTTSSettings(true);
+                    }}
+                    delayLongPress={400}
+                    accessibilityLabel={
+                      ttsActive ? "Pause narration" : "Start narration"
+                    }
+                  >
+                    <Ionicons
+                      name={ttsActive ? "pause" : "volume-high"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </Pressable>
+                </>
+              )}
+            </View>
           )}
         </View>
 
@@ -2986,6 +3220,245 @@ export default function ReaderScreen() {
           </Pressable>
         </Modal>
 
+        {/* Background Playback Setup Modal — entirely optional, opened only
+            via the shield button in the quick-actions cluster. Nothing
+            here runs automatically; every step is a user-initiated tap. */}
+        <Modal
+          visible={showBackgroundSetup}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowBackgroundSetup(false)}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={() => setShowBackgroundSetup(false)}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Text
+                style={[styles.ttsModalTitle, { color: adaptiveColors.text }]}
+              >
+                Background Playback Setup
+              </Text>
+              <Text
+                style={[
+                  styles.ttsHelpDesc,
+                  { color: adaptiveColors.textSecondary, marginBottom: 12 },
+                ]}
+              >
+                Optional. Some phones (Xiaomi/MIUI, Oppo, Vivo, Huawei
+                especially) stop narration a few seconds after you lock the
+                screen or leave the app to save battery. These three
+                settings fix that — we can't change them for you, so tap
+                each one you'd like to open.
+              </Text>
+
+              {/* Step 1: Notification permission */}
+              <View style={styles.ttsHelpItem}>
+                <View
+                  style={[
+                    styles.ttsHelpIconWrap,
+                    {
+                      backgroundColor:
+                        notifPermGranted === true
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      notifPermGranted === true
+                        ? "checkmark-circle"
+                        : "notifications-outline"
+                    }
+                    size={18}
+                    color={
+                      notifPermGranted === true
+                        ? "#22C55E"
+                        : adaptiveColors.accent
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.ttsHelpTitle,
+                      { color: adaptiveColors.text },
+                    ]}
+                  >
+                    Allow Notifications
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ttsHelpDesc,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Required so Android knows narration is actively playing.
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.ttsBackgroundSetupBtn,
+                      { borderColor: adaptiveColors.border },
+                    ]}
+                    onPress={
+                      notifPermGranted === false
+                        ? () => Linking.openSettings()
+                        : handleRequestNotificationPerm
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.ttsBackgroundSetupBtnText,
+                        { color: adaptiveColors.accent },
+                      ]}
+                    >
+                      {notifPermGranted === true
+                        ? "Granted"
+                        : notifPermGranted === false
+                          ? "Open App Settings"
+                          : "Allow Notifications"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Step 2: Battery optimization exemption */}
+              <View style={styles.ttsHelpItem}>
+                <View
+                  style={[
+                    styles.ttsHelpIconWrap,
+                    {
+                      backgroundColor:
+                        batteryOptExempt === true
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      batteryOptExempt === true
+                        ? "checkmark-circle"
+                        : "battery-charging-outline"
+                    }
+                    size={18}
+                    color={
+                      batteryOptExempt === true
+                        ? "#22C55E"
+                        : adaptiveColors.accent
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.ttsHelpTitle,
+                      { color: adaptiveColors.text },
+                    ]}
+                  >
+                    Disable Battery Optimization
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ttsHelpDesc,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Tells Android not to restrict NovelDR's background
+                    activity while narrating.
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.ttsBackgroundSetupBtn,
+                      { borderColor: adaptiveColors.border },
+                    ]}
+                    onPress={handleOpenBatteryOptimizationSettings}
+                  >
+                    <Text
+                      style={[
+                        styles.ttsBackgroundSetupBtnText,
+                        { color: adaptiveColors.accent },
+                      ]}
+                    >
+                      {batteryOptExempt === true
+                        ? "Exempt — Open Anyway"
+                        : "Open Battery Settings"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Step 3: OEM autostart / power manager, only shown when the
+                  device actually exposes one (notifee returns no activity
+                  on stock Android) */}
+              {powerManagerAvailable && (
+                <View style={styles.ttsHelpItem}>
+                  <View
+                    style={[
+                      styles.ttsHelpIconWrap,
+                      { backgroundColor: adaptiveColors.accent + "20" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="phone-portrait-outline"
+                      size={18}
+                      color={adaptiveColors.accent}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.ttsHelpTitle,
+                        { color: adaptiveColors.text },
+                      ]}
+                    >
+                      Enable Autostart
+                    </Text>
+                    <Text
+                      style={[
+                        styles.ttsHelpDesc,
+                        { color: adaptiveColors.textSecondary },
+                      ]}
+                    >
+                      Your phone's manufacturer (not Android itself) applies
+                      this extra restriction on some devices.
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.ttsBackgroundSetupBtn,
+                        { borderColor: adaptiveColors.border },
+                      ]}
+                      onPress={handleOpenPowerManagerSettings}
+                    >
+                      <Text
+                        style={[
+                          styles.ttsBackgroundSetupBtnText,
+                          { color: adaptiveColors.accent },
+                        ]}
+                      >
+                        Open Autostart Settings
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         {/* TTS Settings Modal */}
         <Modal
           visible={showTTSSettings}
@@ -3543,28 +4016,48 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 40,
   },
-  ttsHelpBtn: {
+  ttsQuickActionsContainer: {
     position: "absolute",
-    bottom: 70,
+    bottom: 18,
     right: 18,
+    width: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    alignItems: "center",
+    paddingVertical: 6,
+    gap: 8,
+    elevation: 4,
+  },
+  ttsQuickActionsToggle: {
+    width: 30,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ttsQuickActionBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    elevation: 3,
   },
-  ttsFloatingBtn: {
-    position: "absolute",
-    bottom: 18,
-    right: 18,
+  ttsPlayBtnInner: {
     width: 38,
     height: 38,
     borderRadius: 19,
+  },
+  ttsStalledBanner: {
+    position: "absolute",
+    bottom: 65,
+    right: 68,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 3,
   },
   ttsSentenceBox: {
     flexDirection: "row",
@@ -3972,4 +4465,13 @@ const styles = StyleSheet.create({
   },
   ttsHelpTitle: { fontSize: 13, marginBottom: 3, fontWeight: "600" },
   ttsHelpDesc: { fontSize: 12, lineHeight: 17 },
+  ttsBackgroundSetupBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  ttsBackgroundSetupBtnText: { fontSize: 12, fontWeight: "600" },
 });
