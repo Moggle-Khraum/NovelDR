@@ -386,7 +386,9 @@ const migrateToPerNovelFiles = async (
 
     // Write each novel file in parallel with concurrency=12
     await ensureDirectoryExists(getNovelsPath());
-    const novelIds: string[] = [];
+
+    // Pre‑allocate array to preserve original order
+    const novelIdsArray: (string | null)[] = new Array(novels.length).fill(null);
     const failedIds: string[] = [];
     let succeeded = 0;
     let failed = 0;
@@ -402,11 +404,11 @@ const migrateToPerNovelFiles = async (
       });
     };
 
-    await runConcurrent(novels, 12, async (novel) => {
+    await runConcurrent(novels, 12, async (novel, idx) => {
       try {
         await writeNovelFile(novel);
         succeeded++;
-        novelIds.push(novel.id);
+        novelIdsArray[idx] = novel.id;
         updateProgress();
       } catch (error) {
         failed++;
@@ -420,6 +422,9 @@ const migrateToPerNovelFiles = async (
         updateProgress();
       }
     });
+
+    // Filter out nulls to get the final ordered list
+    const novelIds = novelIdsArray.filter((id): id is string => id !== null);
 
     // Read old sort preference
     let sortOrder: SortOrder = "ascending";
@@ -435,14 +440,9 @@ const migrateToPerNovelFiles = async (
 
     // Clean up old files (rename to .migrated)
     const libraryBackup = getLibraryFilePath() + ".migrated";
-    await FileSystem.moveAsync({
-      from: getLibraryFilePath(),
-      to: libraryBackup,
-    });
+    await FileSystem.moveAsync({ from: getLibraryFilePath(), to: libraryBackup });
     const sortBackup = getSortPreferenceFilePath() + ".migrated";
-    const sortExists = await FileSystem.getInfoAsync(
-      getSortPreferenceFilePath(),
-    );
+    const sortExists = await FileSystem.getInfoAsync(getSortPreferenceFilePath());
     if (sortExists.exists) {
       await FileSystem.moveAsync({
         from: getSortPreferenceFilePath(),
@@ -1015,49 +1015,46 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   // ── addNovel ──────────────────────────────────────────────────────────────
 
-  const addNovel = useCallback(
-    async (novel: Novel) => {
-      const current = novelsRef.current;
-      const existing = current.find((n) => n.id === novel.id);
-      let updatedNovels: Novel[];
-      let newChaptersToSave: Chapter[];
-      let saveOffset = 0;
+  const addNovel = useCallback(async (novel: Novel) => {
+    const current = novelsRef.current;
+    const existing = current.find((n) => n.id === novel.id);
+    let updatedNovels: Novel[];
+    let newChaptersToSave: Chapter[];
+    let saveOffset = 0;
 
-      if (existing) {
-        const existingUrls = new Set(existing.chapters.map((ch) => ch.url));
-        const newChapters = novel.chapters.filter(
-          (ch) => !existingUrls.has(ch.url),
-        );
-        const merged = {
-          ...existing,
-          ...novel,
-          chapters: [...existing.chapters, ...newChapters],
-        };
-        updatedNovels = current.map((n) => (n.id === novel.id ? merged : n));
-        newChaptersToSave = newChapters;
-        saveOffset = existing.chapters.length;
-      } else {
-        updatedNovels = [novel, ...current];
-        newChaptersToSave = novel.chapters;
-        saveOffset = 0;
-      }
+    if (existing) {
+      const existingUrls = new Set(existing.chapters.map((ch) => ch.url));
+      const newChapters = novel.chapters.filter(
+        (ch) => !existingUrls.has(ch.url),
+      );
+      const merged = {
+        ...existing,
+        ...novel,
+        chapters: [...existing.chapters, ...newChapters],
+      };
+      updatedNovels = current.map((n) => (n.id === novel.id ? merged : n));
+      newChaptersToSave = newChapters;
+      saveOffset = existing.chapters.length;
+    } else {
+      updatedNovels = [novel, ...current];
+      newChaptersToSave = novel.chapters;
+      saveOffset = 0;
+    }
 
-      // Write novel file (full metadata)
-      const novelToWrite = updatedNovels.find((n) => n.id === novel.id)!;
-      await writeNovelFile(novelToWrite);
+    // Write novel file (full metadata)
+    const novelToWrite = updatedNovels.find((n) => n.id === novel.id)!;
+    await writeNovelFile(novelToWrite);
 
-      // Update index (add id to front)
-      const currentIds = updatedNovels.map((n) => n.id);
-      await writeIndexFile({ novelIds: currentIds, sortOrder });
+    // Update index (add id to front)
+    const currentIds = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: currentIds, sortOrder });
 
-      // Save chapters (content) separately
-      await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
+    // Save chapters (content) separately
+    await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
 
-      novelsRef.current = updatedNovels;
-      setNovels(updatedNovels);
-    },
-    [sortOrder],
-  );
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+  }, [sortOrder]);
 
   // ── updateNovel ──────────────────────────────────────────────────────────
 
@@ -1082,43 +1079,35 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   // ── removeNovel ──────────────────────────────────────────────────────────
 
-  const removeNovel = useCallback(
-    async (id: string) => {
-      const updatedNovels = novelsRef.current.filter((n) => n.id !== id);
-      // Remove novel file
-      await deleteNovelFile(id);
-      // Update index
-      const ids = updatedNovels.map((n) => n.id);
-      await writeIndexFile({ novelIds: ids, sortOrder: sortOrder });
-      // Delete chapters
-      deleteNovelChapters(id);
+  const removeNovel = useCallback(async (id: string) => {
+    const updatedNovels = novelsRef.current.filter((n) => n.id !== id);
+    // Remove novel file
+    await deleteNovelFile(id);
+    // Update index
+    const ids = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: ids, sortOrder: sortOrder });
+    // Delete chapters
+    deleteNovelChapters(id);
 
-      novelsRef.current = updatedNovels;
-      setNovels(updatedNovels);
-    },
-    [sortOrder],
-  );
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+  }, [sortOrder]);
 
   // ── removeNovels ─────────────────────────────────────────────────────────
 
-  const removeNovels = useCallback(
-    async (ids: string[]) => {
-      const updatedNovels = novelsRef.current.filter(
-        (n) => !ids.includes(n.id),
-      );
-      // Delete each novel file
-      await Promise.all(ids.map((id) => deleteNovelFile(id)));
-      // Update index
-      const newIds = updatedNovels.map((n) => n.id);
-      await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
-      // Delete chapters
-      ids.forEach((id) => deleteNovelChapters(id));
+  const removeNovels = useCallback(async (ids: string[]) => {
+    const updatedNovels = novelsRef.current.filter((n) => !ids.includes(n.id));
+    // Delete each novel file
+    await Promise.all(ids.map((id) => deleteNovelFile(id)));
+    // Update index
+    const newIds = updatedNovels.map((n) => n.id);
+    await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
+    // Delete chapters
+    ids.forEach((id) => deleteNovelChapters(id));
 
-      novelsRef.current = updatedNovels;
-      setNovels(updatedNovels);
-    },
-    [sortOrder],
-  );
+    novelsRef.current = updatedNovels;
+    setNovels(updatedNovels);
+  }, [sortOrder]);
 
   // ── getNovel ─────────────────────────────────────────────────────────────
 
@@ -1325,9 +1314,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
       // Write all novel files in parallel
       await ensureDirectoryExists(getNovelsPath());
-      await runConcurrent(novelsToWrite, 12, async (novel) => {
-        await writeNovelFile(novel);
-      });
+      await runConcurrent(
+        novelsToWrite,
+        12,
+        async (novel) => {
+          await writeNovelFile(novel);
+        },
+      );
 
       // Write index
       const ids = novelsToWrite.map((n) => n.id);
