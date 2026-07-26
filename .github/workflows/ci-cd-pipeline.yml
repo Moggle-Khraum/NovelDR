@@ -7,11 +7,13 @@ on:
       - Prod-Dev
       - main
       - Prod
+      - Overhaul
   pull_request:
     branches:
       - Prod-Dev
       - main
       - Prod
+      - Overhaul
 
 jobs:
   sync-lockfile:
