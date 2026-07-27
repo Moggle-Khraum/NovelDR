@@ -973,7 +973,7 @@ export default function NovelDetailScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    This novel hasn't downloaded any chapters. Check the
+                    This novel hasn&apos;t downloaded any chapters. Check the
                     Updates tab to fetch the latest ones.
                   </Text>
                   <Pressable
