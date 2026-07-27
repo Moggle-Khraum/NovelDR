@@ -93,20 +93,61 @@ function NovelCard({
   novel,
   onPress,
   onLongPress,
+  onDelete,
   isSelected,
   selectionMode,
 }: {
   novel: Novel;
   onPress: () => void;
   onLongPress: () => void;
+  onDelete: () => void;
   isSelected: boolean;
   selectionMode: boolean;
 }) {
   const { colors } = useTheme();
   const scale = useSharedValue(1);
+  const swipeX = useSharedValue(0);
+  const DELETE_WIDTH = 84;
+
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+  const swipeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: swipeX.value }],
+  }));
+
+  const closeSwipe = () => {
+    swipeX.value = withSpring(0, { damping: 20, stiffness: 200 });
+  };
+
+  const handleDeletePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    closeSwipe();
+    onDelete();
+  };
+
+  // Card-level swipe, deliberately scoped to a smaller/equal activation
+  // offset than the screen's filter-switch pan gesture so it claims the
+  // touch first — nested GestureDetectors give descendants first refusal
+  // on a touch by default. Only active outside selection mode.
+  const cardPanGesture = Gesture.Pan()
+    .enabled(!selectionMode)
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-15, 15])
+    .onUpdate((event) => {
+      // Only allow swiping left (negative), clamp so it can't overshoot
+      // past the reveal width.
+      const next = Math.min(0, Math.max(event.translationX, -DELETE_WIDTH * 1.4));
+      swipeX.value = next;
+    })
+    .onEnd((event) => {
+      const shouldReveal =
+        event.translationX < -DELETE_WIDTH / 2 || event.velocityX < -800;
+      swipeX.value = withSpring(shouldReveal ? -DELETE_WIDTH : 0, {
+        damping: 20,
+        stiffness: 200,
+      });
+    });
 
   const totalChapters = novel.chapters.length;
   const currentChapter = novel.lastRead ? novel.lastRead.chapterIndex + 1 : 0;
@@ -118,31 +159,48 @@ function NovelCard({
   const sourceName = getSourceDisplayName(novel.sourceUrl);
 
   return (
-    <Pressable
-      onPress={() => {
-        scale.value = withSpring(1, { damping: 15 });
-        onPress();
-      }}
-      onLongPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        onLongPress();
-      }}
-      onPressIn={() => {
-        scale.value = withSpring(0.97, { damping: 15 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 15 });
-      }}
-    >
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            backgroundColor: isSelected ? colors.accent + "20" : colors.card,
-            borderColor: isSelected ? colors.accent : colors.border,
-          },
-          animStyle,
-        ]}
+    <View style={styles.swipeContainer}>
+      {/* Red delete box revealed behind the card on swipe-left */}
+      <Pressable
+        style={[styles.deleteAction, { backgroundColor: colors.error }]}
+        onPress={handleDeletePress}
+      >
+        <Ionicons name="trash-outline" size={22} color="#fff" />
+      </Pressable>
+
+      <GestureDetector gesture={cardPanGesture}>
+        <Animated.View style={swipeStyle}>
+          <Pressable
+            onPress={() => {
+              scale.value = withSpring(1, { damping: 15 });
+              if (swipeX.value !== 0) {
+                closeSwipe();
+                return;
+              }
+              onPress();
+            }}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onLongPress();
+            }}
+            onPressIn={() => {
+              scale.value = withSpring(0.97, { damping: 15 });
+            }}
+            onPressOut={() => {
+              scale.value = withSpring(1, { damping: 15 });
+            }}
+          >
+            <Animated.View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: isSelected
+                    ? colors.accent + "20"
+                    : colors.card,
+                  borderColor: isSelected ? colors.accent : colors.border,
+                },
+                animStyle,
+              ]}
       >
         {/* Selection mode checkbox */}
         {selectionMode && (
@@ -280,8 +338,11 @@ function NovelCard({
             </Pressable>
           </View>
         </View>
-      </Animated.View>
-    </Pressable>
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
@@ -638,6 +699,11 @@ export default function LibraryScreen() {
     }
   };
 
+  const handleSwipeDelete = (novel: Novel) => {
+    setSelectedNovels([novel.id]);
+    showFirstConfirmation();
+  };
+
   const handleNovelLongPress = (novel: Novel) => {
     if (selectionMode) {
       toggleNovelSelection(novel.id);
@@ -904,6 +970,7 @@ export default function LibraryScreen() {
               novel={item}
               onPress={() => handleNovelPress(item)}
               onLongPress={() => handleNovelLongPress(item)}
+              onDelete={() => handleSwipeDelete(item)}
               isSelected={selectedNovels.includes(item.id)}
               selectionMode={selectionMode}
             />
@@ -1308,6 +1375,19 @@ const styles = StyleSheet.create({
   filterCountText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
 
   // Updated card styles
+  swipeContainer: {
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  deleteAction: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: 84,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   card: {
     flexDirection: "row",
     borderRadius: 14,

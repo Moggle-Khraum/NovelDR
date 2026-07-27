@@ -535,6 +535,32 @@ export default function AddNovelScreen() {
     return null;
   };
 
+  // Retries a chapter fetch up to `retries` times with a short backoff
+  // before giving up. Used so a single transient network hiccup doesn't
+  // permanently skip a chapter or abort the whole download.
+  const fetchChapterWithRetries = async (
+    fetchUrl: string,
+    num: number,
+    retries = 3,
+  ): Promise<Awaited<ReturnType<typeof fetchChapter>>> => {
+    let lastErr: any;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await fetchChapter(fetchUrl, num);
+      } catch (err) {
+        lastErr = err;
+        if (attempt < retries) {
+          addLog(
+            `Chapter ${num} failed (attempt ${attempt}/${retries}), retrying...`,
+            "warning",
+          );
+          await new Promise((r) => setTimeout(r, 600 * attempt));
+        }
+      }
+    }
+    throw lastErr;
+  };
+
   // Lightweight helper — fetches only next URL and title, no full content processing
   const getChapterMetadata = async (
     url: string,
@@ -918,6 +944,7 @@ export default function AddNovelScreen() {
 
       // ========== DOWNLOAD CHAPTERS ==========
       const newChapters: (Chapter & { chapterNumber: number })[] = [];
+      const failedChapters: { chapterNum: number; url: string }[] = [];
       let downloaded = 0;
       let lastCheckpointCount = 0; // how many of newChapters are already flushed to disk
 
@@ -982,7 +1009,7 @@ export default function AddNovelScreen() {
             data = prefetchedChapter.data;
           } else {
             addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
-            data = await fetchChapter(currentUrl, chapterNum);
+            data = await fetchChapterWithRetries(currentUrl, chapterNum);
           }
           // Prefetch cache is single-use — clear it after this iteration.
           prefetchedChapter = null;
@@ -1089,13 +1116,73 @@ export default function AddNovelScreen() {
           chapterNum++;
         } catch (err: any) {
           addLog(
-            `Failed to download Chapter ${chapterNum}: ${err.message}`,
-            "error",
+            `Chapter ${chapterNum} failed after 3 attempts, skipping for now: ${err.message}`,
+            "warning",
           );
-          break;
+          failedChapters.push({ chapterNum, url: currentUrl });
+
+          // Try to guess the next chapter's URL structurally so the run can
+          // keep going even without this chapter's nextUrl. If we can't,
+          // there's no way to know where to continue from — stop here.
+          const guessedNextUrl = meta.firstChapterUrl
+            ? tryDirectSkip(meta.firstChapterUrl, chapterNum + 1)
+            : null;
+
+          if (!guessedNextUrl) {
+            addLog(
+              `Can't determine the next chapter's URL — stopping here. ` +
+                `${failedChapters.length} chapter(s) were skipped and will be retried before finishing.`,
+              "error",
+            );
+            break;
+          }
+          currentUrl = guessedNextUrl;
+          chapterNum++;
         }
 
         await new Promise((r) => setTimeout(r, 200));
+      }
+
+      // ========== RETRY SKIPPED CHAPTERS ==========
+      if (failedChapters.length > 0 && !stopRef.current) {
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
+        addLog(
+          `Retrying ${failedChapters.length} skipped chapter(s)...`,
+          "downloading",
+        );
+        const stillFailed: typeof failedChapters = [];
+        for (const fc of failedChapters) {
+          if (stopRef.current) break;
+          try {
+            const data = await fetchChapterWithRetries(fc.url, fc.chapterNum);
+            const chapterNumber = extractChapterNumber(data.title);
+            newChapters.push({
+              title: data.title,
+              url: fc.url,
+              content: data.content,
+              chapterNumber,
+            });
+            downloaded++;
+            addLog(
+              `Recovered Chapter ${fc.chapterNum}: ${data.title}`,
+              "success",
+            );
+          } catch (err: any) {
+            stillFailed.push(fc);
+            addLog(
+              `Chapter ${fc.chapterNum} still failed after retries — giving up on it: ${err.message}`,
+              "error",
+            );
+          }
+        }
+        if (stillFailed.length > 0) {
+          addLog(
+            `${stillFailed.length} chapter(s) could not be downloaded and were left out.`,
+            "warning",
+          );
+        } else {
+          addLog(`All previously skipped chapters recovered.`, "success");
+        }
       }
 
       // ========== SORT & FINALIZE ==========
