@@ -572,7 +572,18 @@ export default function SettingsScreen() {
     } finally {
       autoBackupRunningRef.current = false;
     }
-  }, [novels, sortOrder, exporting, importing, loadAppSettings]);
+  }, [
+    novels,
+    sortOrder,
+    exporting,
+    importing,
+    loadAppSettings,
+    AUTO_BACKUP_MIN_INTERVAL_MS,
+    BACKUP_DIR,
+    exportBackupV5,
+    purgeOrphanedData,
+    saveAppSettings,
+  ]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
