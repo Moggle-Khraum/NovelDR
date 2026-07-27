@@ -260,9 +260,9 @@ export default function SettingsScreen() {
     }[]
   >([]);
   const [pendingComment, setPendingComment] = useState("");
-  const [estimatedBackupSize, setEstimatedBackupSize] = useState<
-    number | null
-  >(null);
+  const [estimatedBackupSize, setEstimatedBackupSize] = useState<number | null>(
+    null,
+  );
   const [estimatingSize, setEstimatingSize] = useState(false);
   const [showDevProfile, setShowDevProfile] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);

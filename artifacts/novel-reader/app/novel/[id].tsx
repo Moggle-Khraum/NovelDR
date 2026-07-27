@@ -962,9 +962,7 @@ export default function NovelDetailScreen() {
                     color={colors.textSecondary}
                     style={styles.emptyChaptersIcon}
                   />
-                  <Text
-                    style={[styles.emptyText, { color: colors.text }]}
-                  >
+                  <Text style={[styles.emptyText, { color: colors.text }]}>
                     No chapters yet
                   </Text>
                   <Text

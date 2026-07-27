@@ -137,7 +137,10 @@ function NovelCard({
     .onUpdate((event) => {
       // Only allow swiping left (negative), clamp so it can't overshoot
       // past the reveal width.
-      const next = Math.min(0, Math.max(event.translationX, -DELETE_WIDTH * 1.4));
+      const next = Math.min(
+        0,
+        Math.max(event.translationX, -DELETE_WIDTH * 1.4),
+      );
       swipeX.value = next;
     })
     .onEnd((event) => {
@@ -201,143 +204,158 @@ function NovelCard({
                 },
                 animStyle,
               ]}
-      >
-        {/* Selection mode checkbox */}
-        {selectionMode && (
-          <View style={styles.checkboxContainer}>
-            <Ionicons
-              name={isSelected ? "checkbox" : "square-outline"}
-              size={24}
-              color={isSelected ? colors.accent : colors.textSecondary}
-            />
-          </View>
-        )}
-
-        {/* Cover Image - Left side */}
-        <View style={styles.coverContainer}>
-          {novel.coverUrl ? (
-            <Image
-              source={{ uri: novel.coverUrl }}
-              style={styles.cover}
-              contentFit="cover"
-            />
-          ) : (
-            <View
-              style={[
-                styles.coverPlaceholder,
-                { backgroundColor: colors.surface },
-              ]}
             >
-              <Ionicons name="book" size={28} color={colors.accent} />
-            </View>
-          )}
-        </View>
+              {/* Selection mode checkbox */}
+              {selectionMode && (
+                <View style={styles.checkboxContainer}>
+                  <Ionicons
+                    name={isSelected ? "checkbox" : "square-outline"}
+                    size={24}
+                    color={isSelected ? colors.accent : colors.textSecondary}
+                  />
+                </View>
+              )}
 
-        {/* Right side content */}
-        <View style={styles.info}>
-          {/* Title row with status badge */}
-          <View style={styles.titleRow}>
-            <Text
-              style={[styles.title, { color: colors.text }]}
-              numberOfLines={2}
-            >
-              {novel.title}
-            </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: statusCfg.color + "22" },
-              ]}
-            >
-              <View
-                style={[styles.statusDot, { backgroundColor: statusCfg.color }]}
-              />
-              <Text style={[styles.statusText, { color: statusCfg.color }]}>
-                {statusCfg.label}
-              </Text>
-            </View>
-          </View>
-
-          {/* Author row */}
-          <View style={styles.metaRow}>
-            <Text style={[styles.authorLabel, { color: colors.textSecondary }]}>
-              Author:
-            </Text>
-            <Text
-              style={[styles.author, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {novel.author}
-            </Text>
-          </View>
-
-          {/* Source row */}
-          <View style={styles.metaRow}>
-            <Text style={[styles.sourceLabel, { color: colors.textMuted }]}>
-              Source:
-            </Text>
-            <Text
-              style={[styles.source, { color: colors.textMuted }]}
-              numberOfLines={1}
-            >
-              {sourceName}
-            </Text>
-          </View>
-
-          {/* Progress row with button */}
-          <View style={styles.progressRow}>
-            <View style={styles.progressLeft}>
-              <Text
-                style={[styles.progressText, { color: colors.textSecondary }]}
-              >
-                Ch. {currentChapter}/{totalChapters}
-              </Text>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${progressPercent}%`,
-                      backgroundColor: colors.accent,
-                    },
-                  ]}
-                />
+              {/* Cover Image - Left side */}
+              <View style={styles.coverContainer}>
+                {novel.coverUrl ? (
+                  <Image
+                    source={{ uri: novel.coverUrl }}
+                    style={styles.cover}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.coverPlaceholder,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <Ionicons name="book" size={28} color={colors.accent} />
+                  </View>
+                )}
               </View>
-            </View>
 
-            <Pressable
-              style={[
-                styles.continueButton,
-                { backgroundColor: colors.accent },
-              ]}
-              onPress={(e) => {
-                e.stopPropagation();
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                if (currentChapter === 0) {
-                  // "Read" — no progress yet, send to detail page first
-                  router.push({
-                    pathname: "/novel/[id]",
-                    params: { id: novel.id },
-                  });
-                } else {
-                  // "Continue" — jump straight into the reader at last position
-                  const startIndex = novel.lastRead?.chapterIndex ?? 0;
-                  router.push({
-                    pathname: "/reader/[id]",
-                    params: {
-                      id: novel.id,
-                      chapterIndex: startIndex.toString(),
-                    },
-                  });
-                }
-              }}
-            >
-              <Text style={styles.continueButtonText}>
-                {currentChapter === 0 ? "Read" : "Continue"}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+              {/* Right side content */}
+              <View style={styles.info}>
+                {/* Title row with status badge */}
+                <View style={styles.titleRow}>
+                  <Text
+                    style={[styles.title, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
+                    {novel.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusCfg.color + "22" },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: statusCfg.color },
+                      ]}
+                    />
+                    <Text
+                      style={[styles.statusText, { color: statusCfg.color }]}
+                    >
+                      {statusCfg.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Author row */}
+                <View style={styles.metaRow}>
+                  <Text
+                    style={[
+                      styles.authorLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Author:
+                  </Text>
+                  <Text
+                    style={[styles.author, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {novel.author}
+                  </Text>
+                </View>
+
+                {/* Source row */}
+                <View style={styles.metaRow}>
+                  <Text
+                    style={[styles.sourceLabel, { color: colors.textMuted }]}
+                  >
+                    Source:
+                  </Text>
+                  <Text
+                    style={[styles.source, { color: colors.textMuted }]}
+                    numberOfLines={1}
+                  >
+                    {sourceName}
+                  </Text>
+                </View>
+
+                {/* Progress row with button */}
+                <View style={styles.progressRow}>
+                  <View style={styles.progressLeft}>
+                    <Text
+                      style={[
+                        styles.progressText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Ch. {currentChapter}/{totalChapters}
+                    </Text>
+                    <View style={styles.progressBarContainer}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${progressPercent}%`,
+                            backgroundColor: colors.accent,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={[
+                      styles.continueButton,
+                      { backgroundColor: colors.accent },
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      if (currentChapter === 0) {
+                        // "Read" — no progress yet, send to detail page first
+                        router.push({
+                          pathname: "/novel/[id]",
+                          params: { id: novel.id },
+                        });
+                      } else {
+                        // "Continue" — jump straight into the reader at last position
+                        const startIndex = novel.lastRead?.chapterIndex ?? 0;
+                        router.push({
+                          pathname: "/reader/[id]",
+                          params: {
+                            id: novel.id,
+                            chapterIndex: startIndex.toString(),
+                          },
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.continueButtonText}>
+                      {currentChapter === 0 ? "Read" : "Continue"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
             </Animated.View>
           </Pressable>
         </Animated.View>
