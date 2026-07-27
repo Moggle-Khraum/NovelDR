@@ -609,6 +609,48 @@ export default function AddNovelScreen() {
       return;
     }
 
+    // ── Low-storage guard: warn if free space is under 200MB ─────────────────
+    try {
+      const freeBytes = await FileSystem.getFreeDiskStorageAsync();
+      const LOW_STORAGE_THRESHOLD_BYTES = 200 * 1024 * 1024; // 200MB
+
+      if (freeBytes < LOW_STORAGE_THRESHOLD_BYTES) {
+        const freeMB = (freeBytes / (1024 * 1024)).toFixed(0);
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            "⚠️ Low Storage",
+            `Only ${freeMB}MB of free space remains on your device. Downloading this novel may fail partway through or fill up your storage.\n\nContinue anyway?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => resolve(false),
+              },
+              {
+                text: "Continue Anyway",
+                style: "destructive",
+                onPress: () => resolve(true),
+              },
+            ],
+            { cancelable: false },
+          );
+        });
+
+        if (!proceed) {
+          addLog("Download cancelled — insufficient storage.", "warning");
+          return;
+        }
+        addLog(
+          `Proceeding with low storage (${freeMB}MB free). Download may fail if space runs out.`,
+          "warning",
+        );
+      }
+    } catch (err) {
+      // If the storage check itself fails, don't block the user — just skip the warning.
+      console.warn("Storage check failed:", err);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const startCh = Math.max(1, parseInt(startChStr) || 1);
     const parsedMaxCh = parseInt(maxChStr) || DEFAULT_MAX_CHAPTERS;
     const maxCh = Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX);
