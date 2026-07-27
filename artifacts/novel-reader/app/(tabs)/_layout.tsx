@@ -153,7 +153,10 @@ function ClassicTabLayout() {
                 <View
                   style={[
                     styles.updateBadge,
-                    { backgroundColor: colors.accent, borderColor: colors.tabBar },
+                    {
+                      backgroundColor: colors.accent,
+                      borderColor: colors.tabBar,
+                    },
                   ]}
                 />
               )}
