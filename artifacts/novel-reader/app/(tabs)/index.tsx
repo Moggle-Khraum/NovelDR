@@ -252,11 +252,26 @@ function NovelCard({
                 styles.continueButton,
                 { backgroundColor: colors.accent },
               ]}
-              onPress={() => {
-                router.push({
-                  pathname: "/novel/[id]",
-                  params: { id: novel.id },
-                });
+              onPress={(e) => {
+                e.stopPropagation();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                if (currentChapter === 0) {
+                  // "Read" — no progress yet, send to detail page first
+                  router.push({
+                    pathname: "/novel/[id]",
+                    params: { id: novel.id },
+                  });
+                } else {
+                  // "Continue" — jump straight into the reader at last position
+                  const startIndex = novel.lastRead?.chapterIndex ?? 0;
+                  router.push({
+                    pathname: "/reader/[id]",
+                    params: {
+                      id: novel.id,
+                      chapterIndex: startIndex.toString(),
+                    },
+                  });
+                }
               }}
             >
               <Text style={styles.continueButtonText}>
