@@ -178,7 +178,7 @@ const fileWriteQueues = new Map<string, Promise<void>>();
 
 const withFileLock = async <T,>(
   filePath: string,
-  task: () => Promise<T>
+  task: () => Promise<T>,
 ): Promise<T> => {
   const previous = fileWriteQueues.get(filePath) ?? Promise.resolve();
   let release: () => void;
@@ -187,7 +187,7 @@ const withFileLock = async <T,>(
   });
   fileWriteQueues.set(
     filePath,
-    previous.then(() => gate)
+    previous.then(() => gate),
   );
 
   await previous;
@@ -223,7 +223,7 @@ const writeJsonFileAtomic = async (filePath: string, data: any) => {
     } catch (error) {
       // Best-effort cleanup of the tmp file if the write/move failed partway.
       await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(
-        () => {}
+        () => {},
       );
       throw error;
     }
