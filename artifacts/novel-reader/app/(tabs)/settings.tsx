@@ -260,6 +260,10 @@ export default function SettingsScreen() {
     }[]
   >([]);
   const [pendingComment, setPendingComment] = useState("");
+  const [estimatedBackupSize, setEstimatedBackupSize] = useState<
+    number | null
+  >(null);
+  const [estimatingSize, setEstimatingSize] = useState(false);
   const [showDevProfile, setShowDevProfile] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [showWarningCard, setShowWarningCard] = useState(false);
@@ -1484,11 +1488,60 @@ export default function SettingsScreen() {
   // EXPORT HANDLER
   // --------------------------------------------------------------------------
 
+  // Lightweight size estimate — sums existing chapter/cover file sizes on
+  // disk via stat calls only (no copying/zipping), so it's cheap to run
+  // right before the user commits to exporting. Actual zip will be smaller
+  // due to compression, so this is presented as an "uncompressed" estimate.
+  const estimateBackupSize = async (): Promise<number> => {
+    let total = 0;
+    try {
+      const chaptersDir = `${APP_DATA_DIR}chapters/`;
+      const chaptersDirInfo = await FileSystem.getInfoAsync(chaptersDir);
+      if (chaptersDirInfo.exists && chaptersDirInfo.isDirectory) {
+        const novelDirs = await FileSystem.readDirectoryAsync(chaptersDir);
+        for (const novelId of novelDirs) {
+          const novelChapterDir = `${chaptersDir}${novelId}/`;
+          const dirInfo = await FileSystem.getInfoAsync(novelChapterDir);
+          if (!dirInfo.exists || !dirInfo.isDirectory) continue;
+          const files = await FileSystem.readDirectoryAsync(novelChapterDir);
+          for (const file of files) {
+            const info = await FileSystem.getInfoAsync(
+              `${novelChapterDir}${file}`,
+            );
+            if (info.exists && !info.isDirectory) total += info.size || 0;
+          }
+        }
+      }
+    } catch (e) {
+      addBackupLog(`⚠️ Chapter size scan incomplete: ${String(e)}`);
+    }
+
+    try {
+      const coversDirInfo = await FileSystem.getInfoAsync(COVERS_DIR);
+      if (coversDirInfo.exists && coversDirInfo.isDirectory) {
+        const coverFiles = await FileSystem.readDirectoryAsync(COVERS_DIR);
+        for (const file of coverFiles) {
+          const info = await FileSystem.getInfoAsync(`${COVERS_DIR}${file}`);
+          if (info.exists && !info.isDirectory) total += info.size || 0;
+        }
+      }
+    } catch (e) {
+      addBackupLog(`⚠️ Cover size scan incomplete: ${String(e)}`);
+    }
+
+    return total;
+  };
+
   const handleExport = () => {
     if (novels.length === 0) return;
     setPendingComment("");
     setBackupLogs([]);
+    setEstimatedBackupSize(null);
     openPanel("comment");
+    setEstimatingSize(true);
+    estimateBackupSize()
+      .then(setEstimatedBackupSize)
+      .finally(() => setEstimatingSize(false));
   };
 
   const confirmExport = async (comment: string) => {
@@ -2478,6 +2531,25 @@ export default function SettingsScreen() {
             <Text style={[styles.commentSub, { color: colors.textSecondary }]}>
               Optional — helps identify this backup later
             </Text>
+            <View style={styles.sizeEstimateRow}>
+              <Ionicons
+                name="server-outline"
+                size={14}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.sizeEstimateText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {estimatingSize
+                  ? "Estimating size..."
+                  : estimatedBackupSize !== null
+                    ? `Estimated size: ~${(estimatedBackupSize / (1024 * 1024)).toFixed(1)} MB (before compression)`
+                    : "Size estimate unavailable"}
+              </Text>
+            </View>
             <TextInput
               style={[
                 styles.commentInput,
@@ -3332,6 +3404,17 @@ const styles = StyleSheet.create({
   },
   commentTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   commentSub: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
+  sizeEstimateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  sizeEstimateText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+  },
   commentInput: {
     borderWidth: 1,
     borderRadius: 10,
