@@ -24,6 +24,7 @@ import {
   Linking,
   AppState,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -268,6 +269,11 @@ export default function SettingsScreen() {
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
   const [showCredits, setShowCredits] = useState(false);
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [lastAutoBackupAt, setLastAutoBackupAt] = useState<string | null>(
+    null,
+  );
+  const autoBackupRunningRef = useRef(false);
   const { checkNow, checkingUpdate } = useUpdateContext();
 
   // --------------------------------------------------------------------------
@@ -454,6 +460,127 @@ export default function SettingsScreen() {
     });
     return () => subscription.remove();
   }, [loadAppSettings]);
+
+  useEffect(() => {
+    (async () => {
+      const settings = await loadAppSettings();
+      setAutoBackupEnabled(!!settings.autoBackupEnabled);
+      setLastAutoBackupAt(settings.lastAutoBackupAt ?? null);
+    })();
+  }, [loadAppSettings]);
+
+  const formatAutoBackupTimestamp = (iso: string): string => {
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      const time = d.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      if (sameDay) return `Today, ${time}`;
+      return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+    } catch {
+      return iso;
+    }
+  };
+
+  const handleToggleAutoBackup = async (value: boolean) => {
+    setAutoBackupEnabled(value);
+    await saveAppSettings({ autoBackupEnabled: value });
+    Haptics.selectionAsync();
+  };
+
+  // --------------------------------------------------------------------------
+  // AUTO-BACKUP (silent, triggered on background) — reuses the same export
+  // pipeline as the manual "Backup All Data" button, minus UI chrome.
+  // --------------------------------------------------------------------------
+
+  const AUTO_BACKUP_MIN_INTERVAL_MS = 60 * 60 * 1000; // don't re-run within 1h
+  const AUTO_BACKUP_RETENTION = 3; // keep only the last N auto-backups
+
+  const performAutoBackup = useCallback(async () => {
+    if (autoBackupRunningRef.current) return;
+    if (novels.length === 0) return;
+    if (exporting || importing) return;
+
+    const settings = await loadAppSettings();
+    if (!settings.autoBackupEnabled) return;
+
+    const lastRun = settings.lastAutoBackupAt
+      ? new Date(settings.lastAutoBackupAt).getTime()
+      : 0;
+    if (Date.now() - lastRun < AUTO_BACKUP_MIN_INTERVAL_MS) return;
+
+    autoBackupRunningRef.current = true;
+    try {
+      try {
+        await purgeOrphanedData(novels);
+      } catch (e) {
+        console.warn("Auto-backup: orphan purge failed", e);
+      }
+
+      await ensureDir(BACKUP_DIR);
+      const dateTag = formatDateTag();
+      const backupName = `noveldrr-backup-${dateTag}_auto`;
+      const backupFolder = `${BACKUP_DIR}${backupName}/`;
+      await ensureDir(backupFolder);
+
+      const metadata = await exportBackupV5(
+        backupFolder,
+        "auto",
+        novels,
+        sortOrder,
+      );
+
+      const filename = `${backupName}.zip`;
+      const backupPath = `${BACKUP_DIR}${filename}`;
+      await zip(stripFileScheme(backupFolder), stripFileScheme(backupPath));
+      await FileSystem.writeAsStringAsync(
+        `${backupPath}.meta.json`,
+        JSON.stringify(metadata),
+      );
+      await FileSystem.deleteAsync(backupFolder, { idempotent: true });
+
+      const nowIso = new Date().toISOString();
+      await saveAppSettings({ lastAutoBackupAt: nowIso });
+      setLastAutoBackupAt(nowIso);
+
+      // Retention: keep only the most recent AUTO_BACKUP_RETENTION auto-backups
+      try {
+        const files = await FileSystem.readDirectoryAsync(BACKUP_DIR);
+        const autoBackups = files
+          .filter((f) => f.endsWith("_auto.zip"))
+          .sort()
+          .reverse();
+        const stale = autoBackups.slice(AUTO_BACKUP_RETENTION);
+        for (const staleName of stale) {
+          await FileSystem.deleteAsync(`${BACKUP_DIR}${staleName}`, {
+            idempotent: true,
+          });
+          await FileSystem.deleteAsync(
+            `${BACKUP_DIR}${staleName}.meta.json`,
+            { idempotent: true },
+          );
+        }
+      } catch (e) {
+        console.warn("Auto-backup: retention cleanup failed", e);
+      }
+    } catch (e) {
+      console.warn("Auto-backup failed", e);
+    } finally {
+      autoBackupRunningRef.current = false;
+    }
+  }, [novels, sortOrder, exporting, importing, loadAppSettings]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "background" || nextAppState === "inactive") {
+        performAutoBackup();
+      }
+    });
+    return () => subscription.remove();
+  }, [performAutoBackup]);
 
   const ensureDir = async (dirPath: string) => {
     const info = await FileSystem.getInfoAsync(dirPath);
@@ -2044,6 +2171,46 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          AUTO-BACKUP
+        </Text>
+        <View
+          style={[
+            styles.backupCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.autoBackupRow}>
+            <View style={styles.autoBackupTextCol}>
+              <Text style={[styles.autoBackupLabel, { color: colors.text }]}>
+                Auto-Backup
+              </Text>
+              <Text
+                style={[styles.backupDesc, { color: colors.textSecondary }]}
+              >
+                Backs up automatically when you close the app
+              </Text>
+            </View>
+            <Switch
+              value={autoBackupEnabled}
+              onValueChange={handleToggleAutoBackup}
+              trackColor={{ false: colors.surface, true: colors.accent }}
+              thumbColor="#fff"
+              ios_backgroundColor={colors.surface}
+            />
+          </View>
+          {lastAutoBackupAt && (
+            <Text
+              style={[
+                styles.autoBackupTimestamp,
+                { color: colors.textMuted },
+              ]}
+            >
+              Last auto-backup: {formatAutoBackupTimestamp(lastAutoBackupAt)}
+            </Text>
+          )}
+        </View>
+
         {/*
           Restore Backup — centered popup Modal
         */}
@@ -3059,6 +3226,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     textAlign: "center",
+  },
+  autoBackupRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  autoBackupTextCol: {
+    flex: 1,
+    paddingRight: 12,
+    gap: 2,
+  },
+  autoBackupLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+  },
+  autoBackupTimestamp: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11.5,
   },
   backupActivityLog: {
     borderRadius: 10,
