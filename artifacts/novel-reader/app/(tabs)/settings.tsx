@@ -270,9 +270,7 @@ export default function SettingsScreen() {
   const [bugDescription, setBugDescription] = useState("");
   const [showCredits, setShowCredits] = useState(false);
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
-  const [lastAutoBackupAt, setLastAutoBackupAt] = useState<string | null>(
-    null,
-  );
+  const [lastAutoBackupAt, setLastAutoBackupAt] = useState<string | null>(null);
   const autoBackupRunningRef = useRef(false);
   const { checkNow, checkingUpdate } = useUpdateContext();
 
@@ -558,10 +556,9 @@ export default function SettingsScreen() {
           await FileSystem.deleteAsync(`${BACKUP_DIR}${staleName}`, {
             idempotent: true,
           });
-          await FileSystem.deleteAsync(
-            `${BACKUP_DIR}${staleName}.meta.json`,
-            { idempotent: true },
-          );
+          await FileSystem.deleteAsync(`${BACKUP_DIR}${staleName}.meta.json`, {
+            idempotent: true,
+          });
         }
       } catch (e) {
         console.warn("Auto-backup: retention cleanup failed", e);
@@ -2201,10 +2198,7 @@ export default function SettingsScreen() {
           </View>
           {lastAutoBackupAt && (
             <Text
-              style={[
-                styles.autoBackupTimestamp,
-                { color: colors.textMuted },
-              ]}
+              style={[styles.autoBackupTimestamp, { color: colors.textMuted }]}
             >
               Last auto-backup: {formatAutoBackupTimestamp(lastAutoBackupAt)}
             </Text>
