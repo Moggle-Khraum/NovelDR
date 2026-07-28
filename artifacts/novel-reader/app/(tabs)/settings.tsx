@@ -935,6 +935,7 @@ export default function SettingsScreen() {
     loadAppSettings,
     AUTO_BACKUP_MIN_INTERVAL_MS,
     BACKUP_DIR,
+    ensureDir,
     exportBackupV5,
     purgeOrphanedData,
     saveAppSettings,
