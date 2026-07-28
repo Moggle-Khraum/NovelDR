@@ -34,6 +34,7 @@ export type Novel = {
     chapterIndex: number;
     chapterTitle: string;
     scrollOffset: number;
+    timestamp?: number;
   };
 };
 
@@ -1192,7 +1193,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       scrollOffset: number,
     ) => {
       await updateNovel(novelId, {
-        lastRead: { chapterIndex, chapterTitle, scrollOffset },
+        lastRead: {
+          chapterIndex,
+          chapterTitle,
+          scrollOffset,
+          timestamp: Date.now(),
+        },
         status: "reading",
       });
     },
