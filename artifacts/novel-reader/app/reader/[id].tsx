@@ -1729,6 +1729,17 @@ export default function ReaderScreen() {
     setAutoScrollActive(true);
   }, [autoScrollSpeedIdx, stopAutoScroll]);
 
+  // Speed changes while auto-scroll is running need to take effect
+  // immediately — startAutoScroll captures `speed` into the interval's
+  // closure once, so just updating autoScrollSpeedIdx doesn't affect an
+  // already-running interval on its own. Re-arm it here when that happens.
+  useEffect(() => {
+    if (autoScrollActive) {
+      startAutoScroll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScrollSpeedIdx]);
+
   const handleScroll = (event: any) => {
     scrollYRef.current = event.nativeEvent.contentOffset.y;
     updateReadingProgress();
@@ -2059,7 +2070,12 @@ export default function ReaderScreen() {
         >
           <Pressable
             style={styles.navBtn}
-            onPress={() => router.back()}
+            onPress={() =>
+              router.replace({
+                pathname: "/novel/[id]",
+                params: { id },
+              })
+            }
             accessibilityLabel="Close reader"
           >
             <Ionicons name="close" size={22} color={adaptiveColors.text} />

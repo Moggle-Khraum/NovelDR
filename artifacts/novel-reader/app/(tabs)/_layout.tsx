@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useUpdateContext } from "@/context/UpdateContext";
 
 function NativeTabLayout() {
   return (
@@ -45,6 +46,8 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const { colors } = useTheme();
+  const { updateInfo } = useUpdateContext();
+  const updateAvailable = !!updateInfo;
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -135,17 +138,47 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="gearshape.fill" tintColor={color} size={size} />
-            ) : (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              {isIOS ? (
+                <SymbolView
+                  name="gearshape.fill"
+                  tintColor={color}
+                  size={size}
+                />
+              ) : (
+                <Ionicons name="settings" size={size} color={color} />
+              )}
+              {updateAvailable && (
+                <View
+                  style={[
+                    styles.updateBadge,
+                    {
+                      backgroundColor: colors.accent,
+                      borderColor: colors.tabBar,
+                    },
+                  ]}
+                />
+              )}
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  updateBadge: {
+    position: "absolute",
+    top: -1,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+});
 
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) {

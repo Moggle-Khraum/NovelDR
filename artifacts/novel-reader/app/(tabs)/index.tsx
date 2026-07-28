@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Constants from "expo-constants";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -80,11 +80,14 @@ const STATUS_CONFIG: Record<
   },
 };
 
+const LAST_READ_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+const RECENTLY_ADDED_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 const FILTER_TABS: { key: NovelStatus | "all"; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "unread", label: "Unread" },
   { key: "reading", label: "Reading" },
+  { key: "unread", label: "Unread" },
   { key: "completed", label: "Completed" },
+  { key: "all", label: "All" },
 ];
 
 // ── NovelCard ────────────────────────────────────────────────────────────────
@@ -104,6 +107,7 @@ function NovelCard({
 }) {
   const { colors } = useTheme();
   const scale = useSharedValue(1);
+
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -116,6 +120,29 @@ function NovelCard({
   const status = novel.status ?? "unread";
   const statusCfg = STATUS_CONFIG[status];
   const sourceName = getSourceDisplayName(novel.sourceUrl);
+
+  // ── Badge resolution: Recently Added → Last Read: X days → normal status ──
+  const now = Date.now();
+  const daysSinceLastRead = novel.lastRead?.timestamp
+    ? Math.floor((now - novel.lastRead.timestamp) / (24 * 60 * 60 * 1000))
+    : null;
+
+  let displayLabel = statusCfg.label;
+  let displayColor = statusCfg.color;
+
+  if (
+    status === "unread" &&
+    now - novel.dateAdded < RECENTLY_ADDED_THRESHOLD_MS
+  ) {
+    displayLabel = "Recently Added";
+    displayColor = STATUS_CONFIG.unread.color;
+  } else if (
+    novel.lastRead?.timestamp &&
+    now - novel.lastRead.timestamp >= LAST_READ_THRESHOLD_MS
+  ) {
+    displayLabel = `Last Read: ${daysSinceLastRead}d`;
+    displayColor = statusCfg.color;
+  }
 
   return (
     <Pressable
@@ -188,14 +215,14 @@ function NovelCard({
             <View
               style={[
                 styles.statusBadge,
-                { backgroundColor: statusCfg.color + "22" },
+                { backgroundColor: displayColor + "22" },
               ]}
             >
               <View
-                style={[styles.statusDot, { backgroundColor: statusCfg.color }]}
+                style={[styles.statusDot, { backgroundColor: displayColor }]}
               />
-              <Text style={[styles.statusText, { color: statusCfg.color }]}>
-                {statusCfg.label}
+              <Text style={[styles.statusText, { color: displayColor }]}>
+                {displayLabel}
               </Text>
             </View>
           </View>
@@ -252,11 +279,26 @@ function NovelCard({
                 styles.continueButton,
                 { backgroundColor: colors.accent },
               ]}
-              onPress={() => {
-                router.push({
-                  pathname: "/novel/[id]",
-                  params: { id: novel.id },
-                });
+              onPress={(e) => {
+                e.stopPropagation();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                if (currentChapter === 0) {
+                  // "Read" — no progress yet, send to detail page first
+                  router.push({
+                    pathname: "/novel/[id]",
+                    params: { id: novel.id },
+                  });
+                } else {
+                  // "Continue" — jump straight into the reader at last position
+                  const startIndex = novel.lastRead?.chapterIndex ?? 0;
+                  router.push({
+                    pathname: "/reader/[id]",
+                    params: {
+                      id: novel.id,
+                      chapterIndex: startIndex.toString(),
+                    },
+                  });
+                }
               }}
             >
               <Text style={styles.continueButtonText}>
@@ -384,7 +426,9 @@ export default function LibraryScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const [activeFilter, setActiveFilter] = useState<NovelStatus | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<NovelStatus | "all">(
+    "reading",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
@@ -746,10 +790,30 @@ export default function LibraryScreen() {
     </View>
   );
 
+  const filterScrollRef = useRef<ScrollView>(null);
+  const filterTabLayouts = useRef<Record<string, { x: number; width: number }>>(
+    {},
+  );
+  const [filterBarWidth, setFilterBarWidth] = useState(0);
+
+  useEffect(() => {
+    const layout = filterTabLayouts.current[activeFilter];
+    if (!layout || !filterScrollRef.current || filterBarWidth === 0) return;
+
+    const targetX = layout.x - filterBarWidth / 2 + layout.width / 2;
+
+    filterScrollRef.current.scrollTo({
+      x: Math.max(0, targetX),
+      animated: true,
+    });
+  }, [activeFilter, filterBarWidth]);
+
   const renderFilterTabs = () => (
     <ScrollView
+      ref={filterScrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
+      onLayout={(e) => setFilterBarWidth(e.nativeEvent.layout.width)}
       style={[
         styles.filterBar,
         {
@@ -768,6 +832,10 @@ export default function LibraryScreen() {
         return (
           <Pressable
             key={tab.key}
+            onLayout={(e) => {
+              const { x, width } = e.nativeEvent.layout;
+              filterTabLayouts.current[tab.key] = { x, width };
+            }}
             style={[
               styles.filterTab,
               {
@@ -1293,6 +1361,19 @@ const styles = StyleSheet.create({
   filterCountText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
 
   // Updated card styles
+  swipeContainer: {
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  deleteAction: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: 84,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   card: {
     flexDirection: "row",
     borderRadius: 14,

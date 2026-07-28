@@ -34,6 +34,7 @@ export type Novel = {
     chapterIndex: number;
     chapterTitle: string;
     scrollOffset: number;
+    timestamp?: number;
   };
 };
 
@@ -170,16 +171,64 @@ const copyDirectory = async (fromPath: string, toPath: string) => {
   }
 };
 
-// Atomic write: write to .tmp then move (delete existing dest for Android)
-const writeJsonFileAtomic = async (filePath: string, data: any) => {
-  const tempPath = filePath + ".tmp";
-  await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
-  // Android's moveAsync fails if destination exists, so delete it first
-  const destInfo = await FileSystem.getInfoAsync(filePath);
-  if (destInfo.exists) {
-    await FileSystem.deleteAsync(filePath, { idempotent: true });
+// Per-file write queue: serializes concurrent writes/deletes targeting the
+// same destination path so overlapping calls (e.g. a resume-triggered save
+// racing an in-flight save) can never collide on the same tmp file or clobber
+// each other's output. Writes to different files still run concurrently.
+const fileWriteQueues = new Map<string, Promise<void>>();
+
+const withFileLock = async <T,>(
+  filePath: string,
+  task: () => Promise<T>,
+): Promise<T> => {
+  const previous = fileWriteQueues.get(filePath) ?? Promise.resolve();
+  let release: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fileWriteQueues.set(
+    filePath,
+    previous.then(() => gate),
+  );
+
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release!();
+    // Clean up the map entry if nothing else queued behind us, so it
+    // doesn't grow unbounded over a long session.
+    if (fileWriteQueues.get(filePath) === previous.then(() => gate)) {
+      fileWriteQueues.delete(filePath);
+    }
   }
-  await FileSystem.moveAsync({ from: tempPath, to: filePath });
+};
+
+// Atomic write: write to a uniquely-named .tmp file then move it into place
+// (delete existing dest for Android). Serialized per destination path via
+// withFileLock so concurrent writers targeting the same novel/index file
+// can't race each other's tmp file or move.
+const writeJsonFileAtomic = async (filePath: string, data: any) => {
+  await withFileLock(filePath, async () => {
+    const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    try {
+      await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
+      // Android's moveAsync fails if destination exists, so delete it first
+      const destInfo = await FileSystem.getInfoAsync(filePath);
+      if (destInfo.exists) {
+        await FileSystem.deleteAsync(filePath, { idempotent: true });
+      }
+      await FileSystem.moveAsync({ from: tempPath, to: filePath });
+    } catch (error) {
+      // Best-effort cleanup of the tmp file if the write/move failed partway.
+      await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(
+        () => {},
+      );
+      throw error;
+    }
+  });
 };
 
 const saveToFile = async (filePath: string, data: any) => {
@@ -1144,7 +1193,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       scrollOffset: number,
     ) => {
       await updateNovel(novelId, {
-        lastRead: { chapterIndex, chapterTitle, scrollOffset },
+        lastRead: {
+          chapterIndex,
+          chapterTitle,
+          scrollOffset,
+          timestamp: Date.now(),
+        },
         status: "reading",
       });
     },

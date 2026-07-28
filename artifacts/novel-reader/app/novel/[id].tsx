@@ -956,11 +956,36 @@ export default function NovelDetailScreen() {
               removeClippedSubviews={true}
               ListEmptyComponent={
                 <View style={styles.emptyChapters}>
-                  <Text
-                    style={[styles.emptyText, { color: colors.textSecondary }]}
-                  >
-                    No chapters available yet.
+                  <Ionicons
+                    name="document-text-outline"
+                    size={32}
+                    color={colors.textSecondary}
+                    style={styles.emptyChaptersIcon}
+                  />
+                  <Text style={[styles.emptyText, { color: colors.text }]}>
+                    No chapters yet
                   </Text>
+                  <Text
+                    style={[
+                      styles.emptyTextSub,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    This novel hasn&apos;t downloaded any chapters. Check the
+                    Updates tab to fetch the latest ones.
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.emptyChaptersBtn,
+                      { backgroundColor: colors.accent },
+                    ]}
+                    onPress={() => router.push("/(tabs)/updates")}
+                  >
+                    <Ionicons name="refresh" size={16} color="#fff" />
+                    <Text style={styles.emptyChaptersBtnText}>
+                      Go to Updates
+                    </Text>
+                  </Pressable>
                 </View>
               }
             />
@@ -1324,10 +1349,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  emptyChaptersIcon: {
+    marginBottom: 10,
+    opacity: 0.7,
+  },
   emptyText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
     textAlign: "center",
+    marginBottom: 4,
+  },
+  emptyTextSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 14,
+    maxWidth: 260,
+  },
+  emptyChaptersBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  emptyChaptersBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: "#fff",
   },
   menuOverlay: {
     flex: 1,
