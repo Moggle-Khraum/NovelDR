@@ -16,6 +16,7 @@ import {
   Alert,
   AppState,
   AppStateStatus,
+  InteractionManager,
   Modal,
   Platform,
   Pressable,
@@ -1381,6 +1382,10 @@ export default function ReaderScreen() {
   }, [persistChapterContent, saveReadingProgress]);
 
   useEffect(() => {
+    let interactionTask: ReturnType<
+      typeof InteractionManager.runAfterInteractions
+    > | null = null;
+
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (
         (appStateRef.current === "active" &&
@@ -1406,6 +1411,20 @@ export default function ReaderScreen() {
             scrollYRef.current,
           );
         }
+      } else if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // App coming to foreground: defer any native bridge work until after
+        // the UI has finished re-rendering to avoid flooding the main-thread
+        // Looper with bridge messages during the lifecycle transition window
+        // (which can trigger fbjni DestructorThread contention and an ANR).
+        interactionTask?.cancel();
+        interactionTask = InteractionManager.runAfterInteractions(() => {
+          interactionTask = null;
+          // Placeholder: any foreground-resume native bridge calls should
+          // go here rather than being triggered synchronously from state.
+        });
       }
       appStateRef.current = nextAppState;
     };
@@ -1416,12 +1435,20 @@ export default function ReaderScreen() {
     );
     return () => {
       subscription.remove();
+      interactionTask?.cancel();
     };
   }, [persistChapterContent, saveReadingProgress]);
 
   // ─── Notification setup ───────────────────────────────────────────────
+  // Deferred via InteractionManager so that notifee's native channel
+  // creation (which crosses the old-bridge interop layer and can trigger
+  // fbjni's DestructorThread) does not run synchronously on the main-thread
+  // Looper during the initial mount/render pass, avoiding the ANR window.
   useEffect(() => {
-    setupMediaSession();
+    const task = InteractionManager.runAfterInteractions(() => {
+      setupMediaSession();
+    });
+    return () => task.cancel();
   }, []);
 
   // ── Watchdog timer helpers ──────────────────────────────────────────

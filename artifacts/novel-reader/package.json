@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "axios": "^1.6.0",
     "entities": "^4.5.0",
     "expo-print": "~15.0.0",
@@ -17,8 +18,8 @@
     "expo-keep-awake": "~15.0.8",
     "expo-document-picker": "^13.1.0",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-webview": "^14.0.1",
-    "react-native-zip-archive": "^8.0.1"
+    "react-native-webview": "^14.1.0",
+    "react-native-zip-archive": "^8.1.0"
   },
   "scripts": {
     "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
@@ -37,7 +38,6 @@
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@expo/config-plugins": "~9.0.0",
-    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@sentry/react-native": "^8.5.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
