@@ -32,13 +32,13 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 <div align="center">
 
-**Total Download Counts: 1.3K+**
+<!--**Total Download Counts: 1.3K+**-->
 
-[![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads)](https://github.com/Moggle-Khraum/NovelDR-site/releases) [![MediaFire Downloads](https://img.shields.io/badge/Downloads-453-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
+[![Github Downloads](https://img.shields.io/github/downloads/Moggle-Khraum/NovelDR-site/total?style=for-the-badge&logo=github&logoColor=white&color=1565C0&label=Downloads)](https://github.com/Moggle-Khraum/NovelDR-site/releases) [![MediaFire Downloads](https://img.shields.io/badge/Downloads-475-F05023?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/folder/hcecxy0e22g7c/apk)
 
 **Download webnovels. Read anywhere. No ads, no login, just pure offline reading.**
 
-🌐 [Website](https://moggle.is-a-good.dev/) · 📦 [Download APK](https://github.com/Moggle-Khraum/noveldr-site/releases) · ☕ [Leave a Tip](https://wise.com/pay/me/davea261)
+🌐 [Website](https://moggle.is-a-good.dev/) · 📦 [Download APK](https://github.com/Moggle-Khraum/noveldr-site/releases) <!--· ☕ [Leave a Tip](https://wise.com/pay/me/davea261)-->
 
 </div>
 
