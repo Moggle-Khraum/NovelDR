@@ -18,7 +18,7 @@
     "expo-keep-awake": "~15.0.8",
     "expo-document-picker": "^13.1.0",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-webview": "^14.1.0",
+    "react-native-webview": "~14.1.0",
     "react-native-zip-archive": "^9.0.2"
   },
   "scripts": {
