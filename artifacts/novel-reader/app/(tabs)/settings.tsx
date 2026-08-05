@@ -12,6 +12,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Alert,
   Image,
+  InteractionManager,
   Platform,
   Pressable,
   ScrollView,
@@ -466,10 +467,25 @@ export default function SettingsScreen() {
       }
     };
     checkWarningStatus();
+    let pendingTask: ReturnType<
+      typeof InteractionManager.runAfterInteractions
+    > | null = null;
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") checkWarningStatus();
+      if (nextAppState === "active") {
+        // Defer the file-system/settings read until after the UI has settled
+        // so that bridge-heavy calls don't run synchronously on the main-thread
+        // Looper during the foreground lifecycle transition (ANR risk).
+        pendingTask?.cancel();
+        pendingTask = InteractionManager.runAfterInteractions(() => {
+          pendingTask = null;
+          checkWarningStatus();
+        });
+      }
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      pendingTask?.cancel();
+    };
   }, [loadAppSettings]);
 
   useEffect(() => {
