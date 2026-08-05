@@ -447,8 +447,8 @@ importers:
         specifier: ^14.0.1
         version: 14.0.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-zip-archive:
-        specifier: ^8.0.1
-        version: 8.0.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        specifier: ^9.0.2
+        version: 9.0.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
     devDependencies:
       '@babel/core':
         specifier: ^7.25.2
@@ -5882,8 +5882,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  react-native-zip-archive@8.0.1:
-    resolution: {integrity: sha512-8prY/wP7ToaJvNDohcfEJnG+l1FxM7ToMvEt5sG6pprh4DKBaAU42pabu79uLyJTiTlyeHEz//KVZBz+pOTXRg==}
+  react-native-zip-archive@9.0.2:
+    resolution: {integrity: sha512-GSIdVPE03dV8cVFhkmYVLHTy7BbCKpcM1KDY8uD6uX56iL/XuKPct+InNyrlpweFWOH93k2x8z/mRQtBWWix+g==}
     peerDependencies:
       react: '>=18.0.0'
       react-native: '>=0.70.0'
@@ -13362,7 +13362,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-native-zip-archive@8.0.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  react-native-zip-archive@9.0.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
