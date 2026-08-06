@@ -5,6 +5,46 @@ import { URL } from "url";
 
 const router: IRouter = Router();
 
+function validateExternalHttpUrl(input: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+
+  if (host === "localhost" || host === "::1" || host === "127.0.0.1") {
+    return null;
+  }
+
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const octets = host.split(".").map((n) => Number(n));
+    if (
+      octets.length === 4 &&
+      octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)
+    ) {
+      const [a, b] = octets;
+      const isPrivate =
+        a === 10 ||
+        a === 127 ||
+        (a === 169 && b === 254) ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        (a === 100 && b >= 64 && b <= 127) ||
+        (a === 0 && b === 0);
+      if (isPrivate) return null;
+    }
+  }
+
+  return parsed.toString();
+}
+
 const httpClient = axios.create({
   timeout: 15000,
   headers: {
@@ -325,13 +365,20 @@ router.post("/api/novel/next-chapter", async (req, res) => {
     res.status(400).json({ error: "URL is required" });
     return;
   }
+
+  const safeUrl = validateExternalHttpUrl(url);
+  if (!safeUrl) {
+    res.status(400).json({ error: "Invalid or disallowed URL" });
+    return;
+  }
+
   try {
-    const response = await httpClient.get(url);
+    const response = await httpClient.get(safeUrl);
     const html = response.data as string;
     const content = extractChapterContent(html);
     const title = extractChapterTitle(html, chapterNum);
-    const nextUrl = extractNextChapterUrl(html, url);
-    res.json({ url, title, content, nextUrl });
+    const nextUrl = extractNextChapterUrl(html, safeUrl);
+    res.json({ url: safeUrl, title, content, nextUrl });
   } catch (e: any) {
     req.log.error({ err: e }, "Failed to fetch next chapter");
     res.status(500).json({ error: e.message || "Failed to fetch chapter" });
