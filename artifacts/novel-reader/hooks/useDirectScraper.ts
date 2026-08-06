@@ -1891,9 +1891,9 @@ export const directFetchChapter = async (
 
       if (contentHtml) {
         contentHtml = contentHtml
-          .replace(/<script[\s\S]*?<\/script>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/<nav[\s\S]*?<\/nav>/gi, "");
+          .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "")
+          .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, "")
+          .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\b[^>]*>/gi, "");
 
         // No need to specifically strip ad <div> wrappers here — they contain
         // no <p> tags (just <script>/<ins>), so the <p>-only extraction below
