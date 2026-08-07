@@ -113,7 +113,8 @@ const makeAbsoluteUrl = (relativeUrl: string, baseUrl: string): string => {
   }
 };
 
-const delayMs = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const delayMs = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // ─── Shared HTTP client ────────────────────────────────────────────────────────
 
@@ -901,7 +902,10 @@ export const directFetchChapter = async (
     if (isLightNovelWorld) {
       const titleMatch =
         safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
-        safeMatch(html, /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i) ||
+        safeMatch(
+          html,
+          /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i,
+        ) ||
         safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
       if (titleMatch) {
         let rawTitle = decodeEntities(titleMatch.trim())
@@ -1094,9 +1098,15 @@ export const directFetchChapter = async (
     // ─── GENERIC FALLBACK CONTENT BLOCK (for remaining sites) ──────────────
     if (!content) {
       const contentMatch =
-        safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
+        safeMatch(
+          html,
+          /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+        ) ||
         safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
-        safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
+        safeMatch(
+          html,
+          /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+        ) ||
         safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i) ||
         safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
       if (contentMatch) {

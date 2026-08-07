@@ -112,7 +112,8 @@ export const novelFullComScraper: SourceScraper = {
         html,
         /<a[^>]*href="([^"]*chapter[-/]1[^"]*)"[^>]*>/i,
       );
-      if (chapterLinkMatch) firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
+      if (chapterLinkMatch)
+        firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
     }
 
     return {
@@ -124,14 +125,26 @@ export const novelFullComScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: novelfullcom"],
     };
   },
-  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
     const titleMatch =
-      safeMatch(html, /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i) ||
-      safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
-      safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
+      safeMatch(
+        html,
+        /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i,
+      ) ||
+      safeMatch(
+        html,
+        /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i,
+      ) ||
+      safeMatch(
+        html,
+        /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i,
+      ) ||
       safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
     if (titleMatch) {
       let rawTitle = decodeEntities(titleMatch.trim())

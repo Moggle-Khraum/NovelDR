@@ -201,7 +201,10 @@ export const wuxiaworldScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: wuxiaworld"],
     };
   },
-  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
@@ -215,9 +218,7 @@ export const wuxiaworldScraper: SourceScraper = {
         .trim()
         .replace(/\s+/g, " ")
         .trim();
-      rawTitle = rawTitle
-        .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
-        .trim();
+      rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "").trim();
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
