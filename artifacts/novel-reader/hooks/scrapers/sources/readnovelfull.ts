@@ -52,7 +52,9 @@ export const readNovelFullScraper: SourceScraper = {
   name: "ReadNovelFull",
   canHandle: (url: string) => {
     try {
-      return new URL(url).hostname.includes(BASE_HOST);
+      const hostname = new URL(url).hostname.toLowerCase();
+      const baseHost = BASE_HOST.toLowerCase();
+      return hostname === baseHost || hostname.endsWith(`.${baseHost}`);
     } catch {
       return false;
     }
