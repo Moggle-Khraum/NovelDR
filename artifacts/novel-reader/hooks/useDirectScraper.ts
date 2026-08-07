@@ -335,8 +335,12 @@ const lnwExtractInnerHtml = (html: string): string | null => {
   };
 
   inner = removeNestedDivByClass(inner, "chapter-ad-container");
-  inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-  inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  let previous: string;
+  do {
+    previous = inner;
+    inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+    inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  } while (inner !== previous);
   return inner;
 };
 
