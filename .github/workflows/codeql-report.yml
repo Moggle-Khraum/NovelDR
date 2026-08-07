@@ -3,9 +3,9 @@ name: CodeQL Report Generator
 on:
   workflow_dispatch:
   push:
-    branches: [ main, Prod, Prod-Dev, Overhaul ]
+    branches: [ main, Prod, Prod-Dev, Overhaul, Dev1 ]
   pull_request:
-    branches: [ main, Prod, Prod-Dev, Overhaul ]
+    branches: [ main, Prod, Prod-Dev, Overhaul, Dev1 ]
 
 jobs:
   analyze:
