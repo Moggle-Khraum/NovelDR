@@ -194,11 +194,14 @@ export const novgoScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
+        const normalizedHref = href ? href.trim().toLowerCase() : "";
         const isPlaceholder =
           !href ||
           href === "#" ||
-          href.startsWith("javascript:") ||
-          href.trim() === "";
+          normalizedHref.startsWith("javascript:") ||
+          normalizedHref.startsWith("data:") ||
+          normalizedHref.startsWith("vbscript:") ||
+          normalizedHref === "";
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
