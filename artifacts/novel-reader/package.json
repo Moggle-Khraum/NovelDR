@@ -5,7 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@notifee/react-native": "^9.1.8",
-    "axios": "^1.6.0",
+    "axios": "^1.18.0",
     "entities": "^4.5.0",
     "expo-print": "~15.0.0",
     "expo-speech": "~13.0.0",
