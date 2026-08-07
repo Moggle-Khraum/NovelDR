@@ -336,7 +336,7 @@ const lnwExtractInnerHtml = (html: string): string | null => {
 
   inner = removeNestedDivByClass(inner, "chapter-ad-container");
   inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-  inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  inner = inner.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "");
   return inner;
 };
 
