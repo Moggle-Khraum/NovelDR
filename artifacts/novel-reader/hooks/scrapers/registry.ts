@@ -3,27 +3,41 @@
 // then add it to REGISTERED_SCRAPERS below (order matters — first
 // canHandle() match wins).
 
+// artifacts/novel-reader/hooks/scrapers/registry.ts
 import type { SourceScraper } from "./types";
 import { novelPhoenixScraper } from "./sources/novelphoenix";
 import { novelArrowScraper } from "./sources/novelarrow";
 import { novelBinScraper } from "./sources/novel-bin";
 import { novelBinCcScraper } from "./sources/novelbincc";
-// import { exampleScraper } from './sources/exampleScraper'; // <-- keep commented until it's a real source
+import { royalRoadScraper } from "./sources/royalroad";
+import { readNovelFullScraper } from "./sources/readnovelfull";
+import { novelFullNetScraper } from "./sources/novelfullnet";
+import { novelFullComScraper } from "./sources/novelfullcom";
+import { allNovelScraper } from "./sources/allnovel";
+import { novgoScraper } from "./sources/novgo";
+import { freeWebNovelScraper } from "./sources/freewebnovel";
+import { wuxiaworldScraper } from "./sources/wuxiaworld";
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
   novelArrowScraper,
   novelBinScraper,
   novelBinCcScraper,
+  royalRoadScraper,
+  readNovelFullScraper,
+  novelFullNetScraper,
+  novelFullComScraper,
+  allNovelScraper,
+  novgoScraper,
+  freeWebNovelScraper,
+  wuxiaworldScraper,
 ];
 
-/** Find the first registered external scraper that can handle this URL, or null */
 export const findExternalScraper = (url: string): SourceScraper | null => {
   for (const scraper of REGISTERED_SCRAPERS) {
     try {
       if (scraper.canHandle(url)) return scraper;
     } catch {
-      // A broken canHandle() shouldn't take down the whole registry lookup
       continue;
     }
   }
