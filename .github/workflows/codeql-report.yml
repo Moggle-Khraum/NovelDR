@@ -1,11 +1,11 @@
 name: CodeQL Report Generator
 
 on:
-  push:
-    branches: [ main, Prod, Prod-Dev, Overhaul, Dev1 ]
-  pull_request:
-    branches: [ main, Prod, Prod-Dev, Overhaul, Dev1 ]
   workflow_dispatch:
+  push:
+    branches: [ main, Prod, Prod-Dev, Overhaul ]
+  pull_request:
+    branches: [ main, Prod, Prod-Dev, Overhaul ]
 
 jobs:
   analyze:
@@ -27,26 +27,26 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          output: codeql-results.sarif
-          upload: false   # We'll handle upload ourselves
+          upload: false
+          output: codeql-results
 
       - name: Install SARIF tools
         run: npm install -g sarif-tools
 
-      - name: Convert SARIF to human-readable text
+      - name: Generate human-readable summary
         run: |
           echo "=== CodeQL Scan Report ===" > codeql-summary.txt
           echo "" >> codeql-summary.txt
-          # Use sarif-tools to extract a friendly summary
-          sarif-tools summarise codeql-results.sarif >> codeql-summary.txt
+          sarif-tools summarise codeql-results/codeql-results.sarif >> codeql-summary.txt 2>&1 || echo "(No extra summary available)" >> codeql-summary.txt
           echo "" >> codeql-summary.txt
           echo "=== Raw SARIF (full details) ===" >> codeql-summary.txt
-          cat codeql-results.sarif >> codeql-summary.txt
+          cat codeql-results/codeql-results.sarif >> codeql-summary.txt
 
       - name: Upload report as artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: codeql-report
           path: |
-            codeql-results.sarif
+            codeql-results/
             codeql-summary.txt
