@@ -1,8 +1,8 @@
 // hooks/reader/useChapterPersistence.ts
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { AppState, AppStateStatus, InteractionManager } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { decodeHTML } from 'entities';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { AppState, AppStateStatus, InteractionManager } from "react-native";
+import * as FileSystem from "expo-file-system";
+import { decodeHTML } from "entities";
 
 // --- Types ---
 export interface CachedChapter {
@@ -16,15 +16,15 @@ export interface CachedChapter {
 // --- Text processing helpers (copied verbatim) ---
 
 const stripTags = (html: string): string => {
-  if (!html) return '';
+  if (!html) return "";
   return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 };
 
 const decodeEntities = (text: string): string => {
-  if (!text) return '';
+  if (!text) return "";
   try {
     return decodeHTML(text);
   } catch {
@@ -43,7 +43,7 @@ const safeMatch = (text: string, pattern: RegExp): string | null => {
 };
 
 function detectParagraphs(text: string): string[] {
-  let normalized = text.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').trim();
+  let normalized = text.replace(/\r\n?/g, "\n").replace(/\t/g, " ").trim();
   normalized = smartQuoteFormatting(normalized);
   normalized = removeDuplicateSpacing(normalized);
   normalized = stripDotLeaders(normalized);
@@ -74,15 +74,15 @@ function detectParagraphs(text: string): string[] {
   return normalized
     .split(/\n\s*\n+/)
     .map((paragraph) =>
-      paragraph.replace(/\n+/g, ' ').replace(/ {2,}/g, ' ').trim(),
+      paragraph.replace(/\n+/g, " ").replace(/ {2,}/g, " ").trim(),
     )
     .filter(Boolean);
 }
 
 function stripDotLeaders(text: string): string {
   return text
-    .replace(/[.\u2026]{4,}/g, ' ')
-    .replace(/ {2,}/g, ' ')
+    .replace(/[.\u2026]{4,}/g, " ")
+    .replace(/ {2,}/g, " ")
     .trim();
 }
 
@@ -99,16 +99,16 @@ function isolateStatLabels(text: string): string {
     /([★☆]+)[ \t]+(?!\n|\[|【)/g,
     (_match, stars) => `${stars}\n\n`,
   );
-  return result.replace(/\n{3,}/g, '\n\n').trim();
+  return result.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function isolateRuleHeadings(text: string): string {
   return text
     .replace(
       /\s*(\bRule\s+[A-Za-z0-9]+\s*:\s*(?:\[[^\[\]]*\]|【[^【】]*】)?)\s*/g,
-      '\n\n$1\n\n',
+      "\n\n$1\n\n",
     )
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -120,36 +120,36 @@ function isolateBracketBlocks(text: string): string {
       const isSystemMessage = wordCount >= 3 || /[.,!?:;]/.test(inner);
       return isSystemMessage ? `\n\n${match}\n\n` : match;
     })
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
 function smartQuoteFormatting(text: string): string {
   let formatted = text;
-  formatted = formatted.replace(/(\s|^)"/g, '$1“');
-  formatted = formatted.replace(/"(\s|$)/g, '”$1');
-  formatted = formatted.replace(/'(\s|$)/g, '’$1');
-  formatted = formatted.replace(/(\s|^)'/g, '$1‘');
-  formatted = formatted.replace(/(\w)'(\w)/g, '$1’$2');
-  formatted = formatted.replace(/\.{3,}/g, '…');
-  formatted = formatted.replace(/--+/g, '—');
+  formatted = formatted.replace(/(\s|^)"/g, "$1“");
+  formatted = formatted.replace(/"(\s|$)/g, "”$1");
+  formatted = formatted.replace(/'(\s|$)/g, "’$1");
+  formatted = formatted.replace(/(\s|^)'/g, "$1‘");
+  formatted = formatted.replace(/(\w)'(\w)/g, "$1’$2");
+  formatted = formatted.replace(/\.{3,}/g, "…");
+  formatted = formatted.replace(/--+/g, "—");
   return formatted;
 }
 
 function removeDuplicateSpacing(text: string): string {
   return text
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+(\n)/g, '$1')
-    .replace(/(\n)[ \t]+/g, '$1')
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+(\n)/g, "$1")
+    .replace(/(\n)[ \t]+/g, "$1")
     .trim();
 }
 
 function normalizeForSpeech(text: string): string {
   let clean = text.replace(/[""'']/g, '"');
-  clean = clean.replace(/→|->|=>/g, ' to ');
-  clean = clean.replace(/←|<-|<=/g, ' from ');
-  clean = clean.replace(/↔|<->/g, ' between ');
+  clean = clean.replace(/→|->|=>/g, " to ");
+  clean = clean.replace(/←|<-|<=/g, " from ");
+  clean = clean.replace(/↔|<->/g, " between ");
   return clean.trim();
 }
 
@@ -159,10 +159,12 @@ function splitSentencesWithLineBreaks(text: string): string[] {
 }
 
 // --- processChapterContent ---
-export async function processChapterContent(content: string): Promise<CachedChapter> {
+export async function processChapterContent(
+  content: string,
+): Promise<CachedChapter> {
   if (!content.trim()) {
     return {
-      content: '',
+      content: "",
       paragraphs: [],
       sentences: [],
       processedAt: Date.now(),
@@ -189,7 +191,14 @@ type UseChapterPersistenceProps = {
   novel: any;
   chapterIndex: number;
   loadChapterContent: (novelId: string, chapterIdx: number) => Promise<any>;
-  saveChapterContent: (novelId: string, chapterIdx: number, title: string, url: string, content: string, chapterNumber: number) => Promise<void>;
+  saveChapterContent: (
+    novelId: string,
+    chapterIdx: number,
+    title: string,
+    url: string,
+    content: string,
+    chapterNumber: number,
+  ) => Promise<void>;
 };
 
 export function useChapterPersistence({
@@ -198,7 +207,7 @@ export function useChapterPersistence({
   loadChapterContent,
   saveChapterContent,
 }: UseChapterPersistenceProps) {
-  const [chapterContent, setChapterContent] = useState<string>('');
+  const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
   const [ttsSentences, setTtsSentences] = useState<string[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
@@ -208,8 +217,8 @@ export function useChapterPersistence({
   const novelRef = useRef(novel);
   const chapterIndexRef = useRef(chapterIndex);
   const chapterRef = useRef(novel?.chapters[chapterIndex]);
-  const chapterContentRef = useRef<string>('');
-  const persistSnapshotRef = useRef({ index: chapterIndex, content: '' });
+  const chapterContentRef = useRef<string>("");
+  const persistSnapshotRef = useRef({ index: chapterIndex, content: "" });
 
   useEffect(() => {
     novelRef.current = novel;
@@ -238,14 +247,14 @@ export function useChapterPersistence({
     const currentLoadId = ++loadIdRef.current;
 
     if (!novel || !chapterRef.current) {
-      setChapterContent('');
+      setChapterContent("");
       setProcessedParagraphs([]);
       setTtsSentences([]);
       setContentLoading(false);
       return;
     }
 
-    setChapterContent('');
+    setChapterContent("");
     setProcessedParagraphs([]);
     setTtsSentences([]);
     setContentLoading(true);
@@ -254,11 +263,11 @@ export function useChapterPersistence({
       try {
         if (signal.aborted || currentLoadId !== loadIdRef.current) return;
 
-        let content = chapterRef.current?.content || '';
+        let content = chapterRef.current?.content || "";
         if (!content && loadChapterContent) {
           const fileChapter = await loadChapterContent(novel.id, chapterIndex);
           if (signal.aborted || currentLoadId !== loadIdRef.current) return;
-          content = fileChapter?.content || '';
+          content = fileChapter?.content || "";
         }
 
         const processed = await processChapterContent(content);
@@ -269,7 +278,7 @@ export function useChapterPersistence({
         setTtsSentences(processed.sentences);
       } catch {
         if (!signal.aborted && currentLoadId === loadIdRef.current) {
-          setChapterContent('Error loading chapter content. Please try again.');
+          setChapterContent("Error loading chapter content. Please try again.");
           setProcessedParagraphs([]);
         }
       } finally {
@@ -315,19 +324,21 @@ export function useChapterPersistence({
   // Save on background / unmount
   useEffect(() => {
     const appStateRef = { current: AppState.currentState };
-    let interactionTask: ReturnType<typeof InteractionManager.runAfterInteractions> | null = null;
+    let interactionTask: ReturnType<
+      typeof InteractionManager.runAfterInteractions
+    > | null = null;
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (
-        (appStateRef.current === 'active' &&
+        (appStateRef.current === "active" &&
           nextAppState.match(/inactive|background/)) ||
-        nextAppState === 'background'
+        nextAppState === "background"
       ) {
-        console.log('[Reader] App backgrounding - saving chapter content...');
+        console.log("[Reader] App backgrounding - saving chapter content...");
         await persistChapterContent();
       } else if (
         appStateRef.current.match(/inactive|background/) &&
-        nextAppState === 'active'
+        nextAppState === "active"
       ) {
         interactionTask?.cancel();
         interactionTask = InteractionManager.runAfterInteractions(() => {
@@ -337,7 +348,10 @@ export function useChapterPersistence({
       appStateRef.current = nextAppState;
     };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
     return () => {
       subscription.remove();
       interactionTask?.cancel();
@@ -357,7 +371,10 @@ export function useChapterPersistence({
       const nextChapter = novel.chapters[chapterIndex + 1];
       if (nextChapter && !nextChapter.content) {
         (async () => {
-          const nextFileChapter = await loadChapterContent(novel.id, chapterIndex + 1);
+          const nextFileChapter = await loadChapterContent(
+            novel.id,
+            chapterIndex + 1,
+          );
           if (nextFileChapter?.content) {
             // unused, but kept for consistency
           }
