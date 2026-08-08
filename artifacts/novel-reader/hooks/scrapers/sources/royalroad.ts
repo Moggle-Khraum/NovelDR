@@ -12,7 +12,7 @@ import { isSafeHref } from "../shared/urlSafety";
 const BASE_HOST = "royalroad.com";
 
 // Helper to extract paragraphs from a block of HTML, with standard filtering
-const extractContentParagraphs = (html: string): string => {
+export const extractContentParagraphs = (html: string): string => {
   const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
   if (!pMatches) return "";
 
@@ -91,32 +91,17 @@ export const royalRoadScraper: SourceScraper = {
         html,
         /<figure[^>]*class="[^"]*cover-art[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i,
       ) ||
-      safeMatch(
-        html,
-        /<img[^>]*class="[^"]*cover[^"]*"[^>]*src="([^"]+)"[^>]*>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"[^>]*>/i,
-      );
+      safeMatch(html, /<img[^>]*class="[^"]*cover[^"]*"[^>]*src="([^"]+)"[^>]*>/i) ||
+      safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*>/i) ||
+      safeMatch(html, /<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"[^>]*>/i);
 
     if (coverMatch) {
       coverUrl = makeAbsoluteUrl(coverMatch, url);
     }
 
     const chapterListMatch =
-      safeMatch(
-        html,
-        /<table[^>]*class="chapters"[^>]*>([\s\S]*?)<\/table>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<div[^>]*class="chapter-list"[^>]*>([\s\S]*?)<\/div>/i,
-      ) ||
+      safeMatch(html, /<table[^>]*class="chapters"[^>]*>([\s\S]*?)<\/table>/i) ||
+      safeMatch(html, /<div[^>]*class="chapter-list"[^>]*>([\s\S]*?)<\/div>/i) ||
       safeMatch(html, /<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
 
     if (chapterListMatch) {
@@ -156,10 +141,7 @@ export const royalRoadScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: royalroad"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
@@ -172,7 +154,9 @@ export const royalRoadScraper: SourceScraper = {
       let rawTitle = decodeEntities(titleMatch.trim())
         .replace(/\s+/g, " ")
         .trim();
-      rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "").trim();
+      rawTitle = rawTitle
+        .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
+        .trim();
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
@@ -180,15 +164,9 @@ export const royalRoadScraper: SourceScraper = {
 
     if (!content) {
       const contentMatch =
-        safeMatch(
-          html,
-          /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-        ) ||
+        safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
         safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
-        safeMatch(
-          html,
-          /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-        ) ||
+        safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
         safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i) ||
         safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
       if (contentMatch) {
@@ -233,9 +211,7 @@ export const royalRoadScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        // Check if href is safe; reject placeholder/dangerous schemes
-        const isPlaceholder =
-          !href || href === "#" || href.trim() === "" || !isSafeHref(href);
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
