@@ -17,7 +17,7 @@ const BASE_HOST = "novelphoenix.com";
  * entity-decoded, joined with double newlines. Used for the synopsis,
  * which on this site is a series of <p> tags inside div.summary > div.content.
  */
-const extractParagraphs = (html: string): string => {
+export const extractParagraphs = (html: string): string => {
   const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
   return matches
     .map((m) => decodeEntities(stripTags(m[1])))
