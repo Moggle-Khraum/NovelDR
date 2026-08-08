@@ -11,7 +11,7 @@ import {
 const BASE_HOST = "royalroad.com";
 
 // Helper to extract paragraphs from a block of HTML, with standard filtering
-const extractContentParagraphs = (html: string): string => {
+export const extractContentParagraphs = (html: string): string => {
   const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
   if (!pMatches) return "";
 

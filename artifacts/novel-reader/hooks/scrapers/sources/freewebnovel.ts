@@ -10,6 +10,53 @@ import {
 
 const BASE_HOST = "freewebnovel";
 
+const FREEWEBNOVEL_JUNK_PHRASES = [
+  "panda",
+  "novɐ1",
+  "com",
+  "freewebnovel.com",
+  "freewebnovel",
+  "𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞",
+  "please visit",
+  "for a better experience",
+  "click here",
+  "download the app",
+  "read latest chapters",
+  "follow on",
+  "facebook",
+  "twitter",
+  "instagram",
+  "discord",
+  "support the author",
+  "donate",
+  "patreon",
+];
+
+// Primary content extraction path: filters <p> tags against known junk/ad
+// phrases and navigation text. Exported for regression testing.
+export const extractFreeWebNovelContent = (html: string): string => {
+  const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+  if (!pMatches) return "";
+
+  const valid: string[] = [];
+  for (const p of pMatches) {
+    let text = stripTags(p);
+    text = decodeEntities(text);
+    const lower = text.toLowerCase();
+    if (
+      text.length > 5 &&
+      !FREEWEBNOVEL_JUNK_PHRASES.some((phrase) => lower.includes(phrase)) &&
+      !lower.includes("next chapter") &&
+      !lower.includes("previous chapter") &&
+      !lower.includes("back to") &&
+      !lower.includes("table of contents")
+    ) {
+      valid.push(text);
+    }
+  }
+  return valid.join("\n\n");
+};
+
 export const freeWebNovelScraper: SourceScraper = {
   id: "freewebnovel",
   name: "FreeWebNovel",
@@ -97,49 +144,7 @@ export const freeWebNovelScraper: SourceScraper = {
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
-    let content = "";
-    const junkPhrases = [
-      "panda",
-      "novɐ1",
-      "com",
-      "freewebnovel.com",
-      "freewebnovel",
-      "𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞",
-      "please visit",
-      "for a better experience",
-      "click here",
-      "download the app",
-      "read latest chapters",
-      "follow on",
-      "facebook",
-      "twitter",
-      "instagram",
-      "discord",
-      "support the author",
-      "donate",
-      "patreon",
-    ];
-
-    const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-    if (pMatches) {
-      const valid: string[] = [];
-      for (const p of pMatches) {
-        let text = stripTags(p);
-        text = decodeEntities(text);
-        const lower = text.toLowerCase();
-        if (
-          text.length > 5 &&
-          !junkPhrases.some((phrase) => lower.includes(phrase)) &&
-          !lower.includes("next chapter") &&
-          !lower.includes("previous chapter") &&
-          !lower.includes("back to") &&
-          !lower.includes("table of contents")
-        ) {
-          valid.push(text);
-        }
-      }
-      content = valid.join("\n\n");
-    }
+    let content = extractFreeWebNovelContent(html);
 
     if (!content) {
       // fallback to any div content

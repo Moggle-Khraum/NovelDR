@@ -10,7 +10,7 @@ import {
 
 const BASE_HOST = "novgo.net";
 
-const extractNovelFullContent = (html: string): string => {
+export const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",

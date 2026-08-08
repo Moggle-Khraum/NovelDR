@@ -67,7 +67,7 @@ const extractMetaContent = (
 };
 
 /** Extract every <p>...</p> from a block of HTML */
-const extractParagraphs = (html: string): string => {
+export const extractParagraphs = (html: string): string => {
   const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
   return matches
     .map((m) => decodeEntities(stripTags(m[1])))

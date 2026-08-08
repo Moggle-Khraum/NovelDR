@@ -11,7 +11,7 @@ import {
 const BASE_HOST = "readnovelfull.com";
 
 // Shared helper for NovelFull family content extraction
-const extractNovelFullContent = (html: string): string => {
+export const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",

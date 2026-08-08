@@ -12,7 +12,7 @@ const BASE_HOST = "novelfull.net";
 
 // Same content extraction as readnovelfull, but with slightly different junk phrases? Actually it's the same set.
 // We can reuse the same helper, but to keep self-contained we'll copy the logic.
-const extractNovelFullContent = (html: string): string => {
+export const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",
