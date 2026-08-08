@@ -1,4 +1,4 @@
-// artifacts/novel-reader/hooks/scrapers/sources/freewebnovel.ts
+// hooks/scrapers/sources/freewebnovel.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback } from "../shared/http";
 import {
@@ -7,63 +7,16 @@ import {
   safeMatch,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
-const BASE_HOST = "freewebnovel.com";
-
-const FREEWEBNOVEL_JUNK_PHRASES = [
-  "panda",
-  "novɐ1",
-  "com",
-  "freewebnovel.com",
-  "freewebnovel",
-  "𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞",
-  "please visit",
-  "for a better experience",
-  "click here",
-  "download the app",
-  "read latest chapters",
-  "follow on",
-  "facebook",
-  "twitter",
-  "instagram",
-  "discord",
-  "support the author",
-  "donate",
-  "patreon",
-];
-
-// Primary content extraction path: filters <p> tags against known junk/ad
-// phrases and navigation text. Exported for regression testing.
-export const extractFreeWebNovelContent = (html: string): string => {
-  const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-  if (!pMatches) return "";
-
-  const valid: string[] = [];
-  for (const p of pMatches) {
-    let text = stripTags(p);
-    text = decodeEntities(text);
-    const lower = text.toLowerCase();
-    if (
-      text.length > 5 &&
-      !FREEWEBNOVEL_JUNK_PHRASES.some((phrase) => lower.includes(phrase)) &&
-      !lower.includes("next chapter") &&
-      !lower.includes("previous chapter") &&
-      !lower.includes("back to") &&
-      !lower.includes("table of contents")
-    ) {
-      valid.push(text);
-    }
-  }
-  return valid.join("\n\n");
-};
+const BASE_HOST = "freewebnovel";
 
 export const freeWebNovelScraper: SourceScraper = {
   id: "freewebnovel",
   name: "FreeWebNovel",
   canHandle: (url: string) => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
+      return new URL(url).hostname.toLowerCase().includes(BASE_HOST);
     } catch {
       return false;
     }
@@ -72,10 +25,7 @@ export const freeWebNovelScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url, { proxyFirst: true });
 
     let title = "Unknown Title";
-    const titleMatch = safeMatch(
-      html,
-      /<h1[^>]*class="tit"[^>]*>([^<]+)<\/h1>/i,
-    );
+    const titleMatch = safeMatch(html, /<h1[^>]*class="tit"[^>]*>([^<]+)<\/h1>/i);
     if (titleMatch) title = decodeEntities(titleMatch);
 
     let author = "Unknown Author";
@@ -123,10 +73,7 @@ export const freeWebNovelScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: freewebnovel"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url, { proxyFirst: true });
 
     let title = `Chapter ${chapterNum}`;
@@ -145,20 +92,55 @@ export const freeWebNovelScraper: SourceScraper = {
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
-    let content = extractFreeWebNovelContent(html);
+    let content = "";
+    const junkPhrases = [
+      "panda",
+      "novɐ1",
+      "com",
+      "freewebnovel.com",
+      "freewebnovel",
+      "𝕗𝚛𝚎𝚎𝐰𝗲𝗯𝗻𝚘𝚟𝚎𝗹.𝕔𝐨𝕞",
+      "please visit",
+      "for a better experience",
+      "click here",
+      "download the app",
+      "read latest chapters",
+      "follow on",
+      "facebook",
+      "twitter",
+      "instagram",
+      "discord",
+      "support the author",
+      "donate",
+      "patreon",
+    ];
+
+    const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+    if (pMatches) {
+      const valid: string[] = [];
+      for (const p of pMatches) {
+        let text = stripTags(p);
+        text = decodeEntities(text);
+        const lower = text.toLowerCase();
+        if (
+          text.length > 5 &&
+          !junkPhrases.some((phrase) => lower.includes(phrase)) &&
+          !lower.includes("next chapter") &&
+          !lower.includes("previous chapter") &&
+          !lower.includes("back to") &&
+          !lower.includes("table of contents")
+        ) {
+          valid.push(text);
+        }
+      }
+      content = valid.join("\n\n");
+    }
 
     if (!content) {
-      // fallback to any div content
       const contentMatch =
-        safeMatch(
-          html,
-          /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-        ) ||
+        safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
         safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
-        safeMatch(
-          html,
-          /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-        ) ||
+        safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
         safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i) ||
         safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
       if (contentMatch) {
@@ -203,11 +185,7 @@ export const freeWebNovelScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href ||
-          href === "#" ||
-          href.startsWith("javascript:") ||
-          href.trim() === "";
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
