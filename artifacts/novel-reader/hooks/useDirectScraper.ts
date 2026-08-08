@@ -1,6 +1,7 @@
 // artifacts/novel-reader/hooks/useDirectScraper.ts
 import axios from "axios";
 import { decodeHTML } from "entities";
+import sanitizeHtml from "sanitize-html";
 
 export interface NovelMeta {
   title: string;
@@ -335,12 +336,10 @@ const lnwExtractInnerHtml = (html: string): string | null => {
   };
 
   inner = removeNestedDivByClass(inner, "chapter-ad-container");
-  let previous: string;
-  do {
-    previous = inner;
-    inner = inner.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-    inner = inner.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
-  } while (inner !== previous);
+  inner = sanitizeHtml(inner, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
   return inner;
 };
 
