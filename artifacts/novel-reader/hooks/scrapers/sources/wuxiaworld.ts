@@ -258,7 +258,10 @@ export const wuxiaworldScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: wuxiaworld"],
     };
   },
-  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
@@ -272,9 +275,7 @@ export const wuxiaworldScraper: SourceScraper = {
         .trim()
         .replace(/\s+/g, " ")
         .trim();
-      rawTitle = rawTitle
-        .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
-        .trim();
+      rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "").trim();
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
@@ -306,7 +307,8 @@ export const wuxiaworldScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
+        const isPlaceholder =
+          !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
