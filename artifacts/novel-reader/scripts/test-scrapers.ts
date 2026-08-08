@@ -198,6 +198,9 @@ for (const { name, extract } of novelFullFamily) {
       name: `${name}: filters out site-name junk paragraph`,
       run: () => {
         const result = extract(FIXTURE_P_TAG_CONTENT);
+        // Note: this checks that a known junk phrase was stripped from
+        // extracted article text, not a URL/host — not a security check.
+        // codeql[js/incomplete-url-substring-sanitization]
         assert(
           !result.includes("novelfull.com"),
           `expected junk paragraph to be filtered, but it leaked into content: ${JSON.stringify(result)}`,
