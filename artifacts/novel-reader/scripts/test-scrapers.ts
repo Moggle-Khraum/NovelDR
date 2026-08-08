@@ -151,7 +151,10 @@ const checks: Check[] = [
 ];
 
 // "NovelFull family" — identical extraction logic shared by these 5 sources.
-const novelFullFamily: Array<{ name: string; extract: (html: string) => string }> = [
+const novelFullFamily: Array<{
+  name: string;
+  extract: (html: string) => string;
+}> = [
   { name: "allnovel.ts", extract: allNovelExtract },
   { name: "novelfullcom.ts", extract: novelFullComExtract },
   { name: "novelfullnet.ts", extract: novelFullNetExtract },
