@@ -1,4 +1,4 @@
-// artifacts/novel-reader/hooks/scrapers/sources/wuxiaworld.ts
+// hooks/scrapers/sources/wuxiaworld.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback, httpClient } from "../shared/http";
 import {
@@ -7,31 +7,9 @@ import {
   safeMatch,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "wuxiaworld.site";
-
-// Takes the already-isolated chapter-content block (contentHtml) and cleans
-// it into plain text: strips <p>/<br> tags, decodes entities, joins with
-// blank lines. Falls back to a raw strip-and-clean if no <p> tags are found.
-// Exported for regression testing.
-export const extractWuxiaworldContent = (contentHtml: string): string => {
-  const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-  if (paragraphs) {
-    const cleanedParagraphs = paragraphs
-      .map((p) => {
-        let text = p.replace(/<p[^>]*>/i, "").replace(/<\/p>/i, "");
-        text = text.replace(/<br\s*\/?>/gi, "\n\n");
-        text = decodeEntities(text);
-        text = stripTags(text);
-        return text.trim();
-      })
-      .filter((t) => t.length > 0);
-    return cleanedParagraphs.join("\n\n");
-  }
-  let text = decodeEntities(stripTags(contentHtml));
-  text = text.replace(/<br\s*\/?>/gi, "\n\n");
-  return text;
-};
 
 // Copy helpers verbatim from useDirectScraper.ts
 const cleanSynopsis = (text: string): string => {
@@ -97,8 +75,7 @@ export const wuxiaworldScraper: SourceScraper = {
   name: "WuxiaWorld.site",
   canHandle: (url: string) => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
+      return new URL(url).hostname.toLowerCase().includes(BASE_HOST);
     } catch {
       return false;
     }
@@ -225,10 +202,7 @@ export const wuxiaworldScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: wuxiaworld"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
@@ -242,7 +216,9 @@ export const wuxiaworldScraper: SourceScraper = {
         .trim()
         .replace(/\s+/g, " ")
         .trim();
-      rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "").trim();
+      rawTitle = rawTitle
+        .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
+        .trim();
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
@@ -280,7 +256,23 @@ export const wuxiaworldScraper: SourceScraper = {
       contentMatch6;
 
     if (contentHtml) {
-      content = extractWuxiaworldContent(contentHtml);
+      const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+      if (paragraphs) {
+        const cleanedParagraphs = paragraphs
+          .map((p) => {
+            let text = p.replace(/<p[^>]*>/i, "").replace(/<\/p>/i, "");
+            text = text.replace(/<br\s*\/?>/gi, "\n\n");
+            text = decodeEntities(text);
+            text = stripTags(text);
+            return text.trim();
+          })
+          .filter((t) => t.length > 0);
+        content = cleanedParagraphs.join("\n\n");
+      } else {
+        let text = decodeEntities(stripTags(contentHtml));
+        text = text.replace(/<br\s*\/?>/gi, "\n\n");
+        content = text;
+      }
     }
 
     let nextUrl: string | null = null;
@@ -309,11 +301,7 @@ export const wuxiaworldScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href ||
-          href === "#" ||
-          href.startsWith("javascript:") ||
-          href.trim() === "";
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
