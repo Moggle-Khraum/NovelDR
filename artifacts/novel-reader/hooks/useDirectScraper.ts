@@ -551,9 +551,19 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
   console.log("[Scraper] Fetching novel meta from:", url);
 
   try {
-    const domainLower = url.toLowerCase();
-    const isLightNovelWorld = domainLower.includes("lightnovelworld");
-    const isAsianovel = domainLower.includes("asianovel.net");
+    let hostnameLower = "";
+    try {
+      hostnameLower = new URL(url).hostname.toLowerCase();
+    } catch {
+      hostnameLower = "";
+    }
+
+    const isLightNovelWorld =
+      hostnameLower === "lightnovelworld.com" ||
+      hostnameLower.endsWith(".lightnovelworld.com");
+    const isAsianovel =
+      hostnameLower === "asianovel.net" ||
+      hostnameLower.endsWith(".asianovel.net");
 
     const html = await fetchWithFallback(url, isAsianovel);
 
