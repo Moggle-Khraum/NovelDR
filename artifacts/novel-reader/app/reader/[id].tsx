@@ -236,17 +236,13 @@ export default function ReaderScreen() {
   const chapter = novel?.chapters[chapterIndex];
 
   // ── Hooks ──
-  const {
-    chapterContent,
-    processedParagraphs,
-    ttsSentences,
-    contentLoading,
-  } = useChapterPersistence({
-    novel,
-    chapterIndex,
-    loadChapterContent,
-    saveChapterContent,
-  });
+  const { chapterContent, processedParagraphs, ttsSentences, contentLoading } =
+    useChapterPersistence({
+      novel,
+      chapterIndex,
+      loadChapterContent,
+      saveChapterContent,
+    });
 
   const {
     scrollRef,
