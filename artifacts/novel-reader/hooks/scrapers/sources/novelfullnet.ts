@@ -1,4 +1,4 @@
-// artifacts/novel-reader/hooks/scrapers/sources/novelfullnet.ts
+// hooks/scrapers/sources/novelfullnet.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback } from "../shared/http";
 import {
@@ -7,12 +7,13 @@ import {
   safeMatch,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "novelfull.net";
 
 // Same content extraction as readnovelfull, but with slightly different junk phrases? Actually it's the same set.
 // We can reuse the same helper, but to keep self-contained we'll copy the logic.
-export const extractNovelFullContent = (html: string): string => {
+const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",
@@ -53,12 +54,8 @@ export const novelFullNetScraper: SourceScraper = {
   name: "NovelFull.net",
   canHandle: (url: string) => {
     try {
-      const host = new URL(url).hostname.toLowerCase();
-      const isNovelFullHost =
-        host === BASE_HOST || host.endsWith(`.${BASE_HOST}`);
-      const isReadNovelFullHost =
-        host === "readnovelfull" || host.includes("readnovelfull.");
-      return isNovelFullHost && !isReadNovelFullHost;
+      const host = new URL(url).hostname;
+      return host.includes(BASE_HOST) && !host.includes("readnovelfull");
     } catch {
       return false;
     }
@@ -115,8 +112,7 @@ export const novelFullNetScraper: SourceScraper = {
         html,
         /<a[^>]*href="([^"]*chapter[-/]1[^"]*)"[^>]*>/i,
       );
-      if (chapterLinkMatch)
-        firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
+      if (chapterLinkMatch) firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
     }
 
     return {
@@ -128,26 +124,14 @@ export const novelFullNetScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: novelfullnet"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
     const titleMatch =
-      safeMatch(
-        html,
-        /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i,
-      ) ||
-      safeMatch(
-        html,
-        /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i,
-      ) ||
+      safeMatch(html, /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i) ||
+      safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
+      safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
       safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
     if (titleMatch) {
       let rawTitle = decodeEntities(titleMatch.trim())
@@ -197,11 +181,7 @@ export const novelFullNetScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href ||
-          href === "#" ||
-          href.startsWith("javascript:") ||
-          href.trim() === "";
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
