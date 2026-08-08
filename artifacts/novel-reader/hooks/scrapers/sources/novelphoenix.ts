@@ -109,9 +109,7 @@ export const novelPhoenixScraper: SourceScraper = {
     // <a rel="next" class="chnav next" href="...">  (href is "javascript:;" when disabled/last chapter)
     const nextRaw = safeMatch(html, /<a[^>]*rel="next"[^>]*href="([^"]+)"/i);
     const nextUrl =
-      nextRaw && isSafeHref(nextRaw)
-        ? makeAbsoluteUrl(nextRaw, url)
-        : null;
+      nextRaw && isSafeHref(nextRaw) ? makeAbsoluteUrl(nextRaw, url) : null;
 
     return {
       url,
