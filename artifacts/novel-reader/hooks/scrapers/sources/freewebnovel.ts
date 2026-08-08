@@ -70,7 +70,10 @@ export const freeWebNovelScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url, { proxyFirst: true });
 
     let title = "Unknown Title";
-    const titleMatch = safeMatch(html, /<h1[^>]*class="tit"[^>]*>([^<]+)<\/h1>/i);
+    const titleMatch = safeMatch(
+      html,
+      /<h1[^>]*class="tit"[^>]*>([^<]+)<\/h1>/i,
+    );
     if (titleMatch) title = decodeEntities(titleMatch);
 
     let author = "Unknown Author";
@@ -118,7 +121,10 @@ export const freeWebNovelScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: freewebnovel"],
     };
   },
-  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url, { proxyFirst: true });
 
     let title = `Chapter ${chapterNum}`;
@@ -141,9 +147,15 @@ export const freeWebNovelScraper: SourceScraper = {
 
     if (!content) {
       const contentMatch =
-        safeMatch(html, /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
+        safeMatch(
+          html,
+          /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+        ) ||
         safeMatch(html, /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i) ||
-        safeMatch(html, /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i) ||
+        safeMatch(
+          html,
+          /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+        ) ||
         safeMatch(html, /<article[^>]*>([\s\S]*?)<\/article>/i) ||
         safeMatch(html, /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i);
       if (contentMatch) {
@@ -188,7 +200,8 @@ export const freeWebNovelScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
+        const isPlaceholder =
+          !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
