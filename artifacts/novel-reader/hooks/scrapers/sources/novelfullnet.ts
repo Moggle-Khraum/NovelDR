@@ -53,8 +53,12 @@ export const novelFullNetScraper: SourceScraper = {
   name: "NovelFull.net",
   canHandle: (url: string) => {
     try {
-      const host = new URL(url).hostname;
-      return host.includes(BASE_HOST) && !host.includes("readnovelfull");
+      const host = new URL(url).hostname.toLowerCase();
+      const isNovelFullHost =
+        host === BASE_HOST || host.endsWith(`.${BASE_HOST}`);
+      const isReadNovelFullHost =
+        host === "readnovelfull" || host.includes("readnovelfull.");
+      return isNovelFullHost && !isReadNovelFullHost;
     } catch {
       return false;
     }
