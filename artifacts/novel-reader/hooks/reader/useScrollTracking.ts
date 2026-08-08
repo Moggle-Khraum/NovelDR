@@ -1,6 +1,6 @@
 // hooks/reader/useScrollTracking.ts
-import { useRef, useState, useCallback, useEffect } from 'react';
-import { ScrollView } from 'react-native';
+import { useRef, useState, useCallback, useEffect } from "react";
+import { ScrollView } from "react-native";
 
 export const USER_SCROLL_RESUME_DELAY = 2500;
 export const MAX_RESTORE_ATTEMPTS = 10;
@@ -11,11 +11,16 @@ type UseScrollTrackingProps = {
   chapterIndex: number;
 };
 
-export function useScrollTracking({ novel, chapterIndex }: UseScrollTrackingProps) {
+export function useScrollTracking({
+  novel,
+  chapterIndex,
+}: UseScrollTrackingProps) {
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
   const isUserScrollingRef = useRef(false);
-  const userScrollResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userScrollResumeTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const contentHeightRef = useRef(0);
   const scrollViewHeightRef = useRef(0);
   const [readingProgress, setReadingProgress] = useState(0);
@@ -37,10 +42,13 @@ export function useScrollTracking({ novel, chapterIndex }: UseScrollTrackingProp
     }
   }, []);
 
-  const handleScroll = useCallback((event: any) => {
-    scrollYRef.current = event.nativeEvent.contentOffset.y;
-    updateReadingProgress();
-  }, [updateReadingProgress]);
+  const handleScroll = useCallback(
+    (event: any) => {
+      scrollYRef.current = event.nativeEvent.contentOffset.y;
+      updateReadingProgress();
+    },
+    [updateReadingProgress],
+  );
 
   const handleScrollBeginDrag = useCallback(() => {
     isUserScrollingRef.current = true;
@@ -60,65 +68,72 @@ export function useScrollTracking({ novel, chapterIndex }: UseScrollTrackingProp
     }, USER_SCROLL_RESUME_DELAY);
   }, []);
 
-  const handleScrollViewLayout = useCallback((event: any) => {
-    scrollViewHeightRef.current = event.nativeEvent.layout.height;
-    updateReadingProgress();
-  }, [updateReadingProgress]);
+  const handleScrollViewLayout = useCallback(
+    (event: any) => {
+      scrollViewHeightRef.current = event.nativeEvent.layout.height;
+      updateReadingProgress();
+    },
+    [updateReadingProgress],
+  );
 
-  const handleContentSizeChange = useCallback((_width: number, height: number) => {
-    contentHeightRef.current = height;
-    updateReadingProgress();
-
-    if (
-      hasRestoredScrollRef.current ||
-      restoredChapterRef.current === chapterIndex
-    ) return;
-
-    const savedOffset =
-      novel?.lastRead?.chapterIndex === chapterIndex
-        ? novel.lastRead.scrollOffset
-        : 0;
-
-    if (savedOffset <= 0 || height <= 0) {
-      hasRestoredScrollRef.current = true;
-      restoredChapterRef.current = chapterIndex;
-      return;
-    }
-
-    if (restoreTimeoutRef.current) {
-      clearTimeout(restoreTimeoutRef.current);
-      restoreTimeoutRef.current = null;
-    }
-
-    restoreAttemptsRef.current += 1;
-    const contentTallEnough =
-      height - scrollViewHeightRef.current >= savedOffset;
-    const heightSettled = height === lastRestoreHeightRef.current;
-    lastRestoreHeightRef.current = height;
-    const shouldFinalize =
-      contentTallEnough ||
-      heightSettled ||
-      restoreAttemptsRef.current >= MAX_RESTORE_ATTEMPTS;
-
-    restoreTimeoutRef.current = setTimeout(() => {
-      const maxScrollNow = Math.max(
-        0,
-        contentHeightRef.current - scrollViewHeightRef.current,
-      );
-      const targetY = Math.min(savedOffset, maxScrollNow);
-      scrollRef.current?.scrollTo({ y: targetY, animated: false });
-      scrollYRef.current = targetY;
+  const handleContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      contentHeightRef.current = height;
       updateReadingProgress();
 
-      if (shouldFinalize) {
+      if (
+        hasRestoredScrollRef.current ||
+        restoredChapterRef.current === chapterIndex
+      )
+        return;
+
+      const savedOffset =
+        novel?.lastRead?.chapterIndex === chapterIndex
+          ? novel.lastRead.scrollOffset
+          : 0;
+
+      if (savedOffset <= 0 || height <= 0) {
         hasRestoredScrollRef.current = true;
         restoredChapterRef.current = chapterIndex;
-        restoreAttemptsRef.current = 0;
-        lastRestoreHeightRef.current = 0;
+        return;
       }
-      restoreTimeoutRef.current = null;
-    }, RESTORE_SETTLE_DELAY);
-  }, [novel, chapterIndex, updateReadingProgress]);
+
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+        restoreTimeoutRef.current = null;
+      }
+
+      restoreAttemptsRef.current += 1;
+      const contentTallEnough =
+        height - scrollViewHeightRef.current >= savedOffset;
+      const heightSettled = height === lastRestoreHeightRef.current;
+      lastRestoreHeightRef.current = height;
+      const shouldFinalize =
+        contentTallEnough ||
+        heightSettled ||
+        restoreAttemptsRef.current >= MAX_RESTORE_ATTEMPTS;
+
+      restoreTimeoutRef.current = setTimeout(() => {
+        const maxScrollNow = Math.max(
+          0,
+          contentHeightRef.current - scrollViewHeightRef.current,
+        );
+        const targetY = Math.min(savedOffset, maxScrollNow);
+        scrollRef.current?.scrollTo({ y: targetY, animated: false });
+        scrollYRef.current = targetY;
+        updateReadingProgress();
+
+        if (shouldFinalize) {
+          hasRestoredScrollRef.current = true;
+          restoredChapterRef.current = chapterIndex;
+          restoreAttemptsRef.current = 0;
+          lastRestoreHeightRef.current = 0;
+        }
+        restoreTimeoutRef.current = null;
+      }, RESTORE_SETTLE_DELAY);
+    },
+    [novel, chapterIndex, updateReadingProgress],
+  );
 
   useEffect(() => {
     hasRestoredScrollRef.current = false;
