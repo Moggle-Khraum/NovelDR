@@ -70,6 +70,62 @@ const groupSentencesIntoParagraphs = (text: string): string => {
   return paragraphs.join("\n\n");
 };
 
+export const extractWuxiaworldContent = (html: string): string => {
+  let content = "";
+  const contentMatch1 = safeMatch(
+    html,
+    /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  const contentMatch2 = safeMatch(
+    html,
+    /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  const contentMatch3 = safeMatch(
+    html,
+    /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  const contentMatch4 = safeMatch(
+    html,
+    /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  const contentMatch5 = safeMatch(
+    html,
+    /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+  );
+  const contentMatch6 = safeMatch(
+    html,
+    /<article[^>]*class="chapter"[^>]*>([\s\S]*?)<\/article>/i,
+  );
+  const contentHtml =
+    contentMatch1 ||
+    contentMatch2 ||
+    contentMatch3 ||
+    contentMatch4 ||
+    contentMatch5 ||
+    contentMatch6;
+
+  if (contentHtml) {
+    const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+    if (paragraphs) {
+      const cleanedParagraphs = paragraphs
+        .map((p) => {
+          let text = p.replace(/<p[^>]*>/i, "").replace(/<\/p>/i, "");
+          text = text.replace(/<br\s*\/?>/gi, "\n\n");
+          text = decodeEntities(text);
+          text = stripTags(text);
+          return text.trim();
+        })
+        .filter((t) => t.length > 0);
+      content = cleanedParagraphs.join("\n\n");
+    } else {
+      let text = decodeEntities(stripTags(contentHtml));
+      text = text.replace(/<br\s*\/?>/gi, "\n\n");
+      content = text;
+    }
+  }
+  return content;
+};
+
 export const wuxiaworldScraper: SourceScraper = {
   id: "wuxiaworld",
   name: "WuxiaWorld.site",
@@ -202,10 +258,7 @@ export const wuxiaworldScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: wuxiaworld"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
@@ -219,62 +272,13 @@ export const wuxiaworldScraper: SourceScraper = {
         .trim()
         .replace(/\s+/g, " ")
         .trim();
-      rawTitle = rawTitle.replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "").trim();
+      rawTitle = rawTitle
+        .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
+        .trim();
       title = `Chapter ${chapterNum}: ${rawTitle}`;
     }
 
-    let content = "";
-    const contentMatch1 = safeMatch(
-      html,
-      /<div[^>]*class="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-    );
-    const contentMatch2 = safeMatch(
-      html,
-      /<div[^>]*class="entry-content"[^>]*>([\s\S]*?)<\/div>/i,
-    );
-    const contentMatch3 = safeMatch(
-      html,
-      /<div[^>]*class="content"[^>]*>([\s\S]*?)<\/div>/i,
-    );
-    const contentMatch4 = safeMatch(
-      html,
-      /<div[^>]*class="text-left"[^>]*>([\s\S]*?)<\/div>/i,
-    );
-    const contentMatch5 = safeMatch(
-      html,
-      /<div[^>]*id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
-    );
-    const contentMatch6 = safeMatch(
-      html,
-      /<article[^>]*class="chapter"[^>]*>([\s\S]*?)<\/article>/i,
-    );
-    const contentHtml =
-      contentMatch1 ||
-      contentMatch2 ||
-      contentMatch3 ||
-      contentMatch4 ||
-      contentMatch5 ||
-      contentMatch6;
-
-    if (contentHtml) {
-      const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-      if (paragraphs) {
-        const cleanedParagraphs = paragraphs
-          .map((p) => {
-            let text = p.replace(/<p[^>]*>/i, "").replace(/<\/p>/i, "");
-            text = text.replace(/<br\s*\/?>/gi, "\n\n");
-            text = decodeEntities(text);
-            text = stripTags(text);
-            return text.trim();
-          })
-          .filter((t) => t.length > 0);
-        content = cleanedParagraphs.join("\n\n");
-      } else {
-        let text = decodeEntities(stripTags(contentHtml));
-        text = text.replace(/<br\s*\/?>/gi, "\n\n");
-        content = text;
-      }
-    }
+    const content = extractWuxiaworldContent(html);
 
     let nextUrl: string | null = null;
     const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
@@ -302,8 +306,7 @@ export const wuxiaworldScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href || href === "#" || href.trim() === "" || !isSafeHref(href);
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
