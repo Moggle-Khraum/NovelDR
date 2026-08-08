@@ -4,18 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - Prod-Dev
-      - main
-      - Prod
-      - Overhaul
       - Dev1
       
   pull_request:
     branches:
-      - Prod-Dev
-      - main
-      - Prod
-      - Overhaul
       - Dev1
 
 concurrency:
