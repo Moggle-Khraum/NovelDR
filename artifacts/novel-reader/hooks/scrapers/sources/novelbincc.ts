@@ -63,7 +63,8 @@ export const novelBinCcScraper: SourceScraper = {
 
   canHandle: (url: string) => {
     try {
-      return new URL(url).hostname.includes(BASE_HOST);
+      const hostname = new URL(url).hostname.toLowerCase();
+      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
     } catch {
       return false;
     }
