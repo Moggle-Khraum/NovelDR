@@ -1,4 +1,4 @@
-// artifacts/novel-reader/hooks/scrapers/sources/novgo.ts
+// hooks/scrapers/sources/novgo.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback } from "../shared/http";
 import {
@@ -7,10 +7,11 @@ import {
   safeMatch,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "novgo.net";
 
-export const extractNovelFullContent = (html: string): string => {
+const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",
@@ -51,8 +52,7 @@ export const novgoScraper: SourceScraper = {
   name: "NovGo",
   canHandle: (url: string) => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
+      return new URL(url).hostname.includes(BASE_HOST);
     } catch {
       return false;
     }
@@ -113,8 +113,7 @@ export const novgoScraper: SourceScraper = {
         html,
         /<a[^>]*href="([^"]*chapter[-/]1[^"]*)"[^>]*>/i,
       );
-      if (chapterLinkMatch)
-        firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
+      if (chapterLinkMatch) firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
     }
 
     return {
@@ -126,26 +125,14 @@ export const novgoScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: novgo"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
     const titleMatch =
-      safeMatch(
-        html,
-        /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i,
-      ) ||
-      safeMatch(
-        html,
-        /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i,
-      ) ||
+      safeMatch(html, /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i) ||
+      safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
+      safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
       safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
     if (titleMatch) {
       let rawTitle = decodeEntities(titleMatch.trim())
@@ -195,14 +182,7 @@ export const novgoScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const normalizedHref = href ? href.trim().toLowerCase() : "";
-        const isPlaceholder =
-          !href ||
-          href === "#" ||
-          normalizedHref.startsWith("javascript:") ||
-          normalizedHref.startsWith("data:") ||
-          normalizedHref.startsWith("vbscript:") ||
-          normalizedHref === "";
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
