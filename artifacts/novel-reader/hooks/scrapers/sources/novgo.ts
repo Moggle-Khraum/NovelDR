@@ -11,7 +11,7 @@ import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "novgo.net";
 
-const extractNovelFullContent = (html: string): string => {
+export const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",
@@ -113,8 +113,7 @@ export const novgoScraper: SourceScraper = {
         html,
         /<a[^>]*href="([^"]*chapter[-/]1[^"]*)"[^>]*>/i,
       );
-      if (chapterLinkMatch)
-        firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
+      if (chapterLinkMatch) firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
     }
 
     return {
@@ -126,26 +125,14 @@ export const novgoScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: novgo"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
     const titleMatch =
-      safeMatch(
-        html,
-        /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i,
-      ) ||
-      safeMatch(
-        html,
-        /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i,
-      ) ||
+      safeMatch(html, /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i) ||
+      safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
+      safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
       safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
     if (titleMatch) {
       let rawTitle = decodeEntities(titleMatch.trim())
@@ -195,8 +182,7 @@ export const novgoScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href || href === "#" || href.trim() === "" || !isSafeHref(href);
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
