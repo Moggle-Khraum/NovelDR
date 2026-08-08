@@ -18,6 +18,7 @@ on:
     branches: [ "Prod", "Dev1" ]
   schedule:
     - cron: '32 20 * * 2'
+  workflow_dispatch:
 
 jobs:
   analyze:
