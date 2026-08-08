@@ -97,7 +97,8 @@ export const wuxiaworldScraper: SourceScraper = {
   name: "WuxiaWorld.site",
   canHandle: (url: string) => {
     try {
-      return new URL(url).hostname.toLowerCase().includes(BASE_HOST);
+      const hostname = new URL(url).hostname.toLowerCase();
+      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
     } catch {
       return false;
     }
