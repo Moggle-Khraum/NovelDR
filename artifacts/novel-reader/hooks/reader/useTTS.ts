@@ -1,18 +1,18 @@
 // hooks/reader/useTTS.ts
-import { useState, useEffect, useRef, useCallback } from "react";
-import * as Speech from "expo-speech";
-import * as Haptics from "expo-haptics";
-import * as KeepAwake from "expo-keep-awake";
-import { AccessibilityInfo, InteractionManager } from "react-native";
-import * as Notifications from "expo-notifications";
-import * as FileSystem from "expo-file-system";
-import { TTS_SETTINGS_FILE, TTS_MIN_CHARS } from "@/constants/readerSettings";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import * as Speech from 'expo-speech';
+import * as Haptics from 'expo-haptics';
+import * as KeepAwake from 'expo-keep-awake';
+import { AccessibilityInfo, InteractionManager } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as FileSystem from 'expo-file-system';
+import { TTS_SETTINGS_FILE } from '@/constants/readerSettings';
 import {
   updateMediaSession,
   clearMediaSession,
   setupMediaSession,
   setRemoteHandlers,
-} from "@/lib/TTSMediaSession";
+} from '@/lib/TTSMediaSession';
 
 type UseTTSProps = {
   ttsSentences: string[];
@@ -21,12 +21,7 @@ type UseTTSProps = {
   goToNextChapter: () => void;
 };
 
-export function useTTS({
-  ttsSentences,
-  novel,
-  chapterIndex,
-  goToNextChapter,
-}: UseTTSProps) {
+export function useTTS({ ttsSentences, novel, chapterIndex, goToNextChapter }: UseTTSProps) {
   const [ttsActive, setTtsActive] = useState(false);
   const [ttsIndex, setTtsIndex] = useState(-1);
   const [ttsStalled, setTtsStalled] = useState(false);
@@ -91,41 +86,42 @@ export function useTTS({
           }
         }
       } catch (e) {
-        console.warn("[TTS] Failed to load TTS settings:", e);
+        console.warn('[TTS] Failed to load TTS settings:', e);
       }
       try {
         const voices = await Speech.getAvailableVoicesAsync();
         const english = voices.filter((v) =>
-          v.language?.toLowerCase().startsWith("en"),
+          v.language?.toLowerCase().startsWith('en'),
         );
         setTtsVoices(english.length > 0 ? english : voices);
       } catch (e) {
-        console.warn("[TTS] Could not load voices:", e);
+        console.warn('[TTS] Could not load voices:', e);
       }
     })();
   }, []);
 
-  const saveTtsSettings = useCallback(
-    async (voiceId: string | undefined, rate: number, autoNext?: boolean) => {
-      try {
-        const dir = `${FileSystem.documentDirectory}NovelDR/`;
-        const dirInfo = await FileSystem.getInfoAsync(dir);
-        if (!dirInfo.exists)
-          await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-        await FileSystem.writeAsStringAsync(
-          TTS_SETTINGS_FILE,
-          JSON.stringify({
-            voiceId,
-            rate,
-            autoNext: autoNext ?? ttsAutoNextRef.current,
-          }),
-        );
-      } catch (e) {
-        console.warn("[TTS] Failed to save settings:", e);
-      }
-    },
-    [],
-  );
+  const saveTtsSettings = useCallback(async (
+    voiceId: string | undefined,
+    rate: number,
+    autoNext?: boolean,
+  ) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const dirInfo = await FileSystem.getInfoAsync(dir);
+      if (!dirInfo.exists)
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(
+        TTS_SETTINGS_FILE,
+        JSON.stringify({
+          voiceId,
+          rate,
+          autoNext: autoNext ?? ttsAutoNextRef.current,
+        }),
+      );
+    } catch (e) {
+      console.warn('[TTS] Failed to save settings:', e);
+    }
+  }, []);
 
   const clearWatchdogTimer = useCallback(() => {
     if (watchdogTimerRef.current) {
@@ -171,8 +167,8 @@ export function useTTS({
           ).catch(() => {});
 
           try {
-            Speech.speak("Loading next chapter", {
-              language: "en",
+            Speech.speak('Loading next chapter', {
+              language: 'en',
               pitch: 1.0,
               rate: ttsRateRef.current,
               voice: ttsVoiceIdRef.current,
@@ -183,10 +179,10 @@ export function useTTS({
             try {
               await Notifications.scheduleNotificationAsync({
                 content: {
-                  title: "Chapter Complete",
-                  body: "Moving to next chapter in 3 seconds...",
+                  title: 'Chapter Complete',
+                  body: 'Moving to next chapter in 3 seconds...',
                   sound: false,
-                  data: { action: "auto_next_chapter" },
+                  data: { action: 'auto_next_chapter' },
                 },
                 trigger: {
                   type: Notifications.SchedulableTriggerInputTypes
@@ -196,7 +192,7 @@ export function useTTS({
                 },
               });
             } catch (e) {
-              console.warn("[Auto-Next] Failed to schedule notification:", e);
+              console.warn('[Auto-Next] Failed to schedule notification:', e);
             }
           })();
 
@@ -226,11 +222,11 @@ export function useTTS({
         }
         if (ttsStallRetryCountRef.current < 1) {
           ttsStallRetryCountRef.current += 1;
-          console.log("[TTS] Watchdog: retrying stalled sentence");
+          console.log('[TTS] Watchdog: retrying stalled sentence');
           clearWatchdogTimer();
           speakSentence(sentences, index);
         } else {
-          console.warn("[TTS] Watchdog: stalled permanently");
+          console.warn('[TTS] Watchdog: stalled permanently');
           ttsStalledRef.current = true;
           setTtsStalled(true);
           ttsActiveRef.current = false;
@@ -251,7 +247,7 @@ export function useTTS({
           Speech.stop();
         } catch {}
         Speech.speak(sentences[index], {
-          language: "en",
+          language: 'en',
           pitch: 1.0,
           rate: ttsRateRef.current,
           voice: ttsVoiceIdRef.current,
@@ -264,7 +260,7 @@ export function useTTS({
             speakSentence(sentences, index + 1);
           },
           onError: (err) => {
-            console.warn("[TTS] Error speaking sentence:", err);
+            console.warn('[TTS] Error speaking sentence:', err);
             if (!isMountedRef.current) return;
             if (!ttsActiveRef.current) return;
             clearWatchdogTimer();
@@ -277,7 +273,7 @@ export function useTTS({
           },
         });
       } catch (err) {
-        console.error("[TTS] Unexpected error in speakSentence:", err);
+        console.error('[TTS] Unexpected error in speakSentence:', err);
         stopTTS();
       }
     },
@@ -322,14 +318,14 @@ export function useTTS({
       if (!isMountedRef.current) return;
       try {
         Speech.stop();
-        Speech.speak("This is a voice preview.", {
-          language: "en",
+        Speech.speak('This is a voice preview.', {
+          language: 'en',
           pitch: 1.0,
           rate: ttsRateRef.current,
           voice: ttsVoiceIdRef.current,
         });
       } catch (err) {
-        console.warn("[TTS] Preview error:", err);
+        console.warn('[TTS] Preview error:', err);
       }
     }, 200);
   }, [stopTTS]);
@@ -359,11 +355,23 @@ export function useTTS({
     setAutoNextCountdownActive(false);
   }, []);
 
+  const reloadVoices = useCallback(async () => {
+    try {
+      const voices = await Speech.getAvailableVoicesAsync();
+      const english = voices.filter((v) =>
+        v.language?.toLowerCase().startsWith('en'),
+      );
+      setTtsVoices(english.length > 0 ? english : voices);
+    } catch (e) {
+      console.warn('[TTS] Could not reload voices:', e);
+    }
+  }, []);
+
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data;
-        if (data?.action === "auto_next_chapter") {
+        if (data?.action === 'auto_next_chapter') {
           goToNextChapter();
         }
       },
@@ -430,6 +438,7 @@ export function useTTS({
     ttsVoiceId,
     setTtsVoiceId,
     ttsVoices,
+    reloadVoices,        // <-- added
     showTTSSettings,
     setShowTTSSettings,
     showTTSHelp,
