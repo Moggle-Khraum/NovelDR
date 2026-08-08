@@ -15,6 +15,42 @@ const httpClient = axios.create({
   },
 });
 
+// Allow-list of known novel-source hostnames. Requests to any URL whose
+// hostname isn't on this list (or a subdomain of one) are rejected before
+// the server ever fetches them. This is required to prevent SSRF: without
+// it, a caller could pass an arbitrary URL (e.g. an internal/private
+// address) and have this server fetch it on their behalf.
+const ALLOWED_HOSTS = [
+  "allnovel.org",
+  "freewebnovel.com",
+  "novel-bin.com",
+  "novelarrow.com",
+  "novelbin.cc",
+  "novelfull.com",
+  "novelfull.net",
+  "novelphoenix.com",
+  "novgo.net",
+  "readnovelfull.com",
+  "royalroad.com",
+  "wuxiaworld.site",
+];
+
+function isAllowedNovelUrl(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return false;
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  return ALLOWED_HOSTS.some(
+    (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`),
+  );
+}
+
 function ensureAbsoluteUrl(href: string, baseUrl: string): string {
   try {
     if (href.startsWith("http://") || href.startsWith("https://")) return href;
@@ -243,6 +279,10 @@ router.post("/api/novel/scrape-chapter", async (req, res) => {
     res.status(400).json({ error: "URL is required" });
     return;
   }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
+    return;
+  }
   try {
     const response = await httpClient.get(url);
     const html = response.data as string;
@@ -266,6 +306,10 @@ router.post("/api/novel/meta", async (req, res) => {
     res.status(400).json({ error: "URL is required" });
     return;
   }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
+    return;
+  }
   try {
     const site = detectSite(url);
     const title = extractTitleFromUrl(url);
@@ -278,7 +322,7 @@ router.post("/api/novel/meta", async (req, res) => {
 
     if (site.isChapterPage) {
       const novelUrl = getNovelMainPageUrl(html, url);
-      if (novelUrl && novelUrl !== url) {
+      if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
         try {
           const novelResp = await httpClient.get(novelUrl);
           html = novelResp.data as string;
@@ -323,6 +367,10 @@ router.post("/api/novel/next-chapter", async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
   if (!url) {
     res.status(400).json({ error: "URL is required" });
+    return;
+  }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
     return;
   }
   try {
