@@ -1,4 +1,4 @@
-// artifacts/novel-reader/hooks/scrapers/sources/readnovelfull.ts
+// hooks/scrapers/sources/readnovelfull.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback } from "../shared/http";
 import {
@@ -7,11 +7,12 @@ import {
   safeMatch,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "readnovelfull.com";
 
 // Shared helper for NovelFull family content extraction
-export const extractNovelFullContent = (html: string): string => {
+const extractNovelFullContent = (html: string): string => {
   const junkPhrases = [
     "we are offering free books",
     "read novel updated daily",
@@ -52,9 +53,7 @@ export const readNovelFullScraper: SourceScraper = {
   name: "ReadNovelFull",
   canHandle: (url: string) => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      const baseHost = BASE_HOST.toLowerCase();
-      return hostname === baseHost || hostname.endsWith(`.${baseHost}`);
+      return new URL(url).hostname.includes(BASE_HOST);
     } catch {
       return false;
     }
@@ -111,8 +110,7 @@ export const readNovelFullScraper: SourceScraper = {
         html,
         /<a[^>]*href="([^"]*chapter[-/]1[^"]*)"[^>]*>/i,
       );
-      if (chapterLinkMatch)
-        firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
+      if (chapterLinkMatch) firstChapterUrl = makeAbsoluteUrl(chapterLinkMatch, url);
     }
 
     return {
@@ -124,26 +122,14 @@ export const readNovelFullScraper: SourceScraper = {
       debugInfo: ["fetched via external scraper: readnovelfull"],
     };
   },
-  fetchChapter: async (
-    url: string,
-    chapterNum: number,
-  ): Promise<ChapterData> => {
+  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     let title = `Chapter ${chapterNum}`;
     const titleMatch =
-      safeMatch(
-        html,
-        /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i,
-      ) ||
-      safeMatch(
-        html,
-        /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i,
-      ) ||
-      safeMatch(
-        html,
-        /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i,
-      ) ||
+      safeMatch(html, /<span[^>]*class="(?:chr-text|chapter-text)"[^>]*>([^<]+)<\/span>/i) ||
+      safeMatch(html, /<a[^>]*class="(?:chr-title|chapter-title)"[^>]*title="([^"]+)"/i) ||
+      safeMatch(html, /<(?:h2|h3)[^>]*class="(?:chapter-title|title|chapter)"[^>]*>([^<]+)<\/(?:h2|h3)>/i) ||
       safeMatch(html, /<(?:h2|h3)[^>]*>([^<]*Chapter[^<]*)<\/(?:h2|h3)>/i);
     if (titleMatch) {
       let rawTitle = decodeEntities(titleMatch.trim())
@@ -158,7 +144,6 @@ export const readNovelFullScraper: SourceScraper = {
 
     let content = extractNovelFullContent(html);
     if (!content) {
-      // fallback to generic paragraph extraction
       const genericMatch = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gis);
       if (genericMatch) {
         const texts = genericMatch
@@ -194,11 +179,7 @@ export const readNovelFullScraper: SourceScraper = {
           attrs.includes("next_chapter")) &&
         href
       ) {
-        const isPlaceholder =
-          !href ||
-          href === "#" ||
-          href.startsWith("javascript:") ||
-          href.trim() === "";
+        const isPlaceholder = !href || href === "#" || href.trim() === "" || !isSafeHref(href);
         const resolved = isPlaceholder ? null : makeAbsoluteUrl(href, url);
         const isSelfReference =
           resolved !== null &&
