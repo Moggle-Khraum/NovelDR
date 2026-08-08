@@ -1,17 +1,17 @@
 // app/reader/[id].tsx
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as Speech from 'expo-speech';
-import { router, useLocalSearchParams } from 'expo-router';
-import * as FileSystem from 'expo-file-system';
-import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
+import { router, useLocalSearchParams } from "expo-router";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import React, {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,15 +29,15 @@ import {
   AccessibilityInfo,
   Image,
   Linking,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import notifee, { AuthorizationStatus } from '@notifee/react-native';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import notifee, { AuthorizationStatus } from "@notifee/react-native";
 
-import { useLibrary } from '@/context/LibraryContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useLibrary } from "@/context/LibraryContext";
+import { useTheme } from "@/context/ThemeContext";
 
 // --- Extracted modules ---
-import ContentWrapper from '@/components/reader/ContentWrapper';
+import ContentWrapper from "@/components/reader/ContentWrapper";
 import {
   FONT_SIZES,
   LINE_SPACINGS,
@@ -51,13 +51,13 @@ import {
   BG_SETTINGS_FILE,
   BG_PRESETS,
   isLightColor,
-} from '@/constants/readerSettings';
-import { useChapterPersistence } from '@/hooks/reader/useChapterPersistence';
-import { useScrollTracking } from '@/hooks/reader/useScrollTracking';
-import { useTTS } from '@/hooks/reader/useTTS';
-import { useReaderNavigation } from '@/hooks/reader/useReaderNavigation';
+} from "@/constants/readerSettings";
+import { useChapterPersistence } from "@/hooks/reader/useChapterPersistence";
+import { useScrollTracking } from "@/hooks/reader/useScrollTracking";
+import { useTTS } from "@/hooks/reader/useTTS";
+import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W } = Dimensions.get("window");
 
 // ─── ParagraphBlock (memoized) ───────────────────────────────────────────
 type ParagraphBlockProps = {
@@ -127,8 +127,8 @@ const ParagraphBlock = React.memo(
                   color: isHighlighted ? accentColor : textColor,
                   backgroundColor: isHighlighted
                     ? `${accentColor}20`
-                    : 'transparent',
-                  fontWeight: isHighlighted ? 'bold' : 'normal',
+                    : "transparent",
+                  fontWeight: isHighlighted ? "bold" : "normal",
                   fontSize,
                   lineHeight: fontSize * lineSpacing,
                   marginBottom,
@@ -212,7 +212,7 @@ export default function ReaderScreen() {
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true); // <-- added
 
   // ── Background state ──
-  const [bgPresetId, setBgPresetId] = useState<string>('none');
+  const [bgPresetId, setBgPresetId] = useState<string>("none");
   const [bgCustomUri, setBgCustomUri] = useState<string | null>(null);
   const [adaptiveColors, setAdaptiveColors] = useState({
     text: themeColors.text,
@@ -342,7 +342,13 @@ export default function ReaderScreen() {
       scrollRef.current.scrollTo({ y: newY, animated: false });
     }, 50);
     setAutoScrollActive(true);
-  }, [autoScrollSpeedIdx, stopAutoScroll, scrollY, contentHeight, scrollViewHeight]);
+  }, [
+    autoScrollSpeedIdx,
+    stopAutoScroll,
+    scrollY,
+    contentHeight,
+    scrollViewHeight,
+  ]);
 
   // Re‑arm auto‑scroll when speed changes
   useEffect(() => {
@@ -369,9 +375,9 @@ export default function ReaderScreen() {
     const appStateRef = { current: AppState.currentState };
     const handleAppStateChange = async (nextAppState: string) => {
       if (
-        (appStateRef.current === 'active' &&
+        (appStateRef.current === "active" &&
           nextAppState.match(/inactive|background/)) ||
-        nextAppState === 'background'
+        nextAppState === "background"
       ) {
         if (novel && chapter) {
           saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
@@ -380,7 +386,10 @@ export default function ReaderScreen() {
       }
       appStateRef.current = nextAppState;
     };
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
     return () => {
       subscription.remove();
       if (novel && chapter) {
@@ -388,7 +397,14 @@ export default function ReaderScreen() {
       }
       persistChapterContent();
     };
-  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress, persistChapterContent]);
+  }, [
+    novel,
+    chapter,
+    chapterIndex,
+    scrollY,
+    saveReadingProgress,
+    persistChapterContent,
+  ]);
 
   // ── Load settings ──
   useEffect(() => {
@@ -396,27 +412,33 @@ export default function ReaderScreen() {
       try {
         const fileInfo = await FileSystem.getInfoAsync(READER_SETTINGS_FILE);
         if (fileInfo.exists) {
-          const content = await FileSystem.readAsStringAsync(READER_SETTINGS_FILE);
+          const content =
+            await FileSystem.readAsStringAsync(READER_SETTINGS_FILE);
           const settings = JSON.parse(content);
-          if (settings.fontSizeIdx !== undefined) setFontSizeIdx(settings.fontSizeIdx);
-          if (settings.lineSpacingIdx !== undefined) setLineSpacingIdx(settings.lineSpacingIdx);
-          if (settings.marginPresetIdx !== undefined) setMarginPresetIdx(settings.marginPresetIdx);
-          if (settings.autoScrollSpeedIdx !== undefined) setAutoScrollSpeedIdx(settings.autoScrollSpeedIdx);
+          if (settings.fontSizeIdx !== undefined)
+            setFontSizeIdx(settings.fontSizeIdx);
+          if (settings.lineSpacingIdx !== undefined)
+            setLineSpacingIdx(settings.lineSpacingIdx);
+          if (settings.marginPresetIdx !== undefined)
+            setMarginPresetIdx(settings.marginPresetIdx);
+          if (settings.autoScrollSpeedIdx !== undefined)
+            setAutoScrollSpeedIdx(settings.autoScrollSpeedIdx);
         }
       } catch (error) {
-        console.error('Failed to load reader settings:', error);
+        console.error("Failed to load reader settings:", error);
       }
 
       try {
         const bgInfo = await FileSystem.getInfoAsync(BG_SETTINGS_FILE);
         if (bgInfo.exists) {
-          const bgContent = await FileSystem.readAsStringAsync(BG_SETTINGS_FILE);
+          const bgContent =
+            await FileSystem.readAsStringAsync(BG_SETTINGS_FILE);
           const bgSettings = JSON.parse(bgContent);
           if (bgSettings.presetId) setBgPresetId(bgSettings.presetId);
           if (bgSettings.customUri) setBgCustomUri(bgSettings.customUri);
         }
       } catch (e) {
-        console.warn('Failed to load bg settings:', e);
+        console.warn("Failed to load bg settings:", e);
       }
 
       setSettingsLoaded(true);
@@ -427,38 +449,38 @@ export default function ReaderScreen() {
   const activePreset = BG_PRESETS.find((p) => p.id === bgPresetId);
   const bgImageUri = bgCustomUri ?? null;
   const bgSolidColor =
-    !bgCustomUri && activePreset && activePreset.id !== 'none'
+    !bgCustomUri && activePreset && activePreset.id !== "none"
       ? activePreset.color
       : null;
-  const isNoneBackground = !bgCustomUri && activePreset?.id === 'none';
+  const isNoneBackground = !bgCustomUri && activePreset?.id === "none";
   const effectiveBgColor = isNoneBackground
     ? themeColors.background
-    : 'transparent';
+    : "transparent";
 
   const updateAdaptiveColors = useCallback(async () => {
     if (bgCustomUri) {
       setAdaptiveColors({
-        text: '#F0F0F0',
-        textSecondary: '#B0B0B0',
-        accent: '#58A6FF',
-        surface: 'rgba(30, 30, 40, 0.85)',
-        card: 'rgba(20, 20, 30, 0.85)',
-        border: 'rgba(100, 100, 120, 0.5)',
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
       });
-    } else if (activePreset && activePreset.id !== 'none') {
+    } else if (activePreset && activePreset.id !== "none") {
       setAdaptiveColors({
         text: activePreset.textColor,
         textSecondary: activePreset.textColorSecondary,
         accent: activePreset.accentColor || themeColors.accent,
         surface: isLightColor(activePreset.color)
-          ? 'rgba(255, 255, 255, 0.9)'
-          : 'rgba(0, 0, 0, 0.7)',
+          ? "rgba(255, 255, 255, 0.9)"
+          : "rgba(0, 0, 0, 0.7)",
         card: isLightColor(activePreset.color)
-          ? 'rgba(255, 255, 255, 0.85)'
-          : 'rgba(0, 0, 0, 0.6)',
+          ? "rgba(255, 255, 255, 0.85)"
+          : "rgba(0, 0, 0, 0.6)",
         border: isLightColor(activePreset.color)
-          ? 'rgba(0, 0, 0, 0.1)'
-          : 'rgba(255, 255, 255, 0.1)',
+          ? "rgba(0, 0, 0, 0.1)"
+          : "rgba(255, 255, 255, 0.1)",
       });
     } else {
       setAdaptiveColors({
@@ -487,7 +509,7 @@ export default function ReaderScreen() {
         JSON.stringify({ presetId, customUri }),
       );
     } catch (e) {
-      console.warn('Failed to save bg settings:', e);
+      console.warn("Failed to save bg settings:", e);
     }
   };
 
@@ -500,21 +522,21 @@ export default function ReaderScreen() {
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
       setBgCustomUri(uri);
-      setBgPresetId('none');
+      setBgPresetId("none");
       setShowBgModal(false);
-      saveBgSettings('none', uri);
+      saveBgSettings("none", uri);
       setAdaptiveColors({
-        text: '#F0F0F0',
-        textSecondary: '#B0B0B0',
-        accent: '#58A6FF',
-        surface: 'rgba(30, 30, 40, 0.85)',
-        card: 'rgba(20, 20, 30, 0.85)',
-        border: 'rgba(100, 100, 120, 0.5)',
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
       });
     }
   };
 
-  const selectPreset = (preset: typeof BG_PRESETS[0]) => {
+  const selectPreset = (preset: (typeof BG_PRESETS)[0]) => {
     setBgPresetId(preset.id);
     setBgCustomUri(null);
     setShowBgModal(false);
@@ -532,7 +554,7 @@ export default function ReaderScreen() {
         JSON.stringify({ voiceId, rate, autoNext: ttsAutoNext }),
       );
     } catch (e) {
-      console.warn('[TTS] Failed to save settings:', e);
+      console.warn("[TTS] Failed to save settings:", e);
     }
   };
 
@@ -557,22 +579,26 @@ export default function ReaderScreen() {
         }),
       );
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error("Failed to save settings:", error);
     }
   };
 
   const getMargins = () => {
     switch (marginPresetIdx) {
-      case 0: return { horizontal: 12, vertical: 16 };
-      case 1: return { horizontal: 22, vertical: 20 };
-      case 2: return { horizontal: 32, vertical: 28 };
-      default: return { horizontal: 22, vertical: 20 };
+      case 0:
+        return { horizontal: 12, vertical: 16 };
+      case 1:
+        return { horizontal: 22, vertical: 20 };
+      case 2:
+        return { horizontal: 32, vertical: 28 };
+      default:
+        return { horizontal: 22, vertical: 20 };
     }
   };
   const margins = getMargins();
 
-  const topPad = Platform.OS === 'web' ? 67 : insets.top;
-  const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const currentSpeed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
 
   // ── Paragraph layout tracking ──
@@ -581,10 +607,13 @@ export default function ReaderScreen() {
   const highlightedSentenceRelYRef = useRef<number | null>(null);
   const [highlightLayoutVersion, setHighlightLayoutVersion] = useState(0);
 
-  const handleParaLayout = useCallback((idx: number, y: number, height: number) => {
-    paraYPositionsRef.current.set(idx, y);
-    paraHeightsRef.current.set(idx, height);
-  }, []);
+  const handleParaLayout = useCallback(
+    (idx: number, y: number, height: number) => {
+      paraYPositionsRef.current.set(idx, y);
+      paraHeightsRef.current.set(idx, height);
+    },
+    [],
+  );
 
   const handleHighlightedSentenceLayout = useCallback((relY: number) => {
     highlightedSentenceRelYRef.current = relY;
@@ -592,9 +621,10 @@ export default function ReaderScreen() {
   }, []);
 
   const paragraphSentences = useMemo(
-    () => processedParagraphs.map((p) =>
-      p.split(/(?<=[.!?])\s+(?=[A-Z0-9"“'‘\(\{\[<])/)
-    ),
+    () =>
+      processedParagraphs.map((p) =>
+        p.split(/(?<=[.!?])\s+(?=[A-Z0-9"“'‘\(\{\[<])/),
+      ),
     [processedParagraphs],
   );
 
@@ -611,8 +641,11 @@ export default function ReaderScreen() {
     return map;
   }, [paragraphSentences]);
 
-  const currentHighlightKey = ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
-  const currentParaIdx = currentHighlightKey ? parseInt(currentHighlightKey.split('-')[0], 10) : -1;
+  const currentHighlightKey =
+    ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
+  const currentParaIdx = currentHighlightKey
+    ? parseInt(currentHighlightKey.split("-")[0], 10)
+    : -1;
 
   // TTS follow‑scroll effect
   useEffect(() => {
@@ -651,12 +684,16 @@ export default function ReaderScreen() {
 
   // ── Background setup modal state ──
   const [showBackgroundSetup, setShowBackgroundSetup] = useState(false);
-  const [notifPermGranted, setNotifPermGranted] = useState<boolean | null>(null);
-  const [batteryOptExempt, setBatteryOptExempt] = useState<boolean | null>(null);
+  const [notifPermGranted, setNotifPermGranted] = useState<boolean | null>(
+    null,
+  );
+  const [batteryOptExempt, setBatteryOptExempt] = useState<boolean | null>(
+    null,
+  );
   const [powerManagerAvailable, setPowerManagerAvailable] = useState(false);
 
   const refreshBackgroundSetupStatus = useCallback(async () => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== "android") return;
     try {
       const settings = await notifee.getNotificationSettings();
       setNotifPermGranted(
@@ -687,7 +724,10 @@ export default function ReaderScreen() {
     try {
       await notifee.requestPermission();
     } catch (e) {
-      console.warn('[BackgroundSetup] Notification permission request failed:', e);
+      console.warn(
+        "[BackgroundSetup] Notification permission request failed:",
+        e,
+      );
     }
     await refreshBackgroundSetupStatus();
   }, [refreshBackgroundSetupStatus]);
@@ -696,7 +736,10 @@ export default function ReaderScreen() {
     try {
       await notifee.openBatteryOptimizationSettings();
     } catch (e) {
-      console.warn('[BackgroundSetup] Could not open battery optimization settings:', e);
+      console.warn(
+        "[BackgroundSetup] Could not open battery optimization settings:",
+        e,
+      );
     }
   }, []);
 
@@ -704,14 +747,19 @@ export default function ReaderScreen() {
     try {
       await notifee.openPowerManagerSettings();
     } catch (e) {
-      console.warn('[BackgroundSetup] Could not open power manager settings:', e);
+      console.warn(
+        "[BackgroundSetup] Could not open power manager settings:",
+        e,
+      );
     }
   }, []);
 
   // ── Loading state ──
   if (!novel || !chapter || !settingsLoaded) {
     return (
-      <View style={[styles.center, { backgroundColor: themeColors.background }]}>
+      <View
+        style={[styles.center, { backgroundColor: themeColors.background }]}
+      >
         <ActivityIndicator size="large" color={themeColors.accent} />
       </View>
     );
@@ -742,7 +790,7 @@ export default function ReaderScreen() {
             style={styles.navBtn}
             onPress={() =>
               router.replace({
-                pathname: '/novel/[id]',
+                pathname: "/novel/[id]",
                 params: { id },
               })
             }
@@ -800,7 +848,7 @@ export default function ReaderScreen() {
         </Pressable>
 
         {/* Content area */}
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View style={{ flex: 1, position: "relative" }}>
           <ScrollView
             ref={scrollRef}
             style={styles.scrollArea}
@@ -828,7 +876,7 @@ export default function ReaderScreen() {
                   color: adaptiveColors.accent,
                   marginBottom: fontSize * 1.5,
                   fontSize: fontSize + 4,
-                  fontWeight: 'bold',
+                  fontWeight: "bold",
                 },
               ]}
             >
@@ -846,7 +894,7 @@ export default function ReaderScreen() {
 
                   let highlightedSentIdx = -1;
                   if (currentHighlightKey) {
-                    const [hPara, hSent] = currentHighlightKey.split('-');
+                    const [hPara, hSent] = currentHighlightKey.split("-");
                     if (parseInt(hPara, 10) === paraIdx) {
                       highlightedSentIdx = parseInt(hSent, 10);
                     }
@@ -881,7 +929,7 @@ export default function ReaderScreen() {
               style={[
                 styles.ttsStalledBanner,
                 {
-                  backgroundColor: adaptiveColors.accent + '20',
+                  backgroundColor: adaptiveColors.accent + "20",
                   borderColor: adaptiveColors.accent,
                 },
               ]}
@@ -902,7 +950,7 @@ export default function ReaderScreen() {
                 style={{
                   color: adaptiveColors.text,
                   fontSize: 12,
-                  fontWeight: '600',
+                  fontWeight: "600",
                 }}
               >
                 Narration stalled — tap to resume
@@ -926,12 +974,12 @@ export default function ReaderScreen() {
                 onPress={() => setQuickActionsExpanded((v) => !v)}
                 accessibilityLabel={
                   quickActionsExpanded
-                    ? 'Hide quick actions'
-                    : 'Show quick actions'
+                    ? "Hide quick actions"
+                    : "Show quick actions"
                 }
               >
                 <Ionicons
-                  name={quickActionsExpanded ? 'chevron-down' : 'chevron-up'}
+                  name={quickActionsExpanded ? "chevron-down" : "chevron-up"}
                   size={16}
                   color={adaptiveColors.text}
                 />
@@ -981,11 +1029,11 @@ export default function ReaderScreen() {
                     }}
                     delayLongPress={400}
                     accessibilityLabel={
-                      ttsActive ? 'Pause narration' : 'Start narration'
+                      ttsActive ? "Pause narration" : "Start narration"
                     }
                   >
                     <Ionicons
-                      name={ttsActive ? 'pause' : 'volume-high'}
+                      name={ttsActive ? "pause" : "volume-high"}
                       size={18}
                       color="#fff"
                     />
@@ -1002,8 +1050,8 @@ export default function ReaderScreen() {
             style={[
               styles.ttsSentenceBox,
               {
-                backgroundColor: adaptiveColors.accent + '12',
-                borderColor: adaptiveColors.accent + '40',
+                backgroundColor: adaptiveColors.accent + "12",
+                borderColor: adaptiveColors.accent + "40",
               },
             ]}
           >
@@ -1027,7 +1075,7 @@ export default function ReaderScreen() {
                 numberOfLines={2}
               >
                 {ttsSentences[ttsIndex].length > 100
-                  ? ttsSentences[ttsIndex].substring(0, 100) + '...'
+                  ? ttsSentences[ttsIndex].substring(0, 100) + "..."
                   : ttsSentences[ttsIndex]}
               </Text>
             </View>
@@ -1041,8 +1089,8 @@ export default function ReaderScreen() {
             style={[
               styles.ttsSentenceBox,
               {
-                backgroundColor: adaptiveColors.accent + '12',
-                borderColor: adaptiveColors.accent + '40',
+                backgroundColor: adaptiveColors.accent + "12",
+                borderColor: adaptiveColors.accent + "40",
               },
             ]}
           >
@@ -1166,7 +1214,7 @@ export default function ReaderScreen() {
                   color:
                     chapterIndex === novel.chapters.length - 1
                       ? adaptiveColors.textSecondary
-                      : '#fff',
+                      : "#fff",
                 },
               ]}
             >
@@ -1178,7 +1226,7 @@ export default function ReaderScreen() {
               color={
                 chapterIndex === novel.chapters.length - 1
                   ? adaptiveColors.textSecondary
-                  : '#fff'
+                  : "#fff"
               }
             />
           </Pressable>
@@ -1399,9 +1447,9 @@ export default function ReaderScreen() {
                     }
                   >
                     <Ionicons
-                      name={autoScrollActive ? 'pause' : 'play'}
+                      name={autoScrollActive ? "pause" : "play"}
                       size={16}
-                      color={autoScrollActive ? '#fff' : adaptiveColors.text}
+                      color={autoScrollActive ? "#fff" : adaptiveColors.text}
                     />
                   </Pressable>
 
@@ -1495,20 +1543,20 @@ export default function ReaderScreen() {
                     >
                       <Ionicons
                         name={
-                          ttsAutoNext ? 'checkmark-circle' : 'ellipse-outline'
+                          ttsAutoNext ? "checkmark-circle" : "ellipse-outline"
                         }
                         size={15}
-                        color={ttsAutoNext ? '#fff' : adaptiveColors.text}
+                        color={ttsAutoNext ? "#fff" : adaptiveColors.text}
                       />
                       <Text
                         style={[
                           styles.autoNextToggleText,
                           {
-                            color: ttsAutoNext ? '#fff' : adaptiveColors.text,
+                            color: ttsAutoNext ? "#fff" : adaptiveColors.text,
                           },
                         ]}
                       >
-                        {ttsAutoNext ? 'On' : 'Off'}
+                        {ttsAutoNext ? "On" : "Off"}
                       </Text>
                     </Pressable>
                   </View>
@@ -1556,7 +1604,7 @@ export default function ReaderScreen() {
                           {
                             color:
                               marginPresetIdx === idx
-                                ? '#fff'
+                                ? "#fff"
                                 : adaptiveColors.text,
                           },
                         ]}
@@ -1593,7 +1641,7 @@ export default function ReaderScreen() {
                         style={styles.bgCurrentImage}
                         resizeMode="cover"
                       />
-                    ) : bgSolidColor && bgSolidColor !== 'transparent' ? (
+                    ) : bgSolidColor && bgSolidColor !== "transparent" ? (
                       <View
                         style={[
                           styles.bgCurrentImage,
@@ -1672,7 +1720,7 @@ export default function ReaderScreen() {
           <View
             style={[
               styles.modalOverlay,
-              { backgroundColor: 'rgba(0,0,0,0.5)' },
+              { backgroundColor: "rgba(0,0,0,0.5)" },
             ]}
           >
             <View
@@ -1718,17 +1766,17 @@ export default function ReaderScreen() {
                       <View
                         style={[
                           styles.bgPresetSwatch,
-                          { backgroundColor: preset.color, overflow: 'hidden' },
+                          { backgroundColor: preset.color, overflow: "hidden" },
                         ]}
                       >
-                        {preset.type === 'gradient' && preset.color2 && (
+                        {preset.type === "gradient" && preset.color2 && (
                           <View
                             style={{
-                              position: 'absolute',
+                              position: "absolute",
                               right: 0,
                               top: 0,
                               bottom: 0,
-                              width: '50%',
+                              width: "50%",
                               backgroundColor: preset.color2,
                             }}
                           />
@@ -1773,15 +1821,15 @@ export default function ReaderScreen() {
                       styles.bgPresetSwatch,
                       {
                         backgroundColor: adaptiveColors.card,
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        alignItems: "center",
+                        justifyContent: "center",
                       },
                     ]}
                   >
                     {bgCustomUri ? (
                       <Image
                         source={{ uri: bgCustomUri }}
-                        style={{ width: '100%', height: '100%' }}
+                        style={{ width: "100%", height: "100%" }}
                         resizeMode="cover"
                       />
                     ) : (
@@ -1803,8 +1851,8 @@ export default function ReaderScreen() {
                     ]}
                   >
                     {bgCustomUri
-                      ? 'Custom (tap to change)'
-                      : 'Pick from Gallery'}
+                      ? "Custom (tap to change)"
+                      : "Pick from Gallery"}
                   </Text>
                   {bgCustomUri && (
                     <Ionicons
@@ -1850,36 +1898,36 @@ export default function ReaderScreen() {
               </Text>
               {[
                 {
-                  icon: 'volume-high',
-                  title: 'Start / Pause Reading',
-                  desc: 'Tap the speaker button to start TTS. Tap again to pause.',
+                  icon: "volume-high",
+                  title: "Start / Pause Reading",
+                  desc: "Tap the speaker button to start TTS. Tap again to pause.",
                 },
                 {
-                  icon: 'settings-outline',
-                  title: 'Open TTS Settings',
-                  desc: 'Long-press the speaker button (hold ~0.4s) to open the settings panel.',
+                  icon: "settings-outline",
+                  title: "Open TTS Settings",
+                  desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel.",
                 },
                 {
-                  icon: 'refresh',
-                  title: 'Load More Voices',
-                  desc: 'Inside settings, if no voices appear, tap Reload Engines to fetch available voices.',
+                  icon: "refresh",
+                  title: "Load More Voices",
+                  desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices.",
                 },
                 {
-                  icon: 'musical-note',
-                  title: 'Change Voice & Speed',
-                  desc: 'Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it.',
+                  icon: "musical-note",
+                  title: "Change Voice & Speed",
+                  desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it.",
                 },
                 {
-                  icon: 'close-circle-outline',
-                  title: 'Close Settings',
-                  desc: 'Tap Save Values or tap anywhere outside the panel to dismiss settings.',
+                  icon: "close-circle-outline",
+                  title: "Close Settings",
+                  desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings.",
                 },
               ].map(({ icon, title, desc }) => (
                 <View key={title} style={styles.ttsHelpItem}>
                   <View
                     style={[
                       styles.ttsHelpIconWrap,
-                      { backgroundColor: adaptiveColors.accent + '20' },
+                      { backgroundColor: adaptiveColors.accent + "20" },
                     ]}
                   >
                     <Ionicons
@@ -1961,21 +2009,21 @@ export default function ReaderScreen() {
                     {
                       backgroundColor:
                         notifPermGranted === true
-                          ? '#22C55E20'
-                          : adaptiveColors.accent + '20',
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
                     },
                   ]}
                 >
                   <Ionicons
                     name={
                       notifPermGranted === true
-                        ? 'checkmark-circle'
-                        : 'notifications-outline'
+                        ? "checkmark-circle"
+                        : "notifications-outline"
                     }
                     size={18}
                     color={
                       notifPermGranted === true
-                        ? '#22C55E'
+                        ? "#22C55E"
                         : adaptiveColors.accent
                     }
                   />
@@ -2015,10 +2063,10 @@ export default function ReaderScreen() {
                       ]}
                     >
                       {notifPermGranted === true
-                        ? 'Granted'
+                        ? "Granted"
                         : notifPermGranted === false
-                          ? 'Open App Settings'
-                          : 'Allow Notifications'}
+                          ? "Open App Settings"
+                          : "Allow Notifications"}
                     </Text>
                   </Pressable>
                 </View>
@@ -2031,21 +2079,21 @@ export default function ReaderScreen() {
                     {
                       backgroundColor:
                         batteryOptExempt === true
-                          ? '#22C55E20'
-                          : adaptiveColors.accent + '20',
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
                     },
                   ]}
                 >
                   <Ionicons
                     name={
                       batteryOptExempt === true
-                        ? 'checkmark-circle'
-                        : 'battery-charging-outline'
+                        ? "checkmark-circle"
+                        : "battery-charging-outline"
                     }
                     size={18}
                     color={
                       batteryOptExempt === true
-                        ? '#22C55E'
+                        ? "#22C55E"
                         : adaptiveColors.accent
                     }
                   />
@@ -2082,8 +2130,8 @@ export default function ReaderScreen() {
                       ]}
                     >
                       {batteryOptExempt === true
-                        ? 'Exempt — Open Anyway'
-                        : 'Open Battery Settings'}
+                        ? "Exempt — Open Anyway"
+                        : "Open Battery Settings"}
                     </Text>
                   </Pressable>
                 </View>
@@ -2094,7 +2142,7 @@ export default function ReaderScreen() {
                   <View
                     style={[
                       styles.ttsHelpIconWrap,
-                      { backgroundColor: adaptiveColors.accent + '20' },
+                      { backgroundColor: adaptiveColors.accent + "20" },
                     ]}
                   >
                     <Ionicons
@@ -2174,7 +2222,7 @@ export default function ReaderScreen() {
                   <Text
                     style={[
                       styles.ttsModalTitle,
-                      { color: adaptiveColors.text, textAlign: 'center' },
+                      { color: adaptiveColors.text, textAlign: "center" },
                     ]}
                   >
                     No Engines Found
@@ -2188,7 +2236,7 @@ export default function ReaderScreen() {
                       try {
                         const voices = await Speech.getAvailableVoicesAsync();
                         const english = voices.filter((v) =>
-                          v.language?.toLowerCase().startsWith('en'),
+                          v.language?.toLowerCase().startsWith("en"),
                         );
                         setTtsVoices(english.length > 0 ? english : voices);
                       } catch (e) {
@@ -2199,8 +2247,8 @@ export default function ReaderScreen() {
                     <Ionicons name="refresh" size={20} color="#fff" />
                     <Text
                       style={{
-                        color: '#fff',
-                        fontWeight: '600',
+                        color: "#fff",
+                        fontWeight: "600",
                         marginLeft: 8,
                       }}
                     >
@@ -2243,7 +2291,7 @@ export default function ReaderScreen() {
                             {
                               color:
                                 Math.abs(ttsRate - rate) < 0.01
-                                  ? '#fff'
+                                  ? "#fff"
                                   : adaptiveColors.text,
                             },
                           ]}
@@ -2292,7 +2340,7 @@ export default function ReaderScreen() {
                               styles.ttsVoiceChipText,
                               {
                                 color: isSelected
-                                  ? '#fff'
+                                  ? "#fff"
                                   : adaptiveColors.text,
                               },
                             ]}
@@ -2304,7 +2352,7 @@ export default function ReaderScreen() {
                               styles.ttsVoiceChipLang,
                               {
                                 color: isSelected
-                                  ? 'rgba(255,255,255,0.7)'
+                                  ? "rgba(255,255,255,0.7)"
                                   : adaptiveColors.textSecondary,
                               },
                             ]}
@@ -2341,7 +2389,7 @@ export default function ReaderScreen() {
                       ]}
                       onPress={() => setShowTTSSettings(false)}
                     >
-                      <Text style={{ color: '#fff', fontWeight: '600' }}>
+                      <Text style={{ color: "#fff", fontWeight: "600" }}>
                         Save Values
                       </Text>
                     </Pressable>
@@ -2362,7 +2410,7 @@ export default function ReaderScreen() {
           <View
             style={[
               styles.modalOverlay,
-              { backgroundColor: 'rgba(0,0,0,0.5)' },
+              { backgroundColor: "rgba(0,0,0,0.5)" },
             ]}
           >
             <View
@@ -2377,7 +2425,7 @@ export default function ReaderScreen() {
                 >
                   Table of Contents
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flexDirection: "row", gap: 12 }}>
                   <Pressable
                     onPress={() => setShowSearch(true)}
                     style={styles.modalCloseBtn}
@@ -2405,7 +2453,7 @@ export default function ReaderScreen() {
                   style={[
                     styles.continueReadingBtn,
                     {
-                      backgroundColor: adaptiveColors.accent + '20',
+                      backgroundColor: adaptiveColors.accent + "20",
                       borderColor: adaptiveColors.accent,
                     },
                   ]}
@@ -2437,7 +2485,7 @@ export default function ReaderScreen() {
                       styles.tocItem,
                       idx === chapterIndex && [
                         styles.tocItemActive,
-                        { backgroundColor: adaptiveColors.accent + '20' },
+                        { backgroundColor: adaptiveColors.accent + "20" },
                       ],
                     ]}
                     onPress={() => handleChapterSelect(idx)}
@@ -2491,7 +2539,7 @@ export default function ReaderScreen() {
           transparent
           onRequestClose={() => {
             setShowSearch(false);
-            setSearchQuery('');
+            setSearchQuery("");
             setSearchResults([]);
           }}
         >
@@ -2580,7 +2628,7 @@ export default function ReaderScreen() {
                 ]}
                 onPress={() => {
                   setShowSearch(false);
-                  setSearchQuery('');
+                  setSearchQuery("");
                   setSearchResults([]);
                 }}
               >
@@ -2624,12 +2672,12 @@ export default function ReaderScreen() {
                 name="warning-outline"
                 size={28}
                 color={adaptiveColors.accent}
-                style={{ alignSelf: 'center', marginBottom: 8 }}
+                style={{ alignSelf: "center", marginBottom: 8 }}
               />
               <Text
                 style={[
                   styles.ttsModalTitle,
-                  { color: adaptiveColors.text, textAlign: 'center' },
+                  { color: adaptiveColors.text, textAlign: "center" },
                 ]}
               >
                 You&apos;re tapping a bit fast
@@ -2638,7 +2686,7 @@ export default function ReaderScreen() {
                 style={{
                   color: adaptiveColors.textSecondary,
                   fontSize: 13,
-                  textAlign: 'center',
+                  textAlign: "center",
                   marginBottom: 20,
                   lineHeight: 18,
                 }}
@@ -2669,10 +2717,10 @@ export default function ReaderScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -2681,30 +2729,30 @@ const styles = StyleSheet.create({
   navBtn: {
     width: 44,
     height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  chapterTitle: { fontSize: 14, flex: 1, textAlign: 'center' },
-  progressBarContainer: { height: 4, width: '100%', overflow: 'hidden' },
-  progressBar: { height: '100%', width: '0%' },
+  chapterTitle: { fontSize: 14, flex: 1, textAlign: "center" },
+  progressBarContainer: { height: 4, width: "100%", overflow: "hidden" },
+  progressBar: { height: "100%", width: "0%" },
   scrollArea: { flex: 1 },
   textContainer: { paddingTop: 20 },
-  chapterHeader: { lineHeight: 32, marginBottom: 24, fontWeight: 'bold' },
+  chapterHeader: { lineHeight: 32, marginBottom: 24, fontWeight: "bold" },
   content: {},
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 40,
   },
   ttsQuickActionsContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 18,
     right: 18,
     width: 46,
     borderRadius: 23,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 6,
     gap: 8,
     elevation: 4,
@@ -2712,15 +2760,15 @@ const styles = StyleSheet.create({
   ttsQuickActionsToggle: {
     width: 30,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   ttsQuickActionBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   ttsPlayBtnInner: {
     width: 38,
@@ -2728,11 +2776,11 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
   ttsStalledBanner: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 65,
     right: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -2741,8 +2789,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   ttsSentenceBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 8,
     marginHorizontal: 14,
     marginBottom: 20,
@@ -2753,23 +2801,23 @@ const styles = StyleSheet.create({
   },
   ttsSentenceLabel: {
     fontSize: 10,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 3,
   },
   ttsSentenceText: { fontSize: 13, lineHeight: 19 },
   bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
   navChBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -2783,32 +2831,32 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     minWidth: 85,
-    alignItems: 'center',
+    alignItems: "center",
   },
   tocButtonText: { fontSize: 14 },
   readingPercent: { fontSize: 10, marginTop: 2 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalContent: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
-    minHeight: '50%',
+    maxHeight: "80%",
+    minHeight: "50%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
-  modalTitle: { fontSize: 18, fontWeight: 'bold' },
+  modalTitle: { fontSize: 18, fontWeight: "bold" },
   modalCloseBtn: { padding: 4 },
   modalScrollView: { paddingHorizontal: 20, paddingVertical: 12 },
   continueReadingBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginHorizontal: 20,
     marginVertical: 12,
@@ -2818,13 +2866,13 @@ const styles = StyleSheet.create({
   },
   continueReadingText: { fontSize: 14 },
   tocItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   tocItemActive: { borderRadius: 8 },
   tocItemContent: { flex: 1 },
@@ -2832,8 +2880,8 @@ const styles = StyleSheet.create({
   tocChapterTitle: { fontSize: 14 },
   overlayDismiss: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
   },
   settingsSheet: {
     borderTopLeftRadius: 20,
@@ -2843,140 +2891,140 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderRightWidth: StyleSheet.hairlineWidth,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 16,
   },
   sectionLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 8,
   },
   rowGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
     paddingHorizontal: 4,
   },
-  rowGroupLabel: { fontSize: 13, fontWeight: '600', flex: 1 },
+  rowGroupLabel: { fontSize: 13, fontWeight: "600", flex: 1 },
   controlValueCenteredSmall: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     minWidth: 40,
-    textAlign: 'center',
+    textAlign: "center",
   },
   controlBtnSmall: {
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 18,
     borderWidth: 1,
   },
   autoScrollPlayBtnSmall: {
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 18,
     borderWidth: 1,
     marginRight: 8,
   },
   autoNextToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 16,
     borderWidth: 1,
   },
-  autoNextToggleText: { fontSize: 13, fontWeight: '600' },
+  autoNextToggleText: { fontSize: 13, fontWeight: "600" },
   controlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 8,
   },
   controlBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 8,
     borderWidth: 1,
   },
-  controlBtnText: { fontWeight: '600' },
-  controlValue: { fontSize: 15, width: 50, textAlign: 'center' },
-  marginRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  controlBtnText: { fontWeight: "600" },
+  controlValue: { fontSize: 15, width: 50, textAlign: "center" },
+  marginRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   marginPresetBtn: {
     flex: 1,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  marginPresetText: { fontSize: 13, fontWeight: '500' },
-  bgRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  marginPresetText: { fontSize: 13, fontWeight: "500" },
+  bgRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   bgCurrentBtn: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  bgCurrentImage: { width: '100%', height: 60 },
+  bgCurrentImage: { width: "100%", height: 60 },
   bgCurrentEmpty: {
     height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   bgCurrentLabel: { fontSize: 10 },
-  bgBtnLabel: { fontSize: 11, textAlign: 'center', paddingVertical: 6 },
+  bgBtnLabel: { fontSize: 11, textAlign: "center", paddingVertical: 6 },
   bgPresetsBtn: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  bgPresetsGrid: { flexDirection: 'row', flexWrap: 'wrap', height: 60 },
-  bgPresetsGridCell: { width: '50%', height: '50%' },
+  bgPresetsGrid: { flexDirection: "row", flexWrap: "wrap", height: 60 },
+  bgPresetsGridCell: { width: "50%", height: "50%" },
   autoScrollRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     marginBottom: 8,
   },
   autoScrollPlayBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 30,
     borderWidth: 1,
   },
-  autoScrollText: { fontSize: 13, fontWeight: '500' },
+  autoScrollText: { fontSize: 13, fontWeight: "500" },
   speedControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    marginLeft: 'auto',
+    marginLeft: "auto",
   },
-  controlValueSmall: { fontSize: 14, width: 40, textAlign: 'center' },
+  controlValueSmall: { fontSize: 14, width: 40, textAlign: "center" },
   bgPresetsList: { paddingHorizontal: 20, paddingVertical: 12, gap: 10 },
   bgPresetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     borderRadius: 10,
     padding: 10,
@@ -2985,18 +3033,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  bgPresetLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
+  bgPresetLabel: { fontSize: 14, fontWeight: "500", flex: 1 },
   searchModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   searchModalContent: {
-    width: '90%',
-    maxHeight: '80%',
+    width: "90%",
+    maxHeight: "80%",
     borderRadius: 12,
     padding: 20,
   },
@@ -3007,21 +3055,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
   },
-  searchResultCount: { fontSize: 12, marginBottom: 12, textAlign: 'center' },
+  searchResultCount: { fontSize: 12, marginBottom: 12, textAlign: "center" },
   searchResultItem: { paddingVertical: 12, borderBottomWidth: 1 },
   searchResultTitle: { fontSize: 14, marginBottom: 4 },
   searchResultChapter: { fontSize: 12 },
-  noResults: { textAlign: 'center', paddingVertical: 20 },
+  noResults: { textAlign: "center", paddingVertical: 20 },
   closeSearchBtn: {
     marginTop: 16,
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   ttsModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   ttsModalDismiss: { flex: 1 },
   ttsModalSheet: {
@@ -3036,14 +3084,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 16,
   },
-  ttsModalTitle: { fontSize: 17, marginBottom: 20, fontWeight: 'bold' },
-  ttsModalSubtitle: { fontSize: 14, marginBottom: 12, fontWeight: '600' },
+  ttsModalTitle: { fontSize: 17, marginBottom: 20, fontWeight: "bold" },
+  ttsModalSubtitle: { fontSize: 14, marginBottom: 12, fontWeight: "600" },
   speedButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 10,
     marginBottom: 8,
   },
@@ -3052,35 +3100,35 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  speedButtonText: { fontSize: 13, fontWeight: '500' },
+  speedButtonText: { fontSize: 13, fontWeight: "500" },
   ttsButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
     marginTop: 24,
   },
   ttsPreviewBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
   },
   ttsSaveBtn: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 10,
   },
   ttsReloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     marginHorizontal: 20,
     borderRadius: 10,
@@ -3090,10 +3138,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 80,
   },
-  ttsVoiceChipText: { fontSize: 12, fontWeight: '500' },
+  ttsVoiceChipText: { fontSize: 12, fontWeight: "500" },
   ttsVoiceChipLang: { fontSize: 10, marginTop: 2 },
   ttsHelpModal: {
     borderTopLeftRadius: 20,
@@ -3104,8 +3152,8 @@ const styles = StyleSheet.create({
     marginBottom: 11,
   },
   ttsHelpItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
     marginBottom: 16,
   },
@@ -3113,19 +3161,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 2,
   },
-  ttsHelpTitle: { fontSize: 13, marginBottom: 3, fontWeight: '600' },
+  ttsHelpTitle: { fontSize: 13, marginBottom: 3, fontWeight: "600" },
   ttsHelpDesc: { fontSize: 12, lineHeight: 17 },
   ttsBackgroundSetupBtn: {
     marginTop: 8,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
   },
-  ttsBackgroundSetupBtnText: { fontSize: 12, fontWeight: '600' },
+  ttsBackgroundSetupBtnText: { fontSize: 12, fontWeight: "600" },
 });
