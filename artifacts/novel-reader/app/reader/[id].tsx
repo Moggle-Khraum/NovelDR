@@ -241,7 +241,6 @@ export default function ReaderScreen() {
     processedParagraphs,
     ttsSentences,
     contentLoading,
-    persistChapterContent,
   } = useChapterPersistence({
     novel,
     chapterIndex,
@@ -374,7 +373,9 @@ export default function ReaderScreen() {
     }
   }, [autoScrollSpeedIdx]);
 
-  // ── Persist on background / unmount ──
+  // ── Persist reading progress on background / unmount ──
+  // (Chapter content persistence is handled inside useChapterPersistence's
+  // own AppState listener — don't duplicate that call here.)
   useEffect(() => {
     const appStateRef = { current: AppState.currentState };
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
@@ -386,7 +387,6 @@ export default function ReaderScreen() {
         if (novel && chapter) {
           saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
         }
-        await persistChapterContent();
       }
       appStateRef.current = nextAppState;
     };
@@ -399,16 +399,8 @@ export default function ReaderScreen() {
       if (novel && chapter) {
         saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
       }
-      persistChapterContent();
     };
-  }, [
-    novel,
-    chapter,
-    chapterIndex,
-    scrollY,
-    saveReadingProgress,
-    persistChapterContent,
-  ]);
+  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
 
   // ── Load settings ──
   useEffect(() => {
