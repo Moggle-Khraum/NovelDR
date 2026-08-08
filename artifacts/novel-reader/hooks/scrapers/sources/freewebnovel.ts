@@ -8,7 +8,7 @@ import {
   makeAbsoluteUrl,
 } from "../shared/html";
 
-const BASE_HOST = "freewebnovel";
+const BASE_HOST = "freewebnovel.com";
 
 const FREEWEBNOVEL_JUNK_PHRASES = [
   "panda",
@@ -62,7 +62,8 @@ export const freeWebNovelScraper: SourceScraper = {
   name: "FreeWebNovel",
   canHandle: (url: string) => {
     try {
-      return new URL(url).hostname.toLowerCase().includes(BASE_HOST);
+      const hostname = new URL(url).hostname.toLowerCase();
+      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
     } catch {
       return false;
     }
