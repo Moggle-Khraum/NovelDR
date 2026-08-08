@@ -1,3 +1,4 @@
+// hooks/scrapers/sources/novelphoenix.ts
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchHtmlWithFallback } from "../shared/http";
 import {
@@ -7,6 +8,7 @@ import {
   extractByDepth,
   makeAbsoluteUrl,
 } from "../shared/html";
+import { isSafeHref } from "../shared/urlSafety";
 
 const BASE_HOST = "novelphoenix.com";
 
@@ -15,7 +17,7 @@ const BASE_HOST = "novelphoenix.com";
  * entity-decoded, joined with double newlines. Used for the synopsis,
  * which on this site is a series of <p> tags inside div.summary > div.content.
  */
-export const extractParagraphs = (html: string): string => {
+const extractParagraphs = (html: string): string => {
   const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
   return matches
     .map((m) => decodeEntities(stripTags(m[1])))
@@ -29,8 +31,7 @@ export const novelPhoenixScraper: SourceScraper = {
 
   canHandle: (url: string) => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
+      return new URL(url).hostname.includes(BASE_HOST);
     } catch {
       return false;
     }
@@ -108,7 +109,7 @@ export const novelPhoenixScraper: SourceScraper = {
     // <a rel="next" class="chnav next" href="...">  (href is "javascript:;" when disabled/last chapter)
     const nextRaw = safeMatch(html, /<a[^>]*rel="next"[^>]*href="([^"]+)"/i);
     const nextUrl =
-      nextRaw && !nextRaw.startsWith("javascript")
+      nextRaw && isSafeHref(nextRaw)
         ? makeAbsoluteUrl(nextRaw, url)
         : null;
 
