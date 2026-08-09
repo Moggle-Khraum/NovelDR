@@ -1,7 +1,6 @@
 // app/reader/[id].tsx
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Speech from "expo-speech";
 import { router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
@@ -14,10 +13,8 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   AppStateStatus,
-  InteractionManager,
   Modal,
   Platform,
   Pressable,
@@ -27,7 +24,6 @@ import {
   TextInput,
   View,
   Dimensions,
-  AccessibilityInfo,
   Image,
   Linking,
 } from "react-native";
@@ -236,7 +232,7 @@ export default function ReaderScreen() {
   const chapter = novel?.chapters[chapterIndex];
 
   // ── Hooks ──
-  const { chapterContent, processedParagraphs, ttsSentences, contentLoading } =
+  const { processedParagraphs, ttsSentences, contentLoading } =
     useChapterPersistence({
       novel,
       chapterIndex,
@@ -288,11 +284,19 @@ export default function ReaderScreen() {
     scrollY,
     contentHeight,
     scrollViewHeight,
+    scrollRef,
   ]);
 
   // ── TTS ──
+  // goChapter is captured via closure, not listed as a dependency: it's
+  // declared further down (via useReaderNavigation) after this callback is
+  // created and passed into useTTS, so referencing it here in the deps
+  // array would throw (temporal dead zone). By the time this callback
+  // actually runs (in response to a user/TTS action), goChapter is already
+  // assigned, so the closure reference is safe.
   const goToNextChapter = useCallback(() => {
     goChapter(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const {
@@ -363,10 +367,16 @@ export default function ReaderScreen() {
     useRapidTapGuard(handleRapidTapTripped);
 
   // ── Re‑arm auto‑scroll when speed changes ──
+  // Deliberately scoped to only autoScrollSpeedIdx: startAutoScroll is
+  // re-created on nearly every scroll event (it depends on scrollY/
+  // contentHeight/scrollViewHeight), so including it here would re-arm
+  // auto-scroll continuously while scrolling instead of only on a speed
+  // change. autoScrollActive is read from closure at effect-run-time.
   useEffect(() => {
     if (autoScrollActive) {
       startAutoScroll();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScrollSpeedIdx]);
 
   // ── Persist reading progress on background / unmount ──
@@ -664,6 +674,8 @@ export default function ReaderScreen() {
     lineSpacing,
     highlightLayoutVersion,
     scrollViewHeight,
+    isUserScrollingRef,
+    scrollRef,
   ]);
 
   const jumpToPercentage = (percentage: number) => {
