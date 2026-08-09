@@ -232,7 +232,7 @@ export default function ReaderScreen() {
   const chapter = novel?.chapters[chapterIndex];
 
   // ── Hooks ──
-  const { processedParagraphs, ttsSentences, contentLoading } =
+  const { chapterContent, processedParagraphs, ttsSentences, contentLoading } =
     useChapterPersistence({
       novel,
       chapterIndex,
@@ -963,7 +963,7 @@ export default function ReaderScreen() {
           )}
 
           {/* Quick-actions cluster */}
-          {ttsSentences.length >= TTS_MIN_CHARS && (
+          {chapterContent.length >= TTS_MIN_CHARS && (
             <View
               style={[
                 styles.ttsQuickActionsContainer,
