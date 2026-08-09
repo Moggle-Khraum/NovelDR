@@ -17,7 +17,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -28,7 +27,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import notifee, { AuthorizationStatus } from "@notifee/react-native";
-import { GestureDetector } from "react-native-gesture-handler";
+import { ScrollView } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
 import { useLibrary } from "@/context/LibraryContext";
@@ -211,12 +210,8 @@ export default function ReaderScreen() {
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
-  const {
-    fullscreenMode,
-    toggleFullscreen,
-    uiAnimatedStyle,
-    doubleTapGesture,
-  } = useFullscreenMode({ onDoubleTap: () => setShowSettingsSheet(true) });
+  const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
+    useFullscreenMode();
 
   // ── Background state ──
   const [bgPresetId, setBgPresetId] = useState<string>("none");
@@ -770,14 +765,14 @@ export default function ReaderScreen() {
   // ─── RENDER ──────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
   return (
-    <GestureDetector gesture={doubleTapGesture}>
-      <ContentWrapper
-        bgImageUri={bgImageUri}
-        bgSolidColor={bgSolidColor}
-        defaultBgColor={themeColors.background}
-      >
-        <View style={[styles.container, { backgroundColor: effectiveBgColor }]}>
-          {/* ─── TOP BAR (always mounted; fades + disables touch in fullscreen) ─── */}
+    <ContentWrapper
+      bgImageUri={bgImageUri}
+      bgSolidColor={bgSolidColor}
+      defaultBgColor={themeColors.background}
+    >
+      <View style={[styles.container, { backgroundColor: effectiveBgColor }]}>
+        {/* ─── TOP BAR (fades out, then unmounts to reclaim layout space) ─── */}
+          {barsMounted && (
           <Animated.View
             pointerEvents={fullscreenMode ? "none" : "auto"}
             style={[
@@ -825,6 +820,7 @@ export default function ReaderScreen() {
               />
             </Pressable>
           </Animated.View>
+          )}
 
           {/* ─── PROGRESS BAR (always visible) ─── */}
           <Pressable
@@ -888,10 +884,7 @@ export default function ReaderScreen() {
               </Text>
               {contentLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator
-                    size="small"
-                    color={adaptiveColors.accent}
-                  />
+                  <ActivityIndicator size="small" color={adaptiveColors.accent} />
                 </View>
               ) : (
                 <View>
@@ -957,10 +950,7 @@ export default function ReaderScreen() {
                     Now reading
                   </Text>
                   <Text
-                    style={[
-                      styles.ttsSentenceText,
-                      { color: adaptiveColors.text },
-                    ]}
+                    style={[styles.ttsSentenceText, { color: adaptiveColors.text }]}
                     numberOfLines={2}
                   >
                     {ttsSentences[ttsIndex].length > 100
@@ -999,10 +989,7 @@ export default function ReaderScreen() {
                     Chapter finished
                   </Text>
                   <Text
-                    style={[
-                      styles.ttsSentenceText,
-                      { color: adaptiveColors.text },
-                    ]}
+                    style={[styles.ttsSentenceText, { color: adaptiveColors.text }]}
                   >
                     Moving to next chapter in 3s — tap to cancel
                   </Text>
@@ -1102,8 +1089,8 @@ export default function ReaderScreen() {
                     />
                   </Pressable>
 
-                  {/* Expanded actions (hidden in fullscreen mode) */}
-                  {quickActionsExpanded && !fullscreenMode && (
+                  {/* Expanded actions — chevron alone controls visibility, in both modes */}
+                  {quickActionsExpanded && (
                     <>
                       <Pressable
                         style={styles.quickActionBtn}
@@ -1158,43 +1145,13 @@ export default function ReaderScreen() {
                       </Pressable>
                     </>
                   )}
-
-                  {/* In fullscreen, only show TTS play button */}
-                  {fullscreenMode && (
-                    <Pressable
-                      style={[
-                        styles.quickActionBtn,
-                        styles.ttsPlayBtnInner,
-                        { backgroundColor: adaptiveColors.accent },
-                      ]}
-                      onPress={() => {
-                        registerRapidTap();
-                        toggleTTS();
-                      }}
-                      onLongPress={() => {
-                        Haptics.impactAsync(
-                          Haptics.ImpactFeedbackStyle.Medium,
-                        ).catch(() => {});
-                        setShowTTSSettings(true);
-                      }}
-                      delayLongPress={400}
-                      accessibilityLabel={
-                        ttsActive ? "Pause narration" : "Start narration"
-                      }
-                    >
-                      <Ionicons
-                        name={ttsActive ? "pause" : "volume-high"}
-                        size={18}
-                        color="#fff"
-                      />
-                    </Pressable>
-                  )}
                 </View>
               </View>
             )}
           </View>
 
-          {/* ─── BOTTOM NAV (always mounted; fades + disables touch in fullscreen) ─── */}
+          {/* ─── BOTTOM NAV (fades out, then unmounts to reclaim layout space) ─── */}
+          {barsMounted && (
           <Animated.View
             pointerEvents={fullscreenMode ? "none" : "auto"}
             style={[
@@ -1309,9 +1266,10 @@ export default function ReaderScreen() {
               />
             </Pressable>
           </Animated.View>
+          )}
 
-          {/* ─── FULLSCREEN MINIMAL BAR (instant swap, no fade needed) ─── */}
-          {fullscreenMode && (
+          {/* ─── FULLSCREEN MINIMAL BAR (shown once normal bars finish fading out) ─── */}
+          {fullscreenMode && !barsMounted && (
             <View
               style={[
                 styles.minimalistBottomBar,
@@ -1505,11 +1463,7 @@ export default function ReaderScreen() {
                         );
                       }}
                     >
-                      <Ionicons
-                        name="remove"
-                        size={18}
-                        color={adaptiveColors.text}
-                      />
+                      <Ionicons name="remove" size={18} color={adaptiveColors.text} />
                     </Pressable>
                     <Text
                       style={[
@@ -1541,11 +1495,7 @@ export default function ReaderScreen() {
                         );
                       }}
                     >
-                      <Ionicons
-                        name="add"
-                        size={18}
-                        color={adaptiveColors.text}
-                      />
+                      <Ionicons name="add" size={18} color={adaptiveColors.text} />
                     </Pressable>
                   </View>
 
@@ -1598,11 +1548,7 @@ export default function ReaderScreen() {
                         );
                       }}
                     >
-                      <Ionicons
-                        name="remove"
-                        size={18}
-                        color={adaptiveColors.text}
-                      />
+                      <Ionicons name="remove" size={18} color={adaptiveColors.text} />
                     </Pressable>
                     <Text
                       style={[
@@ -1634,11 +1580,7 @@ export default function ReaderScreen() {
                         );
                       }}
                     >
-                      <Ionicons
-                        name="add"
-                        size={18}
-                        color={adaptiveColors.text}
-                      />
+                      <Ionicons name="add" size={18} color={adaptiveColors.text} />
                     </Pressable>
                   </View>
 
@@ -1666,18 +1608,14 @@ export default function ReaderScreen() {
                         onPress={toggleTtsAutoNext}
                       >
                         <Ionicons
-                          name={
-                            ttsAutoNext ? "checkmark-circle" : "ellipse-outline"
-                          }
+                          name={ttsAutoNext ? "checkmark-circle" : "ellipse-outline"}
                           size={15}
                           color={ttsAutoNext ? "#fff" : adaptiveColors.text}
                         />
                         <Text
                           style={[
                             styles.autoNextToggleText,
-                            {
-                              color: ttsAutoNext ? "#fff" : adaptiveColors.text,
-                            },
+                            { color: ttsAutoNext ? "#fff" : adaptiveColors.text },
                           ]}
                         >
                           {ttsAutoNext ? "On" : "Off"}
@@ -1863,11 +1801,7 @@ export default function ReaderScreen() {
                     onPress={() => setShowBgModal(false)}
                     style={styles.modalCloseBtn}
                   >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color={adaptiveColors.text}
-                    />
+                    <Ionicons name="close" size={24} color={adaptiveColors.text} />
                   </Pressable>
                 </View>
                 <ScrollView contentContainerStyle={styles.bgPresetsList}>
@@ -1890,10 +1824,7 @@ export default function ReaderScreen() {
                         <View
                           style={[
                             styles.bgPresetSwatch,
-                            {
-                              backgroundColor: preset.color,
-                              overflow: "hidden",
-                            },
+                            { backgroundColor: preset.color, overflow: "hidden" },
                           ]}
                         >
                           {preset.type === "gradient" && preset.color2 && (
@@ -1977,9 +1908,7 @@ export default function ReaderScreen() {
                         },
                       ]}
                     >
-                      {bgCustomUri
-                        ? "Custom (tap to change)"
-                        : "Pick from Gallery"}
+                      {bgCustomUri ? "Custom (tap to change)" : "Pick from Gallery"}
                     </Text>
                     {bgCustomUri && (
                       <Ionicons
@@ -2024,62 +1953,19 @@ export default function ReaderScreen() {
                   How to Use Text-to-Speech
                 </Text>
                 {[
-                  {
-                    icon: "volume-high",
-                    title: "Start / Pause Reading",
-                    desc: "Tap the speaker button to start TTS. Tap again to pause.",
-                  },
-                  {
-                    icon: "settings-outline",
-                    title: "Open TTS Settings",
-                    desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel.",
-                  },
-                  {
-                    icon: "refresh",
-                    title: "Load More Voices",
-                    desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices.",
-                  },
-                  {
-                    icon: "musical-note",
-                    title: "Change Voice & Speed",
-                    desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it.",
-                  },
-                  {
-                    icon: "close-circle-outline",
-                    title: "Close Settings",
-                    desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings.",
-                  },
+                  { icon: "volume-high", title: "Start / Pause Reading", desc: "Tap the speaker button to start TTS. Tap again to pause." },
+                  { icon: "settings-outline", title: "Open TTS Settings", desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel." },
+                  { icon: "refresh", title: "Load More Voices", desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices." },
+                  { icon: "musical-note", title: "Change Voice & Speed", desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it." },
+                  { icon: "close-circle-outline", title: "Close Settings", desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings." },
                 ].map(({ icon, title, desc }) => (
                   <View key={title} style={styles.ttsHelpItem}>
-                    <View
-                      style={[
-                        styles.ttsHelpIconWrap,
-                        { backgroundColor: adaptiveColors.accent + "20" },
-                      ]}
-                    >
-                      <Ionicons
-                        name={icon as any}
-                        size={18}
-                        color={adaptiveColors.accent}
-                      />
+                    <View style={[styles.ttsHelpIconWrap, { backgroundColor: adaptiveColors.accent + "20" }]}>
+                      <Ionicons name={icon as any} size={18} color={adaptiveColors.accent} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          styles.ttsHelpTitle,
-                          { color: adaptiveColors.text },
-                        ]}
-                      >
-                        {title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.ttsHelpDesc,
-                          { color: adaptiveColors.textSecondary },
-                        ]}
-                      >
-                        {desc}
-                      </Text>
+                      <Text style={[styles.ttsHelpTitle, { color: adaptiveColors.text }]}>{title}</Text>
+                      <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary }]}>{desc}</Text>
                     </View>
                   </View>
                 ))}
@@ -2099,210 +1985,52 @@ export default function ReaderScreen() {
               onPress={() => setShowBackgroundSetup(false)}
             >
               <Pressable
-                style={[
-                  styles.ttsHelpModal,
-                  { backgroundColor: adaptiveColors.surface },
-                ]}
+                style={[styles.ttsHelpModal, { backgroundColor: adaptiveColors.surface }]}
                 onPress={() => {}}
               >
-                <View
-                  style={[
-                    styles.ttsModalHandle,
-                    { backgroundColor: adaptiveColors.border },
-                  ]}
-                />
-                <Text
-                  style={[styles.ttsModalTitle, { color: adaptiveColors.text }]}
-                >
-                  Background Playback Setup
-                </Text>
-                <Text
-                  style={[
-                    styles.ttsHelpDesc,
-                    { color: adaptiveColors.textSecondary, marginBottom: 12 },
-                  ]}
-                >
-                  Optional. Some phones stop narration when you lock the screen.
-                  These settings fix that.
+                <View style={[styles.ttsModalHandle, { backgroundColor: adaptiveColors.border }]} />
+                <Text style={[styles.ttsModalTitle, { color: adaptiveColors.text }]}>Background Playback Setup</Text>
+                <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary, marginBottom: 12 }]}>
+                  Optional. Some phones stop narration when you lock the screen. These settings fix that.
                 </Text>
                 <View style={styles.ttsHelpItem}>
-                  <View
-                    style={[
-                      styles.ttsHelpIconWrap,
-                      {
-                        backgroundColor:
-                          notifPermGranted === true
-                            ? "#22C55E20"
-                            : adaptiveColors.accent + "20",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={
-                        notifPermGranted === true
-                          ? "checkmark-circle"
-                          : "notifications-outline"
-                      }
-                      size={18}
-                      color={
-                        notifPermGranted === true
-                          ? "#22C55E"
-                          : adaptiveColors.accent
-                      }
-                    />
+                  <View style={[styles.ttsHelpIconWrap, { backgroundColor: notifPermGranted === true ? "#22C55E20" : adaptiveColors.accent + "20" }]}>
+                    <Ionicons name={notifPermGranted === true ? "checkmark-circle" : "notifications-outline"} size={18} color={notifPermGranted === true ? "#22C55E" : adaptiveColors.accent} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.ttsHelpTitle,
-                        { color: adaptiveColors.text },
-                      ]}
-                    >
-                      Allow Notifications
-                    </Text>
-                    <Text
-                      style={[
-                        styles.ttsHelpDesc,
-                        { color: adaptiveColors.textSecondary },
-                      ]}
-                    >
-                      Required so Android knows narration is active.
-                    </Text>
-                    <Pressable
-                      style={[
-                        styles.ttsBackgroundSetupBtn,
-                        { borderColor: adaptiveColors.border },
-                      ]}
-                      onPress={
-                        notifPermGranted === false
-                          ? () => Linking.openSettings()
-                          : handleRequestNotificationPerm
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.ttsBackgroundSetupBtnText,
-                          { color: adaptiveColors.accent },
-                        ]}
-                      >
-                        {notifPermGranted === true
-                          ? "Granted"
-                          : notifPermGranted === false
-                            ? "Open App Settings"
-                            : "Allow Notifications"}
+                    <Text style={[styles.ttsHelpTitle, { color: adaptiveColors.text }]}>Allow Notifications</Text>
+                    <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary }]}>Required so Android knows narration is active.</Text>
+                    <Pressable style={[styles.ttsBackgroundSetupBtn, { borderColor: adaptiveColors.border }]} onPress={notifPermGranted === false ? () => Linking.openSettings() : handleRequestNotificationPerm}>
+                      <Text style={[styles.ttsBackgroundSetupBtnText, { color: adaptiveColors.accent }]}>
+                        {notifPermGranted === true ? "Granted" : notifPermGranted === false ? "Open App Settings" : "Allow Notifications"}
                       </Text>
                     </Pressable>
                   </View>
                 </View>
                 <View style={styles.ttsHelpItem}>
-                  <View
-                    style={[
-                      styles.ttsHelpIconWrap,
-                      {
-                        backgroundColor:
-                          batteryOptExempt === true
-                            ? "#22C55E20"
-                            : adaptiveColors.accent + "20",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={
-                        batteryOptExempt === true
-                          ? "checkmark-circle"
-                          : "battery-charging-outline"
-                      }
-                      size={18}
-                      color={
-                        batteryOptExempt === true
-                          ? "#22C55E"
-                          : adaptiveColors.accent
-                      }
-                    />
+                  <View style={[styles.ttsHelpIconWrap, { backgroundColor: batteryOptExempt === true ? "#22C55E20" : adaptiveColors.accent + "20" }]}>
+                    <Ionicons name={batteryOptExempt === true ? "checkmark-circle" : "battery-charging-outline"} size={18} color={batteryOptExempt === true ? "#22C55E" : adaptiveColors.accent} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.ttsHelpTitle,
-                        { color: adaptiveColors.text },
-                      ]}
-                    >
-                      Disable Battery Optimization
-                    </Text>
-                    <Text
-                      style={[
-                        styles.ttsHelpDesc,
-                        { color: adaptiveColors.textSecondary },
-                      ]}
-                    >
-                      Prevents Android from restricting background activity.
-                    </Text>
-                    <Pressable
-                      style={[
-                        styles.ttsBackgroundSetupBtn,
-                        { borderColor: adaptiveColors.border },
-                      ]}
-                      onPress={handleOpenBatteryOptimizationSettings}
-                    >
-                      <Text
-                        style={[
-                          styles.ttsBackgroundSetupBtnText,
-                          { color: adaptiveColors.accent },
-                        ]}
-                      >
-                        {batteryOptExempt === true
-                          ? "Exempt — Open Anyway"
-                          : "Open Battery Settings"}
+                    <Text style={[styles.ttsHelpTitle, { color: adaptiveColors.text }]}>Disable Battery Optimization</Text>
+                    <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary }]}>Prevents Android from restricting background activity.</Text>
+                    <Pressable style={[styles.ttsBackgroundSetupBtn, { borderColor: adaptiveColors.border }]} onPress={handleOpenBatteryOptimizationSettings}>
+                      <Text style={[styles.ttsBackgroundSetupBtnText, { color: adaptiveColors.accent }]}>
+                        {batteryOptExempt === true ? "Exempt — Open Anyway" : "Open Battery Settings"}
                       </Text>
                     </Pressable>
                   </View>
                 </View>
                 {powerManagerAvailable && (
                   <View style={styles.ttsHelpItem}>
-                    <View
-                      style={[
-                        styles.ttsHelpIconWrap,
-                        { backgroundColor: adaptiveColors.accent + "20" },
-                      ]}
-                    >
-                      <Ionicons
-                        name="phone-portrait-outline"
-                        size={18}
-                        color={adaptiveColors.accent}
-                      />
+                    <View style={[styles.ttsHelpIconWrap, { backgroundColor: adaptiveColors.accent + "20" }]}>
+                      <Ionicons name="phone-portrait-outline" size={18} color={adaptiveColors.accent} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          styles.ttsHelpTitle,
-                          { color: adaptiveColors.text },
-                        ]}
-                      >
-                        Enable Autostart
-                      </Text>
-                      <Text
-                        style={[
-                          styles.ttsHelpDesc,
-                          { color: adaptiveColors.textSecondary },
-                        ]}
-                      >
-                        Manufacturer-specific restriction on some devices.
-                      </Text>
-                      <Pressable
-                        style={[
-                          styles.ttsBackgroundSetupBtn,
-                          { borderColor: adaptiveColors.border },
-                        ]}
-                        onPress={handleOpenPowerManagerSettings}
-                      >
-                        <Text
-                          style={[
-                            styles.ttsBackgroundSetupBtnText,
-                            { color: adaptiveColors.accent },
-                          ]}
-                        >
-                          Open Autostart Settings
-                        </Text>
+                      <Text style={[styles.ttsHelpTitle, { color: adaptiveColors.text }]}>Enable Autostart</Text>
+                      <Text style={[styles.ttsHelpDesc, { color: adaptiveColors.textSecondary }]}>Manufacturer-specific restriction on some devices.</Text>
+                      <Pressable style={[styles.ttsBackgroundSetupBtn, { borderColor: adaptiveColors.border }]} onPress={handleOpenPowerManagerSettings}>
+                        <Text style={[styles.ttsBackgroundSetupBtnText, { color: adaptiveColors.accent }]}>Open Autostart Settings</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -2320,190 +2048,54 @@ export default function ReaderScreen() {
             onRequestClose={() => setShowTTSSettings(false)}
           >
             <View style={styles.ttsModalOverlay}>
-              <Pressable
-                style={styles.ttsModalDismiss}
-                onPress={() => setShowTTSSettings(false)}
-              />
-              <View
-                style={[
-                  styles.ttsModalSheet,
-                  { backgroundColor: adaptiveColors.surface },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.ttsModalHandle,
-                    { backgroundColor: adaptiveColors.border },
-                  ]}
-                />
+              <Pressable style={styles.ttsModalDismiss} onPress={() => setShowTTSSettings(false)} />
+              <View style={[styles.ttsModalSheet, { backgroundColor: adaptiveColors.surface }]}>
+                <View style={[styles.ttsModalHandle, { backgroundColor: adaptiveColors.border }]} />
                 {ttsVoices.length === 0 ? (
                   <>
-                    <Text
-                      style={[
-                        styles.ttsModalTitle,
-                        { color: adaptiveColors.text, textAlign: "center" },
-                      ]}
-                    >
-                      No Engines Found
-                    </Text>
-                    <Pressable
-                      style={[
-                        styles.ttsReloadBtn,
-                        { backgroundColor: adaptiveColors.accent },
-                      ]}
-                      onPress={reloadVoices}
-                    >
+                    <Text style={[styles.ttsModalTitle, { color: adaptiveColors.text, textAlign: "center" }]}>No Engines Found</Text>
+                    <Pressable style={[styles.ttsReloadBtn, { backgroundColor: adaptiveColors.accent }]} onPress={reloadVoices}>
                       <Ionicons name="refresh" size={20} color="#fff" />
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontWeight: "600",
-                          marginLeft: 8,
-                        }}
-                      >
-                        Reload Engines
-                      </Text>
+                      <Text style={{ color: "#fff", fontWeight: "600", marginLeft: 8 }}>Reload Engines</Text>
                     </Pressable>
                   </>
                 ) : (
                   <>
-                    <Text
-                      style={[
-                        styles.ttsModalSubtitle,
-                        { color: adaptiveColors.text },
-                      ]}
-                    >
-                      Voice Speed
-                    </Text>
+                    <Text style={[styles.ttsModalSubtitle, { color: adaptiveColors.text }]}>Voice Speed</Text>
                     <View style={styles.speedButtonsRow}>
                       {[1.0, 1.3, 1.5, 2.0, 2.5].map((rate) => (
                         <Pressable
                           key={rate}
-                          style={[
-                            styles.speedButton,
-                            {
-                              backgroundColor:
-                                Math.abs(ttsRate - rate) < 0.01
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.card,
-                              borderColor: adaptiveColors.border,
-                            },
-                          ]}
-                          onPress={() => {
-                            setTtsRate(rate);
-                            saveTtsSettings(ttsVoiceId, rate);
-                          }}
+                          style={[styles.speedButton, { backgroundColor: Math.abs(ttsRate - rate) < 0.01 ? adaptiveColors.accent : adaptiveColors.card, borderColor: adaptiveColors.border }]}
+                          onPress={() => { setTtsRate(rate); saveTtsSettings(ttsVoiceId, rate); }}
                         >
-                          <Text
-                            style={[
-                              styles.speedButtonText,
-                              {
-                                color:
-                                  Math.abs(ttsRate - rate) < 0.01
-                                    ? "#fff"
-                                    : adaptiveColors.text,
-                              },
-                            ]}
-                          >
-                            {rate}x
-                          </Text>
+                          <Text style={[styles.speedButtonText, { color: Math.abs(ttsRate - rate) < 0.01 ? "#fff" : adaptiveColors.text }]}>{rate}x</Text>
                         </Pressable>
                       ))}
                     </View>
-                    <Text
-                      style={[
-                        styles.ttsModalSubtitle,
-                        { color: adaptiveColors.text, marginTop: 16 },
-                      ]}
-                    >
-                      Voices
-                    </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
-                    >
+                    <Text style={[styles.ttsModalSubtitle, { color: adaptiveColors.text, marginTop: 16 }]}>Voices</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
                       {ttsVoices.map((voice) => {
                         const isSelected = ttsVoiceId === voice.identifier;
                         return (
                           <Pressable
                             key={voice.identifier}
-                            style={[
-                              styles.ttsVoiceChip,
-                              {
-                                backgroundColor: isSelected
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.card,
-                                borderColor: isSelected
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.border,
-                              },
-                            ]}
-                            onPress={() => {
-                              setTtsVoiceId(voice.identifier);
-                              saveTtsSettings(voice.identifier, ttsRate);
-                            }}
+                            style={[styles.ttsVoiceChip, { backgroundColor: isSelected ? adaptiveColors.accent : adaptiveColors.card, borderColor: isSelected ? adaptiveColors.accent : adaptiveColors.border }]}
+                            onPress={() => { setTtsVoiceId(voice.identifier); saveTtsSettings(voice.identifier, ttsRate); }}
                           >
-                            <Text
-                              style={[
-                                styles.ttsVoiceChipText,
-                                {
-                                  color: isSelected
-                                    ? "#fff"
-                                    : adaptiveColors.text,
-                                },
-                              ]}
-                            >
-                              {voice.name ?? voice.identifier}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.ttsVoiceChipLang,
-                                {
-                                  color: isSelected
-                                    ? "rgba(255,255,255,0.7)"
-                                    : adaptiveColors.textSecondary,
-                                },
-                              ]}
-                            >
-                              {voice.language}
-                            </Text>
+                            <Text style={[styles.ttsVoiceChipText, { color: isSelected ? "#fff" : adaptiveColors.text }]}>{voice.name ?? voice.identifier}</Text>
+                            <Text style={[styles.ttsVoiceChipLang, { color: isSelected ? "rgba(255,255,255,0.7)" : adaptiveColors.textSecondary }]}>{voice.language}</Text>
                           </Pressable>
                         );
                       })}
                     </ScrollView>
                     <View style={styles.ttsButtonsRow}>
-                      <Pressable
-                        style={[
-                          styles.ttsPreviewBtn,
-                          { borderColor: adaptiveColors.accent },
-                        ]}
-                        onPress={previewTts}
-                      >
-                        <Ionicons
-                          name="play-circle-outline"
-                          size={20}
-                          color={adaptiveColors.accent}
-                        />
-                        <Text
-                          style={{
-                            color: adaptiveColors.accent,
-                            marginLeft: 6,
-                          }}
-                        >
-                          Preview Voice
-                        </Text>
+                      <Pressable style={[styles.ttsPreviewBtn, { borderColor: adaptiveColors.accent }]} onPress={previewTts}>
+                        <Ionicons name="play-circle-outline" size={20} color={adaptiveColors.accent} />
+                        <Text style={{ color: adaptiveColors.accent, marginLeft: 6 }}>Preview Voice</Text>
                       </Pressable>
-                      <Pressable
-                        style={[
-                          styles.ttsSaveBtn,
-                          { backgroundColor: adaptiveColors.accent },
-                        ]}
-                        onPress={() => setShowTTSSettings(false)}
-                      >
-                        <Text style={{ color: "#fff", fontWeight: "600" }}>
-                          Save Values
-                        </Text>
+                      <Pressable style={[styles.ttsSaveBtn, { backgroundColor: adaptiveColors.accent }]} onPress={() => setShowTTSSettings(false)}>
+                        <Text style={{ color: "#fff", fontWeight: "600" }}>Save Values</Text>
                       </Pressable>
                     </View>
                   </>
@@ -2513,131 +2105,34 @@ export default function ReaderScreen() {
           </Modal>
 
           {/* ─── TABLE OF CONTENTS MODAL ─── */}
-          <Modal
-            visible={showTOC}
-            animationType="slide"
-            transparent
-            onRequestClose={() => setShowTOC(false)}
-          >
-            <View
-              style={[
-                styles.modalOverlay,
-                { backgroundColor: "rgba(0,0,0,0.5)" },
-              ]}
-            >
-              <View
-                style={[
-                  styles.modalContent,
-                  { backgroundColor: adaptiveColors.surface },
-                ]}
-              >
+          <Modal visible={showTOC} animationType="slide" transparent onRequestClose={() => setShowTOC(false)}>
+            <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+              <View style={[styles.modalContent, { backgroundColor: adaptiveColors.surface }]}>
                 <View style={styles.modalHeader}>
-                  <Text
-                    style={[styles.modalTitle, { color: adaptiveColors.text }]}
-                  >
-                    Table of Contents
-                  </Text>
+                  <Text style={[styles.modalTitle, { color: adaptiveColors.text }]}>Table of Contents</Text>
                   <View style={{ flexDirection: "row", gap: 12 }}>
-                    <Pressable
-                      onPress={() => setShowSearch(true)}
-                      style={styles.modalCloseBtn}
-                    >
-                      <Ionicons
-                        name="search"
-                        size={24}
-                        color={adaptiveColors.text}
-                      />
+                    <Pressable onPress={() => setShowSearch(true)} style={styles.modalCloseBtn}>
+                      <Ionicons name="search" size={24} color={adaptiveColors.text} />
                     </Pressable>
-                    <Pressable
-                      onPress={() => setShowTOC(false)}
-                      style={styles.modalCloseBtn}
-                    >
-                      <Ionicons
-                        name="close"
-                        size={24}
-                        color={adaptiveColors.text}
-                      />
+                    <Pressable onPress={() => setShowTOC(false)} style={styles.modalCloseBtn}>
+                      <Ionicons name="close" size={24} color={adaptiveColors.text} />
                     </Pressable>
                   </View>
                 </View>
-                {novel.lastRead &&
-                  novel.lastRead.chapterIndex !== undefined && (
-                    <Pressable
-                      style={[
-                        styles.continueReadingBtn,
-                        {
-                          backgroundColor: adaptiveColors.accent + "20",
-                          borderColor: adaptiveColors.accent,
-                        },
-                      ]}
-                      onPress={() => {
-                        continueReading();
-                        setShowTOC(false);
-                      }}
-                    >
-                      <Ionicons
-                        name="play-circle"
-                        size={20}
-                        color={adaptiveColors.accent}
-                      />
-                      <Text
-                        style={[
-                          styles.continueReadingText,
-                          { color: adaptiveColors.accent },
-                        ]}
-                      >
-                        Continue Reading
-                      </Text>
-                    </Pressable>
-                  )}
+                {novel.lastRead && novel.lastRead.chapterIndex !== undefined && (
+                  <Pressable style={[styles.continueReadingBtn, { backgroundColor: adaptiveColors.accent + "20", borderColor: adaptiveColors.accent }]} onPress={() => { continueReading(); setShowTOC(false); }}>
+                    <Ionicons name="play-circle" size={20} color={adaptiveColors.accent} />
+                    <Text style={[styles.continueReadingText, { color: adaptiveColors.accent }]}>Continue Reading</Text>
+                  </Pressable>
+                )}
                 <ScrollView style={styles.modalScrollView}>
                   {novel.chapters.map((ch: any, idx: number) => (
-                    <Pressable
-                      key={idx}
-                      style={[
-                        styles.tocItem,
-                        idx === chapterIndex && [
-                          styles.tocItemActive,
-                          { backgroundColor: adaptiveColors.accent + "20" },
-                        ],
-                      ]}
-                      onPress={() => handleChapterSelect(idx)}
-                    >
+                    <Pressable key={idx} style={[styles.tocItem, idx === chapterIndex && [styles.tocItemActive, { backgroundColor: adaptiveColors.accent + "20" }]]} onPress={() => handleChapterSelect(idx)}>
                       <View style={styles.tocItemContent}>
-                        <Text
-                          style={[
-                            styles.tocChapterNum,
-                            {
-                              color:
-                                idx === chapterIndex
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.textSecondary,
-                            },
-                          ]}
-                        >
-                          Chapter {idx + 1}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tocChapterTitle,
-                            {
-                              color:
-                                idx === chapterIndex
-                                  ? adaptiveColors.accent
-                                  : adaptiveColors.text,
-                            },
-                          ]}
-                        >
-                          {ch.title}
-                        </Text>
+                        <Text style={[styles.tocChapterNum, { color: idx === chapterIndex ? adaptiveColors.accent : adaptiveColors.textSecondary }]}>Chapter {idx + 1}</Text>
+                        <Text style={[styles.tocChapterTitle, { color: idx === chapterIndex ? adaptiveColors.accent : adaptiveColors.text }]}>{ch.title}</Text>
                       </View>
-                      {idx === chapterIndex && (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={20}
-                          color={adaptiveColors.accent}
-                        />
-                      )}
+                      {idx === chapterIndex && <Ionicons name="checkmark-circle" size={20} color={adaptiveColors.accent} />}
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -2646,105 +2141,27 @@ export default function ReaderScreen() {
           </Modal>
 
           {/* ─── SEARCH MODAL ─── */}
-          <Modal
-            visible={showSearch}
-            animationType="fade"
-            transparent
-            onRequestClose={() => {
-              setShowSearch(false);
-              setSearchQuery("");
-              setSearchResults([]);
-            }}
-          >
+          <Modal visible={showSearch} animationType="fade" transparent onRequestClose={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>
             <View style={styles.searchModalOverlay}>
-              <View
-                style={[
-                  styles.searchModalContent,
-                  { backgroundColor: adaptiveColors.surface },
-                ]}
-              >
-                <TextInput
-                  style={[
-                    styles.searchInput,
-                    {
-                      color: adaptiveColors.text,
-                      borderColor: adaptiveColors.border,
-                      backgroundColor: themeColors.background,
-                    },
-                  ]}
-                  placeholder="Search chapters..."
-                  placeholderTextColor={adaptiveColors.textSecondary}
-                  value={searchQuery}
-                  onChangeText={(text) => {
-                    setSearchQuery(text);
-                    searchChapters(text);
-                  }}
-                  autoFocus
-                />
+              <View style={[styles.searchModalContent, { backgroundColor: adaptiveColors.surface }]}>
+                <TextInput style={[styles.searchInput, { color: adaptiveColors.text, borderColor: adaptiveColors.border, backgroundColor: themeColors.background }]} placeholder="Search chapters..." placeholderTextColor={adaptiveColors.textSecondary} value={searchQuery} onChangeText={(text) => { setSearchQuery(text); searchChapters(text); }} autoFocus />
                 {searchResults.length > 0 && (
                   <>
-                    <Text
-                      style={[
-                        styles.searchResultCount,
-                        { color: adaptiveColors.textSecondary },
-                      ]}
-                    >
-                      Found {searchResults.length} chapters
-                    </Text>
+                    <Text style={[styles.searchResultCount, { color: adaptiveColors.textSecondary }]}>Found {searchResults.length} chapters</Text>
                     <ScrollView style={{ maxHeight: 300 }}>
                       {searchResults.map((idx) => (
-                        <Pressable
-                          key={idx}
-                          style={[
-                            styles.searchResultItem,
-                            { borderBottomColor: adaptiveColors.border },
-                          ]}
-                          onPress={() =>
-                            jumpToSearchResult(searchResults.indexOf(idx))
-                          }
-                        >
-                          <Text
-                            style={[
-                              styles.searchResultTitle,
-                              { color: adaptiveColors.text },
-                            ]}
-                          >
-                            {novel?.chapters[idx].title}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.searchResultChapter,
-                              { color: adaptiveColors.textSecondary },
-                            ]}
-                          >
-                            Chapter {idx + 1}
-                          </Text>
+                        <Pressable key={idx} style={[styles.searchResultItem, { borderBottomColor: adaptiveColors.border }]} onPress={() => jumpToSearchResult(searchResults.indexOf(idx))}>
+                          <Text style={[styles.searchResultTitle, { color: adaptiveColors.text }]}>{novel?.chapters[idx].title}</Text>
+                          <Text style={[styles.searchResultChapter, { color: adaptiveColors.textSecondary }]}>Chapter {idx + 1}</Text>
                         </Pressable>
                       ))}
                     </ScrollView>
                   </>
                 )}
                 {searchQuery.length > 0 && searchResults.length === 0 && (
-                  <Text
-                    style={[
-                      styles.noResults,
-                      { color: adaptiveColors.textSecondary },
-                    ]}
-                  >
-                    No chapters found
-                  </Text>
+                  <Text style={[styles.noResults, { color: adaptiveColors.textSecondary }]}>No chapters found</Text>
                 )}
-                <Pressable
-                  style={[
-                    styles.closeSearchBtn,
-                    { backgroundColor: adaptiveColors.card },
-                  ]}
-                  onPress={() => {
-                    setShowSearch(false);
-                    setSearchQuery("");
-                    setSearchResults([]);
-                  }}
-                >
+                <Pressable style={[styles.closeSearchBtn, { backgroundColor: adaptiveColors.card }]} onPress={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>
                   <Text style={{ color: adaptiveColors.text }}>Close</Text>
                 </Pressable>
               </View>
@@ -2752,79 +2169,21 @@ export default function ReaderScreen() {
           </Modal>
 
           {/* ─── RAPID‑TAP WARNING MODAL ─── */}
-          <Modal
-            visible={showRapidTapWarning}
-            animationType="fade"
-            transparent
-            onRequestClose={() => {
-              setShowRapidTapWarning(false);
-              resetRapidTapGuard();
-            }}
-          >
-            <Pressable
-              style={styles.ttsModalOverlay}
-              onPress={() => {
-                setShowRapidTapWarning(false);
-                resetRapidTapGuard();
-              }}
-            >
-              <Pressable
-                style={[
-                  styles.ttsHelpModal,
-                  { backgroundColor: adaptiveColors.surface },
-                ]}
-                onPress={() => {}}
-              >
-                <View
-                  style={[
-                    styles.ttsModalHandle,
-                    { backgroundColor: adaptiveColors.border },
-                  ]}
-                />
-                <Ionicons
-                  name="warning-outline"
-                  size={28}
-                  color={adaptiveColors.accent}
-                  style={{ alignSelf: "center", marginBottom: 8 }}
-                />
-                <Text
-                  style={[
-                    styles.ttsModalTitle,
-                    { color: adaptiveColors.text, textAlign: "center" },
-                  ]}
-                >
-                  You&apos;re tapping a bit fast
-                </Text>
-                <Text
-                  style={{
-                    color: adaptiveColors.textSecondary,
-                    fontSize: 13,
-                    textAlign: "center",
-                    marginBottom: 20,
-                    lineHeight: 18,
-                  }}
-                >
-                  TTS and auto-scroll have been paused to keep things stable.
-                  Give it a second, then continue reading.
-                </Text>
-                <Pressable
-                  style={[
-                    styles.closeSearchBtn,
-                    { backgroundColor: adaptiveColors.card },
-                  ]}
-                  onPress={() => {
-                    setShowRapidTapWarning(false);
-                    resetRapidTapGuard();
-                  }}
-                >
+          <Modal visible={showRapidTapWarning} animationType="fade" transparent onRequestClose={() => { setShowRapidTapWarning(false); resetRapidTapGuard(); }}>
+            <Pressable style={styles.ttsModalOverlay} onPress={() => { setShowRapidTapWarning(false); resetRapidTapGuard(); }}>
+              <Pressable style={[styles.ttsHelpModal, { backgroundColor: adaptiveColors.surface }]} onPress={() => {}}>
+                <View style={[styles.ttsModalHandle, { backgroundColor: adaptiveColors.border }]} />
+                <Ionicons name="warning-outline" size={28} color={adaptiveColors.accent} style={{ alignSelf: "center", marginBottom: 8 }} />
+                <Text style={[styles.ttsModalTitle, { color: adaptiveColors.text, textAlign: "center" }]}>You&apos;re tapping a bit fast</Text>
+                <Text style={{ color: adaptiveColors.textSecondary, fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 18 }}>TTS and auto-scroll have been paused to keep things stable. Give it a second, then continue reading.</Text>
+                <Pressable style={[styles.closeSearchBtn, { backgroundColor: adaptiveColors.card }]} onPress={() => { setShowRapidTapWarning(false); resetRapidTapGuard(); }}>
                   <Text style={{ color: adaptiveColors.text }}>Got it</Text>
                 </Pressable>
               </Pressable>
             </Pressable>
           </Modal>
-        </View>
-      </ContentWrapper>
-    </GestureDetector>
+      </View>
+    </ContentWrapper>
   );
 }
 
