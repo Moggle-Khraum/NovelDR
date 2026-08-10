@@ -1091,6 +1091,16 @@ export default function SettingsScreen() {
   // MERGE LIBRARY DATA (no overwrite)
   // --------------------------------------------------------------------------
 
+  // Per-novel conflict resolution: previously "current always wins" for
+  // every field except chapters (which were unioned). That silently
+  // discarded backup progress any time the backup was actually the more
+  // recent copy (e.g. restoring a backup made from another device after
+  // reading further there). Now each side's lastModified timestamp decides
+  // which one's metadata (status, reading progress, title, etc.) wins;
+  // chapters are still unioned by URL regardless, so downloaded content is
+  // never lost either way. Legacy novels without a lastModified are treated
+  // as timestamp 0, which keeps the previous safe behavior (current wins)
+  // when there's no revision info to compare.
   const mergeLibraryData = (
     currentNovels: any[],
     backupNovels: any[],
@@ -1101,6 +1111,7 @@ export default function SettingsScreen() {
     const backupMap = new Map((backupNovels || []).map((n: any) => [n.id, n]));
     const allIds = new Set([...currentMap.keys(), ...backupMap.keys()]);
     const merged: any[] = [];
+    let conflictsResolvedFromBackup = 0;
 
     for (const id of allIds) {
       const cur = currentMap.get(id);
@@ -1112,10 +1123,31 @@ export default function SettingsScreen() {
         const extraChapters = (bak.chapters || []).filter(
           (c: any) => !curChapterUrls.has(c.url),
         );
+        const mergedChapters = [...(cur.chapters || []), ...extraChapters];
+
+        const curTime = cur.lastModified ?? 0;
+        const bakTime = bak.lastModified ?? 0;
+        const backupIsNewer = bakTime > curTime;
+
+        const winner = backupIsNewer ? bak : cur;
+        const loser = backupIsNewer ? cur : bak;
+
+        if (backupIsNewer) {
+          conflictsResolvedFromBackup++;
+          addBackupLog(
+            `🔀 "${bak.title || id}": backup is newer — applied backup's progress/status`,
+          );
+        }
+
         merged.push({
-          ...bak,
-          ...cur,
-          chapters: [...(cur.chapters || []), ...extraChapters],
+          ...loser,
+          ...winner,
+          chapters: mergedChapters,
+          // Always keep the earliest add date regardless of which side won.
+          dateAdded: Math.min(
+            cur.dateAdded ?? Infinity,
+            bak.dateAdded ?? Infinity,
+          ),
         });
       } else if (cur) {
         merged.push(cur);
@@ -1123,6 +1155,13 @@ export default function SettingsScreen() {
         merged.push(bak);
       }
     }
+
+    if (conflictsResolvedFromBackup > 0) {
+      addBackupLog(
+        `ℹ️ ${conflictsResolvedFromBackup} novel(s) had newer data in the backup than on this device.`,
+      );
+    }
+
     return merged;
   };
 
