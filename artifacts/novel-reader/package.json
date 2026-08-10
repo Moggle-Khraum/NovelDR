@@ -40,6 +40,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@expo/config-plugins": "~9.0.0",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "^11.3.0",
     "@sentry/react-native": "^8.5.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@tanstack/react-query": "catalog:",
