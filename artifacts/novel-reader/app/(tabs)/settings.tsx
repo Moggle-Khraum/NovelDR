@@ -5,6 +5,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
+import * as MailComposer from "expo-mail-composer";
 import * as Application from "expo-application";
 import * as IntentLauncher from "expo-intent-launcher";
 import { zip, unzip } from "react-native-zip-archive";
@@ -33,6 +34,7 @@ import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Theme } from "@/constants/colors";
 import { useUpdateContext } from "@/context/UpdateContext";
+import { CRASH_LOG_FILE_PATH } from "@/hooks/useCrashLogger";
 
 // =============================================================================
 // UTILITY: Concurrency Pool
@@ -273,6 +275,12 @@ export default function SettingsScreen() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [alias, setAlias] = useState("");
   const [bugDescription, setBugDescription] = useState("");
+  const [attachedFile, setAttachedFile] = useState<{
+    uri: string;
+    name: string;
+    size: number;
+  } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
   const [lastAutoBackupAt, setLastAutoBackupAt] = useState<string | null>(null);
@@ -1805,6 +1813,96 @@ export default function SettingsScreen() {
     );
   };
 
+  const MAX_ATTACHMENT_BYTES = 1 * 1024 * 1024; // 1MB - generous vs. the 500KB crash-log cap
+
+  // Restricted to plain text so nothing executable can be routed through a
+  // support email. The picker's own type filter can be spoofed by a renamed
+  // file, so this re-checks the extension, size, and actual file content
+  // (rejects anything containing null bytes, which text files never have).
+  const handleAttachFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "text/plain",
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      setAttaching(true);
+
+      if (!file.name.toLowerCase().endsWith(".txt")) {
+        Alert.alert(
+          "Only .txt Files Allowed",
+          "Please attach a plain text (.txt) file.",
+        );
+        return;
+      }
+
+      if (file.mimeType && file.mimeType !== "text/plain") {
+        Alert.alert(
+          "Unsupported File Type",
+          "This file doesn't look like plain text. Only .txt files are accepted.",
+        );
+        return;
+      }
+
+      const info = await FileSystem.getInfoAsync(file.uri, { size: true });
+      const size = info.exists && "size" in info ? info.size : file.size ?? 0;
+
+      if (!size || size <= 0) {
+        Alert.alert("Empty File", "This file appears to be empty.");
+        return;
+      }
+
+      if (size > MAX_ATTACHMENT_BYTES) {
+        Alert.alert(
+          "File Too Large",
+          `Attachments are limited to ${(MAX_ATTACHMENT_BYTES / (1024 * 1024)).toFixed(0)}MB.`,
+        );
+        return;
+      }
+
+      // Content sanity check: read as UTF-8 text. Binary files (renamed
+      // executables, scripts, images, etc.) either fail to decode cleanly
+      // or contain a null byte, which real text files never do.
+      const content = await FileSystem.readAsStringAsync(file.uri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      if (content.includes("\u0000")) {
+        Alert.alert(
+          "Invalid File",
+          "This file doesn't appear to be plain text.",
+        );
+        return;
+      }
+
+      setAttachedFile({ uri: file.uri, name: file.name, size });
+    } catch {
+      Alert.alert(
+        "Couldn't Attach File",
+        "That file couldn't be read as plain text. Only .txt files are accepted.",
+      );
+    } finally {
+      setAttaching(false);
+    }
+  };
+
+  const handleAttachCrashLog = async () => {
+    try {
+      const info = await FileSystem.getInfoAsync(CRASH_LOG_FILE_PATH, {
+        size: true,
+      });
+      if (!info.exists) {
+        Alert.alert("No Crash Log Yet", "Nothing recorded on this device.");
+        return;
+      }
+      const size = "size" in info ? info.size : 0;
+      setAttachedFile({ uri: CRASH_LOG_FILE_PATH, name: "crash-log.txt", size });
+    } catch {
+      Alert.alert("Couldn't Attach", "Failed to read the crash log.");
+    }
+  };
+
   const handleImportFromPicker = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -2701,6 +2799,41 @@ export default function SettingsScreen() {
             styles.creditsBtn,
             { borderColor: colors.border, backgroundColor: colors.surface },
           ]}
+          onPress={async () => {
+            const info = await FileSystem.getInfoAsync(CRASH_LOG_FILE_PATH);
+            if (!info.exists) {
+              Alert.alert(
+                "No Crash Log Yet",
+                "Nothing has been recorded on this device.",
+              );
+              return;
+            }
+            const canShare = await Sharing.isAvailableAsync();
+            if (canShare) {
+              await Sharing.shareAsync(CRASH_LOG_FILE_PATH, {
+                mimeType: "text/plain",
+                dialogTitle: "Share NovelDR Crash Log",
+              });
+            } else {
+              Alert.alert("Sharing Unavailable", CRASH_LOG_FILE_PATH);
+            }
+          }}
+        >
+          <Ionicons
+            name="document-text-outline"
+            size={18}
+            color={colors.accent}
+          />
+          <Text style={[styles.creditsBtnText, { color: colors.text }]}>
+            Export Crash Log
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            styles.creditsBtn,
+            { borderColor: colors.border, backgroundColor: colors.surface },
+          ]}
           onPress={() => setShowCredits(true)}
         >
           <Ionicons name="heart-outline" size={18} color={colors.accent} />
@@ -2762,7 +2895,12 @@ export default function SettingsScreen() {
               <Text style={[styles.bugModalTitle, { color: colors.text }]}>
                 Report an Issue
               </Text>
-              <Pressable onPress={() => setShowBugReport(false)}>
+              <Pressable
+                onPress={() => {
+                  setShowBugReport(false);
+                  setAttachedFile(null);
+                }}
+              >
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
             </View>
@@ -2803,6 +2941,71 @@ export default function SettingsScreen() {
               value={bugDescription}
               onChangeText={setBugDescription}
             />
+
+            <Text style={[styles.bugLabel, { color: colors.textSecondary }]}>
+              Attachment (.txt only, optional)
+            </Text>
+            {attachedFile ? (
+              <View
+                style={[
+                  styles.bugAttachmentRow,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={16}
+                  color={colors.accent}
+                />
+                <Text
+                  style={[styles.bugAttachmentText, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {attachedFile.name} (
+                  {(attachedFile.size / 1024).toFixed(1)} KB)
+                </Text>
+                <Pressable onPress={() => setAttachedFile(null)}>
+                  <Ionicons name="close-circle" size={18} color={colors.error} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.bugAttachButtonsRow}>
+                <Pressable
+                  style={[
+                    styles.bugAttachBtn,
+                    { borderColor: colors.border, backgroundColor: colors.surface },
+                  ]}
+                  onPress={handleAttachFile}
+                  disabled={attaching}
+                >
+                  {attaching ? (
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  ) : (
+                    <Ionicons name="attach" size={16} color={colors.accent} />
+                  )}
+                  <Text
+                    style={[styles.bugAttachBtnText, { color: colors.text }]}
+                  >
+                    Attach .txt File
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.bugAttachBtn,
+                    { borderColor: colors.border, backgroundColor: colors.surface },
+                  ]}
+                  onPress={handleAttachCrashLog}
+                >
+                  <Ionicons name="bug" size={16} color={colors.accent} />
+                  <Text
+                    style={[styles.bugAttachBtnText, { color: colors.text }]}
+                  >
+                    Use Crash Log
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
             <View style={styles.bugButtonsRow}>
               <Pressable
                 style={[
@@ -2816,6 +3019,7 @@ export default function SettingsScreen() {
                   setShowBugReport(false);
                   setAlias("");
                   setBugDescription("");
+                  setAttachedFile(null);
                 }}
               >
                 <Text
@@ -2829,7 +3033,7 @@ export default function SettingsScreen() {
               </Pressable>
               <Pressable
                 style={[styles.bugSendBtn, { backgroundColor: colors.accent }]}
-                onPress={() => {
+                onPress={async () => {
                   if (!bugDescription.trim()) {
                     Alert.alert(
                       "Missing Info",
@@ -2838,23 +3042,43 @@ export default function SettingsScreen() {
                     return;
                   }
                   const appVersion = Constants.expoConfig?.version ?? "2.5.18";
-                  const emailSubject = encodeURIComponent(
-                    `Bug Report from NovelDR (${alias || "Anonymous"})`,
-                  );
-                  const emailBody = encodeURIComponent(
-                    `Alias: ${alias || "Anonymous"}\n\nDescription:\n${bugDescription}\n\n---\nApp Version: ${appVersion}\nDevice: ${Platform.OS} ${Platform.Version}`,
-                  );
-                  Linking.openURL(
-                    `mailto:noveldrapp.concerns@gmail.com?subject=${emailSubject}&body=${emailBody}`,
-                  ).catch(() => {
-                    Alert.alert(
-                      "Email Client Required",
-                      "No email app found. Please send your report manually to: noveldrapp.concerns@gmail.com",
-                    );
-                  });
+                  const subject = `Bug Report from NovelDR (${alias || "Anonymous"})`;
+                  const body = `Alias: ${alias || "Anonymous"}\n\nDescription:\n${bugDescription}\n\n---\nApp Version: ${appVersion}\nDevice: ${Platform.OS} ${Platform.Version}`;
+
+                  // mailto: links cannot carry file attachments on any
+                  // platform - MailComposer is the only way to hand a file
+                  // to the native mail UI, so it's required whenever an
+                  // attachment is present.
+                  const canCompose = await MailComposer.isAvailableAsync();
+
+                  if (canCompose) {
+                    await MailComposer.composeAsync({
+                      recipients: ["noveldrapp.concerns@gmail.com"],
+                      subject,
+                      body,
+                      attachments: attachedFile ? [attachedFile.uri] : undefined,
+                    });
+                  } else {
+                    if (attachedFile) {
+                      Alert.alert(
+                        "Mail App Required",
+                        "Attaching a file requires a configured mail app, which isn't available on this device. Sending without the attachment instead.",
+                      );
+                    }
+                    Linking.openURL(
+                      `mailto:noveldrapp.concerns@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+                    ).catch(() => {
+                      Alert.alert(
+                        "Email Client Required",
+                        "No email app found. Please send your report manually to: noveldrapp.concerns@gmail.com",
+                      );
+                    });
+                  }
+
                   setShowBugReport(false);
                   setAlias("");
                   setBugDescription("");
+                  setAttachedFile(null);
                 }}
               >
                 <Ionicons name="send-outline" size={16} color="#fff" />
@@ -3643,6 +3867,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 120,
   },
+  bugAttachButtonsRow: { flexDirection: "row", gap: 8 },
+  bugAttachBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  bugAttachBtnText: { fontFamily: "Inter_500Medium", fontSize: 12.5 },
+  bugAttachmentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  bugAttachmentText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
   bugButtonsRow: { flexDirection: "row", gap: 12, marginTop: 8 },
   bugCancelBtn: {
     flex: 1,
