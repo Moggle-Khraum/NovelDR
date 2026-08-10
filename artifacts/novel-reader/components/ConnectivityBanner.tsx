@@ -3,8 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useTheme } from "@/context/ThemeContext";
-
 interface ConnectivityBannerProps {
   isVisible: boolean;
   type: "offline" | "online";
@@ -13,12 +11,17 @@ interface ConnectivityBannerProps {
 
 const ANIM_MS = 250;
 
+// Hardcoded rather than pulled from theme colors - the pill needs to render
+// reliably regardless of which theme is active or how the theme context
+// resolves, since this is a system-level status indicator, not themed UI.
+const OFFLINE_COLOR = "#E53935";
+const ONLINE_COLOR = "#27AE60";
+
 export function ConnectivityBanner({
   isVisible,
   type,
   onDismiss,
 }: ConnectivityBannerProps) {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   // Kept mounted for a beat after isVisible flips to false so the
@@ -67,7 +70,7 @@ export function ConnectivityBanner({
   // positioning + unmounting once fully hidden avoids that entirely.
   if (!mounted) return null;
 
-  const backgroundColor = type === "offline" ? colors.error : colors.success;
+  const backgroundColor = type === "offline" ? OFFLINE_COLOR : ONLINE_COLOR;
   const message =
     type === "offline"
       ? "No internet connection"
@@ -81,7 +84,10 @@ export function ConnectivityBanner({
         { top: insets.top + 8, opacity, transform: [{ translateY }] },
       ]}
     >
-      <Pressable style={[styles.pill, { backgroundColor }]} onPress={onDismiss}>
+      <Pressable
+        style={[styles.pill, { backgroundColor }]}
+        onPress={onDismiss}
+      >
         <Ionicons
           name={
             type === "online" ? "checkmark-circle" : "cloud-offline-outline"
@@ -108,6 +114,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    backgroundColor: ONLINE_COLOR, // fallback; always overridden inline above
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
