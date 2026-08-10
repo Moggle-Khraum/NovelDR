@@ -1,9 +1,14 @@
-import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated, Pressable } from "react-native";
+import React, { useEffect, useRef } from 'react';
+import {
+  Text,
+  StyleSheet,
+  Animated,
+  Pressable,
+} from 'react-native';
 
 interface ConnectivityBannerProps {
   isVisible: boolean;
-  type: "offline" | "online";
+  type: 'offline' | 'online';
   onDismiss: () => void;
 }
 
@@ -30,11 +35,11 @@ export function ConnectivityBanner({
     }
   }, [isVisible, slideAnim]);
 
-  const backgroundColor = type === "offline" ? "#FF4444" : "#27AE60";
+  const backgroundColor = type === 'offline' ? '#FF4444' : '#27AE60';
   const message =
-    type === "offline"
-      ? "No internet connection"
-      : "Internet connectivity established";
+    type === 'offline'
+      ? 'No internet connection'
+      : 'Internet connectivity established';
 
   return (
     <Animated.View
@@ -45,9 +50,12 @@ export function ConnectivityBanner({
           transform: [{ translateY: slideAnim }],
         },
       ]}
-      pointerEvents={isVisible ? "auto" : "none"}
+      pointerEvents={isVisible ? 'auto' : 'none'}
     >
-      <Pressable style={styles.pressable} onPress={onDismiss}>
+      <Pressable
+        style={styles.pressable}
+        onPress={onDismiss}
+      >
         <Text style={styles.text}>{message}</Text>
       </Pressable>
     </Animated.View>
@@ -57,19 +65,19 @@ export function ConnectivityBanner({
 const styles = StyleSheet.create({
   container: {
     height: 50,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pressable: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   text: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
