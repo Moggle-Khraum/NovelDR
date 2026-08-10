@@ -1,5 +1,9 @@
-import React, { useEffect, useRef } from "react";
-import { Text, StyleSheet, Animated, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useTheme } from "@/context/ThemeContext";
 
 interface ConnectivityBannerProps {
   isVisible: boolean;
@@ -7,30 +11,63 @@ interface ConnectivityBannerProps {
   onDismiss: () => void;
 }
 
+const ANIM_MS = 250;
+
 export function ConnectivityBanner({
   isVisible,
   type,
   onDismiss,
 }: ConnectivityBannerProps) {
-  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Kept mounted for a beat after isVisible flips to false so the
+  // slide-out animation can finish before we unmount - otherwise the
+  // pill would just vanish instead of animating away.
+  const [mounted, setMounted] = useState(isVisible);
+  const translateY = useRef(new Animated.Value(-60)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isVisible) {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: ANIM_MS,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: ANIM_MS,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: -60,
+          duration: ANIM_MS,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: ANIM_MS,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
     }
-  }, [isVisible, slideAnim]);
+  }, [isVisible, translateY, opacity]);
 
-  const backgroundColor = type === "offline" ? "#FF4444" : "#27AE60";
+  // Not position: "absolute" would reserve layout space even while
+  // hidden (translateY only moves the box visually, it doesn't remove
+  // it from flow) - that's what caused the permanent gap. Absolute
+  // positioning + unmounting once fully hidden avoids that entirely.
+  if (!mounted) return null;
+
+  const backgroundColor = type === "offline" ? colors.error : colors.success;
   const message =
     type === "offline"
       ? "No internet connection"
@@ -38,16 +75,21 @@ export function ConnectivityBanner({
 
   return (
     <Animated.View
+      pointerEvents={isVisible ? "box-none" : "none"}
       style={[
-        styles.container,
-        {
-          backgroundColor,
-          transform: [{ translateY: slideAnim }],
-        },
+        styles.wrapper,
+        { top: insets.top + 8, opacity, transform: [{ translateY }] },
       ]}
-      pointerEvents={isVisible ? "auto" : "none"}
     >
-      <Pressable style={styles.pressable} onPress={onDismiss}>
+      <Pressable
+        style={[styles.pill, { backgroundColor }]}
+        onPress={onDismiss}
+      >
+        <Ionicons
+          name={type === "online" ? "checkmark-circle" : "cloud-offline-outline"}
+          size={16}
+          color="#FFFFFF"
+        />
         <Text style={styles.text}>{message}</Text>
       </Pressable>
     </Animated.View>
@@ -55,21 +97,27 @@ export function ConnectivityBanner({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
+  wrapper: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 1000,
   },
-  pressable: {
-    flex: 1,
-    justifyContent: "center",
+  pill: {
+    flexDirection: "row",
     alignItems: "center",
-    width: "100%",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   text: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    textAlign: "center",
   },
 });
