@@ -29,6 +29,7 @@ import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -324,6 +325,11 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Installs global JS-error and unhandled-rejection capture, chained
+  // alongside Sentry's own handler (not replacing it). Local rotating
+  // log lives on-device so it's viewable even without Sentry access.
+  useCrashLogger();
+
   const connectivity = useConnectivity();
   const [bannerState, setBannerState] = useState<{
     visible: boolean;
@@ -357,11 +363,12 @@ export default Sentry.wrap(function RootLayout() {
         }
       />
       <ErrorBoundary
-        onError={(error, stack) =>
+        onError={(error, stack) => {
           Sentry.captureException(error, {
             contexts: { react: { componentStack: stack } },
-          })
-        }
+          });
+          logRenderError(error, stack);
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
