@@ -1847,7 +1847,7 @@ export default function SettingsScreen() {
       }
 
       const info = await FileSystem.getInfoAsync(file.uri, { size: true });
-      const size = info.exists && "size" in info ? info.size : file.size ?? 0;
+      const size = info.exists && "size" in info ? info.size : (file.size ?? 0);
 
       if (!size || size <= 0) {
         Alert.alert("Empty File", "This file appears to be empty.");
@@ -1897,7 +1897,11 @@ export default function SettingsScreen() {
         return;
       }
       const size = "size" in info ? info.size : 0;
-      setAttachedFile({ uri: CRASH_LOG_FILE_PATH, name: "crash-log.txt", size });
+      setAttachedFile({
+        uri: CRASH_LOG_FILE_PATH,
+        name: "crash-log.txt",
+        size,
+      });
     } catch {
       Alert.alert("Couldn't Attach", "Failed to read the crash log.");
     }
@@ -2949,7 +2953,10 @@ export default function SettingsScreen() {
               <View
                 style={[
                   styles.bugAttachmentRow,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
                 <Ionicons
@@ -2961,11 +2968,15 @@ export default function SettingsScreen() {
                   style={[styles.bugAttachmentText, { color: colors.text }]}
                   numberOfLines={1}
                 >
-                  {attachedFile.name} (
-                  {(attachedFile.size / 1024).toFixed(1)} KB)
+                  {attachedFile.name} ({(attachedFile.size / 1024).toFixed(1)}{" "}
+                  KB)
                 </Text>
                 <Pressable onPress={() => setAttachedFile(null)}>
-                  <Ionicons name="close-circle" size={18} color={colors.error} />
+                  <Ionicons
+                    name="close-circle"
+                    size={18}
+                    color={colors.error}
+                  />
                 </Pressable>
               </View>
             ) : (
@@ -2973,7 +2984,10 @@ export default function SettingsScreen() {
                 <Pressable
                   style={[
                     styles.bugAttachBtn,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    },
                   ]}
                   onPress={handleAttachFile}
                   disabled={attaching}
@@ -2992,7 +3006,10 @@ export default function SettingsScreen() {
                 <Pressable
                   style={[
                     styles.bugAttachBtn,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    },
                   ]}
                   onPress={handleAttachCrashLog}
                 >
@@ -3056,7 +3073,9 @@ export default function SettingsScreen() {
                       recipients: ["noveldrapp.concerns@gmail.com"],
                       subject,
                       body,
-                      attachments: attachedFile ? [attachedFile.uri] : undefined,
+                      attachments: attachedFile
+                        ? [attachedFile.uri]
+                        : undefined,
                     });
                   } else {
                     if (attachedFile) {

@@ -50,10 +50,7 @@ async function appendToCrashLog(entry: string): Promise<void> {
           }
         }
 
-        await FileSystem.writeAsStringAsync(
-          CRASH_LOG_PATH,
-          existing + entry,
-        );
+        await FileSystem.writeAsStringAsync(CRASH_LOG_PATH, existing + entry);
       } catch {
         // If the log itself can't be written, there's nothing further to do -
         // Sentry (if reachable) is still the primary reporting path.
@@ -121,5 +118,7 @@ export function logCaughtError(error: unknown, context?: string): void {
 
 /** Used by the ErrorBoundary's onError so render errors land in the same file. */
 export function logRenderError(error: Error, componentStack: string): void {
-  appendToCrashLog(formatEntry("RENDER_ERROR", error, componentStack.slice(0, 200)));
+  appendToCrashLog(
+    formatEntry("RENDER_ERROR", error, componentStack.slice(0, 200)),
+  );
 }
