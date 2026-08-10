@@ -1130,7 +1130,11 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const idx = current.findIndex((n) => n.id === id);
       if (idx === -1) return;
 
-      const updatedNovel = { ...current[idx], ...updates, lastModified: Date.now() };
+      const updatedNovel = {
+        ...current[idx],
+        ...updates,
+        lastModified: Date.now(),
+      };
       const updatedNovels = [...current];
       updatedNovels[idx] = updatedNovel;
 
