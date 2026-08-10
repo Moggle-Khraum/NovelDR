@@ -10,7 +10,7 @@ import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
 import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -359,8 +361,35 @@ export default Sentry.wrap(function RootLayout() {
     return null;
   }
 
+  const connectivity = useConnectivity();
+  const [bannerState, setBannerState] = useState<{
+    visible: boolean;
+    type: 'offline' | 'online';
+  } | null>(null);
+
+  useEffect(() => {
+    if (connectivity.status === 'offline') {
+      setBannerState({ visible: true, type: 'offline' });
+    } else if (connectivity.status === 'online') {
+      setBannerState({ visible: true, type: 'online' });
+      const timer = setTimeout(() => {
+        setBannerState({ visible: false, type: 'online' });
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [connectivity.status]);
+
   return (
     <SafeAreaProvider>
+      <ConnectivityBanner
+        isVisible={bannerState?.visible ?? false}
+        type={bannerState?.type ?? 'offline'}
+        onDismiss={() =>
+          setBannerState((prev) =>
+            prev ? { ...prev, visible: false } : null
+          )
+        }
+      />
       <ErrorBoundary
         onError={(error, stack) =>
           Sentry.captureException(error, {
