@@ -330,16 +330,16 @@ export default Sentry.wrap(function RootLayout() {
   const connectivity = useConnectivity();
   const [bannerState, setBannerState] = useState<{
     visible: boolean;
-    type: 'offline' | 'online';
+    type: "offline" | "online";
   } | null>(null);
 
   useEffect(() => {
-    if (connectivity.status === 'offline') {
-      setBannerState({ visible: true, type: 'offline' });
-    } else if (connectivity.status === 'online') {
-      setBannerState({ visible: true, type: 'online' });
+    if (connectivity.status === "offline") {
+      setBannerState({ visible: true, type: "offline" });
+    } else if (connectivity.status === "online") {
+      setBannerState({ visible: true, type: "online" });
       const timer = setTimeout(() => {
-        setBannerState({ visible: false, type: 'online' });
+        setBannerState({ visible: false, type: "online" });
       }, 2500);
       return () => clearTimeout(timer);
     }
@@ -349,11 +349,9 @@ export default Sentry.wrap(function RootLayout() {
     <SafeAreaProvider>
       <ConnectivityBanner
         isVisible={bannerState?.visible ?? false}
-        type={bannerState?.type ?? 'offline'}
+        type={bannerState?.type ?? "offline"}
         onDismiss={() =>
-          setBannerState((prev) =>
-            prev ? { ...prev, visible: false } : null
-          )
+          setBannerState((prev) => (prev ? { ...prev, visible: false } : null))
         }
       />
       <ErrorBoundary
