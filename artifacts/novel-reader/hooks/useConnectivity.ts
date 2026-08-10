@@ -1,30 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import NetInfo from "@react-native-community/netinfo";
+import { useEffect, useRef, useState } from 'react';
+import NetInfo from '@react-native-community/netinfo';
+
+type ConnectivityState = {
+  isConnected: boolean;
+  isInternetReachable: boolean;
+  status: 'online' | 'offline' | 'initializing';
+};
 
 export function useConnectivity() {
-  const [connectivity, setConnectivity] = useState({
+  const [connectivity, setConnectivity] = useState<ConnectivityState>({
     isConnected: true,
     isInternetReachable: true,
-    status: "initializing" as const,
+    status: 'initializing',
   });
 
-  const prevStateRef = useRef<typeof connectivity | null>(null);
+  const prevStateRef = useRef<ConnectivityState | null>(null);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      const newState = {
+      const newState: ConnectivityState = {
         isConnected: state.isConnected ?? false,
         isInternetReachable: state.isInternetReachable ?? false,
-        status: (state.isConnected && state.isInternetReachable
-          ? "online"
-          : "offline") as "online" | "offline" | "initializing",
+        status: (state.isConnected && state.isInternetReachable) ? 'online' : 'offline',
       };
 
       if (prevStateRef.current) {
         if (
           prevStateRef.current.isConnected === newState.isConnected &&
-          prevStateRef.current.isInternetReachable ===
-            newState.isInternetReachable
+          prevStateRef.current.isInternetReachable === newState.isInternetReachable
         ) {
           return;
         }
