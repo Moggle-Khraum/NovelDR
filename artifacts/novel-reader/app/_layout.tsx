@@ -32,28 +32,12 @@ import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 
 SplashScreen.preventAutoHideAsync();
 
-// Native crash capture (segfaults/OOM/ANRs bypass the JS layer entirely,
-// so this must be initialized as early as possible, before any other
-// provider mounts). Reports upload automatically on next launch — no
-// device access or logcat needed to read them; view them in the Sentry
-// dashboard instead.
+// Native crash capture ... (unchanged)
 Sentry.init({
   dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648",
   tracesSampleRate: 0.2,
-  // Keep breadcrumbs of nav/console so a crash report shows what led up to it
-  // (e.g. "reading" vs "backup" vs "download") without needing repro steps.
   enableTombstone: true,
-  // Android, when the app hard-crashes (native crash, not a JS error),
-  // Android generates a "tombstone" file with the native crash dump. This flag tells the Sentry Android SDK
-  // to read and attach that file to the crash report, giving you native stack traces instead
-  // of just "app crashed" with no detail.
   enableAutoSessionTracking: true,
-  // Session Replay — records a masked visual replay of user sessions.
-  // 10% of normal sessions get recorded (replaysSessionSampleRate), but any
-  // session that hits an error/crash gets recorded at 100% (replaysOnErrorSampleRate),
-  // so a report like hers comes with an actual replay of what she was doing,
-  // not just a stack trace. Text/images/vectors stay masked by default —
-  // fine for a novel reader where screens include chapter content.
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
   integrations: [
@@ -68,7 +52,6 @@ Sentry.init({
 const queryClient = new QueryClient();
 
 // ── Init Screen Component ───────────────────────────────────────────────────
-
 function InitScreen() {
   const { initSteps, initComplete } = useLibrary();
   const { colors } = useTheme();
@@ -76,7 +59,6 @@ function InitScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
 
-  // Spinning animation for running steps
   useEffect(() => {
     const animation = Animated.loop(
       Animated.timing(spinAnim, {
@@ -85,13 +67,11 @@ function InitScreen() {
         useNativeDriver: true,
       }),
     );
-
     if (!initComplete) {
       animation.start();
     } else {
       animation.stop();
     }
-
     return () => animation.stop();
   }, [initComplete, spinAnim]);
 
@@ -100,7 +80,6 @@ function InitScreen() {
     outputRange: ["0deg", "360deg"],
   });
 
-  // Fade in when complete
   useEffect(() => {
     if (initComplete) {
       Animated.parallel([
@@ -157,17 +136,13 @@ function InitScreen() {
           },
         ]}
       >
-        {/* App Logo */}
         <View style={initStyles.logoContainer}>
           <Ionicons name="book-outline" size={64} color={colors.accent} />
         </View>
-
         <Text style={[initStyles.title, { color: colors.text }]}>Novel DR</Text>
         <Text style={[initStyles.version, { color: colors.textSecondary }]}>
           v{Constants.expoConfig?.version ?? ""}
         </Text>
-
-        {/* Progress Steps */}
         <View style={initStyles.stepsContainer}>
           {initSteps.map((step, index) => (
             <Animated.View
@@ -196,7 +171,6 @@ function InitScreen() {
                   color={getStatusColor(step.status)}
                 />
               )}
-
               <View style={initStyles.stepTextContainer}>
                 <Text style={[initStyles.stepMessage, { color: colors.text }]}>
                   {step.message}
@@ -215,8 +189,6 @@ function InitScreen() {
             </Animated.View>
           ))}
         </View>
-
-        {/* Loading indicator or completion check */}
         <View style={initStyles.footerContainer}>
           {!initComplete ? (
             <View style={initStyles.loadingRow}>
@@ -318,16 +290,12 @@ const initStyles = StyleSheet.create({
   },
 });
 
-// ── Root Layout Components ──────────────────────────────────────────────────
-
+// ── Root Layout Navigation ──────────────────────────────────────────────────
 function RootLayoutNav() {
   const { loading } = useLibrary();
-
-  // Show init screen while loading
   if (loading) {
     return <InitScreen />;
   }
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -340,8 +308,7 @@ function RootLayoutNav() {
   );
 }
 
-// ── Root Layout (with Providers) ────────────────────────────────────────────
-
+// ── Root Layout ──────────────────────────────────────────────────────────────
 export default Sentry.wrap(function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -356,7 +323,6 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Wait for fonts before showing anything
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -364,16 +330,16 @@ export default Sentry.wrap(function RootLayout() {
   const connectivity = useConnectivity();
   const [bannerState, setBannerState] = useState<{
     visible: boolean;
-    type: "offline" | "online";
+    type: 'offline' | 'online';
   } | null>(null);
 
   useEffect(() => {
-    if (connectivity.status === "offline") {
-      setBannerState({ visible: true, type: "offline" });
-    } else if (connectivity.status === "online") {
-      setBannerState({ visible: true, type: "online" });
+    if (connectivity.status === 'offline') {
+      setBannerState({ visible: true, type: 'offline' });
+    } else if (connectivity.status === 'online') {
+      setBannerState({ visible: true, type: 'online' });
       const timer = setTimeout(() => {
-        setBannerState({ visible: false, type: "online" });
+        setBannerState({ visible: false, type: 'online' });
       }, 2500);
       return () => clearTimeout(timer);
     }
@@ -383,9 +349,11 @@ export default Sentry.wrap(function RootLayout() {
     <SafeAreaProvider>
       <ConnectivityBanner
         isVisible={bannerState?.visible ?? false}
-        type={bannerState?.type ?? "offline"}
+        type={bannerState?.type ?? 'offline'}
         onDismiss={() =>
-          setBannerState((prev) => (prev ? { ...prev, visible: false } : null))
+          setBannerState((prev) =>
+            prev ? { ...prev, visible: false } : null
+          )
         }
       />
       <ErrorBoundary
