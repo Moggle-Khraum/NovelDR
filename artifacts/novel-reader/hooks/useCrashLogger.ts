@@ -72,7 +72,7 @@ async function appendToCrashLog(entry: string): Promise<void> {
  */
 export function useCrashLogger(): void {
   useEffect(() => {
-    const globalAny = global as any;
+    const globalAny = globalThis as any;
 
     // --- Uncaught JS errors (outside React's render cycle) ---
     const previousErrorHandler = globalAny.ErrorUtils?.getGlobalHandler?.();
