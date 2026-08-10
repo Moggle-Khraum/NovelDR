@@ -32,7 +32,7 @@ import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 
 SplashScreen.preventAutoHideAsync();
 
-// Native crash capture ... (unchanged)
+// Sentry init (unchanged)
 Sentry.init({
   dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648",
   tracesSampleRate: 0.2,
@@ -51,7 +51,7 @@ Sentry.init({
 
 const queryClient = new QueryClient();
 
-// ── Init Screen Component ───────────────────────────────────────────────────
+// ── Init Screen Component (unchanged) ──────────────────────────────────────
 function InitScreen() {
   const { initSteps, initComplete } = useLibrary();
   const { colors } = useTheme();
@@ -144,7 +144,7 @@ function InitScreen() {
           v{Constants.expoConfig?.version ?? ""}
         </Text>
         <View style={initStyles.stepsContainer}>
-          {initSteps.map((step, index) => (
+          {initSteps.map((step) => (
             <Animated.View
               key={step.id}
               style={[
@@ -310,6 +310,7 @@ function RootLayoutNav() {
 
 // ── Root Layout ──────────────────────────────────────────────────────────────
 export default Sentry.wrap(function RootLayout() {
+  // All hooks must be called unconditionally at the top level
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -323,35 +324,38 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
-
   const connectivity = useConnectivity();
   const [bannerState, setBannerState] = useState<{
     visible: boolean;
-    type: "offline" | "online";
+    type: 'offline' | 'online';
   } | null>(null);
 
   useEffect(() => {
-    if (connectivity.status === "offline") {
-      setBannerState({ visible: true, type: "offline" });
-    } else if (connectivity.status === "online") {
-      setBannerState({ visible: true, type: "online" });
+    if (connectivity.status === 'offline') {
+      setBannerState({ visible: true, type: 'offline' });
+    } else if (connectivity.status === 'online') {
+      setBannerState({ visible: true, type: 'online' });
       const timer = setTimeout(() => {
-        setBannerState({ visible: false, type: "online" });
+        setBannerState({ visible: false, type: 'online' });
       }, 2500);
       return () => clearTimeout(timer);
     }
   }, [connectivity.status]);
 
+  // Early return after all hooks – this is now safe
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <ConnectivityBanner
         isVisible={bannerState?.visible ?? false}
-        type={bannerState?.type ?? "offline"}
+        type={bannerState?.type ?? 'offline'}
         onDismiss={() =>
-          setBannerState((prev) => (prev ? { ...prev, visible: false } : null))
+          setBannerState((prev) =>
+            prev ? { ...prev, visible: false } : null
+          )
         }
       />
       <ErrorBoundary
