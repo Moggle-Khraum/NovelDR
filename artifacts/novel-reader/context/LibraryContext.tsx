@@ -30,6 +30,11 @@ export type Novel = {
   chapters: Chapter[];
   dateAdded: number;
   status: NovelStatus;
+  // Bumped on every real mutation (progress, status, chapters, metadata).
+  // Used by restore's conflict-aware merge to decide which side - current
+  // library or an incoming backup - is actually more recent per novel,
+  // instead of always assuming local wins.
+  lastModified?: number;
   lastRead?: {
     chapterIndex: number;
     chapterTitle: string;
@@ -1088,12 +1093,14 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           ...existing,
           ...novel,
           chapters: [...existing.chapters, ...newChapters],
+          lastModified: Date.now(),
         };
         updatedNovels = current.map((n) => (n.id === novel.id ? merged : n));
         newChaptersToSave = newChapters;
         saveOffset = existing.chapters.length;
       } else {
-        updatedNovels = [novel, ...current];
+        const newNovel = { ...novel, lastModified: Date.now() };
+        updatedNovels = [newNovel, ...current];
         newChaptersToSave = novel.chapters;
         saveOffset = 0;
       }
@@ -1123,7 +1130,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const idx = current.findIndex((n) => n.id === id);
       if (idx === -1) return;
 
-      const updatedNovel = { ...current[idx], ...updates };
+      const updatedNovel = { ...current[idx], ...updates, lastModified: Date.now() };
       const updatedNovels = [...current];
       updatedNovels[idx] = updatedNovel;
 
@@ -1275,6 +1282,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         chapters[chapterIndex] = { ...chapters[chapterIndex], ...newChapter };
         novel.chapters = chapters;
       }
+      novel.lastModified = Date.now();
 
       const updatedNovels = [...current];
       updatedNovels[idx] = novel;
@@ -1358,7 +1366,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
       const updatedNovels = novelsRef.current.map((n) =>
         n.id === novelId
-          ? { ...n, chapters: newChapters, lastRead: newLastRead }
+          ? {
+              ...n,
+              chapters: newChapters,
+              lastRead: newLastRead,
+              lastModified: Date.now(),
+            }
           : n,
       );
       const updatedNovel = updatedNovels.find((n) => n.id === novelId)!;
