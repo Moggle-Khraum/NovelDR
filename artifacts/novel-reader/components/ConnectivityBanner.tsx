@@ -84,10 +84,7 @@ export function ConnectivityBanner({
         { top: insets.top + 8, opacity, transform: [{ translateY }] },
       ]}
     >
-      <Pressable
-        style={[styles.pill, { backgroundColor }]}
-        onPress={onDismiss}
-      >
+      <Pressable style={[styles.pill, { backgroundColor }]} onPress={onDismiss}>
         <Ionicons
           name={
             type === "online" ? "checkmark-circle" : "cloud-offline-outline"
