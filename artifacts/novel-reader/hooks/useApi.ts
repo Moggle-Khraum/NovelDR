@@ -1,5 +1,6 @@
 import { directFetchNovelMeta, directFetchChapter } from "./useDirectScraper";
 import { findExternalScraper } from "./scrapers/registry";
+import { fetchViaWebView } from "./scrapers/shared/webviewBridge";
 
 export type { NovelMeta, ChapterData } from "./useDirectScraper";
 
@@ -77,7 +78,12 @@ const fetchWithBoundedTimeout = (
 /**
  * Check if a site is healthy/accessible
  * Returns true if the site responds with any status code < 500
- * Uses a HEAD request first (faster), falls back to GET if needed
+ * Uses a HEAD request first (faster), falls back to GET if needed, then a
+ * CORS proxy retry (same one real scraping falls back to), and finally the
+ * WebView bridge as the last resort - a real browser context that can pass
+ * a JS challenge no plain HTTP request (direct or proxied) can get through.
+ * This is the heaviest, slowest tier, so it's only reached after everything
+ * else has already failed.
  *
  * Every attempt is bounded by a hard timeout (see withHardTimeout above) so
  * a single unresponsive host can never stall the health-check loop forever.
@@ -134,33 +140,77 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
       );
 
       // Any status code < 500 means the server is reachable
-      return response.status < 500;
-    } catch (error) {
-      // GET also failed, try one more time with a different endpoint
-      // Some sites block the root but allow specific paths
-      const testPaths = ["/", "/novel", "/browse", "/books", "/fiction"];
-
-      for (const path of testPaths) {
-        try {
-          const response = await fetchWithBoundedTimeout(
-            `${cleanUrl}${path}`,
-            { method: "GET", headers: baseHeaders, redirect: "follow" as any },
-            10000,
-            12000,
-            `GET ${cleanUrl}${path}`,
-          );
-
-          if (response.status < 500) {
-            return true;
-          }
-        } catch (e) {
-          // Continue to next path
-          continue;
-        }
+      if (response.status < 500) {
+        return true;
       }
-
-      return false;
+    } catch (error) {
+      // GET also failed, fall through to path variants below
     }
+
+    // Some sites block the root but allow specific paths
+    const testPaths = ["/", "/novel", "/browse", "/books", "/fiction"];
+
+    for (const path of testPaths) {
+      try {
+        const response = await fetchWithBoundedTimeout(
+          `${cleanUrl}${path}`,
+          { method: "GET", headers: baseHeaders, redirect: "follow" as any },
+          10000,
+          12000,
+          `GET ${cleanUrl}${path}`,
+        );
+
+        if (response.status < 500) {
+          return true;
+        }
+      } catch (e) {
+        // Continue to next path
+        continue;
+      }
+    }
+
+    // Last resort before WebView: retry via the same CORS proxy real
+    // scraping falls back to. Handles sites that block a direct request
+    // but don't specifically challenge proxied traffic.
+    let proxyFailed = false;
+    try {
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(cleanUrl)}`;
+      const response = await fetchWithBoundedTimeout(
+        proxyUrl,
+        { method: "GET", headers: baseHeaders, redirect: "follow" as any },
+        15000,
+        17000,
+        `PROXY GET ${cleanUrl}`,
+      );
+
+      if (response.status < 500) {
+        return true;
+      }
+      proxyFailed = true;
+    } catch (error) {
+      proxyFailed = true;
+    }
+
+    // Absolute last resort: a real (hidden) browser context via the WebView
+    // bridge. This is the only tier that can pass a JS challenge outright,
+    // so it catches sites that block every plain HTTP attempt - direct or
+    // proxied - but that the app can still actually reach when scraping,
+    // since real scraping can fall back to this same bridge per-source.
+    // Slow and heavy on purpose - only reached once everything else failed.
+    if (proxyFailed) {
+      try {
+        const html = await fetchViaWebView(cleanUrl, 25000);
+        // A real page is always more than a trivial stub; a challenge page
+        // that never cleared would still resolve (the bridge always sends
+        // something after its own poll timeout), so check for substance
+        // rather than just "did it resolve".
+        return typeof html === "string" && html.length > 500;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    return false;
   } catch (error) {
     console.warn(`Health check failed for ${baseUrl}:`, error);
     return false;
