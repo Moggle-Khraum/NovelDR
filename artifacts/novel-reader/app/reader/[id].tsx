@@ -227,6 +227,7 @@ export default function ReaderScreen() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [showBgModal, setShowBgModal] = useState(false);
+  const [showFontModal, setShowFontModal] = useState(false);
   const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
 
@@ -1442,6 +1443,43 @@ export default function ReaderScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: bottomPad + 32 }}
               >
+                {/* FONT */}
+                <Text
+                  style={[
+                    styles.sectionLabel,
+                    { color: adaptiveColors.textSecondary },
+                  ]}
+                >
+                  FONT
+                </Text>
+                <Pressable
+                  style={[
+                    styles.fontSelectBtn,
+                    {
+                      borderColor: adaptiveColors.border,
+                      backgroundColor: adaptiveColors.card,
+                    },
+                  ]}
+                  onPress={() => setShowFontModal(true)}
+                >
+                  <Text
+                    style={[
+                      styles.fontSelectText,
+                      {
+                        fontFamily: activeFontPreset.regularFamily,
+                        color: adaptiveColors.text,
+                      },
+                    ]}
+                  >
+                    {activeFontPreset.label}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color={adaptiveColors.textSecondary}
+                  />
+                </Pressable>
+
                 {/* FONT SIZE */}
                 <View style={styles.rowGroup}>
                   <Text
@@ -1782,59 +1820,6 @@ export default function ReaderScreen() {
                   ))}
                 </View>
 
-                {/* FONT */}
-                <Text
-                  style={[
-                    styles.sectionLabel,
-                    { color: adaptiveColors.textSecondary, marginTop: 4 },
-                  ]}
-                >
-                  FONT
-                </Text>
-                <View style={styles.marginRow}>
-                  {FONT_PRESETS.map((preset) => {
-                    const isActive = fontPresetId === preset.id;
-                    return (
-                      <Pressable
-                        key={preset.id}
-                        style={[
-                          styles.marginPresetBtn,
-                          {
-                            backgroundColor: isActive
-                              ? adaptiveColors.accent
-                              : adaptiveColors.card,
-                            borderColor: isActive
-                              ? adaptiveColors.accent
-                              : adaptiveColors.border,
-                          },
-                        ]}
-                        onPress={() => {
-                          setFontPresetId(preset.id);
-                          fontPresetIdRef.current = preset.id;
-                          saveAllSettings(
-                            fontSizeIdx,
-                            lineSpacingIdx,
-                            marginPresetIdx,
-                            autoScrollSpeedIdx,
-                          );
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.marginPresetText,
-                            {
-                              fontFamily: preset.regularFamily,
-                              color: isActive ? "#fff" : adaptiveColors.text,
-                            },
-                          ]}
-                        >
-                          {preset.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
                 {/* BACKGROUND */}
                 <Text
                   style={[
@@ -2082,6 +2067,97 @@ export default function ReaderScreen() {
                     />
                   )}
                 </Pressable>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── FONT PICKER MODAL ─── */}
+        <Modal
+          visible={showFontModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowFontModal(false)}
+        >
+          <View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text
+                  style={[styles.modalTitle, { color: adaptiveColors.text }]}
+                >
+                  Font
+                </Text>
+                <Pressable
+                  onPress={() => setShowFontModal(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={adaptiveColors.text}
+                  />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={styles.bgPresetsList}>
+                {FONT_PRESETS.map((preset) => {
+                  const isActive = fontPresetId === preset.id;
+                  return (
+                    <Pressable
+                      key={preset.id}
+                      style={[
+                        styles.bgPresetItem,
+                        {
+                          borderColor: isActive
+                            ? adaptiveColors.accent
+                            : adaptiveColors.border,
+                          borderWidth: isActive ? 2 : 1,
+                        },
+                      ]}
+                      onPress={() => {
+                        setFontPresetId(preset.id);
+                        fontPresetIdRef.current = preset.id;
+                        saveAllSettings(
+                          fontSizeIdx,
+                          lineSpacingIdx,
+                          marginPresetIdx,
+                          autoScrollSpeedIdx,
+                        );
+                        setShowFontModal(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.bgPresetLabel,
+                          {
+                            fontFamily: preset.regularFamily,
+                            color: isActive
+                              ? adaptiveColors.accent
+                              : adaptiveColors.text,
+                          },
+                        ]}
+                      >
+                        {preset.label}
+                      </Text>
+                      {isActive && (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color={adaptiveColors.accent}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
               </ScrollView>
             </View>
           </View>
@@ -3197,6 +3273,17 @@ const styles = StyleSheet.create({
   },
   autoNextToggleText: { fontSize: 13, fontWeight: "600" },
   controlBtnText: { fontWeight: "600" },
+  fontSelectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  fontSelectText: { fontSize: 15, fontWeight: "600" },
   marginRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   marginPresetBtn: {
     flex: 1,
