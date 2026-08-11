@@ -1835,7 +1835,6 @@ export default function ReaderScreen() {
                   })}
                 </View>
 
-
                 {/* BACKGROUND */}
                 <Text
                   style={[
