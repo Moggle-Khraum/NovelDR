@@ -47,6 +47,7 @@ import {
   TTS_SETTINGS_FILE,
   BG_SETTINGS_FILE,
   BG_PRESETS,
+  FONT_PRESETS,
   isLightColor,
 } from "@/constants/readerSettings";
 import { useChapterPersistence } from "@/hooks/reader/useChapterPersistence";
@@ -68,6 +69,8 @@ type ParagraphBlockProps = {
   accentColor: string;
   textColor: string;
   contentStyle: any;
+  regularFamily: string;
+  boldFamily: string;
   onParaLayout: (paraIdx: number, y: number, height: number) => void;
   onHighlightedSentenceLayout: (relY: number) => void;
 };
@@ -83,6 +86,8 @@ const ParagraphBlock = React.memo(
     accentColor,
     textColor,
     contentStyle,
+    regularFamily,
+    boldFamily,
     onParaLayout,
     onHighlightedSentenceLayout,
   }: ParagraphBlockProps) {
@@ -110,6 +115,11 @@ const ParagraphBlock = React.memo(
           if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
 
           const isHighlighted = sentIdx === highlightedSentIdx;
+          // Bold weight for dialogue (and for the TTS-highlighted sentence,
+          // same as before). Custom/bundled fonts generally don't support
+          // fontWeight synthesis reliably in React Native, so bold has to
+          // be a genuinely separate font family rather than a style flag.
+          const useBold = isHighlighted || hasDialogue;
 
           return (
             <Text
@@ -126,7 +136,7 @@ const ParagraphBlock = React.memo(
                   backgroundColor: isHighlighted
                     ? `${accentColor}20`
                     : "transparent",
-                  fontWeight: isHighlighted ? "bold" : "normal",
+                  fontFamily: useBold ? boldFamily : regularFamily,
                   fontSize,
                   lineHeight: fontSize * lineSpacing,
                   marginBottom,
@@ -151,7 +161,9 @@ const ParagraphBlock = React.memo(
     prev.fontSize === next.fontSize &&
     prev.lineSpacing === next.lineSpacing &&
     prev.accentColor === next.accentColor &&
-    prev.textColor === next.textColor,
+    prev.textColor === next.textColor &&
+    prev.regularFamily === next.regularFamily &&
+    prev.boldFamily === next.boldFamily,
 );
 
 // ─── Rapid‑tap guard ──────────────────────────────────────────────────────
@@ -203,6 +215,15 @@ export default function ReaderScreen() {
   const lineSpacing = LINE_SPACINGS[lineSpacingIdx];
   const [marginPresetIdx, setMarginPresetIdx] = useState(1);
   const [autoScrollSpeedIdx, setAutoScrollSpeedIdx] = useState(1);
+  const [fontPresetId, setFontPresetId] = useState<string>("default");
+  // saveAllSettings reads this ref rather than the fontPresetId state
+  // directly, since it can be called synchronously right after
+  // setFontPresetId - before the state update has actually committed -
+  // the same way the other controls pass their "new" value explicitly
+  // instead of trusting stale state.
+  const fontPresetIdRef = useRef(fontPresetId);
+  const activeFontPreset =
+    FONT_PRESETS.find((p) => p.id === fontPresetId) ?? FONT_PRESETS[0];
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [showBgModal, setShowBgModal] = useState(false);
@@ -417,6 +438,10 @@ export default function ReaderScreen() {
             setMarginPresetIdx(settings.marginPresetIdx);
           if (settings.autoScrollSpeedIdx !== undefined)
             setAutoScrollSpeedIdx(settings.autoScrollSpeedIdx);
+          if (settings.fontPresetId !== undefined) {
+            setFontPresetId(settings.fontPresetId);
+            fontPresetIdRef.current = settings.fontPresetId;
+          }
         }
       } catch (error) {
         console.error("Failed to load reader settings:", error);
@@ -570,6 +595,7 @@ export default function ReaderScreen() {
           lineSpacingIdx: lineSpacing,
           marginPresetIdx: margin,
           autoScrollSpeedIdx: scroll,
+          fontPresetId: fontPresetIdRef.current,
         }),
       );
     } catch (error) {
@@ -967,6 +993,8 @@ export default function ReaderScreen() {
                       accentColor={adaptiveColors.accent}
                       textColor={adaptiveColors.text}
                       contentStyle={styles.content}
+                      regularFamily={activeFontPreset.regularFamily}
+                      boldFamily={activeFontPreset.boldFamily}
                       onParaLayout={handleParaLayout}
                       onHighlightedSentenceLayout={
                         handleHighlightedSentenceLayout
@@ -1753,6 +1781,60 @@ export default function ReaderScreen() {
                     </Pressable>
                   ))}
                 </View>
+
+                {/* FONT */}
+                <Text
+                  style={[
+                    styles.sectionLabel,
+                    { color: adaptiveColors.textSecondary, marginTop: 4 },
+                  ]}
+                >
+                  FONT
+                </Text>
+                <View style={styles.marginRow}>
+                  {FONT_PRESETS.map((preset) => {
+                    const isActive = fontPresetId === preset.id;
+                    return (
+                      <Pressable
+                        key={preset.id}
+                        style={[
+                          styles.marginPresetBtn,
+                          {
+                            backgroundColor: isActive
+                              ? adaptiveColors.accent
+                              : adaptiveColors.card,
+                            borderColor: isActive
+                              ? adaptiveColors.accent
+                              : adaptiveColors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          setFontPresetId(preset.id);
+                          fontPresetIdRef.current = preset.id;
+                          saveAllSettings(
+                            fontSizeIdx,
+                            lineSpacingIdx,
+                            marginPresetIdx,
+                            autoScrollSpeedIdx,
+                          );
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.marginPresetText,
+                            {
+                              fontFamily: preset.regularFamily,
+                              color: isActive ? "#fff" : adaptiveColors.text,
+                            },
+                          ]}
+                        >
+                          {preset.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
 
                 {/* BACKGROUND */}
                 <Text
