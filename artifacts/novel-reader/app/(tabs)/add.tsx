@@ -20,7 +20,12 @@ import { router } from "expo-router";
 
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
-import { fetchNovelMeta, fetchChapter, checkSiteHealth } from "@/hooks/useApi";
+import {
+  useSiteHealth,
+  SUPPORTED_SITES,
+  SiteStatus,
+} from "@/context/SiteHealthContext";
+import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import {
   useChapterLimiter,
   CHAPTER_LIMIT_MAX,
@@ -32,34 +37,11 @@ import Colors from "@/constants/colors";
 // fallback to 1).
 const DEFAULT_MAX_CHAPTERS = 30;
 
-// --- SUPPORTED SITES ---
-const SUPPORTED_SITES = [
-  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
-  { name: "NovelFullCom", baseUrl: "https://novelfull.com/" },
-  { name: "NovelFullNet", baseUrl: "https://novelfull.net/" },
-  { name: "AllNovelOrg", baseUrl: "https://allnovel.org/" },
-  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
-  { name: "NovGoNet", baseUrl: "https://novgo.net/" },
-  { name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
-  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
-  { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
-  { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
-  { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
-  { name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
-  { name: "Novel-Bin", baseUrl: "https://novel-bin.com/" },
-  { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
-];
-
 type LogEntry = {
   id: string;
   text: string;
   type: "info" | "downloading" | "success" | "error" | "warning";
 };
-
-type SiteStatus = "idle" | "checking" | "online" | "offline";
-
-// Storage keys for persistent site status
-const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
 
 // --- Reusable Log Line Component ---
 function LogLine({ entry }: { entry: LogEntry }) {
@@ -278,170 +260,16 @@ export default function AddNovelScreen() {
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
 
-  // --- Site Health Check States ---
-  const [siteStatuses, setSiteStatuses] = useState<Record<string, SiteStatus>>(
-    {},
-  );
-  const [isCheckingSites, setIsCheckingSites] = useState(false);
+  // --- Site Health Check State (owned by SiteHealthProvider at app root -
+  // this just reads it, so status is already current by the time this
+  // screen is visited, and doesn't restart checking on every tab visit) ---
+  const { statuses: siteStatuses, isChecking: isCheckingSites } =
+    useSiteHealth();
 
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
-  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
-
-  // --- Load saved site status from storage ---
-  const loadSavedSiteStatus = async (): Promise<Record<
-    string,
-    SiteStatus
-  > | null> => {
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(SITE_STATUS_STORAGE);
-      if (fileInfo.exists) {
-        const content = await FileSystem.readAsStringAsync(SITE_STATUS_STORAGE);
-        const data = JSON.parse(content);
-        // Check if data is still valid (not older than 12 hours)
-        if (
-          data.timestamp &&
-          Date.now() - data.timestamp < 12 * 60 * 60 * 1000
-        ) {
-          return data.statuses;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.warn("Failed to load site status:", error);
-      return null;
-    }
-  };
-
-  // --- Save site status to storage ---
-  const saveSiteStatus = async (statuses: Record<string, SiteStatus>) => {
-    try {
-      const dir = `${FileSystem.documentDirectory}NovelDR/`;
-      const dirInfo = await FileSystem.getInfoAsync(dir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      }
-      await FileSystem.writeAsStringAsync(
-        SITE_STATUS_STORAGE,
-        JSON.stringify({ statuses, timestamp: Date.now() }),
-      );
-    } catch (error) {
-      console.warn("Failed to save site status:", error);
-    }
-  };
-
-  // --- Find sites that have no status yet, or are stuck on idle/'?' ---
-  const getSitesNeedingCheck = (
-    statuses: Record<string, SiteStatus> | null | undefined,
-  ) => {
-    return SUPPORTED_SITES.filter(
-      (site) =>
-        !statuses || !statuses[site.name] || statuses[site.name] === "idle",
-    );
-  };
-
-  // --- Run health checks for a given subset of sites, merging into baseStatuses ---
-  const runHealthChecks = async (
-    sitesToCheck: typeof SUPPORTED_SITES,
-    baseStatuses: Record<string, SiteStatus>,
-  ) => {
-    if (sitesToCheck.length === 0) return baseStatuses;
-
-    setIsCheckingSites(true);
-
-    const updatedStatuses: Record<string, SiteStatus> = { ...baseStatuses };
-    sitesToCheck.forEach((site) => {
-      updatedStatuses[site.name] = "checking";
-    });
-    setSiteStatuses({ ...updatedStatuses });
-
-    for (const site of sitesToCheck) {
-      try {
-        const isUp = await checkSiteHealth(site.baseUrl);
-        updatedStatuses[site.name] = isUp ? "online" : "offline";
-      } catch {
-        updatedStatuses[site.name] = "offline";
-      }
-
-      // Update immediately after each site check and persist progress
-      setSiteStatuses({ ...updatedStatuses });
-      await saveSiteStatus(updatedStatuses);
-
-      // Small delay to avoid overwhelming servers
-      await new Promise((r) => setTimeout(r, 200));
-    }
-
-    setIsCheckingSites(false);
-    return updatedStatuses;
-  };
-
-  // --- Simple Site Health Check (Individual, Immediate Updates) ---
-  const checkAllSites = async (forceRecheck: boolean = false) => {
-    if (isCheckingSites) return;
-
-    // Check if we have saved status that's still valid
-    if (!forceRecheck) {
-      const savedStatus = await loadSavedSiteStatus();
-      if (savedStatus) {
-        setSiteStatuses(savedStatus);
-
-        // Fallback: anything still showing '?' (missing/idle) in the
-        // cache — e.g. a site added after the cache was written — gets
-        // checked now and the result gets saved.
-        const missing = getSitesNeedingCheck(savedStatus);
-        if (missing.length > 0) {
-          await runHealthChecks(missing, savedStatus);
-        }
-        return;
-      }
-    }
-
-    await runHealthChecks(SUPPORTED_SITES, {});
-  };
-
-  // --- Setup automatic health checks ---
-  // Intentionally mount-only: checkAllSites/runHealthChecks aren't memoized
-  // and checkAllSites reads isCheckingSites state, so including them would
-  // re-fire this effect (and reset the 12h interval) every time a check
-  // starts/stops.
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    // Initial check: Wait 2 seconds, then load saved or check
-    const initialTimeout = setTimeout(async () => {
-      const savedStatus = await loadSavedSiteStatus();
-      if (savedStatus) {
-        setSiteStatuses(savedStatus);
-
-        // Fallback: fill in any sites that show '?' because they're
-        // missing from the cache (e.g. newly added sources).
-        const missing = getSitesNeedingCheck(savedStatus);
-        if (missing.length > 0) {
-          await runHealthChecks(missing, savedStatus);
-        }
-      } else {
-        checkAllSites(false);
-      }
-    }, 2000);
-
-    // Periodic recheck every 12 hours
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
-
-    healthCheckIntervalRef.current = setInterval(() => {
-      checkAllSites(true);
-    }, TWELVE_HOURS);
-
-    return () => {
-      clearTimeout(initialTimeout);
-      if (healthCheckIntervalRef.current) {
-        clearInterval(healthCheckIntervalRef.current);
-      }
-    };
-  }, []);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Detect chapter URL and auto-fill Start Chapter
   const CHAPTER_URL_PATTERN = /\/chapter[-/](\d+)/i;
