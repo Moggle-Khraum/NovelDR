@@ -1951,7 +1951,7 @@ export default function ReaderScreen() {
                   />
                 </Pressable>
               </View>
-              <ScrollView contentContainerStyle={styles.bgPresetsList}>
+              <ScrollView contentContainerStyle={[styles.bgPresetsList, { paddingBottom: bottomPad + 20 }]}>
                 {BG_PRESETS.map((preset) => {
                   const isActive = bgPresetId === preset.id && !bgCustomUri;
                   return (
@@ -2108,7 +2108,7 @@ export default function ReaderScreen() {
                   />
                 </Pressable>
               </View>
-              <ScrollView contentContainerStyle={styles.bgPresetsList}>
+              <ScrollView contentContainerStyle={[styles.bgPresetsList, { paddingBottom: bottomPad + 20 }]}>
                 {FONT_PRESETS.map((preset) => {
                   const isActive = fontPresetId === preset.id;
                   return (
