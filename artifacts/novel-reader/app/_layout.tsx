@@ -25,6 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
+import { SiteHealthProvider } from "@/context/SiteHealthContext";
 import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 import { useConnectivity } from "@/hooks/useConnectivity";
@@ -375,8 +376,10 @@ export default Sentry.wrap(function RootLayout() {
             <ThemeProvider>
               <LibraryProvider>
                 <UpdateProvider>
-                  <RootLayoutNav />
-                  <WebViewFetchBridge />
+                  <SiteHealthProvider>
+                    <RootLayoutNav />
+                    <WebViewFetchBridge />
+                  </SiteHealthProvider>
                 </UpdateProvider>
               </LibraryProvider>
             </ThemeProvider>
