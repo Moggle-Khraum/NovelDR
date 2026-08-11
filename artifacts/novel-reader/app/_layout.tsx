@@ -5,6 +5,19 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import {
+  Gelasio_400Regular,
+  Gelasio_700Bold,
+} from "@expo-google-fonts/gelasio";
+import { Tinos_400Regular, Tinos_700Bold } from "@expo-google-fonts/tinos";
+import {
+  ComicNeue_400Regular,
+  ComicNeue_700Bold,
+} from "@expo-google-fonts/comic-neue";
+import {
+  OldStandardTT_400Regular,
+  OldStandardTT_700Bold,
+} from "@expo-google-fonts/old-standard-tt";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
@@ -318,6 +331,20 @@ export default Sentry.wrap(function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Gelasio_400Regular,
+    Gelasio_700Bold,
+    Tinos_400Regular,
+    Tinos_700Bold,
+    ComicNeue_400Regular,
+    ComicNeue_700Bold,
+    OldStandardTT_400Regular,
+    OldStandardTT_700Bold,
+    // Not on Google Fonts, so this isn't an @expo-google-fonts package -
+    // loaded directly from the bundled .ttf files instead. Family names
+    // here (the object keys) are what every reader font style must match
+    // exactly - see constants/readerSettings.ts FONT_PRESETS.
+    OpenDyslexic_400Regular: require("../assets/fonts/OpenDyslexic-Regular.ttf"),
+    OpenDyslexic_700Bold: require("../assets/fonts/OpenDyslexic-Bold.ttf"),
   });
 
   useEffect(() => {
