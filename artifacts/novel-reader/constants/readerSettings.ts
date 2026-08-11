@@ -9,6 +9,55 @@ export const TTS_MIN_CHARS = 500;
 export const RAPID_TAP_THRESHOLD = 4;
 export const RAPID_TAP_WINDOW_MS = 1500;
 
+export type FontPreset = {
+  id: string;
+  label: string;
+  // Must exactly match the family name registered via useFonts in
+  // app/_layout.tsx - not a display label. A mismatch here is what
+  // caused font selection to silently fail before.
+  regularFamily: string;
+  boldFamily: string;
+};
+
+export const FONT_PRESETS: FontPreset[] = [
+  {
+    id: "default",
+    label: "Default",
+    regularFamily: "Inter_400Regular",
+    boldFamily: "Inter_700Bold",
+  },
+  {
+    id: "dyslexic",
+    label: "Dyslexic-Friendly",
+    regularFamily: "OpenDyslexic_400Regular",
+    boldFamily: "OpenDyslexic_700Bold",
+  },
+  {
+    id: "old_scroll",
+    label: "Old Scroll",
+    regularFamily: "OldStandardTT_400Regular",
+    boldFamily: "OldStandardTT_700Bold",
+  },
+  {
+    id: "gelasio",
+    label: "Gelasio",
+    regularFamily: "Gelasio_400Regular",
+    boldFamily: "Gelasio_700Bold",
+  },
+  {
+    id: "tinos",
+    label: "Tinos",
+    regularFamily: "Tinos_400Regular",
+    boldFamily: "Tinos_700Bold",
+  },
+  {
+    id: "comic",
+    label: "Comic Neue",
+    regularFamily: "ComicNeue_400Regular",
+    boldFamily: "ComicNeue_700Bold",
+  },
+];
+
 export const READER_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/reader_settings.json`;
 export const TTS_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/tts_simple_settings.json`;
 export const BG_SETTINGS_FILE = `${FileSystem.documentDirectory}NovelDR/reader_bg.json`;
