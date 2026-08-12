@@ -684,7 +684,12 @@ export default function ReaderSettingsPanel({
                 <Ionicons name="close" size={24} color={adaptiveColors.text} />
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={styles.bgPresetsList}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.bgPresetsList,
+                { paddingBottom: bottomPad + 24 },
+              ]}
+            >
               {BG_PRESETS.map((preset) => {
                 const isActive = bgPresetId === preset.id && !bgCustomUri;
                 return (
@@ -842,7 +847,12 @@ export default function ReaderSettingsPanel({
                 <Ionicons name="close" size={24} color={adaptiveColors.text} />
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={styles.bgPresetsList}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.bgPresetsList,
+                { paddingBottom: bottomPad + 24 },
+              ]}
+            >
               {FONT_PRESETS.map((preset) => {
                 const isActive =
                   !activeFontFilename && fontPresetId === preset.id;
