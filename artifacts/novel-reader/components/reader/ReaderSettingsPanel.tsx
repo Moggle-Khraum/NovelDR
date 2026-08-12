@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -28,6 +29,15 @@ interface AdaptiveColors {
   border: string;
 }
 
+// Mirrors the CustomFont type defined in app/reader/[id].tsx - not imported
+// from constants since custom fonts are discovered at runtime, not declared
+// statically like FONT_PRESETS.
+type CustomFont = {
+  filename: string;
+  label: string;
+  familyName: string;
+};
+
 interface ReaderSettingsPanelProps {
   adaptiveColors: AdaptiveColors;
   bottomPad: number;
@@ -37,17 +47,30 @@ interface ReaderSettingsPanelProps {
   setShowSettingsSheet: (v: boolean) => void;
 
   // Font
-  activeFontPreset: (typeof FONT_PRESETS)[number];
+  // Shape-compatible with (typeof FONT_PRESETS)[number] but widened since
+  // this can also represent the currently active custom (user-imported)
+  // font, which isn't one of the static FONT_PRESETS entries.
+  activeFontPreset: {
+    id: string;
+    label: string;
+    regularFamily: string;
+    boldFamily: string;
+  };
   fontPresetId: string;
-  setFontPresetId: (id: string) => void;
-  // saveAllSettings reads this ref rather than the fontPresetId state
-  // directly, since it can be called synchronously right after
-  // setFontPresetId - before the state update has actually committed -
-  // the same way the other controls pass their "new" value explicitly
-  // instead of trusting stale state.
-  fontPresetIdRef: React.MutableRefObject<string>;
+  // Selecting a built-in preset also needs to clear any active custom
+  // font, so [id].tsx owns the whole selection + persistence flow here
+  // rather than this panel poking fontPresetId state directly.
+  selectBuiltinFontPreset: (id: string) => void;
   showFontModal: boolean;
   setShowFontModal: (v: boolean) => void;
+
+  // Custom (user-imported) fonts
+  customFonts: CustomFont[];
+  activeFontFilename: string | null;
+  onSelectCustomFont: (font: CustomFont) => void;
+  onDeleteCustomFont: (font: CustomFont) => void;
+  onImportFont: () => void;
+  importingFont: boolean;
 
   // Font size
   fontSize: number;
@@ -102,10 +125,15 @@ export default function ReaderSettingsPanel({
   setShowSettingsSheet,
   activeFontPreset,
   fontPresetId,
-  setFontPresetId,
-  fontPresetIdRef,
+  selectBuiltinFontPreset,
   showFontModal,
   setShowFontModal,
+  customFonts,
+  activeFontFilename,
+  onSelectCustomFont,
+  onDeleteCustomFont,
+  onImportFont,
+  importingFont,
   fontSize,
   fontSizeIdx,
   setFontSizeIdx,
@@ -792,9 +820,21 @@ export default function ReaderSettingsPanel({
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: adaptiveColors.text }]}>
-                Font
-              </Text>
+              <View>
+                <Text
+                  style={[styles.modalTitle, { color: adaptiveColors.text }]}
+                >
+                  Available Fonts
+                </Text>
+                <Text
+                  style={[
+                    styles.fontModalSubtitle,
+                    { color: adaptiveColors.textSecondary },
+                  ]}
+                >
+                  Long-press a custom font to delete
+                </Text>
+              </View>
               <Pressable
                 onPress={() => setShowFontModal(false)}
                 style={styles.modalCloseBtn}
@@ -804,7 +844,8 @@ export default function ReaderSettingsPanel({
             </View>
             <ScrollView contentContainerStyle={styles.bgPresetsList}>
               {FONT_PRESETS.map((preset) => {
-                const isActive = fontPresetId === preset.id;
+                const isActive =
+                  !activeFontFilename && fontPresetId === preset.id;
                 return (
                   <Pressable
                     key={preset.id}
@@ -817,17 +858,7 @@ export default function ReaderSettingsPanel({
                         borderWidth: isActive ? 2 : 1,
                       },
                     ]}
-                    onPress={() => {
-                      setFontPresetId(preset.id);
-                      fontPresetIdRef.current = preset.id;
-                      saveAllSettings(
-                        fontSizeIdx,
-                        lineSpacingIdx,
-                        marginPresetIdx,
-                        autoScrollSpeedIdx,
-                      );
-                      setShowFontModal(false);
-                    }}
+                    onPress={() => selectBuiltinFontPreset(preset.id)}
                   >
                     <Text
                       style={[
@@ -852,6 +883,78 @@ export default function ReaderSettingsPanel({
                   </Pressable>
                 );
               })}
+
+              {customFonts.map((font) => {
+                const isActive = activeFontFilename === font.filename;
+                return (
+                  <Pressable
+                    key={font.filename}
+                    style={[
+                      styles.bgPresetItem,
+                      {
+                        borderColor: isActive
+                          ? adaptiveColors.accent
+                          : adaptiveColors.border,
+                        borderWidth: isActive ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => onSelectCustomFont(font)}
+                    onLongPress={() => onDeleteCustomFont(font)}
+                  >
+                    <Text
+                      style={[
+                        styles.bgPresetLabel,
+                        {
+                          fontFamily: font.familyName,
+                          color: isActive
+                            ? adaptiveColors.accent
+                            : adaptiveColors.text,
+                        },
+                      ]}
+                    >
+                      Added: {font.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color={adaptiveColors.accent}
+                      />
+                    )}
+                  </Pressable>
+                );
+              })}
+
+              <Pressable
+                style={[
+                  styles.bgPresetItem,
+                  styles.importFontBtn,
+                  { borderColor: adaptiveColors.border },
+                ]}
+                onPress={onImportFont}
+                disabled={importingFont}
+              >
+                {importingFont ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={adaptiveColors.textSecondary}
+                  />
+                ) : (
+                  <Ionicons
+                    name="folder-open-outline"
+                    size={18}
+                    color={adaptiveColors.textSecondary}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.bgPresetLabel,
+                    { color: adaptiveColors.textSecondary },
+                  ]}
+                >
+                  {importingFont ? "Importing…" : "Import Custom Font"}
+                </Text>
+              </Pressable>
             </ScrollView>
           </View>
         </View>
@@ -881,6 +984,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e0e0e0",
   },
   modalTitle: { fontSize: 18, fontWeight: "bold" },
+  fontModalSubtitle: { fontSize: 12, marginTop: 2 },
   modalCloseBtn: { padding: 4 },
 
   // Exclusive to this panel — moved out of [id].tsx's StyleSheet.
@@ -1014,4 +1118,5 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   bgPresetLabel: { fontSize: 14, fontWeight: "500", flex: 1 },
+  importFontBtn: { justifyContent: "center" },
 });
