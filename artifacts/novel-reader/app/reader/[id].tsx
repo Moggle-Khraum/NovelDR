@@ -3,6 +3,8 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import * as Font from "expo-font";
 import React, {
   useCallback,
   useEffect,
@@ -12,6 +14,7 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   AppState,
   AppStateStatus,
   Modal,
@@ -193,6 +196,39 @@ function useRapidTapGuard(onTripped: () => void) {
   return { registerTap, reset };
 }
 
+// ─── Custom fonts (user-imported .ttf/.otf) ──────────────────────────────
+// Not in constants/readerSettings.ts on purpose - unlike FONT_PRESETS these
+// aren't known at build time, they're discovered by scanning disk at
+// startup, so there's nothing static to declare there.
+type CustomFont = {
+  filename: string; // name on disk inside CUSTOM_FONTS_DIR - the persisted identity
+  label: string; // display name, derived from filename
+  familyName: string; // family name registered with Font.loadAsync, re-derived from filename each scan
+};
+
+const CUSTOM_FONTS_DIR = `${FileSystem.documentDirectory}NovelDR/custom_fonts/`;
+const FONT_FILE_EXT_RE = /\.(ttf|otf)$/i;
+
+// Small deterministic string hash (not cryptographic - just needs to be
+// stable across app restarts and cheap). Folded into the family name so
+// two different filenames that sanitize to the same base string (e.g.
+// "My-Font.ttf" and "My_Font.ttf") still register as distinct families.
+function hashString(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function familyNameForFilename(filename: string): string {
+  const base = filename
+    .replace(FONT_FILE_EXT_RE, "")
+    .replace(/[^a-zA-Z0-9]/g, "_");
+  return `CustomFont_${base}_${hashString(filename)}`;
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────
 export default function ReaderScreen() {
   const { id, chapterIndex: indexParam } = useLocalSearchParams<{
@@ -222,8 +258,32 @@ export default function ReaderScreen() {
   // the same way the other controls pass their "new" value explicitly
   // instead of trusting stale state.
   const fontPresetIdRef = useRef(fontPresetId);
-  const activeFontPreset =
-    FONT_PRESETS.find((p) => p.id === fontPresetId) ?? FONT_PRESETS[0];
+
+  // ── Custom (user-imported) fonts ──
+  const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
+  const [activeFontFilename, setActiveFontFilename] = useState<string | null>(
+    null,
+  );
+  // Same "read the ref, not the state" reasoning as fontPresetIdRef above -
+  // saveAllSettings can run synchronously right after setActiveFontFilename.
+  const activeFontFilenameRef = useRef<string | null>(activeFontFilename);
+  const [importingFont, setImportingFont] = useState(false);
+
+  const activeCustomFont = activeFontFilename
+    ? customFonts.find((f) => f.filename === activeFontFilename)
+    : undefined;
+  // When a custom font is active it wins over the built-in preset. Custom
+  // fonts are a single imported file with no separate bold weight, so bold
+  // text falls back to rendering in the same (non-bold) family - graceful
+  // rather than crashing or silently reverting to the default font.
+  const activeFontPreset = activeCustomFont
+    ? {
+        id: `custom:${activeCustomFont.filename}`,
+        label: activeCustomFont.label,
+        regularFamily: activeCustomFont.familyName,
+        boldFamily: activeCustomFont.familyName,
+      }
+    : (FONT_PRESETS.find((p) => p.id === fontPresetId) ?? FONT_PRESETS[0]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [showBgModal, setShowBgModal] = useState(false);
@@ -422,6 +482,52 @@ export default function ReaderScreen() {
     };
   }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
 
+  // ── Scan custom_fonts/ and register each with expo-font ──
+  // Runs at mount (below) and again after import/delete so the picker and
+  // the actual registered font families never drift out of sync.
+  const scanCustomFonts = useCallback(async () => {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(CUSTOM_FONTS_DIR);
+      if (!dirInfo.exists) {
+        setCustomFonts([]);
+        return;
+      }
+      const filenames = await FileSystem.readDirectoryAsync(CUSTOM_FONTS_DIR);
+      const loaded: CustomFont[] = [];
+      for (const filename of filenames) {
+        if (!FONT_FILE_EXT_RE.test(filename)) continue;
+        const familyName = familyNameForFilename(filename);
+        try {
+          await Font.loadAsync({
+            [familyName]: `${CUSTOM_FONTS_DIR}${filename}`,
+          });
+          loaded.push({
+            filename,
+            label: filename.replace(FONT_FILE_EXT_RE, ""),
+            familyName,
+          });
+        } catch (err) {
+          // Missing/corrupt font file - skip it rather than crashing the
+          // reader. It's left on disk; the user can re-import instead.
+          console.warn(`Failed to load custom font "${filename}":`, err);
+        }
+      }
+      setCustomFonts(loaded);
+      // If the font that was active last session failed to load this time
+      // (deleted from disk outside the app, or corrupted), fall back to
+      // the default preset instead of rendering with an unregistered family.
+      if (
+        activeFontFilenameRef.current &&
+        !loaded.some((f) => f.filename === activeFontFilenameRef.current)
+      ) {
+        activeFontFilenameRef.current = null;
+        setActiveFontFilename(null);
+      }
+    } catch (error) {
+      console.error("Failed to scan custom fonts:", error);
+    }
+  }, []);
+
   // ── Load settings ──
   useEffect(() => {
     (async () => {
@@ -443,6 +549,10 @@ export default function ReaderScreen() {
             setFontPresetId(settings.fontPresetId);
             fontPresetIdRef.current = settings.fontPresetId;
           }
+          if (settings.activeFontFilename !== undefined) {
+            setActiveFontFilename(settings.activeFontFilename);
+            activeFontFilenameRef.current = settings.activeFontFilename;
+          }
         }
       } catch (error) {
         console.error("Failed to load reader settings:", error);
@@ -460,6 +570,8 @@ export default function ReaderScreen() {
       } catch (e) {
         console.warn("Failed to load bg settings:", e);
       }
+
+      await scanCustomFonts();
 
       setSettingsLoaded(true);
     })();
@@ -597,11 +709,156 @@ export default function ReaderScreen() {
           marginPresetIdx: margin,
           autoScrollSpeedIdx: scroll,
           fontPresetId: fontPresetIdRef.current,
+          activeFontFilename: activeFontFilenameRef.current,
         }),
       );
     } catch (error) {
       console.error("Failed to save settings:", error);
     }
+  };
+
+  // ── Font selection ──
+  const selectBuiltinFontPreset = (id: string) => {
+    activeFontFilenameRef.current = null;
+    setActiveFontFilename(null);
+    fontPresetIdRef.current = id;
+    setFontPresetId(id);
+    saveAllSettings(
+      fontSizeIdx,
+      lineSpacingIdx,
+      marginPresetIdx,
+      autoScrollSpeedIdx,
+    );
+    setShowFontModal(false);
+  };
+
+  const selectCustomFont = (font: CustomFont) => {
+    activeFontFilenameRef.current = font.filename;
+    setActiveFontFilename(font.filename);
+    saveAllSettings(
+      fontSizeIdx,
+      lineSpacingIdx,
+      marginPresetIdx,
+      autoScrollSpeedIdx,
+    );
+    setShowFontModal(false);
+  };
+
+  // Type filter is deliberately loose ("*/*" rather than a font MIME type):
+  // Android's SAF picker is inconsistent about reporting font MIME types
+  // (often just "application/octet-stream"), so the extension check below
+  // is the reliable gate, same reasoning as the .txt check in Settings.
+  const handleImportFont = async () => {
+    if (importingFont) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      const ext = file.name.match(FONT_FILE_EXT_RE)?.[0]?.toLowerCase();
+      if (!ext) {
+        Alert.alert(
+          "Unsupported File",
+          "Please choose a .ttf or .otf font file.",
+        );
+        return;
+      }
+
+      setImportingFont(true);
+
+      const dirInfo = await FileSystem.getInfoAsync(CUSTOM_FONTS_DIR);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(CUSTOM_FONTS_DIR, {
+          intermediates: true,
+        });
+      }
+
+      // Avoid clobbering an existing font that shares the same filename by
+      // suffixing until a free name is found.
+      const baseName = file.name
+        .replace(FONT_FILE_EXT_RE, "")
+        .replace(/[^a-zA-Z0-9 _-]/g, "")
+        .trim();
+      const safeBase = baseName || "Custom_Font";
+      let targetName = `${safeBase}${ext}`;
+      let counter = 2;
+      while (
+        (await FileSystem.getInfoAsync(`${CUSTOM_FONTS_DIR}${targetName}`))
+          .exists
+      ) {
+        targetName = `${safeBase}_${counter}${ext}`;
+        counter++;
+      }
+
+      const destUri = `${CUSTOM_FONTS_DIR}${targetName}`;
+      await FileSystem.copyAsync({ from: file.uri, to: destUri });
+
+      // Validate it actually registers as a font before keeping it - if
+      // this throws, the file is not a valid/readable font.
+      const familyName = familyNameForFilename(targetName);
+      try {
+        await Font.loadAsync({ [familyName]: destUri });
+      } catch (err) {
+        await FileSystem.deleteAsync(destUri, { idempotent: true });
+        Alert.alert(
+          "Import Failed",
+          "That file doesn't look like a valid font.",
+        );
+        return;
+      }
+
+      setCustomFonts((prev) => [
+        ...prev,
+        { filename: targetName, label: safeBase, familyName },
+      ]);
+    } catch (error) {
+      console.error("Failed to import custom font:", error);
+      Alert.alert("Import Failed", "Something went wrong importing that font.");
+    } finally {
+      setImportingFont(false);
+    }
+  };
+
+  const handleDeleteCustomFont = (font: CustomFont) => {
+    Alert.alert(
+      "Delete Font",
+      `Remove "${font.label}" from your fonts? This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await FileSystem.deleteAsync(
+                `${CUSTOM_FONTS_DIR}${font.filename}`,
+                { idempotent: true },
+              );
+            } catch (error) {
+              console.error("Failed to delete custom font file:", error);
+            }
+            setCustomFonts((prev) =>
+              prev.filter((f) => f.filename !== font.filename),
+            );
+            if (activeFontFilenameRef.current === font.filename) {
+              activeFontFilenameRef.current = null;
+              setActiveFontFilename(null);
+              fontPresetIdRef.current = "default";
+              setFontPresetId("default");
+              saveAllSettings(
+                fontSizeIdx,
+                lineSpacingIdx,
+                marginPresetIdx,
+                autoScrollSpeedIdx,
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const getMargins = () => {
@@ -1420,10 +1677,15 @@ export default function ReaderScreen() {
           setShowSettingsSheet={setShowSettingsSheet}
           activeFontPreset={activeFontPreset}
           fontPresetId={fontPresetId}
-          setFontPresetId={setFontPresetId}
-          fontPresetIdRef={fontPresetIdRef}
+          selectBuiltinFontPreset={selectBuiltinFontPreset}
           showFontModal={showFontModal}
           setShowFontModal={setShowFontModal}
+          customFonts={customFonts}
+          activeFontFilename={activeFontFilename}
+          onSelectCustomFont={selectCustomFont}
+          onDeleteCustomFont={handleDeleteCustomFont}
+          onImportFont={handleImportFont}
+          importingFont={importingFont}
           fontSize={fontSize}
           fontSizeIdx={fontSizeIdx}
           setFontSizeIdx={setFontSizeIdx}
