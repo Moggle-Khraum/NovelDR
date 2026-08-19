@@ -58,6 +58,7 @@ import { useScrollTracking } from "@/hooks/reader/useScrollTracking";
 import { useTTS } from "@/hooks/reader/useTTS";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
+import { useDictionary } from "@/hooks/reader/useDictionary";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -76,7 +77,14 @@ type ParagraphBlockProps = {
   boldFamily: string;
   onParaLayout: (paraIdx: number, y: number, height: number) => void;
   onHighlightedSentenceLayout: (relY: number) => void;
+  onWordDoubleTap: (word: string) => void;
 };
+
+// 280ms window to distinguish a double-tap from two separate single taps.
+// Tracked per-render via a module-level ref map keyed by paraIdx-sentIdx-word
+// would be overkill; a single mutable ref shared across all words in the
+// reader is enough since only one word can be "the last tapped word" at a time.
+const lastWordTapRef = { word: "", time: 0 };
 
 const ParagraphBlock = React.memo(
   function ParagraphBlock({
@@ -93,6 +101,7 @@ const ParagraphBlock = React.memo(
     boldFamily,
     onParaLayout,
     onHighlightedSentenceLayout,
+    onWordDoubleTap,
   }: ParagraphBlockProps) {
     return (
       <View
@@ -150,7 +159,30 @@ const ParagraphBlock = React.memo(
                 },
               ]}
             >
-              {trimmed}
+              {trimmed.split(/(\s+)/).map((segment, wIdx) => {
+                if (!segment.trim()) return segment;
+                return (
+                  <Text
+                    key={wIdx}
+                    onPress={() => {
+                      const now = Date.now();
+                      const clean = segment.toLowerCase();
+                      if (
+                        lastWordTapRef.word === clean &&
+                        now - lastWordTapRef.time < 280
+                      ) {
+                        lastWordTapRef.word = "";
+                        onWordDoubleTap(segment);
+                      } else {
+                        lastWordTapRef.word = clean;
+                        lastWordTapRef.time = now;
+                      }
+                    }}
+                  >
+                    {segment}
+                  </Text>
+                );
+              })}
             </Text>
           );
         })}
@@ -290,6 +322,17 @@ export default function ReaderScreen() {
   const [showFontModal, setShowFontModal] = useState(false);
   const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
+
+  // ── Dictionary lookup (double-tap a word) ──
+  const {
+    word: dictWord,
+    definition: dictDefinition,
+    partOfSpeech: dictPartOfSpeech,
+    notFound: dictNotFound,
+    isOpen: showDictModal,
+    lookup: handleWordDoubleTap,
+    clear: dismissDictModal,
+  } = useDictionary();
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
   const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
@@ -1257,6 +1300,7 @@ export default function ReaderScreen() {
                       onHighlightedSentenceLayout={
                         handleHighlightedSentenceLayout
                       }
+                      onWordDoubleTap={handleWordDoubleTap}
                     />
                   );
                 })}
@@ -2533,6 +2577,77 @@ export default function ReaderScreen() {
                 }}
               >
                 <Text style={{ color: adaptiveColors.text }}>Got it</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ─── DICTIONARY LOOKUP MODAL ─── */}
+        <Modal
+          visible={showDictModal}
+          animationType="fade"
+          transparent
+          onRequestClose={dismissDictModal}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={dismissDictModal}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.ttsModalTitle,
+                  { color: adaptiveColors.text, textAlign: "center" },
+                ]}
+              >
+                {dictWord}
+              </Text>
+              {dictPartOfSpeech && (
+                <Text
+                  style={{
+                    color: adaptiveColors.textSecondary,
+                    fontSize: 12,
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: 8,
+                  }}
+                >
+                  {dictPartOfSpeech}
+                </Text>
+              )}
+              <Text
+                style={{
+                  color: adaptiveColors.text,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  textAlign: "center",
+                  marginBottom: 20,
+                }}
+              >
+                {dictNotFound
+                  ? "No definition found for this word yet."
+                  : dictDefinition}
+              </Text>
+              <Pressable
+                style={[
+                  styles.closeSearchBtn,
+                  { backgroundColor: adaptiveColors.card },
+                ]}
+                onPress={dismissDictModal}
+              >
+                <Text style={{ color: adaptiveColors.text }}>Dismiss</Text>
               </Pressable>
             </Pressable>
           </Pressable>
