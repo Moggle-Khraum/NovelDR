@@ -2589,10 +2589,7 @@ export default function ReaderScreen() {
           transparent
           onRequestClose={dismissDictModal}
         >
-          <Pressable
-            style={styles.ttsModalOverlay}
-            onPress={dismissDictModal}
-          >
+          <Pressable style={styles.ttsModalOverlay} onPress={dismissDictModal}>
             <Pressable
               style={[
                 styles.ttsHelpModal,
