@@ -17,9 +17,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
-import { useChapterLimiter, CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
+import {
+  useChapterLimiter,
+  CHAPTER_LIMIT_MAX,
+} from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import Colors from "@/constants/colors";
+
+// Fallback used when Max Chapters is left blank (mirrors Start Chapter's
+// fallback to the next expected chapter).
+const DEFAULT_MAX_CHAPTERS = 30;
 
 // Detects when a saved novel's sourceUrl is actually a chapter page rather than
 // the novel's info/homepage page (can happen with novels added via a pasted
@@ -91,7 +98,8 @@ function LogLine({ entry }: { entry: LogEntry }) {
 
 export default function UpdatesScreen() {
   const { colors } = useTheme();
-  const { novels, updateNovel, saveAllChaptersToFile, loadChapterContent } = useLibrary();
+  const { novels, updateNovel, saveAllChaptersToFile, loadChapterContent } =
+    useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -111,7 +119,7 @@ export default function UpdatesScreen() {
   const stopRef = useRef(false);
   const logScrollRef = useRef<ScrollView>(null);
   const startTimeRef = useRef<number>(0);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filteredNovels = useMemo(() => {
     if (!novelSearchQuery.trim()) return novels;
@@ -119,15 +127,22 @@ export default function UpdatesScreen() {
     return novels.filter(
       (n) =>
         n.title.toLowerCase().includes(query) ||
-        n.author.toLowerCase().includes(query)
+        n.author.toLowerCase().includes(query),
     );
   }, [novels, novelSearchQuery]);
 
   // ─── Log (capped at 500) ────────────────────────────────────────────────────
   const addLog = (text: string, type: LogEntry["type"] = "info") => {
-    const entry: LogEntry = { id: Date.now().toString() + Math.random(), text, type };
+    const entry: LogEntry = {
+      id: Date.now().toString() + Math.random(),
+      text,
+      type,
+    };
     setLogs((prev) => [...prev.slice(-500), entry]);
-    setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 100);
+    setTimeout(
+      () => logScrollRef.current?.scrollToEnd({ animated: true }),
+      100,
+    );
   };
 
   const clearAll = () => {
@@ -196,7 +211,10 @@ export default function UpdatesScreen() {
   };
 
   // ─── Download cover ──────────────────────────────────────────────────────────
-  const downloadAndSaveCover = async (coverUrl: string, novelId: string): Promise<string> => {
+  const downloadAndSaveCover = async (
+    coverUrl: string,
+    novelId: string,
+  ): Promise<string> => {
     if (!coverUrl) return "";
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
@@ -205,7 +223,10 @@ export default function UpdatesScreen() {
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(coverDir, { intermediates: true });
       }
-      const downloadResult = await FileSystem.downloadAsync(coverUrl, coverPath);
+      const downloadResult = await FileSystem.downloadAsync(
+        coverUrl,
+        coverPath,
+      );
       addLog(`Cover image saved locally`, "success");
       return downloadResult.uri;
     } catch (err) {
@@ -228,7 +249,7 @@ export default function UpdatesScreen() {
   // delegates to the same shared scraper add.tsx uses.
   const getChapterMetadata = async (
     url: string,
-    chapterNum: number
+    chapterNum: number,
   ): Promise<{ nextUrl: string | null; title: string }> => {
     const data = await fetchChapter(url, chapterNum);
     return { nextUrl: data.nextUrl || null, title: data.title };
@@ -259,7 +280,10 @@ export default function UpdatesScreen() {
     { regex: /(chapter[-_]?)(\d+)()/i },
   ];
 
-  const tryDirectSkip = (firstChapterUrl: string, targetChapter: number): string | null => {
+  const tryDirectSkip = (
+    firstChapterUrl: string,
+    targetChapter: number,
+  ): string | null => {
     if (isAsianovel(firstChapterUrl)) {
       // No reliable way to guess a chapter's real URL from a target chapter
       // number on this site — always fall back to the sequential crawl,
@@ -273,7 +297,7 @@ export default function UpdatesScreen() {
           return firstChapterUrl.replace(
             regex,
             (_m: string, prefix: string, _num: string, suffix: string) =>
-              `${prefix}${targetChapter}${suffix}`
+              `${prefix}${targetChapter}${suffix}`,
           );
         }
       }
@@ -283,7 +307,8 @@ export default function UpdatesScreen() {
         if (slashPattern.test(firstChapterUrl)) {
           return firstChapterUrl.replace(
             slashPattern,
-            (_m: string, _num: string, trailingSlash: string) => `/${targetChapter}${trailingSlash}`
+            (_m: string, _num: string, trailingSlash: string) =>
+              `/${targetChapter}${trailingSlash}`,
           );
         }
       }
@@ -296,7 +321,7 @@ export default function UpdatesScreen() {
         return firstChapterUrl.replace(
           regex,
           (_m: string, prefix: string, _num: string, suffix: string) =>
-            `${prefix}${targetChapter}${suffix}`
+            `${prefix}${targetChapter}${suffix}`,
         );
       }
     }
@@ -311,15 +336,21 @@ export default function UpdatesScreen() {
     }
 
     if (chapterLimiter.dangerModalVisible) {
-      addLog("Acknowledge the chapter limit warning before starting.", "warning");
+      addLog(
+        "Acknowledge the chapter limit warning before starting.",
+        "warning",
+      );
       return;
     }
 
     const existingChapters = [...selectedNovel.chapters];
     const existingCount = existingChapters.length;
-    const startCh = Math.max(1, parseInt(startChStr) || getNextStartChapter(selectedNovel));
-    const parsedMaxCh = parseInt(maxChStr) || null;
-    const maxCh = parsedMaxCh !== null ? Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX) : null;
+    const startCh = Math.max(
+      1,
+      parseInt(startChStr) || getNextStartChapter(selectedNovel),
+    );
+    const parsedMaxCh = parseInt(maxChStr) || DEFAULT_MAX_CHAPTERS;
+    const maxCh = Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX);
 
     stopRef.current = false;
     setIsUpdating(true);
@@ -338,17 +369,26 @@ export default function UpdatesScreen() {
       }
 
       let metaUrl = selectedNovel.sourceUrl;
-      const sourceIsChapterUrl = NOVEL_SOURCE_CHAPTER_PATTERN.test(selectedNovel.sourceUrl);
+      const sourceIsChapterUrl = NOVEL_SOURCE_CHAPTER_PATTERN.test(
+        selectedNovel.sourceUrl,
+      );
       if (sourceIsChapterUrl) {
-        const chapterIndex = selectedNovel.sourceUrl.search(NOVEL_SOURCE_CHAPTER_PATTERN);
-        metaUrl = selectedNovel.sourceUrl.slice(0, chapterIndex).replace(/\/$/, "");
+        const chapterIndex = selectedNovel.sourceUrl.search(
+          NOVEL_SOURCE_CHAPTER_PATTERN,
+        );
+        metaUrl = selectedNovel.sourceUrl
+          .slice(0, chapterIndex)
+          .replace(/\/$/, "");
       }
 
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
       addLog(`CONNECTING TO SOURCE...`, "downloading");
       addLog(`Source Domain: ${domain}`, "info");
       if (sourceIsChapterUrl) {
-        addLog(`Chapter URL detected in saved source — using novel info page: ${metaUrl}`, "info");
+        addLog(
+          `Chapter URL detected in saved source — using novel info page: ${metaUrl}`,
+          "info",
+        );
       }
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
@@ -376,7 +416,10 @@ export default function UpdatesScreen() {
       let updatedCoverUrl = selectedNovel.coverUrl;
       if (meta.coverUrl) {
         addLog(`Cover found, downloading...`, "info");
-        updatedCoverUrl = await downloadAndSaveCover(meta.coverUrl, selectedNovel.id);
+        updatedCoverUrl = await downloadAndSaveCover(
+          meta.coverUrl,
+          selectedNovel.id,
+        );
         addLog(`Cover updated successfully`, "success");
       }
 
@@ -420,23 +463,39 @@ export default function UpdatesScreen() {
               /page not found|not found|does not exist/i.test(testData.title);
 
             if (looksLikeSoft404) {
-              addLog(`Direct skip guess landed on a "Page Not Found" page, falling back to crawl...`, "warning");
+              addLog(
+                `Direct skip guess landed on a "Page Not Found" page, falling back to crawl...`,
+                "warning",
+              );
             } else {
-              addLog(`Direct skip to chapter ${startCh} (URL pattern matched)`, "success");
+              addLog(
+                `Direct skip to chapter ${startCh} (URL pattern matched)`,
+                "success",
+              );
               currentUrl = directUrl;
               chapterNum = startCh;
               directSkipWorked = true;
-              prefetchedChapter = { url: directUrl, chapterNum: startCh, data: testData };
+              prefetchedChapter = {
+                url: directUrl,
+                chapterNum: startCh,
+                data: testData,
+              };
             }
           } catch {
-            addLog(`Direct skip guess was invalid, falling back to crawl...`, "warning");
+            addLog(
+              `Direct skip guess was invalid, falling back to crawl...`,
+              "warning",
+            );
           }
         }
 
         if (!directSkipWorked) {
           currentUrl = meta.firstChapterUrl;
           chapterNum = 1;
-          addLog(`Crawling to chapter ${startCh} (no URL pattern detected)...`, "warning");
+          addLog(
+            `Crawling to chapter ${startCh} (no URL pattern detected)...`,
+            "warning",
+          );
 
           let skippedCount = 0;
           let lastLoggedMilestone = 0;
@@ -444,7 +503,10 @@ export default function UpdatesScreen() {
 
           while (currentUrl && chapterNum < startCh && !stopRef.current) {
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              const { nextUrl } = await getChapterMetadata(
+                currentUrl,
+                chapterNum,
+              );
               currentUrl = nextUrl;
               chapterNum++;
               skippedCount++;
@@ -454,14 +516,20 @@ export default function UpdatesScreen() {
               if (percent >= nextMilestone && nextMilestone <= 80) {
                 addLog(
                   `Skipping... ${nextMilestone}% (${skippedCount}/${totalToSkip})`,
-                  "warning"
+                  "warning",
                 );
                 lastLoggedMilestone = nextMilestone;
               }
             } catch {
-              addLog(`Failed to skip chapter ${chapterNum}, retrying...`, "warning");
+              addLog(
+                `Failed to skip chapter ${chapterNum}, retrying...`,
+                "warning",
+              );
               try {
-                const { nextUrl } = await getChapterMetadata(currentUrl!, chapterNum);
+                const { nextUrl } = await getChapterMetadata(
+                  currentUrl!,
+                  chapterNum,
+                );
                 currentUrl = nextUrl;
                 chapterNum++;
                 skippedCount++;
@@ -471,18 +539,22 @@ export default function UpdatesScreen() {
               }
             }
             await new Promise((r) => setTimeout(r, 35));
-            if (skippedCount % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+            if (skippedCount % 20 === 0)
+              await new Promise((r) => setTimeout(r, 0));
           }
 
           if (skippedCount > 0) {
             addLog(
               `Skipped ${skippedCount} chapters, ready at chapter ${startCh}`,
-              "success"
+              "success",
             );
           }
 
           if (!currentUrl) {
-            addLog(`Could not reach chapter ${startCh}. Update aborted.`, "error");
+            addLog(
+              `Could not reach chapter ${startCh}. Update aborted.`,
+              "error",
+            );
             stopTimer();
             setIsUpdating(false);
             return;
@@ -496,7 +568,10 @@ export default function UpdatesScreen() {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
 
       // ========== DOWNLOAD NEW CHAPTERS ==========
-      const newChapters: (Chapter & { chapterNumber: number; content?: string })[] = [];
+      const newChapters: (Chapter & {
+        chapterNumber: number;
+        content?: string;
+      })[] = [];
       const gapFills: { url: string; content: string; title: string }[] = [];
       let downloaded = 0;
       let gapFillCount = 0;
@@ -505,7 +580,7 @@ export default function UpdatesScreen() {
       // Hard iteration ceiling so a broken nextUrl chain (site pagination bug,
       // redirect loop, etc.) can never spin forever without ever incrementing
       // `downloaded` — which is the only thing the maxCh check below looks at.
-      const ITERATION_CEILING = (maxCh ?? CHAPTER_LIMIT_MAX) * 5 + 50;
+      const ITERATION_CEILING = maxCh * 5 + 50;
       let iterations = 0;
 
       // Tracks every URL actually fetched in this run (new chapters AND
@@ -518,7 +593,7 @@ export default function UpdatesScreen() {
       const visitedThisRun = new Set<string>();
 
       while (currentUrl && !stopRef.current) {
-        if (maxCh !== null && downloaded >= maxCh) {
+        if (downloaded >= maxCh) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(`Reached max chapter limit (${maxCh})`, "success");
           break;
@@ -528,9 +603,9 @@ export default function UpdatesScreen() {
         if (iterations > ITERATION_CEILING) {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(
-            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh ?? "All"}). ` +
-            `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
-            "error"
+            `Stopped: exceeded ${ITERATION_CEILING} chapter iterations without reaching the max chapter limit (${maxCh}). ` +
+              `The source is likely stuck in a navigation loop. Check the scraper's nextUrl extraction for this site.`,
+            "error",
           );
           break;
         }
@@ -551,8 +626,8 @@ export default function UpdatesScreen() {
           addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
           addLog(
             `Stopped: Chapter ${chapterNum}'s URL was already fetched earlier in this run. ` +
-            `The source's "next chapter" link is looping back on itself instead of moving forward.`,
-            "error"
+              `The source's "next chapter" link is looping back on itself instead of moving forward.`,
+            "error",
           );
           break;
         }
@@ -564,14 +639,23 @@ export default function UpdatesScreen() {
         if (existsInNew) {
           // Duplicate URL within this same run — content was just fetched
           // a moment ago, guaranteed present. Just move on.
-          addLog(`SKIPPED: Chapter ${chapterNum} already fetched this run`, "warning");
+          addLog(
+            `SKIPPED: Chapter ${chapterNum} already fetched this run`,
+            "warning",
+          );
           try {
-            const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+            const { nextUrl } = await getChapterMetadata(
+              currentUrl,
+              chapterNum,
+            );
             currentUrl = nextUrl;
             chapterNum++;
             continue;
           } catch {
-            addLog(`Failed to get next chapter URL for ${chapterNum}, aborting skip`, "error");
+            addLog(
+              `Failed to get next chapter URL for ${chapterNum}, aborting skip`,
+              "error",
+            );
             break;
           }
         } else if (existsInLibrary) {
@@ -582,23 +666,37 @@ export default function UpdatesScreen() {
           // trusting it, instead of either (a) blindly skipping forever, or
           // (b) re-downloading every chapter on every run regardless of
           // whether it's actually there.
-          const idx = existingChapters.findIndex(c => c.url === currentUrl);
-          const onDisk = idx >= 0 ? await loadChapterContent(selectedNovel.id, idx) : null;
-          const hasRealContent = !!onDisk?.content && onDisk.content.trim().length > 0;
+          const idx = existingChapters.findIndex((c) => c.url === currentUrl);
+          const onDisk =
+            idx >= 0 ? await loadChapterContent(selectedNovel.id, idx) : null;
+          const hasRealContent =
+            !!onDisk?.content && onDisk.content.trim().length > 0;
 
           if (hasRealContent) {
-            addLog(`SKIPPED: Chapter ${chapterNum} already in library`, "warning");
+            addLog(
+              `SKIPPED: Chapter ${chapterNum} already in library`,
+              "warning",
+            );
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              const { nextUrl } = await getChapterMetadata(
+                currentUrl,
+                chapterNum,
+              );
               currentUrl = nextUrl;
               chapterNum++;
               continue;
             } catch {
-              addLog(`Failed to get next chapter URL for ${chapterNum}, aborting skip`, "error");
+              addLog(
+                `Failed to get next chapter URL for ${chapterNum}, aborting skip`,
+                "error",
+              );
               break;
             }
           } else {
-            addLog(`Chapter ${chapterNum} is listed but its content file is missing — filling gap...`, "warning");
+            addLog(
+              `Chapter ${chapterNum} is listed but its content file is missing — filling gap...`,
+              "warning",
+            );
             shouldDownload = true;
             isGapFill = true;
           }
@@ -618,7 +716,10 @@ export default function UpdatesScreen() {
               prefetchedChapter.url === currentUrl &&
               prefetchedChapter.chapterNum === chapterNum
             ) {
-              addLog(`Using validated Chapter ${chapterNum} (already fetched)`, "downloading");
+              addLog(
+                `Using validated Chapter ${chapterNum} (already fetched)`,
+                "downloading",
+              );
               data = prefetchedChapter.data;
             } else {
               addLog(`Downloading Chapter ${chapterNum}...`, "downloading");
@@ -629,9 +730,16 @@ export default function UpdatesScreen() {
 
             const chapterNumber = extractChapterNumber(data.title);
             if (isGapFill) {
-              gapFills.push({ url: currentUrl, content: data.content, title: data.title });
+              gapFills.push({
+                url: currentUrl,
+                content: data.content,
+                title: data.title,
+              });
               gapFillCount++;
-              addLog(`Gap filled: ${data.title} (Chapter ${chapterNumber})`, "success");
+              addLog(
+                `Gap filled: ${data.title} (Chapter ${chapterNumber})`,
+                "success",
+              );
             } else {
               newChapters.push({
                 title: data.title,
@@ -640,13 +748,19 @@ export default function UpdatesScreen() {
                 chapterNumber,
               });
               downloaded++;
-              addLog(`Saved: ${data.title} (Chapter ${chapterNumber})`, "success");
+              addLog(
+                `Saved: ${data.title} (Chapter ${chapterNumber})`,
+                "success",
+              );
             }
 
             consecutiveErrors = 0;
             // Update progress label with total downloaded (new + re-downloaded)
             if (downloaded % 5 === 0) {
-              addLog(`Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`, "success");
+              addLog(
+                `Saved ${downloaded} new chapter${downloaded !== 1 ? "s" : ""} so far`,
+                "success",
+              );
             }
 
             if (!data.nextUrl) {
@@ -658,15 +772,24 @@ export default function UpdatesScreen() {
             chapterNum++;
           } catch (err: any) {
             consecutiveErrors++;
-            addLog(`Failed to download Chapter ${chapterNum}: ${err.message}`, "error");
+            addLog(
+              `Failed to download Chapter ${chapterNum}: ${err.message}`,
+              "error",
+            );
 
             if (consecutiveErrors >= 3) {
-              addLog(`Too many consecutive errors, stopping update.`, "warning");
+              addLog(
+                `Too many consecutive errors, stopping update.`,
+                "warning",
+              );
               break;
             }
 
             try {
-              const { nextUrl } = await getChapterMetadata(currentUrl, chapterNum);
+              const { nextUrl } = await getChapterMetadata(
+                currentUrl,
+                chapterNum,
+              );
               if (nextUrl) {
                 currentUrl = nextUrl;
                 chapterNum++;
@@ -683,9 +806,15 @@ export default function UpdatesScreen() {
       }
 
       // ========== FINALIZE & SORT ==========
-      if (downloaded > 0 || gapFillCount > 0 || updatedCoverUrl !== selectedNovel.coverUrl) {
+      if (
+        downloaded > 0 ||
+        gapFillCount > 0 ||
+        updatedCoverUrl !== selectedNovel.coverUrl
+      ) {
         // Build final chapters list with content for those that have been updated
-        const allChapters: (Chapter & { content?: string })[] = [...existingChapters];
+        const allChapters: (Chapter & { content?: string })[] = [
+          ...existingChapters,
+        ];
 
         // Add new chapters
         newChapters.forEach((newCh) => {
@@ -698,30 +827,36 @@ export default function UpdatesScreen() {
         // Fill in gap chapters at their existing position (by URL) rather
         // than appending — they were already listed, just missing content.
         gapFills.forEach(({ url, content, title }) => {
-          const existing = allChapters.find(c => c.url === url);
+          const existing = allChapters.find((c) => c.url === url);
           if (existing) {
             existing.content = content;
             if (title) existing.title = title;
           }
         });
 
-        addLog(`Sorting ${allChapters.length} chapters by chapter number...`, "info");
+        addLog(
+          `Sorting ${allChapters.length} chapters by chapter number...`,
+          "info",
+        );
 
         allChapters.sort((a, b) => {
           const numA = extractChapterNumber(a.title);
           const numB = extractChapterNumber(b.title);
-          if (numA === 0 && numB === 0) return (a.url || "").localeCompare(b.url || "");
+          if (numA === 0 && numB === 0)
+            return (a.url || "").localeCompare(b.url || "");
           return numA - numB;
         });
 
-        const validNums = allChapters.map(c => extractChapterNumber(c.title)).filter(n => n > 0);
+        const validNums = allChapters
+          .map((c) => extractChapterNumber(c.title))
+          .filter((n) => n > 0);
         if (validNums.length > 0) {
           const minCh = Math.min(...validNums);
           const maxChNum = Math.max(...validNums);
           const missingCount = allChapters.length - validNums.length;
           addLog(
             `Chapters sorted: ${minCh} → ${maxChNum} (${allChapters.length} total${missingCount > 0 ? `, ${missingCount} untitled` : ""})`,
-            "success"
+            "success",
           );
         }
 
@@ -732,7 +867,9 @@ export default function UpdatesScreen() {
         }
 
         // Strip content before persisting the lightweight chapters metadata
-        const chaptersMetaOnly: Chapter[] = allChapters.map(({ content, ...rest }) => rest);
+        const chaptersMetaOnly: Chapter[] = allChapters.map(
+          ({ content, ...rest }) => rest,
+        );
 
         await updateNovel(selectedNovel.id, {
           chapters: chaptersMetaOnly,
@@ -746,7 +883,10 @@ export default function UpdatesScreen() {
           addLog(`Novel updated with ${downloaded} new chapters!`, "success");
         }
         if (gapFillCount > 0) {
-          addLog(`Filled ${gapFillCount} chapter${gapFillCount !== 1 ? "s" : ""} with missing content`, "success");
+          addLog(
+            `Filled ${gapFillCount} chapter${gapFillCount !== 1 ? "s" : ""} with missing content`,
+            "success",
+          );
         }
       } else if (sourceIsChapterUrl) {
         // No new chapters, but fix stored sourceUrl
@@ -760,11 +900,19 @@ export default function UpdatesScreen() {
         addLog(`Downloaded ${downloaded} new chapters before stop.`, "info");
       } else if (downloaded === 0 && gapFillCount === 0) {
         addLog(`UPDATE COMPLETE!`, "success");
-        addLog(`No new chapters and no missing content found. Novel is up to date!`, "success");
+        addLog(
+          `No new chapters and no missing content found. Novel is up to date!`,
+          "success",
+        );
       } else {
         addLog(`UPDATE COMPLETE!`, "success");
-        if (downloaded > 0) addLog(`New chapters added: ${downloaded}`, "success");
-        if (gapFillCount > 0) addLog(`Chapters with missing content filled: ${gapFillCount}`, "success");
+        if (downloaded > 0)
+          addLog(`New chapters added: ${downloaded}`, "success");
+        if (gapFillCount > 0)
+          addLog(
+            `Chapters with missing content filled: ${gapFillCount}`,
+            "success",
+          );
         addLog(`Novel updated in your library!`, "success");
       }
 
@@ -795,7 +943,8 @@ export default function UpdatesScreen() {
       style={[
         styles.novelItem,
         {
-          backgroundColor: selectedNovel?.id === novel.id ? colors.accent : colors.surface,
+          backgroundColor:
+            selectedNovel?.id === novel.id ? colors.accent : colors.surface,
           borderColor: colors.border,
         },
       ]}
@@ -819,14 +968,24 @@ export default function UpdatesScreen() {
         <Text
           style={[
             styles.novelChapters,
-            { color: selectedNovel?.id === novel.id ? colors.textMuted : colors.textSecondary },
+            {
+              color:
+                selectedNovel?.id === novel.id
+                  ? colors.textMuted
+                  : colors.textSecondary,
+            },
           ]}
         >
           {novel.chapters.length} chapters
         </Text>
       </View>
       {selectedNovel?.id === novel.id && (
-        <Ionicons name="checkmark-circle" size={20} color="#fff" style={styles.checkIcon} />
+        <Ionicons
+          name="checkmark-circle"
+          size={20}
+          color="#fff"
+          style={styles.checkIcon}
+        />
       )}
     </Pressable>
   );
@@ -836,21 +995,38 @@ export default function UpdatesScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: topPad + 12, borderBottomColor: colors.border },
+        ]}
+      >
         <Ionicons name="refresh-circle" size={22} color={colors.accent} />
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Novel Updates</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Novel Updates
+        </Text>
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 40 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: bottomPad + 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Novel selector */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>SELECT NOVEL</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+              SELECT NOVEL
+            </Text>
             {novels.length > 3 && (
               <Pressable
                 onPress={() => setShowNovelSearch(!showNovelSearch)}
@@ -861,7 +1037,9 @@ export default function UpdatesScreen() {
                   size={18}
                   color={colors.accent}
                 />
-                <Text style={[styles.searchToggleText, { color: colors.accent }]}>
+                <Text
+                  style={[styles.searchToggleText, { color: colors.accent }]}
+                >
                   {showNovelSearch ? "Close" : "Search"}
                 </Text>
               </Pressable>
@@ -873,10 +1051,17 @@ export default function UpdatesScreen() {
               <View
                 style={[
                   styles.searchInputContainer,
-                  { backgroundColor: colors.background, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
-                <Ionicons name="search" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="search"
+                  size={18}
+                  color={colors.textSecondary}
+                />
                 <TextInput
                   style={[styles.novelSearchInput, { color: colors.text }]}
                   placeholder="Search by title or author..."
@@ -887,12 +1072,22 @@ export default function UpdatesScreen() {
                 />
                 {novelSearchQuery.length > 0 && (
                   <Pressable onPress={() => setNovelSearchQuery("")}>
-                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
                   </Pressable>
                 )}
               </View>
-              <Text style={[styles.searchResultText, { color: colors.textSecondary }]}>
-                {filteredNovels.length} novel{filteredNovels.length !== 1 ? "s" : ""} found
+              <Text
+                style={[
+                  styles.searchResultText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {filteredNovels.length} novel
+                {filteredNovels.length !== 1 ? "s" : ""} found
               </Text>
             </Animated.View>
           )}
@@ -904,7 +1099,7 @@ export default function UpdatesScreen() {
               </Text>
             ) : filteredNovels.length === 0 ? (
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No novels matching "{novelSearchQuery}"
+                No novels matching &quot;{novelSearchQuery}&quot;
               </Text>
             ) : (
               <ScrollView
@@ -924,12 +1119,18 @@ export default function UpdatesScreen() {
         <View style={styles.form}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Start Chapter</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Start Chapter
+              </Text>
               <TextInput
                 style={inputStyle}
                 value={startChStr}
                 onChangeText={setStartChStr}
-                placeholder={selectedNovel ? `${getNextStartChapter(selectedNovel)}` : "Auto"}
+                placeholder={
+                  selectedNovel
+                    ? `${getNextStartChapter(selectedNovel)}`
+                    : "Auto"
+                }
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 editable={!isUpdating}
@@ -943,12 +1144,13 @@ export default function UpdatesScreen() {
                     color: chapterLimiter.isDanger
                       ? Colors.error
                       : chapterLimiter.isCaution
-                      ? Colors.amber
-                      : colors.textSecondary,
+                        ? Colors.amber
+                        : colors.textSecondary,
                   },
                 ]}
               >
-                Max Chapters {chapterLimiter.isCaution ? `(max ${CHAPTER_LIMIT_MAX})` : ""}
+                Max Chapters{" "}
+                {chapterLimiter.isCaution ? `(max ${CHAPTER_LIMIT_MAX})` : ""}
               </Text>
               <TextInput
                 style={[
@@ -956,12 +1158,12 @@ export default function UpdatesScreen() {
                   chapterLimiter.isDanger
                     ? { borderColor: Colors.error, color: Colors.error }
                     : chapterLimiter.isCaution
-                    ? { borderColor: Colors.amber }
-                    : null,
+                      ? { borderColor: Colors.amber }
+                      : null,
                 ]}
                 value={maxChStr}
                 onChangeText={chapterLimiter.onMaxChStrChange}
-                placeholder="All"
+                placeholder={`${DEFAULT_MAX_CHAPTERS}`}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 maxLength={3}
@@ -974,7 +1176,12 @@ export default function UpdatesScreen() {
             <Pressable
               style={[
                 styles.primaryBtn,
-                { backgroundColor: isUpdating || !selectedNovel ? colors.border : colors.accent },
+                {
+                  backgroundColor:
+                    isUpdating || !selectedNovel
+                      ? colors.border
+                      : colors.accent,
+                },
               ]}
               onPress={isUpdating ? undefined : handleUpdate}
               disabled={isUpdating || !selectedNovel}
@@ -992,10 +1199,14 @@ export default function UpdatesScreen() {
             {isUpdating && (
               <Pressable
                 style={[styles.outlineBtn, { borderColor: Colors.error }]}
-                onPress={() => { stopRef.current = true; }}
+                onPress={() => {
+                  stopRef.current = true;
+                }}
               >
                 <Ionicons name="stop" size={16} color={Colors.error} />
-                <Text style={[styles.outlineBtnText, { color: Colors.error }]}>Halt</Text>
+                <Text style={[styles.outlineBtnText, { color: Colors.error }]}>
+                  Halt
+                </Text>
               </Pressable>
             )}
 
@@ -1004,8 +1215,19 @@ export default function UpdatesScreen() {
                 style={[styles.outlineBtn, { borderColor: colors.border }]}
                 onPress={clearAll}
               >
-                <Ionicons name="trash-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.outlineBtnText, { color: colors.textSecondary }]}>Clear</Text>
+                <Ionicons
+                  name="trash-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.outlineBtnText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Clear
+                </Text>
               </Pressable>
             )}
           </View>
@@ -1017,18 +1239,30 @@ export default function UpdatesScreen() {
             <View style={styles.progressSection}>
               <View style={styles.progressHeader}>
                 <Ionicons name="bar-chart" size={15} color={colors.accent} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Progress</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Progress
+                </Text>
                 {progressLabel ? (
-                  <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.progressLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {progressLabel}
                   </Text>
                 ) : null}
               </View>
-              <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+              <View
+                style={[styles.progressBar, { backgroundColor: colors.border }]}
+              >
                 <Animated.View
                   style={[
                     styles.progressFill,
-                    { backgroundColor: colors.accent, width: `${Math.min(progress, 100)}%` },
+                    {
+                      backgroundColor: colors.accent,
+                      width: `${Math.min(progress, 100)}%`,
+                    },
                   ]}
                 />
               </View>
@@ -1041,8 +1275,12 @@ export default function UpdatesScreen() {
           <View style={styles.timerSection}>
             <View style={styles.timerHeader}>
               <Ionicons name="time-outline" size={15} color={colors.accent} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Elapsed Time</Text>
-              <Text style={[styles.timerValue, { color: colors.accent }]}>{elapsedTime}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Elapsed Time
+              </Text>
+              <Text style={[styles.timerValue, { color: colors.accent }]}>
+                {elapsedTime}
+              </Text>
             </View>
           </View>
         )}
@@ -1051,11 +1289,16 @@ export default function UpdatesScreen() {
         <View style={styles.logSection}>
           <View style={styles.logHeader}>
             <Ionicons name="sync" size={15} color={colors.accent} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity Log</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Activity Log
+            </Text>
           </View>
           <ScrollView
             ref={logScrollRef}
-            style={[styles.logBox, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.logBox,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             contentContainerStyle={styles.logContent}
             showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}
@@ -1096,14 +1339,22 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: "Inter_700Bold", fontSize: 22 },
   scroll: { padding: 16, gap: 16, flexGrow: 1 },
-  card: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
+  card: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+  },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  cardLabel: { fontFamily: "Inter_600SemiBold", fontSize: 10, letterSpacing: 0.8 },
+  cardLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    letterSpacing: 0.8,
+  },
   searchToggle: {
     flexDirection: "row",
     alignItems: "center",
@@ -1123,8 +1374,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  novelSearchInput: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 4 },
-  searchResultText: { fontFamily: "Inter_400Regular", fontSize: 11, paddingLeft: 4 },
+  novelSearchInput: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    paddingVertical: 4,
+  },
+  searchResultText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    paddingLeft: 4,
+  },
   novelListContainer: { minHeight: 0 },
   novelScrollView: { maxHeight: 240 },
   novelListInner: { gap: 8 },
@@ -1138,7 +1398,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   novelItemContent: { flex: 1 },
-  novelTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 4 },
+  novelTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    marginBottom: 4,
+  },
   novelChapters: { fontFamily: "Inter_400Regular", fontSize: 11 },
   checkIcon: { marginLeft: 8 },
   emptyText: {
@@ -1167,7 +1431,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  primaryBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
+  primaryBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#fff",
+  },
   outlineBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1182,7 +1450,11 @@ const styles = StyleSheet.create({
   progressHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   timerSection: { gap: 8, marginBottom: 16 },
   timerHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  timerValue: { fontFamily: "Inter_600SemiBold", fontSize: 16, marginLeft: "auto" },
+  timerValue: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    marginLeft: "auto",
+  },
   sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, flex: 1 },
   progressLabel: { fontFamily: "Inter_400Regular", fontSize: 12 },
   progressBar: { height: 6, borderRadius: 3, overflow: "hidden" },

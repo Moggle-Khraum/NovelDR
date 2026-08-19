@@ -3,7 +3,7 @@
 // borrows the shape of NovelMeta / ChapterData so results are compatible
 // with what useApi.ts (and the app screens) already expect.
 
-import type { NovelMeta, ChapterData } from '../useDirectScraper';
+import type { NovelMeta, ChapterData } from "../useDirectScraper";
 
 export type { NovelMeta, ChapterData };
 

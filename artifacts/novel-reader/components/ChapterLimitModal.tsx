@@ -12,19 +12,36 @@ interface ChapterLimitModalProps {
   onProceed: () => void;
 }
 
-export function ChapterLimitModal({ visible, chapterCount, onLower, onProceed }: ChapterLimitModalProps) {
+export function ChapterLimitModal({
+  visible,
+  chapterCount,
+  onLower,
+  onProceed,
+}: ChapterLimitModalProps) {
   const { colors } = useTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onLower}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onLower}
+    >
       <Pressable style={styles.overlay} onPress={onLower}>
         <Pressable
-          style={[styles.content, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[
+            styles.content,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
           onPress={() => {}}
         >
-          <Text style={[styles.title, { color: colors.text }]}>⚠️ Danger Zone</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            ⚠️ Danger Zone
+          </Text>
 
-          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.separator, { backgroundColor: colors.border }]}
+          />
 
           <Text style={[styles.warningLine, { color: colors.text }]}>
             You are treading into a dangerous threshold:{" "}
@@ -32,39 +49,53 @@ export function ChapterLimitModal({ visible, chapterCount, onLower, onProceed }:
           </Text>
 
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            Batches this large push the app well past what it's built to safely handle in a single run.
-            Here's what you're risking the longer it goes:
+            Batches this large push the app well past what it&apos;s built to
+            safely handle in a single run. Here&apos;s what you&apos;re risking
+            the longer it goes:
           </Text>
 
           <View style={styles.riskList}>
             <Text style={[styles.riskItem, { color: colors.textSecondary }]}>
-              •  Losing all download progress if the app crashes mid-run
+              • Losing all download progress if the app crashes mid-run
             </Text>
             <Text style={[styles.riskItem, { color: colors.textSecondary }]}>
-              •  Draining your battery much faster from sustained network activity
+              • Draining your battery much faster from sustained network
+              activity
             </Text>
             <Text style={[styles.riskItem, { color: colors.textSecondary }]}>
-              •  Consuming more RAM, which can force the OS to kill the app
+              • Consuming more RAM, which can force the OS to kill the app
             </Text>
             <Text style={[styles.riskItem, { color: colors.textSecondary }]}>
-              •  Corrupting some chapter files if a write gets interrupted
+              • Corrupting some chapter files if a write gets interrupted
             </Text>
           </View>
 
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            {CHAPTER_LIMIT_MAX} chapters is the hard ceiling. Only push this close to it if you're confident
-            about your device and connection.
+            {CHAPTER_LIMIT_MAX} chapters is the hard ceiling. Only push this
+            close to it if you&apos;re confident about your device and
+            connection.
           </Text>
 
           <View style={styles.buttons}>
             <Pressable
-              style={[styles.btn, styles.lowerBtn, { borderColor: colors.border }]}
+              style={[
+                styles.btn,
+                styles.lowerBtn,
+                { borderColor: colors.border },
+              ]}
               onPress={onLower}
             >
-              <Text style={[styles.btnText, { color: colors.text }]}>Lower It</Text>
+              <Text style={[styles.btnText, { color: colors.text }]}>
+                Lower It
+              </Text>
             </Pressable>
-            <Pressable style={[styles.btn, styles.proceedBtn]} onPress={onProceed}>
-              <Text style={[styles.btnText, { color: "#FFFFFF" }]}>Proceed Anyway</Text>
+            <Pressable
+              style={[styles.btn, styles.proceedBtn]}
+              onPress={onProceed}
+            >
+              <Text style={[styles.btnText, { color: "#FFFFFF" }]}>
+                Proceed Anyway
+              </Text>
             </Pressable>
           </View>
         </Pressable>

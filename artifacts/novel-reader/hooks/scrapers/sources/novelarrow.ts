@@ -19,8 +19,8 @@
 // <meta> regex) are kept as a first attempt / fallback in case some pages
 // or future deployments do SSR real markup.
 
-import type { SourceScraper, NovelMeta, ChapterData } from '../types';
-import { fetchHtmlWithFallback } from '../shared/http';
+import type { SourceScraper, NovelMeta, ChapterData } from "../types";
+import { fetchHtmlWithFallback } from "../shared/http";
 import {
   stripTags,
   decodeEntities,
@@ -30,9 +30,9 @@ import {
   extractFlightTChunks,
   extractJsonValueAfterKey,
   extractNextFlightPayload,
-} from '../shared/html';
+} from "../shared/html";
 
-const BASE_HOST = 'novelarrow.com';
+const BASE_HOST = "novelarrow.com";
 
 /**
  * Extract a meta tag's content by name/property. Handles two formats:
@@ -43,32 +43,46 @@ const BASE_HOST = 'novelarrow.com';
  * Tried in that order since format (1) is cheaper to match and may still
  * appear on some deployments/pages.
  */
-const extractMetaContent = (html: string, key: string, flight?: string): string | null => {
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const jsonPattern = new RegExp(`"(?:name|property)":"${escapedKey}","content":"([^"]+)"`, 'i');
+const extractMetaContent = (
+  html: string,
+  key: string,
+  flight?: string,
+): string | null => {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const jsonPattern = new RegExp(
+    `"(?:name|property)":"${escapedKey}","content":"([^"]+)"`,
+    "i",
+  );
   return (
-    safeMatch(html, new RegExp(`<meta[^>]*(?:name|property)="${escapedKey}"[^>]*content="([^"]+)"`, 'i')) ??
+    safeMatch(
+      html,
+      new RegExp(
+        `<meta[^>]*(?:name|property)="${escapedKey}"[^>]*content="([^"]+)"`,
+        "i",
+      ),
+    ) ??
     safeMatch(html, jsonPattern) ??
     (flight ? safeMatch(flight, jsonPattern) : null)
   );
 };
 
 /** Extract every <p>...</p> from a block of HTML */
-const extractParagraphs = (html: string): string => {
+export const extractParagraphs = (html: string): string => {
   const matches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
   return matches
     .map((m) => decodeEntities(stripTags(m[1])))
     .filter(Boolean)
-    .join('\n\n');
+    .join("\n\n");
 };
 
 export const novelArrowScraper: SourceScraper = {
-  id: 'novelarrow',
-  name: 'NovelArrow',
+  id: "novelarrow",
+  name: "NovelArrow",
 
   canHandle: (url: string) => {
     try {
-      return new URL(url).hostname.includes(BASE_HOST);
+      const hostname = new URL(url).hostname.toLowerCase();
+      return hostname === BASE_HOST || hostname.endsWith(`.${BASE_HOST}`);
     } catch {
       return false;
     }
@@ -88,19 +102,19 @@ export const novelArrowScraper: SourceScraper = {
     // JSON-described element depending on what the page ships — see
     // extractMetaContent above.
     const title = decodeEntities(
-      extractMetaContent(html, 'og:novel:novel_name', flight) ??
-        extractMetaContent(html, 'og:title', flight) ??
+      extractMetaContent(html, "og:novel:novel_name", flight) ??
+        extractMetaContent(html, "og:title", flight) ??
         safeMatch(html, /<title>([^<]+)<\/title>/i) ??
-        'Unknown Title',
+        "Unknown Title",
     );
 
     const author = decodeEntities(
-      extractMetaContent(html, 'og:novel:author', flight) ??
-        extractMetaContent(html, 'author', flight) ??
-        'Unknown Author',
+      extractMetaContent(html, "og:novel:author", flight) ??
+        extractMetaContent(html, "author", flight) ??
+        "Unknown Author",
     );
 
-    const coverUrl = extractMetaContent(html, 'og:image', flight) ?? '';
+    const coverUrl = extractMetaContent(html, "og:image", flight) ?? "";
 
     // Re-confirmed against a real /novel/ page response dump (2026-07):
     // like chapter pages, novel pages ship NO server-rendered DOM at all —
@@ -110,17 +124,20 @@ export const novelArrowScraper: SourceScraper = {
     // Each element is already a complete paragraph (including scene-break
     // markers like "———"), so this is both more reliable AND untruncated
     // compared to og:description.
-    let synopsis = '';
-    const synopsisArrayJson = extractJsonValueAfterKey(flight, 'synopsisParagraphs');
+    let synopsis = "";
+    const synopsisArrayJson = extractJsonValueAfterKey(
+      flight,
+      "synopsisParagraphs",
+    );
     if (synopsisArrayJson) {
       try {
         const paragraphs = JSON.parse(synopsisArrayJson) as unknown;
         if (Array.isArray(paragraphs)) {
           synopsis = paragraphs
-            .filter((p): p is string => typeof p === 'string')
+            .filter((p): p is string => typeof p === "string")
             .map((p) => decodeEntities(p))
             .filter(Boolean)
-            .join('\n\n');
+            .join("\n\n");
         }
       } catch {
         // malformed JSON (shouldn't happen) — fall through to other paths
@@ -137,27 +154,35 @@ export const novelArrowScraper: SourceScraper = {
     // Further fallback: a generic "$<id>" reference into a raw flight text
     // chunk, in case the key name ever differs from synopsisParagraphs.
     if (!synopsis) {
-      const refId = safeMatch(flight, /"(?:description|synopsis|novel_description|about)":"\$(\w+)"/i);
+      const refId = safeMatch(
+        flight,
+        /"(?:description|synopsis|novel_description|about)":"\$(\w+)"/i,
+      );
       if (refId) {
         const tChunks = extractFlightTChunks(flight);
         const chunk = tChunks.get(refId);
         if (chunk) {
-          synopsis = /<p[^>]*>/i.test(chunk) ? extractParagraphs(chunk) : decodeEntities(stripTags(chunk));
+          synopsis = /<p[^>]*>/i.test(chunk)
+            ? extractParagraphs(chunk)
+            : decodeEntities(stripTags(chunk));
         }
       }
     }
 
     // Last resort: the (truncated, "...") og:description meta tag.
     if (!synopsis) {
-      const synopsisMeta = extractMetaContent(html, 'og:description', flight);
-      synopsis = synopsisMeta ? decodeEntities(synopsisMeta) : '';
+      const synopsisMeta = extractMetaContent(html, "og:description", flight);
+      synopsis = synopsisMeta ? decodeEntities(synopsisMeta) : "";
     }
 
     // og:novel:read_url gives the first chapter link directly, already absolute
     const firstChapterUrl =
-      extractMetaContent(html, 'og:novel:read_url', flight) ??
+      extractMetaContent(html, "og:novel:read_url", flight) ??
       (() => {
-        const firstChapterPath = safeMatch(html, /<a[^>]*href="(\/chapter\/[^"]+)"/i);
+        const firstChapterPath = safeMatch(
+          html,
+          /<a[^>]*href="(\/chapter\/[^"]+)"/i,
+        );
         return firstChapterPath ? makeAbsoluteUrl(firstChapterPath, url) : null;
       })();
 
@@ -167,11 +192,16 @@ export const novelArrowScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ['fetched via external scraper: novelarrow (og:novel:* meta, synopsisParagraphs JSON)'],
+      debugInfo: [
+        "fetched via external scraper: novelarrow (og:novel:* meta, synopsisParagraphs JSON)",
+      ],
     };
   },
 
-  fetchChapter: async (url: string, _chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    _chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
     // Chapter content, chapter_name, and nextChapter all live in the body's
     // RSC flight data, shipped inside <script>self.__next_f.push([1,"..."])
@@ -182,8 +212,13 @@ export const novelArrowScraper: SourceScraper = {
 
     // Try the DOM path first in case some chapters/deployments really do
     // SSR an <article data-chapter-id="..."> block.
-    let articleHtml = extractByDepth(html, 'data-chapter-id', '<article', '</article');
-    let title = '';
+    let articleHtml = extractByDepth(
+      html,
+      "data-chapter-id",
+      "<article",
+      "</article",
+    );
+    let title = "";
     let nextUrl: string | null = null;
 
     if (!articleHtml) {
@@ -198,7 +233,7 @@ export const novelArrowScraper: SourceScraper = {
       const tChunks = extractFlightTChunks(flight);
 
       const contentRefId = safeMatch(flight, /"chapter_content":"\$(\w+)"/);
-      articleHtml = contentRefId ? tChunks.get(contentRefId) ?? null : null;
+      articleHtml = contentRefId ? (tChunks.get(contentRefId) ?? null) : null;
 
       // Fallback if the JSON ref pattern isn't found: the content chunk is
       // the one starting with the chapter's <h4> heading.
@@ -211,37 +246,50 @@ export const novelArrowScraper: SourceScraper = {
         }
       }
 
-      title = decodeEntities(safeMatch(flight, /"chapter_name":"([^"]+)"/) ?? '');
+      title = decodeEntities(
+        safeMatch(flight, /"chapter_name":"([^"]+)"/) ?? "",
+      );
 
       // "nextChapter":null on the last chapter; otherwise a chapter_id we
       // can rebuild the URL from (chapter URLs are /chapter/<novelId>/<id>).
-      const nextChapterId = safeMatch(flight, /"nextChapter":\{"chapter_id":"([^"]+)"/);
+      const nextChapterId = safeMatch(
+        flight,
+        /"nextChapter":\{"chapter_id":"([^"]+)"/,
+      );
       if (nextChapterId) {
         const novelIdMatch = url.match(/\/chapter\/([^/]+)\//);
         if (novelIdMatch) {
-          nextUrl = makeAbsoluteUrl(`/chapter/${novelIdMatch[1]}/${nextChapterId}`, url);
+          nextUrl = makeAbsoluteUrl(
+            `/chapter/${novelIdMatch[1]}/${nextChapterId}`,
+            url,
+          );
         }
       }
     }
 
     if (!articleHtml) {
       throw new Error(
-        'novelarrow: could not locate chapter content (neither <article> DOM nor RSC flight chunk found).',
+        "novelarrow: could not locate chapter content (neither <article> DOM nor RSC flight chunk found).",
       );
     }
 
     const content = extractParagraphs(articleHtml);
     if (!content) {
-      throw new Error('novelarrow: content block found but no <p> paragraphs extracted.');
+      throw new Error(
+        "novelarrow: content block found but no <p> paragraphs extracted.",
+      );
     }
 
     // Title: og:novel:chapter_name meta is simplest when present; otherwise
     // fall back to whatever the DOM/flight-blob path above already found.
     if (!title) {
       title = decodeEntities(
-        extractMetaContent(html, 'og:novel:chapter_name', flight) ??
-          safeMatch(articleHtml, /<span class="hidden sm:inline">([^<]+)<\/span>/i) ??
-          '',
+        extractMetaContent(html, "og:novel:chapter_name", flight) ??
+          safeMatch(
+            articleHtml,
+            /<span class="hidden sm:inline">([^<]+)<\/span>/i,
+          ) ??
+          "",
       );
     }
 
@@ -249,7 +297,10 @@ export const novelArrowScraper: SourceScraper = {
     // when a next chapter exists (DOM path only — the flight path above
     // already resolved this from the chapterInfo JSON).
     if (!nextUrl) {
-      const nextPath = safeMatch(html, /<a[^>]*aria-label="Next chapter"[^>]*href="([^"]+)"/i);
+      const nextPath = safeMatch(
+        html,
+        /<a[^>]*aria-label="Next chapter"[^>]*href="([^"]+)"/i,
+      );
       nextUrl = nextPath ? makeAbsoluteUrl(nextPath, url) : null;
     }
 

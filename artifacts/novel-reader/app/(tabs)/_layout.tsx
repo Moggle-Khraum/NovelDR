@@ -7,20 +7,33 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useUpdateContext } from "@/context/UpdateContext";
 
 function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "books.vertical", selected: "books.vertical.fill" }} />
+        <Icon
+          sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
+        />
         <Label>Library</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="add">
-        <Icon sf={{ default: "arrow.down.circle", selected: "arrow.down.circle.fill" }} />
+        <Icon
+          sf={{
+            default: "arrow.down.circle",
+            selected: "arrow.down.circle.fill",
+          }}
+        />
         <Label>Download</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="updates">
-        <Icon sf={{ default: "arrow.clockwise.circle", selected: "arrow.clockwise.circle.fill" }} />
+        <Icon
+          sf={{
+            default: "arrow.clockwise.circle",
+            selected: "arrow.clockwise.circle.fill",
+          }}
+        />
         <Label>Updates</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
@@ -33,6 +46,8 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const { colors } = useTheme();
+  const { updateInfo } = useUpdateContext();
+  const updateAvailable = !!updateInfo;
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -59,7 +74,10 @@ function ClassicTabLayout() {
             />
           ) : isWeb ? (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: colors.tabBar }]}
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: colors.tabBar },
+              ]}
             />
           ) : null,
         tabBarLabelStyle: {
@@ -74,7 +92,11 @@ function ClassicTabLayout() {
           title: "Library",
           tabBarIcon: ({ color, size }) =>
             isIOS ? (
-              <SymbolView name="books.vertical.fill" tintColor={color} size={size} />
+              <SymbolView
+                name="books.vertical.fill"
+                tintColor={color}
+                size={size}
+              />
             ) : (
               <Ionicons name="library" size={size} color={color} />
             ),
@@ -86,7 +108,11 @@ function ClassicTabLayout() {
           title: "Download",
           tabBarIcon: ({ color, size }) =>
             isIOS ? (
-              <SymbolView name="arrow.down.circle.fill" tintColor={color} size={size} />
+              <SymbolView
+                name="arrow.down.circle.fill"
+                tintColor={color}
+                size={size}
+              />
             ) : (
               <Ionicons name="cloud-download" size={size} color={color} />
             ),
@@ -98,7 +124,11 @@ function ClassicTabLayout() {
           title: "Updates",
           tabBarIcon: ({ color, size }) =>
             isIOS ? (
-              <SymbolView name="arrow.clockwise.circle.fill" tintColor={color} size={size} />
+              <SymbolView
+                name="arrow.clockwise.circle.fill"
+                tintColor={color}
+                size={size}
+              />
             ) : (
               <Ionicons name="refresh-circle" size={size} color={color} />
             ),
@@ -108,17 +138,47 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="gearshape.fill" tintColor={color} size={size} />
-            ) : (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              {isIOS ? (
+                <SymbolView
+                  name="gearshape.fill"
+                  tintColor={color}
+                  size={size}
+                />
+              ) : (
+                <Ionicons name="settings" size={size} color={color} />
+              )}
+              {updateAvailable && (
+                <View
+                  style={[
+                    styles.updateBadge,
+                    {
+                      backgroundColor: colors.accent,
+                      borderColor: colors.tabBar,
+                    },
+                  ]}
+                />
+              )}
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  updateBadge: {
+    position: "absolute",
+    top: -1,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+});
 
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) {

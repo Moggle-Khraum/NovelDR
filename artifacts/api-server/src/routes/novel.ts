@@ -10,10 +10,46 @@ const httpClient = axios.create({
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
   },
 });
+
+// Allow-list of known novel-source hostnames. Requests to any URL whose
+// hostname isn't on this list (or a subdomain of one) are rejected before
+// the server ever fetches them. This is required to prevent SSRF: without
+// it, a caller could pass an arbitrary URL (e.g. an internal/private
+// address) and have this server fetch it on their behalf.
+const ALLOWED_HOSTS = [
+  "allnovel.org",
+  "freewebnovel.com",
+  "novel-bin.com",
+  "novelarrow.com",
+  "novelbin.cc",
+  "novelfull.com",
+  "novelfull.net",
+  "novelphoenix.com",
+  "novgo.net",
+  "readnovelfull.com",
+  "royalroad.com",
+  "wuxiaworld.site",
+];
+
+function isAllowedNovelUrl(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return false;
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  return ALLOWED_HOSTS.some(
+    (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`),
+  );
+}
 
 function ensureAbsoluteUrl(href: string, baseUrl: string): string {
   try {
@@ -30,7 +66,8 @@ function detectSite(url: string) {
   const lower = url.toLowerCase();
   return {
     isReadNovelFull: lower.includes("readnovelfull"),
-    isNovelFull: lower.includes("novelfull") && !lower.includes("readnovelfull"),
+    isNovelFull:
+      lower.includes("novelfull") && !lower.includes("readnovelfull"),
     isFreeWebNovel: lower.includes("freewebnovel"),
     isChapterPage: lower.includes("chapter"),
   };
@@ -42,7 +79,9 @@ function extractTitleFromUrl(url: string): string {
     let path = parsed.pathname;
     if (path.endsWith(".html")) path = path.slice(0, -5);
     const parts = path.split("/").filter(Boolean);
-    let slug = parts.find((p) => !p.toLowerCase().includes("chapter") && p.length > 5);
+    let slug = parts.find(
+      (p) => !p.toLowerCase().includes("chapter") && p.length > 5,
+    );
     if (!slug) slug = parts[parts.length - 1] || "Unknown Novel";
     slug = slug.replace(/^\d+[\s\-\.]+/, "");
     return slug
@@ -110,7 +149,10 @@ function getFirstChapterUrl(html: string, baseUrl: string): string | null {
   return null;
 }
 
-function extractNextChapterUrl(html: string, currentUrl: string): string | null {
+function extractNextChapterUrl(
+  html: string,
+  currentUrl: string,
+): string | null {
   const root = parse(html);
   for (const a of root.querySelectorAll("a")) {
     const text = (a.text || "").toLowerCase().trim();
@@ -159,20 +201,24 @@ function extractChapterTitle(html: string, chapterNum: number): string {
 function extractNovelMeta(
   html: string,
   baseUrl: string,
-  site: ReturnType<typeof detectSite>
+  site: ReturnType<typeof detectSite>,
 ) {
   const root = parse(html);
 
   let coverUrl = "";
-  const picDiv = root.querySelector("div.pic img") || root.querySelector("div.book img");
+  const picDiv =
+    root.querySelector("div.pic img") || root.querySelector("div.book img");
   if (picDiv) {
-    const src = picDiv.getAttribute("src") || picDiv.getAttribute("data-src") || "";
+    const src =
+      picDiv.getAttribute("src") || picDiv.getAttribute("data-src") || "";
     if (src) coverUrl = ensureAbsoluteUrl(src, baseUrl);
   }
 
   let author = "Unknown Author";
   if (site.isReadNovelFull) {
-    const authorMeta = root.querySelector("[itemprop='author'] [itemprop='name']");
+    const authorMeta = root.querySelector(
+      "[itemprop='author'] [itemprop='name']",
+    );
     if (authorMeta) author = authorMeta.getAttribute("content") || author;
   } else if (site.isNovelFull) {
     const infoDiv = root.querySelector("div.info");
@@ -190,25 +236,37 @@ function extractNovelMeta(
     const descDiv = root.querySelector("[itemprop='description']");
     if (descDiv) {
       const paras = descDiv.querySelectorAll("p");
-      synopsis = paras.length > 0
-        ? paras.map((p) => p.text.trim()).filter(Boolean).join("\n\n")
-        : descDiv.text.trim();
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
     }
   } else if (site.isNovelFull) {
     const descDiv = root.querySelector("div.desc-text");
     if (descDiv) {
       const paras = descDiv.querySelectorAll("p");
-      synopsis = paras.length > 0
-        ? paras.map((p) => p.text.trim()).filter(Boolean).join("\n\n")
-        : descDiv.text.trim();
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
     }
   } else if (site.isFreeWebNovel) {
     const descDiv = root.querySelector("div.m-desc .inner");
     if (descDiv) {
       const paras = descDiv.querySelectorAll("p");
-      synopsis = paras.length > 0
-        ? paras.map((p) => p.text.trim()).filter(Boolean).join("\n\n")
-        : descDiv.text.trim();
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
     }
   }
 
@@ -221,13 +279,17 @@ router.post("/api/novel/scrape-chapter", async (req, res) => {
     res.status(400).json({ error: "URL is required" });
     return;
   }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
+    return;
+  }
   try {
     const response = await httpClient.get(url);
     const html = response.data as string;
     const content = extractChapterContent(html);
     const chapterNum = parseInt(
       (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
-      10
+      10,
     );
     const title = extractChapterTitle(html, chapterNum);
     const nextUrl = extractNextChapterUrl(html, url);
@@ -244,6 +306,10 @@ router.post("/api/novel/meta", async (req, res) => {
     res.status(400).json({ error: "URL is required" });
     return;
   }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
+    return;
+  }
   try {
     const site = detectSite(url);
     const title = extractTitleFromUrl(url);
@@ -256,17 +322,20 @@ router.post("/api/novel/meta", async (req, res) => {
 
     if (site.isChapterPage) {
       const novelUrl = getNovelMainPageUrl(html, url);
-      if (novelUrl && novelUrl !== url) {
+      if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
         try {
           const novelResp = await httpClient.get(novelUrl);
           html = novelResp.data as string;
           pageUrl = novelUrl;
-        } catch {
-        }
+        } catch {}
       }
     }
 
-    const { coverUrl, author, synopsis } = extractNovelMeta(html, pageUrl, site);
+    const { coverUrl, author, synopsis } = extractNovelMeta(
+      html,
+      pageUrl,
+      site,
+    );
 
     let firstChapterUrl: string | null = null;
     if (!site.isChapterPage) {
@@ -298,6 +367,10 @@ router.post("/api/novel/next-chapter", async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
   if (!url) {
     res.status(400).json({ error: "URL is required" });
+    return;
+  }
+  if (!isAllowedNovelUrl(url)) {
+    res.status(400).json({ error: "URL is not from a supported source" });
     return;
   }
   try {

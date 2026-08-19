@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   checkForUpdate,
   skipVersion as skipVersionHelper,
@@ -48,7 +54,9 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   }, [updateInfo]);
 
   return (
-    <UpdateContext.Provider value={{ updateInfo, checkingUpdate, checkNow, clearUpdate, skipVersion }}>
+    <UpdateContext.Provider
+      value={{ updateInfo, checkingUpdate, checkNow, clearUpdate, skipVersion }}
+    >
       {children}
     </UpdateContext.Provider>
   );

@@ -9,7 +9,10 @@ export const CHAPTER_LIMIT_MAX = 500;
 export const CHAPTER_LIMIT_DANGER_THRESHOLD = 450;
 export const CHAPTER_LIMIT_CAUTION_THRESHOLD = 400;
 
-export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => void) {
+export function useChapterLimiter(
+  maxChStr: string,
+  setMaxChStr: (v: string) => void,
+) {
   const [dangerModalVisible, setDangerModalVisible] = useState(false);
   // Tracks the last value we evaluated so the modal only pops once per
   // "crossing" into the danger zone, not on every keystroke while typing in it.
@@ -28,7 +31,9 @@ export function useChapterLimiter(maxChStr: string, setMaxChStr: (v: string) => 
     if (num > CHAPTER_LIMIT_MAX) num = CHAPTER_LIMIT_MAX;
     setMaxChStr(String(num));
 
-    const wasBelowDanger = lastValueRef.current === null || lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
+    const wasBelowDanger =
+      lastValueRef.current === null ||
+      lastValueRef.current < CHAPTER_LIMIT_DANGER_THRESHOLD;
     if (num >= CHAPTER_LIMIT_DANGER_THRESHOLD && wasBelowDanger) {
       setDangerModalVisible(true);
     }

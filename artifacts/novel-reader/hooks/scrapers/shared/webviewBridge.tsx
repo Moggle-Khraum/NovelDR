@@ -14,9 +14,26 @@
 // webviewFallback in shared/http.ts) rather than calling it directly for
 // every fetch.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
-import WebView, { WebViewMessageEvent } from 'react-native-webview';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { StyleSheet } from "react-native";
+import {
+  WebView as RNWebView,
+  WebViewMessageEvent,
+  WebViewProps,
+} from "react-native-webview";
+
+// react-native-webview's published root index.d.ts declares
+// `class WebView<P = undefined> extends Component<WebViewProps & P>`. JSX can't
+// infer `P` from usage, so it defaults to `undefined`, and `WebViewProps & undefined`
+// collapses to `never` — rejecting every prop passed to <WebView />. This is a known
+// typing bug in the package itself (the correct functional-component declaration
+// lives at `lib/WebView.d.ts`, but plain Node module resolution picks up the root
+// `index.d.ts` instead). Casting to a plain component type sidesteps it without
+// touching runtime behavior — `RNWebView` is still the real thing underneath, and
+// still what `useRef<RNWebView>` below tracks for the instance/ref type.
+const WebView = RNWebView as unknown as React.ComponentType<
+  WebViewProps & React.RefAttributes<RNWebView>
+>;
 
 type PendingJob = {
   url: string;
@@ -38,10 +55,13 @@ let processNext: (() => void) | null = null;
  * Requires <WebViewFetchBridge /> to be mounted once, near the app root.
  * Rejects immediately (rather than hanging) if the bridge isn't mounted.
  */
-export const fetchViaWebView = (url: string, timeoutMs = 30000): Promise<string> => {
+export const fetchViaWebView = (
+  url: string,
+  timeoutMs = 30000,
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!processNext) {
-      reject(new Error('webview: WebViewFetchBridge is not mounted'));
+      reject(new Error("webview: WebViewFetchBridge is not mounted"));
       return;
     }
     queue.push({ url, timeoutMs, resolve, reject });
@@ -105,7 +125,7 @@ true;
 `;
 
 const DESKTOP_USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 /**
  * Mount this once, near the app root (see app/_layout.tsx). Renders nothing
@@ -117,17 +137,20 @@ export function WebViewFetchBridge() {
   const currentRef = useRef<PendingJob | null>(null);
   const settledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<RNWebView>(null);
 
-  const finish = useCallback((job: PendingJob, result: { html: string } | { error: Error }) => {
-    if (settledRef.current) return;
-    settledRef.current = true;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if ('html' in result) job.resolve(result.html);
-    else job.reject(result.error);
-    currentRef.current = null;
-    setCurrent(null);
-  }, []);
+  const finish = useCallback(
+    (job: PendingJob, result: { html: string } | { error: Error }) => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if ("html" in result) job.resolve(result.html);
+      else job.reject(result.error);
+      currentRef.current = null;
+      setCurrent(null);
+    },
+    [],
+  );
 
   const startNext = useCallback(() => {
     if (currentRef.current) return; // already busy with a job
@@ -137,7 +160,9 @@ export function WebViewFetchBridge() {
     currentRef.current = job;
     setCurrent(job);
     timeoutRef.current = setTimeout(() => {
-      finish(job, { error: new Error(`webview: timed out loading ${job.url}`) });
+      finish(job, {
+        error: new Error(`webview: timed out loading ${job.url}`),
+      });
       startNext();
     }, job.timeoutMs);
   }, [finish]);
@@ -157,7 +182,7 @@ export function WebViewFetchBridge() {
       finish(job, { html: event.nativeEvent.data });
       startNext();
     },
-    [finish, startNext]
+    [finish, startNext],
   );
 
   const handleError = useCallback(() => {
@@ -187,7 +212,7 @@ export function WebViewFetchBridge() {
       domStorageEnabled
       thirdPartyCookiesEnabled={true}
       cacheEnabled={false}
-      originWhitelist={['*']}
+      originWhitelist={["*"]}
       userAgent={DESKTOP_USER_AGENT}
       injectedJavaScriptBeforeContentLoaded={CHALLENGE_POLL_JS}
     />
@@ -198,7 +223,7 @@ const styles = StyleSheet.create({
   // Off-screen + zero-size rather than display:none — some WebView
   // implementations pause/never fire load events for display:none content.
   hidden: {
-    position: 'absolute',
+    position: "absolute",
     width: 1,
     height: 1,
     opacity: 0,

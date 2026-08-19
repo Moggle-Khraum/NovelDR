@@ -1,0 +1,79 @@
+name: Scraper Source Health Check
+
+# Daily liveness check for every scraper source: confirms each site is
+# actually reachable and returning real content. This is separate from
+# scripts/test-scrapers.ts, which only checks extraction logic against
+# saved fixtures - it can't tell you a live site changed or started
+# blocking us. This workflow catches that half of the problem instead.
+#
+# No app code, no status file, no in-app UI - if a source goes down or
+# starts blocking requests, this job just fails and GitHub emails the
+# repo owner automatically. That's the whole mechanism.
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # ~9 PM PHT / 9 AM UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  check-sources:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping each scraper source
+        run: |
+          set +e
+
+          # name|url - one homepage/known-stable page per source.
+          SOURCES="
+          AllNovel|https://allnovel.org/
+          FreeWebNovel|https://freewebnovel.com/
+          Novel-bin|https://novel-bin.com/
+          NovelArrow|https://novelarrow.com/
+          NovelBinCC|https://www.novelbin.cc/
+          NovelFullCom|https://novelfull.com/
+          NovelFullNet|https://novelfull.net/
+          NovelPhoenix|https://novelphoenix.com/
+          Novgo|https://novgo.net/
+          ReadNovelFull|https://readnovelfull.com/
+          RoyalRoad|https://www.royalroad.com/
+          Wuxiaworld|https://wuxiaworld.site/
+          "
+
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          MIN_BODY_BYTES=500
+
+          FAILED=""
+          echo "## Scraper Source Health" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Source | Status | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS='|' read -r name url; do
+            [ -z "$name" ] && continue
+
+            http_code=$(curl -s -o /tmp/body.html -w "%{http_code}" \
+              --max-time 20 --location \
+              -A "$UA" "$url")
+            body_size=$(wc -c < /tmp/body.html 2>/dev/null || echo 0)
+
+            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 400 ] && [ "$body_size" -ge "$MIN_BODY_BYTES" ]; then
+              echo "OK    $name ($url) - HTTP $http_code, ${body_size} bytes"
+              echo "| $name | ✅ OK | HTTP $http_code, ${body_size} bytes |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "FAIL  $name ($url) - HTTP $http_code, ${body_size} bytes"
+              echo "| $name | ❌ FAIL | HTTP $http_code, ${body_size} bytes |" >> "$GITHUB_STEP_SUMMARY"
+              FAILED="$FAILED $name"
+            fi
+          done <<< "$SOURCES"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$FAILED" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**Sources needing attention:**$FAILED" >> "$GITHUB_STEP_SUMMARY"
+            echo ""
+            echo "Failed sources:$FAILED"
+            exit 1
+          fi
+
+          echo "All sources reachable."

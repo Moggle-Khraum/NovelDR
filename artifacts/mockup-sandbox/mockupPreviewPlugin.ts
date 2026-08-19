@@ -52,6 +52,14 @@ export function mockupPreviewPlugin(): Plugin {
   }
 
   function generateSource(components: Array<DiscoveredComponent>): string {
+    // Note: globKey/importPath come from glob() scanning this repo's own
+    // src/components/mockups directory (local filenames, not user/network
+    // input), and each is passed through JSON.stringify() below, which is
+    // the correct sanitizer for embedding a string as a JS string literal —
+    // it escapes quotes, backslashes, and other special characters. The
+    // generated output is written to disk and imported normally; it is
+    // never eval'd or executed as a string.
+    // codeql[js/incomplete-sanitization]
     const entries = components
       .map(
         (c) =>

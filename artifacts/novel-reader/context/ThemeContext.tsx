@@ -25,8 +25,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem("app_theme").then((saved) => {
-      if (saved === "dark" || saved === "light" || saved === "sepia" || 
-          saved === "amoled" || saved === "warm" || saved === "slate") {
+      if (
+        saved === "dark" ||
+        saved === "light" ||
+        saved === "sepia" ||
+        saved === "amoled" ||
+        saved === "warm" ||
+        saved === "slate"
+      ) {
         setThemeState(saved as Theme);
       }
     });

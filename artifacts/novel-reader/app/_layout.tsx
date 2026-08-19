@@ -5,17 +5,31 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import {
+  Gelasio_400Regular,
+  Gelasio_700Bold,
+} from "@expo-google-fonts/gelasio";
+import { Tinos_400Regular, Tinos_700Bold } from "@expo-google-fonts/tinos";
+import {
+  ComicNeue_400Regular,
+  ComicNeue_700Bold,
+} from "@expo-google-fonts/comic-neue";
+import {
+  OldStandardTT_400Regular,
+  OldStandardTT_700Bold,
+} from "@expo-google-fonts/old-standard-tt";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
-import React, { useEffect, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Animated, 
-  ActivityIndicator 
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  ActivityIndicator,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -24,29 +38,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
+import { SiteHealthProvider } from "@/context/SiteHealthContext";
 import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
 
 SplashScreen.preventAutoHideAsync();
 
-// Native crash capture (segfaults/OOM/ANRs bypass the JS layer entirely,
-// so this must be initialized as early as possible, before any other
-// provider mounts). Reports upload automatically on next launch — no
-// device access or logcat needed to read them; view them in the Sentry
-// dashboard instead.
+// Sentry init (unchanged)
 Sentry.init({
-  dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648", // TODO: replace with your project's DSN from sentry.io
-  enableNative: true,
+  dsn: "https://e1e9b0ec8fc5a41b3d0c5d965e554b8a@o4511728407609344.ingest.us.sentry.io/4511730500763648",
   tracesSampleRate: 0.2,
-  // Keep breadcrumbs of nav/console so a crash report shows what led up to it
-  // (e.g. "reading" vs "backup" vs "download") without needing repro steps.
+  enableTombstone: true,
   enableAutoSessionTracking: true,
-  // Session Replay — records a masked visual replay of user sessions.
-  // 10% of normal sessions get recorded (replaysSessionSampleRate), but any
-  // session that hits an error/crash gets recorded at 100% (replaysOnErrorSampleRate),
-  // so a report like hers comes with an actual replay of what she was doing,
-  // not just a stack trace. Text/images/vectors stay masked by default —
-  // fine for a novel reader where screens include chapter content.
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
   integrations: [
@@ -60,8 +66,7 @@ Sentry.init({
 
 const queryClient = new QueryClient();
 
-// ── Init Screen Component ───────────────────────────────────────────────────
-
+// ── Init Screen Component (unchanged) ──────────────────────────────────────
 function InitScreen() {
   const { initSteps, initComplete } = useLibrary();
   const { colors } = useTheme();
@@ -69,31 +74,27 @@ function InitScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
 
-  // Spinning animation for running steps
   useEffect(() => {
     const animation = Animated.loop(
       Animated.timing(spinAnim, {
         toValue: 1,
         duration: 2000,
         useNativeDriver: true,
-      })
+      }),
     );
-    
     if (!initComplete) {
       animation.start();
     } else {
       animation.stop();
     }
-    
     return () => animation.stop();
-  }, [initComplete]);
+  }, [initComplete, spinAnim]);
 
   const spinInterpolation = spinAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: ["0deg", "360deg"],
   });
 
-  // Fade in when complete
   useEffect(() => {
     if (initComplete) {
       Animated.parallel([
@@ -109,83 +110,93 @@ function InitScreen() {
         }),
       ]).start();
     }
-  }, [initComplete]);
+  }, [initComplete, fadeAnim, slideAnim]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'running': return 'sync-outline';
-      case 'done': return 'checkmark-circle';
-      case 'error': return 'alert-circle';
-      default: return 'ellipse-outline';
+      case "running":
+        return "sync-outline";
+      case "done":
+        return "checkmark-circle";
+      case "error":
+        return "alert-circle";
+      default:
+        return "ellipse-outline";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return colors.accent;
-      case 'done': return '#27AE60';
-      case 'error': return '#FF4444';
-      default: return colors.textMuted;
+      case "running":
+        return colors.accent;
+      case "done":
+        return "#27AE60";
+      case "error":
+        return "#FF4444";
+      default:
+        return colors.textMuted;
     }
   };
 
   return (
-    <View style={[initStyles.container, { backgroundColor: colors.background }]}>
-      <Animated.View 
+    <View
+      style={[initStyles.container, { backgroundColor: colors.background }]}
+    >
+      <Animated.View
         style={[
           initStyles.content,
           {
             opacity: initComplete ? fadeAnim : 1,
-            transform: [{ translateY: initComplete ? slideAnim : 0 }]
-          }
+            transform: [{ translateY: initComplete ? slideAnim : 0 }],
+          },
         ]}
       >
-        {/* App Logo */}
         <View style={initStyles.logoContainer}>
-          <Ionicons 
-            name="book-outline" 
-            size={64} 
-            color={colors.accent} 
-          />
+          <Ionicons name="book-outline" size={64} color={colors.accent} />
         </View>
-        
         <Text style={[initStyles.title, { color: colors.text }]}>Novel DR</Text>
-        <Text style={[initStyles.version, { color: colors.textSecondary }]}>v1.3.12</Text>
-        
-        {/* Progress Steps */}
+        <Text style={[initStyles.version, { color: colors.textSecondary }]}>
+          v{Constants.expoConfig?.version ?? ""}
+        </Text>
         <View style={initStyles.stepsContainer}>
-          {initSteps.map((step, index) => (
-            <Animated.View 
-              key={step.id} 
+          {initSteps.map((step) => (
+            <Animated.View
+              key={step.id}
               style={[
                 initStyles.stepRow,
                 {
                   opacity: initComplete ? fadeAnim : 1,
-                }
+                },
               ]}
             >
-              {step.status === 'running' ? (
-                <Animated.View style={{ transform: [{ rotate: spinInterpolation }] }}>
-                  <Ionicons 
+              {step.status === "running" ? (
+                <Animated.View
+                  style={{ transform: [{ rotate: spinInterpolation }] }}
+                >
+                  <Ionicons
                     name="sync-outline"
                     size={18}
                     color={getStatusColor(step.status)}
                   />
                 </Animated.View>
               ) : (
-                <Ionicons 
+                <Ionicons
                   name={getStatusIcon(step.status)}
                   size={18}
                   color={getStatusColor(step.status)}
                 />
               )}
-              
               <View style={initStyles.stepTextContainer}>
                 <Text style={[initStyles.stepMessage, { color: colors.text }]}>
                   {step.message}
                 </Text>
                 {step.detail && (
-                  <Text style={[initStyles.stepDetail, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      initStyles.stepDetail,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {step.detail}
                   </Text>
                 )}
@@ -193,25 +204,25 @@ function InitScreen() {
             </Animated.View>
           ))}
         </View>
-
-        {/* Loading indicator or completion check */}
         <View style={initStyles.footerContainer}>
           {!initComplete ? (
             <View style={initStyles.loadingRow}>
               <ActivityIndicator size="small" color={colors.accent} />
-              <Text style={[initStyles.loadingText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  initStyles.loadingText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Preparing your library...
               </Text>
             </View>
           ) : (
-            <Animated.View 
-              style={[
-                initStyles.completeRow,
-                { opacity: fadeAnim }
-              ]}
+            <Animated.View
+              style={[initStyles.completeRow, { opacity: fadeAnim }]}
             >
               <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-              <Text style={[initStyles.completeText, { color: '#27AE60' }]}>
+              <Text style={[initStyles.completeText, { color: "#27AE60" }]}>
                 Ready!
               </Text>
             </Animated.View>
@@ -225,103 +236,115 @@ function InitScreen() {
 const initStyles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   content: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
     maxWidth: 400,
   },
   logoContainer: {
     marginBottom: 12,
   },
   title: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: "Inter_700Bold",
     fontSize: 28,
     marginBottom: 4,
   },
   version: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginBottom: 36,
   },
   stepsContainer: {
-    width: '100%',
+    width: "100%",
     gap: 14,
   },
   stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
   },
   stepTextContainer: {
     flex: 1,
   },
   stepMessage: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
     fontSize: 14,
     lineHeight: 20,
   },
   stepDetail: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: 2,
     lineHeight: 16,
   },
   footerContainer: {
     marginTop: 36,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   loadingText: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
     fontSize: 14,
   },
   completeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   completeText: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     fontSize: 16,
   },
 });
 
-// ── Root Layout Components ──────────────────────────────────────────────────
-
+// ── Root Layout Navigation ──────────────────────────────────────────────────
 function RootLayoutNav() {
-  const { colors } = useTheme();
   const { loading } = useLibrary();
-  
-  // Show init screen while loading
   if (loading) {
     return <InitScreen />;
   }
-  
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="novel/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="reader/[id]" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+      <Stack.Screen
+        name="reader/[id]"
+        options={{ headerShown: false, presentation: "fullScreenModal" }}
+      />
     </Stack>
   );
 }
 
-// ── Root Layout (with Providers) ────────────────────────────────────────────
-
+// ── Root Layout ──────────────────────────────────────────────────────────────
 export default Sentry.wrap(function RootLayout() {
+  // All hooks must be called unconditionally at the top level
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Gelasio_400Regular,
+    Gelasio_700Bold,
+    Tinos_400Regular,
+    Tinos_700Bold,
+    ComicNeue_400Regular,
+    ComicNeue_700Bold,
+    OldStandardTT_400Regular,
+    OldStandardTT_700Bold,
+    // Not on Google Fonts, so this isn't an @expo-google-fonts package -
+    // loaded directly from the bundled .ttf files instead. Family names
+    // here (the object keys) are what every reader font style must match
+    // exactly - see constants/readerSettings.ts FONT_PRESETS.
+    OpenDyslexic_400Regular: require("../assets/fonts/OpenDyslexic-Regular.ttf"),
+    OpenDyslexic_700Bold: require("../assets/fonts/OpenDyslexic-Bold.ttf"),
   });
 
   useEffect(() => {
@@ -330,27 +353,60 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Wait for fonts before showing anything
+  // Installs global JS-error and unhandled-rejection capture, chained
+  // alongside Sentry's own handler (not replacing it). Local rotating
+  // log lives on-device so it's viewable even without Sentry access.
+  useCrashLogger();
+
+  const connectivity = useConnectivity();
+  const [bannerState, setBannerState] = useState<{
+    visible: boolean;
+    type: "offline" | "online";
+  } | null>(null);
+
+  useEffect(() => {
+    if (connectivity.status === "offline") {
+      setBannerState({ visible: true, type: "offline" });
+    } else if (connectivity.status === "online") {
+      setBannerState({ visible: true, type: "online" });
+      const timer = setTimeout(() => {
+        setBannerState({ visible: false, type: "online" });
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [connectivity.status]);
+
+  // Early return after all hooks – this is now safe
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
     <SafeAreaProvider>
+      <ConnectivityBanner
+        isVisible={bannerState?.visible ?? false}
+        type={bannerState?.type ?? "offline"}
+        onDismiss={() =>
+          setBannerState((prev) => (prev ? { ...prev, visible: false } : null))
+        }
+      />
       <ErrorBoundary
-        onError={(error, stack) =>
+        onError={(error, stack) => {
           Sentry.captureException(error, {
             contexts: { react: { componentStack: stack } },
-          })
-        }
+          });
+          logRenderError(error, stack);
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
               <LibraryProvider>
                 <UpdateProvider>
-                  <RootLayoutNav />
-                  <WebViewFetchBridge />
+                  <SiteHealthProvider>
+                    <RootLayoutNav />
+                    <WebViewFetchBridge />
+                  </SiteHealthProvider>
                 </UpdateProvider>
               </LibraryProvider>
             </ThemeProvider>
