@@ -1034,8 +1034,8 @@ export const DICTIONARY_C: Record<string, DictionaryEntry> = {
   constituent: { meaning: "A part of a whole; a voter.", pos: "noun" },
   constrain: { meaning: "To restrict or limit.", pos: "verb" },
   constrict: { meaning: "To narrow or squeeze.", pos: "verb" },
-  construct: { meaning: "To build; to create.", pos: "verb" },
-  construct: { meaning: "A being or object created by magic.", pos: "noun" },
+  construct1: { meaning: "To build; to create.", pos: "verb" },
+  construct2: { meaning: "A being or object created by magic.", pos: "noun" },
   consult: { meaning: "To seek information or advice from.", pos: "verb" },
   consul: {
     meaning: "An official representing a government abroad.",
@@ -1084,11 +1084,8 @@ export const DICTIONARY_C: Record<string, DictionaryEntry> = {
   },
   contort: { meaning: "To twist violently.", pos: "verb" },
   contraband: { meaning: "Illegal goods.", pos: "noun" },
-  contract: {
-    meaning: "A binding agreement, often sealed with spiritual power.",
-    pos: "noun",
-  },
-  contract: { meaning: "To shrink; to make a formal agreement.", pos: "verb" },
+  contract1: { meaning: "A binding agreement, often sealed with spiritual power.", pos: "noun", },
+  contract2: { meaning: "To shrink; to make a formal agreement.", pos: "verb" },
   contradict: { meaning: "To assert the opposite of.", pos: "verb" },
   contradistinction: { meaning: "Distinction by contrast.", pos: "noun" },
   contrail: {

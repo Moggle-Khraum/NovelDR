@@ -198,11 +198,8 @@ export const DICTIONARY_R: Record<string, DictionaryEntry> = {
   real: { meaning: "True; actual; genuine.", pos: "adjective" },
   realize: { meaning: "To become fully aware of something.", pos: "verb" },
   really: { meaning: "In fact; genuinely; very.", pos: "adverb" },
-  realm: {
-    meaning: "A level of existence or power hierarchy in mystical hierarchies.",
-    pos: "noun",
-  },
-  realm: { meaning: "A kingdom; a domain; a field.", pos: "noun" },
+  realm1: { meaning: "A level of existence or power hierarchy in mystical hierarchies.", pos: "noun", },
+  realm2: { meaning: "A kingdom; a domain; a field.", pos: "noun" },
   reanimate: {
     meaning: "To restore movement or false life to a dead body.",
     pos: "verb",
