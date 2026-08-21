@@ -11,7 +11,7 @@ function cleanWord(raw: string): string {
 
 export function useDictionary() {
   const [word, setWord] = useState<string | null>(null);
-  const [entry, setEntry] = useState<DictionaryEntry | null>(null);
+  const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [notFound, setNotFound] = useState(false);
 
   const lookup = useCallback((raw: string) => {
@@ -21,25 +21,24 @@ export function useDictionary() {
     const found = SIMPLE_DICTIONARY[clean];
     setWord(clean);
 
-    if (found) {
-      setEntry(found);
+    if (found && found.length > 0) {
+      setEntries(found);
       setNotFound(false);
     } else {
-      setEntry(null);
+      setEntries([]);
       setNotFound(true);
     }
   }, []);
 
   const clear = useCallback(() => {
     setWord(null);
-    setEntry(null);
+    setEntries([]);
     setNotFound(false);
   }, []);
 
   return {
     word,
-    definition: entry?.meaning ?? null,
-    partOfSpeech: entry?.pos ?? null,
+    entries,
     notFound,
     isOpen: word !== null,
     lookup,
