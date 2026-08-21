@@ -591,7 +591,10 @@ export const DICTIONARY_C: Record<string, DictionaryEntry> = {
     meaning: "A small piece; a microcircuit; to break off.",
     pos: "noun",
   },
-  chivalry: { meaning: "The medieval code of knights.", pos: "noun" },
+  chivalry: {
+    meaning: "The medieval knightly code of honor, courage, and courtesy.",
+    pos: "noun",
+  },
   chlorophyll: { meaning: "The green pigment in plants.", pos: "noun" },
   chloroplast: {
     meaning: "An organelle that performs photosynthesis in plant cells.",
@@ -1862,10 +1865,6 @@ export const DICTIONARY_C: Record<string, DictionaryEntry> = {
   },
   carol: {
     meaning: "A joyful song, especially a Christmas hymn.",
-    pos: "noun",
-  },
-  chivalry: {
-    meaning: "The medieval knightly code of honor, courage, and courtesy.",
     pos: "noun",
   },
   clairvoyant: {

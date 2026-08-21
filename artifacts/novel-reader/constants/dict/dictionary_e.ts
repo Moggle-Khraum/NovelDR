@@ -723,7 +723,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   electricity: { meaning: "A form of energy resulting from the existence of charged particles.", pos: "noun" },
   
   electron: { meaning: "A stable subatomic particle with a negative charge.", pos: "noun" },
-  "electron transport chain": { meaning: "A series of protein complexes that transfer electrons and generate ATP.", pos: "noun" },
   electronic: { meaning: "Operating through the use of electricity and circuits.", pos: "adjective" },
   electronics: { meaning: "The branch of physics and technology concerned with circuits and devices.", pos: "noun" },
   electrophysiology: { meaning: "The study of the electrical properties of biological cells and tissues.", pos: "noun" },
@@ -770,7 +769,7 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   
   
   
-  embodiment: { meaning: "A tangible or visible form of an idea or quality.", pos: "noun" },
+  embodiment: { meaning: "A tangible or visible form of an idea, quality, or feeling.", pos: "noun" },
   
   
   
@@ -822,7 +821,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   
   
   
-  "endoplasmic reticulum": { meaning: "A network of membranes involved in protein and lipid synthesis.", pos: "noun" },
   
   
   
@@ -892,7 +890,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   environmental: { meaning: "Relating to the natural world and its conditions.", pos: "adjective" },
   
   
-  "enzyme kinetics": { meaning: "The study of the rates of enzyme-catalyzed reactions.", pos: "noun" },
   enzymology: { meaning: "The study of enzymes and their functions.", pos: "noun" },
   
   
@@ -901,7 +898,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   
   epidermal: { meaning: "Relating to the outer layer of skin.", pos: "adjective" },
   epidermis: { meaning: "The outer layer of cells covering an organism.", pos: "noun" },
-  "epidermal growth factor": { meaning: "A protein that stimulates cell growth in the skin.", pos: "noun" },
   
   
   
@@ -995,7 +991,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   
   
   
-  "evolutionary biology": { meaning: "The study of the origins and changes of species over time.", pos: "noun" },
   
   
   
@@ -1118,7 +1113,6 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   elide: { meaning: "To omit or slur over in pronunciation; to suppress.", pos: "verb" },
   elocution: { meaning: "The skill of clear and expressive speech.", pos: "noun" },
   
-  embodiment: { meaning: "A tangible or visible form of an idea, quality, or feeling.", pos: "noun" },
   embolden: { meaning: "To give someone courage or confidence.", pos: "verb" },
   emboss: { meaning: "To carve or mould a design on a surface so that it stands out.", pos: "verb" },
   emigration: { meaning: "The act of leaving one's own country to settle in another.", pos: "noun" },

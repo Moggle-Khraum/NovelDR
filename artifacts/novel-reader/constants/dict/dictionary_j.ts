@@ -14,7 +14,10 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jackal: { meaning: "A wild dog; a person who does dirty work.", pos: "noun" },
   jacket: { meaning: "An outer garment; a covering.", pos: "noun" },
   jackknife: { meaning: "A folding knife; a type of dive.", pos: "noun" },
-  jackpot: { meaning: "A large prize; a success.", pos: "noun" },
+  jackpot: {
+    meaning: "A large prize or success; the top prize in a game.",
+    pos: "noun",
+  },
   jade: { meaning: "A green gemstone; a worn-out horse.", pos: "noun" },
   jaded: { meaning: "Tired; bored; worn out.", pos: "adjective" },
   jagged: { meaning: "Rough; having sharp points.", pos: "adjective" },
@@ -40,7 +43,10 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jaw: { meaning: "The bone of the mouth; to talk.", pos: "noun" },
   jazz: { meaning: "A style of music; enthusiasm.", pos: "noun" },
   jealous: { meaning: "Envious; suspicious of rivalry.", pos: "adjective" },
-  jealousy: { meaning: "The feeling of jealousy; envy.", pos: "noun" },
+  jealousy: {
+    meaning: "The feeling of envy or suspicion.",
+    pos: "noun",
+  },
   jeans: { meaning: "Denim trousers.", pos: "noun" },
   jeer: { meaning: "To mock; to taunt; a taunt.", pos: "verb" },
   jelly: { meaning: "A soft, sweet food; to jell.", pos: "noun" },
@@ -72,7 +78,10 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jockey: { meaning: "A horse rider; to maneuver.", pos: "noun" },
   jocular: { meaning: "Humorous; playful.", pos: "adjective" },
   jog: { meaning: "To run slowly; to nudge; a jog.", pos: "verb" },
-  joggle: { meaning: "To shake; to jolt.", pos: "verb" },
+  joggle: {
+    meaning: "To shake slightly; a joint between two pieces.",
+    pos: "verb",
+  },
   john: { meaning: "A toilet; a customer of a prostitute.", pos: "noun" },
   join: { meaning: "To connect; to become a member; to unite.", pos: "verb" },
   joint: {
@@ -86,7 +95,10 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jostle: { meaning: "To push; to bump against.", pos: "verb" },
   jot: { meaning: "A very small amount; to write quickly.", pos: "noun" },
   journal: { meaning: "A diary; a newspaper; a periodical.", pos: "noun" },
-  journalist: { meaning: "A person who writes for newspapers.", pos: "noun" },
+  journalist: {
+    meaning: "A person who writes for newspapers or broadcasts news.",
+    pos: "noun",
+  },
   journey: { meaning: "A trip; to travel.", pos: "noun" },
   jovial: { meaning: "Cheerful; merry.", pos: "adjective" },
   joy: { meaning: "Great happiness; delight.", pos: "noun" },
@@ -994,10 +1006,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "Relating to juxtaposition.",
     pos: "adjective",
   },
-  jackpot: {
-    meaning: "A large prize or success; the top prize in a game.",
-    pos: "noun",
-  },
   jackknifed: {
     meaning: "Folded like a jackknife; past tense of jackknife.",
     pos: "verb",
@@ -1016,10 +1024,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   },
   jazzercise: {
     meaning: "A form of exercise done to jazz music.",
-    pos: "noun",
-  },
-  jazzman: {
-    meaning: "A jazz musician.",
     pos: "noun",
   },
   jazzwoman: {
@@ -1041,10 +1045,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jeopardizing: {
     meaning: "Endangering; putting at risk.",
     pos: "verb",
-  },
-  jerkwater: {
-    meaning: "Insignificant; small and remote (of a town).",
-    pos: "adjective",
   },
   jestbook: {
     meaning: "A book of jokes or humorous tales.",
@@ -1074,10 +1074,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "A person who crafts jewelry.",
     pos: "noun",
   },
-  jewelweed: {
-    meaning: "A plant with orange flowers; a type of impatiens.",
-    pos: "noun",
-  },
   jibboom: {
     meaning: "A spar extending from the bow of a ship.",
     pos: "noun",
@@ -1105,10 +1101,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jiggly: {
     meaning: "Having a tendency to jiggle; soft and wobbly.",
     pos: "adjective",
-  },
-  jigsawed: {
-    meaning: "Cut with a jigsaw; formed like a puzzle.",
-    pos: "verb",
   },
   jihadism: {
     meaning: "The ideology associated with militant jihad.",
@@ -1141,10 +1133,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jinxing: {
     meaning: "Bringing bad luck to; cursing.",
     pos: "verb",
-  },
-  jitney: {
-    meaning: "A small bus or shared taxi.",
-    pos: "noun",
   },
   jitteriness: {
     meaning: "The state of being jittery; nervousness.",
@@ -1207,10 +1195,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "In a joint manner; together.",
     pos: "adverb",
   },
-  joist: {
-    meaning: "A horizontal beam supporting a floor or ceiling.",
-    pos: "noun",
-  },
   jokily: {
     meaning: "In a humorous or joking manner.",
     pos: "adverb",
@@ -1247,10 +1231,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "The practice of keeping a journal.",
     pos: "noun",
   },
-  journalist: {
-    meaning: "A person who writes for newspapers or broadcasts news.",
-    pos: "noun",
-  },
   journalistic: {
     meaning: "Relating to journalism.",
     pos: "adjective",
@@ -1266,14 +1246,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   joyriding: {
     meaning: "The act of taking a joyride.",
     pos: "noun",
-  },
-  jubilantly: {
-    meaning: "In a jubilant manner.",
-    pos: "adverb",
-  },
-  judicially: {
-    meaning: "In a judicial manner.",
-    pos: "adverb",
   },
   juggled: {
     meaning: "Tossed and caught objects; managed many tasks; past tense of juggle.",
@@ -1291,10 +1263,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "The act of extracting juice.",
     pos: "noun",
   },
-  jujitsu: {
-    meaning: "A martial art using holds and throws.",
-    pos: "noun",
-  },
   jumbal: {
     meaning: "A type of sweet biscuit or cake.",
     pos: "noun",
@@ -1310,10 +1278,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jumperless: {
     meaning: "Without a jumper.",
     pos: "adjective",
-  },
-  junkyard: {
-    meaning: "A place for scrap metal and discarded items.",
-    pos: "noun",
   },
   juxtaposed: {
     meaning: "Placed side by side for comparison; past tense of juxtapose.",
@@ -1384,10 +1348,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "In a jazzy manner.",
     pos: "adverb",
   },
-  jealousy: {
-    meaning: "The feeling of envy or suspicion.",
-    pos: "noun",
-  },
   jeaned: {
     meaning: "Wearing jeans.",
     pos: "adjective",
@@ -1399,10 +1359,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jellaba: {
     meaning: "A loose hooded robe worn in North Africa.",
     pos: "noun",
-  },
-  jellylike: {
-    meaning: "Resembling jelly.",
-    pos: "adjective",
   },
   jemmy: {
     meaning: "A short crowbar used by burglars.",
@@ -1452,23 +1408,15 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "Danced a jig; moved quickly up and down.",
     pos: "verb",
   },
-  jiggered: {
-    meaning: "Damaged; tired; surprised.",
-    pos: "adjective",
-  },
-  jiggery-pokery: {
+  "jiggery-pokery": {
     meaning: "Deceitful or dishonest activity.",
-    pos: "noun",
-  },
-  jihadist: {
-    meaning: "A supporter of jihad.",
     pos: "noun",
   },
   jillionth: {
     meaning: "The ordinal of a jillion; infinitesimally small.",
     pos: "adjective",
   },
-  jingle-jangle: {
+  "jingle-jangle": {
     meaning: "A continuous jingling sound.",
     pos: "noun",
   },
@@ -1505,10 +1453,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "In a cheerful manner.",
     pos: "adverb",
   },
-  joggle: {
-    meaning: "To shake slightly; a joint between two pieces.",
-    pos: "verb",
-  },
   johnny: {
     meaning: "A hospital gown; a man (slang).",
     pos: "noun",
@@ -1520,10 +1464,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   jointness: {
     meaning: "The quality of being joint or shared.",
     pos: "noun",
-  },
-  jokily: {
-    meaning: "In a joking manner.",
-    pos: "adverb",
   },
   jollily: {
     meaning: "In a jolly manner.",
@@ -1551,10 +1491,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
   },
   joyousness: {
     meaning: "The state of being joyous.",
-    pos: "noun",
-  },
-  joyride: {
-    meaning: "A ride for pleasure.",
     pos: "noun",
   },
   judaically: {
@@ -1585,10 +1521,6 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "In a dry or boring manner.",
     pos: "adverb",
   },
-  jujube: {
-    meaning: "A small fruit or lozenge.",
-    pos: "noun",
-  },
   jumbuck: {
     meaning: "A sheep (Australian slang).",
     pos: "noun",
@@ -1601,28 +1533,12 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "A person who supervises parachute jumps.",
     pos: "noun",
   },
-  junctural: {
-    meaning: "Relating to a juncture.",
-    pos: "adjective",
-  },
   juniorate: {
     meaning: "A period of training for junior members.",
     pos: "noun",
   },
-  juniority: {
-    meaning: "Junior status.",
-    pos: "noun",
-  },
-  junkyard: {
-    meaning: "A place for scrap metal.",
-    pos: "noun",
-  },
   juratory: {
     meaning: "Relating to an oath.",
-    pos: "adjective",
-  },
-  juristic: {
-    meaning: "Relating to legal theory.",
     pos: "adjective",
   },
   justiciar: {
