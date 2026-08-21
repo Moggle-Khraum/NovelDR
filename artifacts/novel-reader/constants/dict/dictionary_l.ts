@@ -1132,5 +1132,6 @@ lionize: {
   meaning: "To treat as a celebrity; to glorify.",
   pos: "verb",
 },
-  
+
+
 };
