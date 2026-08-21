@@ -359,7 +359,11 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
   meat: { meaning: "Flesh of animals used as food.", pos: "noun" },
   mechanic: { meaning: "A person who repairs machines.", pos: "noun" },
   mechanical: { meaning: "Relating to machines; automatic.", pos: "adjective" },
-  mechanism: { meaning: "A system of parts; a process.", pos: "noun" },
+  mechanism: {
+    meaning:
+      "A system of moving parts; a process or method by which something works.",
+    pos: "noun",
+  },
   mechanize: { meaning: "To make mechanical; to automate.", pos: "verb" },
   medal: { meaning: "A metal award; a commemorative piece.", pos: "noun" },
   meddle: { meaning: "To interfere; to involve oneself.", pos: "verb" },
@@ -426,7 +430,8 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
   menu: { meaning: "A list of dishes; a computer display.", pos: "noun" },
   mercantile: { meaning: "Relating to trade; commercial.", pos: "adjective" },
   mercenary: {
-    meaning: "A hired fighter who serves for payment rather than loyalty.",
+    meaning:
+      "A hired fighter who serves for payment rather than loyalty; a soldier hired to fight for a foreign country, motivated by greed.",
     pos: "noun",
   },
   merchandise: { meaning: "Goods for sale.", pos: "noun" },
@@ -544,7 +549,11 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
   migrant: { meaning: "A person who moves; a migrating animal.", pos: "noun" },
   migrate: { meaning: "To move from one place to another.", pos: "verb" },
   mild: { meaning: "Not severe; gentle; moderate.", pos: "adjective" },
-  mildew: { meaning: "A fungus; a mold.", pos: "noun" },
+  mildew: {
+    meaning:
+      "A fungus or mold that grows on plants or surfaces in damp conditions.",
+    pos: "noun",
+  },
   mile: { meaning: "A unit of distance.", pos: "noun" },
   milestone: { meaning: "A significant event; a stone marker.", pos: "noun" },
   milieu: { meaning: "An environment; a social setting.", pos: "noun" },
@@ -609,7 +618,10 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
     pos: "noun",
   },
   minus: { meaning: "Less; negative; a subtraction sign.", pos: "preposition" },
-  minute: { meaning: "A unit of time; extremely small.", pos: "noun" },
+  minute: {
+    meaning: "A unit of time; extremely small.",
+    pos: "noun",
+  },
   miracle: { meaning: "A supernatural event; a wonder.", pos: "noun" },
   miraculous: { meaning: "Like a miracle; remarkable.", pos: "adjective" },
   mirage: { meaning: "An optical illusion; a mirage.", pos: "noun" },
@@ -1184,11 +1196,6 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
     meaning: "Containing more meat; more substantial or rich in content.",
     pos: "adjective",
   },
-  mechanism: {
-    meaning:
-      "A system of moving parts; a process or method by which something works.",
-    pos: "noun",
-  },
   medallion: {
     meaning: "A large medal; a round or oval ornament, often worn as jewelry.",
     pos: "noun",
@@ -1224,11 +1231,6 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
   },
   menthol: {
     meaning: "A white crystalline substance with a minty taste and smell.",
-    pos: "noun",
-  },
-  mercenary: {
-    meaning:
-      "A soldier hired to fight for a foreign country; motivated by greed.",
     pos: "noun",
   },
   mercurial: {
@@ -1275,10 +1277,6 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
       "Tending to migrate; moving from one region to another seasonally.",
     pos: "adjective",
   },
-  mildew: {
-    meaning: "A fungus that grows on plants or surfaces in damp conditions.",
-    pos: "noun",
-  },
   milligram: {
     meaning: "A unit of mass equal to one thousandth of a gram.",
     pos: "noun",
@@ -1311,10 +1309,6 @@ export const DICTIONARY_M: Record<string, DictionaryEntry> = {
   },
   minuscule: {
     meaning: "Very small; tiny; also a lowercase letter.",
-    pos: "adjective",
-  },
-  minute: {
-    meaning: "Extremely small; (also a unit of time, already present).",
     pos: "adjective",
   },
   miscreant: {
