@@ -1089,6 +1089,470 @@ nostrum: {
   meaning: "A dubious or quack remedy; a medicine with no proven effect, promoted for profit.",
   pos: "noun",
 },
-
+// Add these entries to DICTIONARY_N (fourth batch – no duplicates)
+nacreous: {
+  meaning: "Having a lustrous, pearly appearance like mother‑of‑pearl; iridescent.",
+  pos: "adjective",
+},
+namby-pamby: {
+  meaning: "Weak, sentimental, or lacking in character; overly gentle or delicate.",
+  pos: "adjective",
+},
+nanotechnology: {
+  meaning: "The manipulation of matter on an atomic or molecular scale, typically below 100 nanometres.",
+  pos: "noun",
+},
+naphthalene: {
+  meaning: "A white, crystalline hydrocarbon (C₁₀H₈) with a strong odour, used in mothballs and as a chemical intermediate.",
+  pos: "noun",
+},
+narcissistic: {
+  meaning: "Having an excessive or erotic interest in oneself and one's physical appearance; self‑centred.",
+  pos: "adjective",
+},
+narcoleptic: {
+  meaning: "A person who suffers from narcolepsy; relating to or affected by sudden sleep episodes.",
+  pos: "noun",
+},
+narrowness: {
+  meaning: "The state or quality of being limited in width, scope, or tolerance; restrictedness.",
+  pos: "noun",
+},
+nasalization: {
+  meaning: "The phonetic process of producing a sound with nasal resonance, as in French or Portuguese.",
+  pos: "noun",
+},
+nationhood: {
+  meaning: "The status of being an independent, self‑governing nation or state.",
+  pos: "noun",
+},
+nativism: {
+  meaning: "The political policy or belief favouring the interests of native‑born inhabitants over immigrants.",
+  pos: "noun",
+},
+natterjack: {
+  meaning: "A small, toad (Epidalea calamita) found in sandy heaths in Europe, with a distinctive yellow stripe.",
+  pos: "noun",
+},
+natural‑born: {
+  meaning: "Holding citizenship or status by birth, rather than by naturalization; innate.",
+  pos: "adjective",
+},
+naumachia: {
+  meaning: "A mock sea battle staged as entertainment in ancient Rome.",
+  pos: "noun",
+},
+nauseating: {
+  meaning: "Causing nausea or disgust; sickening.",
+  pos: "adjective",
+},
+nautilus: {
+  meaning: "A marine mollusk with a spiral, chambered shell, belonging to the genus Nautilus.",
+  pos: "noun",
+},
+near‑death: {
+  meaning: "Occurring or experienced at the point of death; relating to a close brush with mortality.",
+  pos: "adjective",
+},
+neatness: {
+  meaning: "The quality of being tidy, orderly, or well‑arranged; cleanliness and precision.",
+  pos: "noun",
+},
+nebular: {
+  meaning: "Relating to a nebula; resembling a cloud of gas or dust in space.",
+  pos: "adjective",
+},
+necking: {
+  meaning: "Kissing, caressing, or petting affectionately; also a structural constriction.",
+  pos: "noun",
+},
+nectarous: {
+  meaning: "Sweet and delicious, like nectar; ambrosial.",
+  pos: "adjective",
+},
+needle‑like: {
+  meaning: "Resembling a needle in shape; slender, sharp, and pointed.",
+  pos: "adjective",
+},
+needling: {
+  meaning: "The act of provoking or taunting someone; persistent irritation.",
+  pos: "noun",
+},
+nefariousness: {
+  meaning: "The quality of being extremely wicked or villainous.",
+  pos: "noun",
+},
+negativistic: {
+  meaning: "Characterized by a negative or pessimistic outlook; uncooperative.",
+  pos: "adjective",
+},
+neglectfulness: {
+  meaning: "The state of being habitually careless or inattentive.",
+  pos: "noun",
+},
+negotiability: {
+  meaning: "The quality of being open to negotiation or transferable, especially a financial instrument.",
+  pos: "noun",
+},
+neighborliness: {
+  meaning: "The quality of being friendly, helpful, and sociable toward one's neighbours.",
+  pos: "noun",
+},
+nelson: {
+  meaning: "A wrestling hold in which one arm is passed under the opponent's arm and locked behind the neck.",
+  pos: "noun",
+},
+nematic: {
+  meaning: "Relating to a phase of liquid crystals in which molecules are oriented in parallel but not in layers.",
+  pos: "adjective",
+},
+neocortex: {
+  meaning: "The outermost layer of the cerebral cortex in mammals, responsible for higher brain functions.",
+  pos: "noun",
+},
+neogenesis: {
+  meaning: "The formation or regeneration of new tissue or structures, especially in biology and medicine.",
+  pos: "noun",
+},
+neolithic: {
+  meaning: "Relating to the later Stone Age, characterized by polished stone tools and the development of agriculture.",
+  pos: "adjective",
+},
+neologism: {
+  meaning: "A newly coined word or expression; a term or phrase that has come into common use recently.",
+  pos: "noun",
+},
+neonatologist: {
+  meaning: "A physician who specializes in the care of newborn infants, especially premature or ill babies.",
+  pos: "noun",
+},
+nephritic: {
+  meaning: "Relating to nephritis; affected by inflammation of the kidneys.",
+  pos: "adjective",
+},
+nephrologist: {
+  meaning: "A medical specialist in the diagnosis and treatment of kidney diseases.",
+  pos: "noun",
+},
+nepotistic: {
+  meaning: "Favoring relatives or friends, especially in giving jobs or appointments.",
+  pos: "adjective",
+},
+nerve gas: {
+  meaning: "A highly toxic chemical weapon that disrupts nerve signal transmission.",
+  pos: "noun",
+},
+nervine: {
+  meaning: "A remedy that soothes or calms the nerves; also having such an effect.",
+  pos: "noun",
+},
+nest egg: {
+  meaning: "A sum of money saved for the future; retirement savings.",
+  pos: "noun",
+},
+netball: {
+  meaning: "A team sport similar to basketball, played with a ball and two hoops, without dribbling.",
+  pos: "noun",
+},
+netting: {
+  meaning: "An open‑meshed fabric or structure, used for catching or enclosing things.",
+  pos: "noun",
+},
+nettler: {
+  meaning: "A person or thing that irritates or annoys.",
+  pos: "noun",
+},
+neuralgic: {
+  meaning: "Relating to or suffering from neuralgia; sharp, stabbing nerve pain.",
+  pos: "adjective",
+},
+neuritis: {
+  meaning: "Inflammation of a nerve or group of nerves, causing pain and loss of function.",
+  pos: "noun",
+},
+neuroanatomy: {
+  meaning: "The branch of anatomy that studies the structure of the nervous system.",
+  pos: "noun",
+},
+neurogenesis: {
+  meaning: "The process by which new neurons are formed in the brain, especially in adulthood.",
+  pos: "noun",
+},
+neuroimaging: {
+  meaning: "The use of techniques such as MRI and PET scans to visualize the structure and function of the brain.",
+  pos: "noun",
+},
+neuroimmunology: {
+  meaning: "The study of the interactions between the nervous and immune systems.",
+  pos: "noun",
+},
+neuropath: {
+  meaning: "A person suffering from neuropathy or a neurological disorder; also one obsessed with neurosis.",
+  pos: "noun",
+},
+neuroplasticity: {
+  meaning: "The brain's ability to reorganize itself by forming new neural connections throughout life.",
+  pos: "noun",
+},
+neuropsychiatric: {
+  meaning: "Relating to the combination of neurology and psychiatry; involving mental disorders with neurological causes.",
+  pos: "adjective",
+},
+neuroticism: {
+  meaning: "A personality trait characterized by a tendency toward anxiety, depression, and emotional instability.",
+  pos: "noun",
+},
+neutrally: {
+  meaning: "In an impartial, unbiased, or unemotional manner.",
+  pos: "adverb",
+},
+newfound: {
+  meaning: "Recently discovered, acquired, or achieved.",
+  pos: "adjective",
+},
+newcomer: {
+  meaning: "A person who has recently arrived or joined a community, activity, or profession.",
+  pos: "noun",
+},
+newness: {
+  meaning: "The quality of being new; freshness or novelty.",
+  pos: "noun",
+},
+newsman: {
+  meaning: "A male journalist or news reporter; a person who gathers or reports news.",
+  pos: "noun",
+},
+newt: {
+  meaning: "A small, semiaquatic amphibian with a slender body and tail, belonging to the salamander family.",
+  pos: "noun",
+},
+nigh: {
+  meaning: "Near in time, place, or relationship; almost.",
+  pos: "adverb",
+},
+nightjar: {
+  meaning: "A nocturnal bird with cryptic plumage and a distinctive churring call, feeding on flying insects.",
+  pos: "noun",
+},
+nightmarish: {
+  meaning: "Like a nightmare; terrifying, disturbing, or extremely unpleasant.",
+  pos: "adjective",
+},
+nihilistic: {
+  meaning: "Rejecting all religious and moral principles; believing that life has no ultimate meaning.",
+  pos: "adjective",
+},
+ninja: {
+  meaning: "A covert agent or mercenary in feudal Japan, skilled in espionage, sabotage, and martial arts.",
+  pos: "noun",
+},
+niobium: {
+  meaning: "A soft, grey, ductile metallic element (Nb) used in superconductors and alloy steels.",
+  pos: "noun",
+},
+nitrite: {
+  meaning: "A salt or ester of nitrous acid, used in food preservation and as a chemical reagent.",
+  pos: "noun",
+},
+nitro: {
+  meaning: "Short for nitroglycerin; also a chemical prefix indicating a nitro group (NO₂).",
+  pos: "noun",
+},
+nocturne: {
+  meaning: "A short, lyrical musical piece evocative of the night, often for piano.",
+  pos: "noun",
+},
+noddle: {
+  meaning: "The head; a person's head, often used humorously or affectionately.",
+  pos: "noun",
+},
+noisemaker: {
+  meaning: "A device or person that produces noise, especially for celebration or distraction.",
+  pos: "noun",
+},
+nomadic: {
+  meaning: "Relating to nomads; wandering; having no fixed home, moving from place to place.",
+  pos: "adjective",
+},
+nominalism: {
+  meaning: "The philosophical doctrine that abstract concepts and universals have no independent existence, only names.",
+  pos: "noun",
+},
+nominative: {
+  meaning: "Relating to the grammatical case that marks the subject of a verb.",
+  pos: "adjective",
+},
+nonjudgmental: {
+  meaning: "Not judging others harshly; tolerant and accepting.",
+  pos: "adjective",
+},
+noncompetitive: {
+  meaning: "Not involving competition; not inclined to compete.",
+  pos: "adjective",
+},
+nonfat: {
+  meaning: "Containing no fat or negligible amounts; fat‑free, usually of dairy products.",
+  pos: "adjective",
+},
+noninvasive: {
+  meaning: "Not involving the introduction of instruments into the body; not causing tissue damage.",
+  pos: "adjective",
+},
+nonrenewable: {
+  meaning: "Not capable of being replaced once used; finite, as a natural resource.",
+  pos: "adjective",
+},
+nonsmoker: {
+  meaning: "A person who does not smoke tobacco.",
+  pos: "noun",
+},
+nonstarter: {
+  meaning: "An idea, proposal, or candidate that has no chance of success.",
+  pos: "noun",
+},
+nontoxic: {
+  meaning: "Not poisonous; safe to handle, consume, or come into contact with.",
+  pos: "adjective",
+},
+noontide: {
+  meaning: "The time of noon; midday.",
+  pos: "noun",
+},
+normative: {
+  meaning: "Relating to or prescribing standards, norms, or rules; establishing what is considered normal.",
+  pos: "adjective",
+},
+northernmost: {
+  meaning: "Farthest to the north; situated at the extreme north of a region.",
+  pos: "adjective",
+},
+nosecone: {
+  meaning: "The forward, pointed section of a rocket, missile, or aircraft, designed to reduce drag.",
+  pos: "noun",
+},
+nosology: {
+  meaning: "The branch of medicine dealing with the classification and naming of diseases.",
+  pos: "noun",
+},
+nostalgist: {
+  meaning: "A person who feels or expresses nostalgia; one who longs for the past.",
+  pos: "noun",
+},
+notability: {
+  meaning: "The state of being important, prominent, or worthy of notice; also a notable person.",
+  pos: "noun",
+},
+nous: {
+  meaning: "Practical intelligence; common sense; also, in philosophy, the mind or intellect.",
+  pos: "noun",
+},
+novella: {
+  meaning: "A short novel or a long short story, typically with a focused plot and fewer characters.",
+  pos: "noun",
+},
+noxiousness: {
+  meaning: "The quality of being harmful, poisonous, or injurious.",
+  pos: "noun",
+},
+nub: {
+  meaning: "The central point or essence of a matter; a small lump or protuberance.",
+  pos: "noun",
+},
+nubile: {
+  meaning: "(Of a woman) suitable for marriage, especially in terms of age and physical development.",
+  pos: "adjective",
+},
+nuclear: {
+  meaning: "Relating to the nucleus of an atom or a cell; involving nuclear energy or weapons.",
+  pos: "adjective",
+},
+nucleate: {
+  meaning: "To form or act as a nucleus; to begin the formation of a crystalline structure.",
+  pos: "verb",
+},
+nucleation: {
+  meaning: "The initial step in the formation of a new phase, such as a crystal, droplet, or bubble.",
+  pos: "noun",
+},
+nucleotide: {
+  meaning: "The basic building block of nucleic acids (DNA and RNA), consisting of a base, sugar, and phosphate.",
+  pos: "noun",
+},
+nudism: {
+  meaning: "The practice of going naked, especially in social settings, for reasons of health or freedom.",
+  pos: "noun",
+},
+nudity: {
+  meaning: "The state of being without clothing; nakedness.",
+  pos: "noun",
+},
+nullification: {
+  meaning: "The act of making something legally void or invalid; the state of being nullified.",
+  pos: "noun",
+},
+nullity: {
+  meaning: "The state of being void, invalid, or worthless; a nonexistent thing.",
+  pos: "noun",
+},
+numbing: {
+  meaning: "Causing insensibility or loss of feeling, physically or emotionally; dulling.",
+  pos: "adjective",
+},
+numeracy: {
+  meaning: "The ability to understand and work with numbers; basic mathematical competence.",
+  pos: "noun",
+},
+numeration: {
+  meaning: "The process of numbering, counting, or computing; a system of numbering.",
+  pos: "noun",
+},
+numerator: {
+  meaning: "The top number in a fraction, indicating how many parts of the whole are taken.",
+  pos: "noun",
+},
+numeric: {
+  meaning: "Relating to or expressed as numbers; numerical.",
+  pos: "adjective",
+},
+numismatics: {
+  meaning: "The study or collection of coins, medals, and paper currency.",
+  pos: "noun",
+},
+nunnery: {
+  meaning: "A convent or religious house for nuns.",
+  pos: "noun",
+},
+nuptials: {
+  meaning: "A wedding ceremony; marriage rites.",
+  pos: "noun",
+},
+nursemaid: {
+  meaning: "A woman employed to look after young children; a nanny.",
+  pos: "noun",
+},
+nurseryman: {
+  meaning: "A person who grows or sells plants, especially trees or shrubs, for cultivation.",
+  pos: "noun",
+},
+nuthatch: {
+  meaning: "A small songbird with a strong bill, known for climbing down trees headfirst.",
+  pos: "noun",
+},
+nutria: {
+  meaning: "A large semiaquatic rodent (Myocastor coypus), also called a coypu, valued for its fur.",
+  pos: "noun",
+},
+nutritionist: {
+  meaning: "A person who specializes in the study of nutrition and the effect of food on health.",
+  pos: "noun",
+},
+nutritive: {
+  meaning: "Relating to or providing nutrition; nourishing.",
+  pos: "adjective",
+},
+nuzzling: {
+  meaning: "The action of rubbing or pressing gently with the nose or snout.",
+  pos: "noun",
+},
   
 };
