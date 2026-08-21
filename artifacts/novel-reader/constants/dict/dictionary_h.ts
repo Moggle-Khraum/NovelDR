@@ -1,10 +1,10 @@
-// additional_dictionary_h_1.ts
+// dictionary_h.ts
 export type DictionaryEntry = {
   meaning: string;
   pos?: string;
 };
 
-export const ADDITIONAL_DICTIONARY_H_1: Record<string, DictionaryEntry> = {
+export const DICTIONARY_H: Record<string, DictionaryEntry> = {
   hack: {
     meaning:
       "To cut or chop with rough, heavy blows; to gain unauthorized access to a computer system; to manage or cope with something.",
