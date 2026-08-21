@@ -5,9 +5,22 @@ export type DictionaryEntry = {
 };
 
 export const ADDITIONAL_DICTIONARY_H_1: Record<string, DictionaryEntry> = {
-  hacked: { meaning: "Cut roughly or gained unauthorized access; past tense of hack.", pos: "verb" },
-  hacker: { meaning: "A person who gains unauthorized access to computers; a skilled programmer.", pos: "noun" },
-  hacking: { meaning: "The activity of gaining unauthorized access; cutting roughly.", pos: "noun" },
+  hack: {
+    meaning:
+      "To cut or chop with rough, heavy blows; to gain unauthorized access to a computer system; to manage or cope with something.",
+    pos: "verb",
+  },
+  hacked: {
+    meaning:
+      "Cut or chopped roughly; gained unauthorized access to a computer or network.",
+    pos: "verb",
+  },
+  hacking: {
+    meaning:
+      "The act of cutting or chopping; the activity of gaining unauthorized access to computer systems or networks; a harsh, dry cough.",
+    pos: "noun",
+  },
+  
   hackable: { meaning: "Capable of being hacked or modified.", pos: "adjective" },
   hackathon: { meaning: "An event where people collaborate intensively on software projects.", pos: "noun" },
   hackney: { meaning: "A horse-drawn carriage; to make common or stale.", pos: "noun" },
