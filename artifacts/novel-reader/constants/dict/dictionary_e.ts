@@ -638,530 +638,621 @@ export const DICTIONARY_E: Record<string, DictionaryEntry> = {
   eye: { meaning: "The organ of sight; to look at.", pos: "noun" },
   eyebrow: { meaning: "The hair above the eye.", pos: "noun" },
   eyelid: { meaning: "The fold of skin covering the eye.", pos: "noun" },
-    // --- 300+ additional common "E" words ---
-  
-  
-  
+  // --- 300+ additional common "E" words ---
+
   earache: { meaning: "Pain in the ear.", pos: "noun" },
-  eardrum: { meaning: "The membrane in the ear that vibrates to transmit sound.", pos: "noun" },
-  
-  earmark: { meaning: "To set aside for a specific purpose; a distinguishing mark.", pos: "verb" },
-  
-  
-  earnings: { meaning: "Money obtained in return for labor or investment.", pos: "noun" },
-  earphone: { meaning: "A device worn over the ears to listen to audio.", pos: "noun" },
+  eardrum: {
+    meaning: "The membrane in the ear that vibrates to transmit sound.",
+    pos: "noun",
+  },
+
+  earmark: {
+    meaning: "To set aside for a specific purpose; a distinguishing mark.",
+    pos: "verb",
+  },
+
+  earnings: {
+    meaning: "Money obtained in return for labor or investment.",
+    pos: "noun",
+  },
+  earphone: {
+    meaning: "A device worn over the ears to listen to audio.",
+    pos: "noun",
+  },
   earring: { meaning: "A piece of jewelry worn on the earlobe.", pos: "noun" },
-  
-  
+
   earthworm: { meaning: "A burrowing worm that aerates soil.", pos: "noun" },
-  
+
   easel: { meaning: "A stand for supporting an artist's canvas.", pos: "noun" },
-  
-  Easter: { meaning: "A Christian festival celebrating the resurrection of Jesus.", pos: "noun" },
+
+  Easter: {
+    meaning: "A Christian festival celebrating the resurrection of Jesus.",
+    pos: "noun",
+  },
   eastern: { meaning: "Relating to the east.", pos: "adjective" },
-  
-  easygoing: { meaning: "Relaxed and tolerant; not easily upset.", pos: "adjective" },
-  
+
+  easygoing: {
+    meaning: "Relaxed and tolerant; not easily upset.",
+    pos: "adjective",
+  },
+
   eatable: { meaning: "Fit to be eaten; edible.", pos: "adjective" },
-  
-  
-  
-  
-  
-  ecological: { meaning: "Relating to the study of ecosystems and organisms.", pos: "adjective" },
-  
-  
-  economical: { meaning: "Giving good value for money; thrifty.", pos: "adjective" },
-  economics: { meaning: "The study of the production and consumption of goods.", pos: "noun" },
-  
-  
-  
-  ecstatic: { meaning: "Feeling or expressing overwhelming joy.", pos: "adjective" },
-  
-  
-  
-  
-  
-  edition: { meaning: "A particular version of a published text.", pos: "noun" },
-  editor: { meaning: "A person who prepares written material for publication.", pos: "noun" },
-  
-  
-  educational: { meaning: "Relating to the process of teaching or learning.", pos: "adjective" },
-  
-  
-  
-  
-  effectiveness: { meaning: "The degree to which something is successful.", pos: "noun" },
+
+  ecological: {
+    meaning: "Relating to the study of ecosystems and organisms.",
+    pos: "adjective",
+  },
+
+  economical: {
+    meaning: "Giving good value for money; thrifty.",
+    pos: "adjective",
+  },
+  economics: {
+    meaning: "The study of the production and consumption of goods.",
+    pos: "noun",
+  },
+
+  ecstatic: {
+    meaning: "Feeling or expressing overwhelming joy.",
+    pos: "adjective",
+  },
+
+  edition: {
+    meaning: "A particular version of a published text.",
+    pos: "noun",
+  },
+  editor: {
+    meaning: "A person who prepares written material for publication.",
+    pos: "noun",
+  },
+
+  educational: {
+    meaning: "Relating to the process of teaching or learning.",
+    pos: "adjective",
+  },
+
+  effectiveness: {
+    meaning: "The degree to which something is successful.",
+    pos: "noun",
+  },
   effects: { meaning: "Personal belongings; property.", pos: "noun" },
-  
-  efficient: { meaning: "Achieving maximum productivity with minimum wasted effort.", pos: "adjective" },
-  
-  
+
+  efficient: {
+    meaning: "Achieving maximum productivity with minimum wasted effort.",
+    pos: "adjective",
+  },
+
   eggplant: { meaning: "A purple fruit used as a vegetable.", pos: "noun" },
-  
-  egocentric: { meaning: "Self-centered; focused on oneself.", pos: "adjective" },
-  
+
+  egocentric: {
+    meaning: "Self-centered; focused on oneself.",
+    pos: "adjective",
+  },
+
   eighteen: { meaning: "The number 18.", pos: "numeral" },
   eighth: { meaning: "The ordinal form of eight.", pos: "adjective" },
   eightieth: { meaning: "The ordinal form of eighty.", pos: "adjective" },
   eighty: { meaning: "The number 80.", pos: "numeral" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   eldest: { meaning: "The oldest; firstborn.", pos: "adjective" },
-  
-  
-  
-  electrical: { meaning: "Relating to electricity; powered by electricity.", pos: "adjective" },
-  electricity: { meaning: "A form of energy resulting from the existence of charged particles.", pos: "noun" },
-  
-  electron: { meaning: "A stable subatomic particle with a negative charge.", pos: "noun" },
-  electronic: { meaning: "Operating through the use of electricity and circuits.", pos: "adjective" },
-  electronics: { meaning: "The branch of physics and technology concerned with circuits and devices.", pos: "noun" },
-  electrophysiology: { meaning: "The study of the electrical properties of biological cells and tissues.", pos: "noun" },
-  
-  elegant: { meaning: "Graceful and stylish; pleasingly luxurious.", pos: "adjective" },
-  
-  
-  elemental: { meaning: "Relating to the basic forces of nature; fundamental.", pos: "adjective" },
-  
-  elementary: { meaning: "Introductory; basic; relating to the first principles.", pos: "adjective" },
-  
-  
-  
-  
+
+  electrical: {
+    meaning: "Relating to electricity; powered by electricity.",
+    pos: "adjective",
+  },
+  electricity: {
+    meaning:
+      "A form of energy resulting from the existence of charged particles.",
+    pos: "noun",
+  },
+
+  electron: {
+    meaning: "A stable subatomic particle with a negative charge.",
+    pos: "noun",
+  },
+  electronic: {
+    meaning: "Operating through the use of electricity and circuits.",
+    pos: "adjective",
+  },
+  electronics: {
+    meaning:
+      "The branch of physics and technology concerned with circuits and devices.",
+    pos: "noun",
+  },
+  electrophysiology: {
+    meaning:
+      "The study of the electrical properties of biological cells and tissues.",
+    pos: "noun",
+  },
+
+  elegant: {
+    meaning: "Graceful and stylish; pleasingly luxurious.",
+    pos: "adjective",
+  },
+
+  elemental: {
+    meaning: "Relating to the basic forces of nature; fundamental.",
+    pos: "adjective",
+  },
+
+  elementary: {
+    meaning: "Introductory; basic; relating to the first principles.",
+    pos: "adjective",
+  },
+
   eleventh: { meaning: "The ordinal form of eleven.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  eloquent: { meaning: "Fluent and persuasive in speaking or writing.", pos: "adjective" },
-  
-  
-  
-  
-  elusive: { meaning: "Difficult to find, catch, or achieve.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  embodiment: { meaning: "A tangible or visible form of an idea, quality, or feeling.", pos: "noun" },
-  
-  
-  
-  
-  
-  embryology: { meaning: "The study of embryos and their development.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  emotional: { meaning: "Relating to emotions; easily affected by emotions.", pos: "adjective" },
-  
-  
-  
-  
-  empirical: { meaning: "Based on observation and experiment rather than theory.", pos: "adjective" },
-  
-  
-  
+
+  eloquent: {
+    meaning: "Fluent and persuasive in speaking or writing.",
+    pos: "adjective",
+  },
+
+  elusive: {
+    meaning: "Difficult to find, catch, or achieve.",
+    pos: "adjective",
+  },
+
+  embodiment: {
+    meaning: "A tangible or visible form of an idea, quality, or feeling.",
+    pos: "noun",
+  },
+
+  embryology: {
+    meaning: "The study of embryos and their development.",
+    pos: "noun",
+  },
+
+  emotional: {
+    meaning: "Relating to emotions; easily affected by emotions.",
+    pos: "adjective",
+  },
+
+  empirical: {
+    meaning: "Based on observation and experiment rather than theory.",
+    pos: "adjective",
+  },
+
   employment: { meaning: "The state of having paid work; a job.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  enchantress: { meaning: "A female spellcaster specializing in enchantment magic.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  engagement: { meaning: "A formal agreement to marry; a commitment; a battle.", pos: "noun" },
-  
-  
-  engineering: { meaning: "The branch of science and technology concerned with design and construction.", pos: "noun" },
-  
-  
-  
-  
-  enigmatic: { meaning: "Mysterious; difficult to understand.", pos: "adjective" },
-  
+
+  enchantress: {
+    meaning: "A female spellcaster specializing in enchantment magic.",
+    pos: "noun",
+  },
+
+  engagement: {
+    meaning: "A formal agreement to marry; a commitment; a battle.",
+    pos: "noun",
+  },
+
+  engineering: {
+    meaning:
+      "The branch of science and technology concerned with design and construction.",
+    pos: "noun",
+  },
+
+  enigmatic: {
+    meaning: "Mysterious; difficult to understand.",
+    pos: "adjective",
+  },
+
   enjoyable: { meaning: "Pleasant; giving enjoyment.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  entertainment: { meaning: "The action of providing amusement; a show or performance.", pos: "noun" },
-  
-  
-  enthusiastic: { meaning: "Highly excited; showing intense interest.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  environmental: { meaning: "Relating to the natural world and its conditions.", pos: "adjective" },
-  
-  
-  enzymology: { meaning: "The study of enzymes and their functions.", pos: "noun" },
-  
-  
-  
-  
-  
-  epidermal: { meaning: "Relating to the outer layer of skin.", pos: "adjective" },
-  epidermis: { meaning: "The outer layer of cells covering an organism.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
+  entertainment: {
+    meaning: "The action of providing amusement; a show or performance.",
+    pos: "noun",
+  },
+
+  enthusiastic: {
+    meaning: "Highly excited; showing intense interest.",
+    pos: "adjective",
+  },
+
+  environmental: {
+    meaning: "Relating to the natural world and its conditions.",
+    pos: "adjective",
+  },
+
+  enzymology: {
+    meaning: "The study of enzymes and their functions.",
+    pos: "noun",
+  },
+
+  epidermal: {
+    meaning: "Relating to the outer layer of skin.",
+    pos: "adjective",
+  },
+  epidermis: {
+    meaning: "The outer layer of cells covering an organism.",
+    pos: "noun",
+  },
+
   equestrian: { meaning: "Relating to horse riding.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
+
   eraser: { meaning: "An object used to remove pencil marks.", pos: "noun" },
-  
-  erection: { meaning: "The action of erecting something; an upright structure.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  eruption: { meaning: "A sudden burst of lava or other material.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  establishment: { meaning: "An organization or institution; the act of establishing.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  ethical: { meaning: "Relating to moral principles; morally right.", pos: "adjective" },
-  ethics: { meaning: "The study of moral principles; a system of moral values.", pos: "noun" },
-  
-  ethnicity: { meaning: "The state of belonging to a social group that shares a common culture.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  evacuation: { meaning: "The action of removing people from a dangerous place.", pos: "noun" },
-  
-  
-  evaluation: { meaning: "The process of assessing or appraising.", pos: "noun" },
-  
-  evaporation: { meaning: "The process of turning from liquid to vapor.", pos: "noun" },
-  
-  
-  
-  
-  
-  eventually: { meaning: "At the end of a process; in the end.", pos: "adverb" },
-  
-  
-  
-  
+
+  erection: {
+    meaning: "The action of erecting something; an upright structure.",
+    pos: "noun",
+  },
+
+  eruption: {
+    meaning: "A sudden burst of lava or other material.",
+    pos: "noun",
+  },
+
+  establishment: {
+    meaning: "An organization or institution; the act of establishing.",
+    pos: "noun",
+  },
+
+  ethical: {
+    meaning: "Relating to moral principles; morally right.",
+    pos: "adjective",
+  },
+  ethics: {
+    meaning: "The study of moral principles; a system of moral values.",
+    pos: "noun",
+  },
+
+  ethnicity: {
+    meaning:
+      "The state of belonging to a social group that shares a common culture.",
+    pos: "noun",
+  },
+
+  evacuation: {
+    meaning: "The action of removing people from a dangerous place.",
+    pos: "noun",
+  },
+
+  evaluation: {
+    meaning: "The process of assessing or appraising.",
+    pos: "noun",
+  },
+
+  evaporation: {
+    meaning: "The process of turning from liquid to vapor.",
+    pos: "noun",
+  },
+
+  eventually: {
+    meaning: "At the end of a process; in the end.",
+    pos: "adverb",
+  },
+
   everyone: { meaning: "Every person; everybody.", pos: "pronoun" },
-  everything: { meaning: "All things; every object or circumstance.", pos: "pronoun" },
+  everything: {
+    meaning: "All things; every object or circumstance.",
+    pos: "pronoun",
+  },
   everywhere: { meaning: "In or to all places.", pos: "adverb" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  examination: { meaning: "A formal test of knowledge; inspection.", pos: "noun" },
-  
-  
-  
-  excavation: { meaning: "The action of excavating; a site being excavated.", pos: "noun" },
-  
-  
-  
-  
-  
+
+  examination: {
+    meaning: "A formal test of knowledge; inspection.",
+    pos: "noun",
+  },
+
+  excavation: {
+    meaning: "The action of excavating; a site being excavated.",
+    pos: "noun",
+  },
+
   exceptional: { meaning: "Unusually good; outstanding.", pos: "adjective" },
-  
-  
-  
-  excitement: { meaning: "A feeling of great enthusiasm and eagerness.", pos: "noun" },
-  exciting: { meaning: "Causing great enthusiasm and eagerness.", pos: "adjective" },
-  
-  
-  
-  
-  
-  
-  
-  
-  execution: { meaning: "The carrying out of a plan or action; the act of putting someone to death.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
+
+  excitement: {
+    meaning: "A feeling of great enthusiasm and eagerness.",
+    pos: "noun",
+  },
+  exciting: {
+    meaning: "Causing great enthusiasm and eagerness.",
+    pos: "adjective",
+  },
+
+  execution: {
+    meaning:
+      "The carrying out of a plan or action; the act of putting someone to death.",
+    pos: "noun",
+  },
+
   exhibition: { meaning: "A public display of art or items.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  expectation: { meaning: "A strong belief that something will happen.", pos: "noun" },
-  
-  
-  
-  
+
+  expectation: {
+    meaning: "A strong belief that something will happen.",
+    pos: "noun",
+  },
+
   expensive: { meaning: "Costing a lot of money.", pos: "adjective" },
-  
-  
-  experimental: { meaning: "Relating to experiments; based on trial.", pos: "adjective" },
-  
-  expertise: { meaning: "Expert skill or knowledge in a particular field.", pos: "noun" },
-  
-  expiration: { meaning: "The ending of a fixed period of time; the act of breathing out.", pos: "noun" },
-  
-  explanation: { meaning: "A statement that makes something clear.", pos: "noun" },
-  
-  
+
+  experimental: {
+    meaning: "Relating to experiments; based on trial.",
+    pos: "adjective",
+  },
+
+  expertise: {
+    meaning: "Expert skill or knowledge in a particular field.",
+    pos: "noun",
+  },
+
+  expiration: {
+    meaning: "The ending of a fixed period of time; the act of breathing out.",
+    pos: "noun",
+  },
+
+  explanation: {
+    meaning: "A statement that makes something clear.",
+    pos: "noun",
+  },
+
   explosion: { meaning: "A violent burst; a sudden increase.", pos: "noun" },
-  
-  exploration: { meaning: "The action of traveling in search of discovery.", pos: "noun" },
-  
-  
-  
-  exposure: { meaning: "The state of being exposed to something; a revealing.", pos: "noun" },
-  
-  expression: { meaning: "The process of conveying thought; a word or phrase.", pos: "noun" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  extinction: { meaning: "The state of being extinct; the action of dying out.", pos: "noun" },
-  
-  
-  
-  
-  
+
+  exploration: {
+    meaning: "The action of traveling in search of discovery.",
+    pos: "noun",
+  },
+
+  exposure: {
+    meaning: "The state of being exposed to something; a revealing.",
+    pos: "noun",
+  },
+
+  expression: {
+    meaning: "The process of conveying thought; a word or phrase.",
+    pos: "noun",
+  },
+
+  extinction: {
+    meaning: "The state of being extinct; the action of dying out.",
+    pos: "noun",
+  },
+
   extraction: { meaning: "The action of removing or taking out.", pos: "noun" },
-  
-  
-  
-  
-  
-  
+
   extremely: { meaning: "To a very great degree.", pos: "adverb" },
-  
-  
-  
-  
-  
-  
-  
-  eyelash: { meaning: "A hair growing on the edge of the eyelid.", pos: "noun" },
-  
+
+  eyelash: {
+    meaning: "A hair growing on the edge of the eyelid.",
+    pos: "noun",
+  },
+
   eyesight: { meaning: "The ability to see; vision.", pos: "noun" },
-  eyewitness: { meaning: "A person who has seen an event and can testify about it.", pos: "noun" },
-    // --- Additional batch of "E" words (60+ entries) ---
-  elderberry: { meaning: "A small, dark purple fruit from the elder tree, used in jams and wines.", pos: "noun" },
-  electrify: { meaning: "To charge with electricity; to thrill or excite greatly.", pos: "verb" },
+  eyewitness: {
+    meaning: "A person who has seen an event and can testify about it.",
+    pos: "noun",
+  },
+  // --- Additional batch of "E" words (60+ entries) ---
+  elderberry: {
+    meaning:
+      "A small, dark purple fruit from the elder tree, used in jams and wines.",
+    pos: "noun",
+  },
+  electrify: {
+    meaning: "To charge with electricity; to thrill or excite greatly.",
+    pos: "verb",
+  },
   electrocute: { meaning: "To kill or injure by electric shock.", pos: "verb" },
-  electrolysis: { meaning: "The process of using electricity to break down a compound.", pos: "noun" },
-  electrolyte: { meaning: "A substance that conducts electricity when dissolved in water.", pos: "noun" },
-  electromagnetic: { meaning: "Relating to the interrelation of electric and magnetic fields.", pos: "adjective" },
-  electrophoresis: { meaning: "The movement of charged particles in a fluid under an electric field.", pos: "noun" },
-  elegiac: { meaning: "Expressing sorrow or lamentation, like an elegy.", pos: "adjective" },
-  elfin: { meaning: "Small and delicate, like an elf; mischievous.", pos: "adjective" },
-  elide: { meaning: "To omit or slur over in pronunciation; to suppress.", pos: "verb" },
-  elocution: { meaning: "The skill of clear and expressive speech.", pos: "noun" },
-  
+  electrolysis: {
+    meaning: "The process of using electricity to break down a compound.",
+    pos: "noun",
+  },
+  electrolyte: {
+    meaning: "A substance that conducts electricity when dissolved in water.",
+    pos: "noun",
+  },
+  electromagnetic: {
+    meaning: "Relating to the interrelation of electric and magnetic fields.",
+    pos: "adjective",
+  },
+  electrophoresis: {
+    meaning:
+      "The movement of charged particles in a fluid under an electric field.",
+    pos: "noun",
+  },
+  elegiac: {
+    meaning: "Expressing sorrow or lamentation, like an elegy.",
+    pos: "adjective",
+  },
+  elfin: {
+    meaning: "Small and delicate, like an elf; mischievous.",
+    pos: "adjective",
+  },
+  elide: {
+    meaning: "To omit or slur over in pronunciation; to suppress.",
+    pos: "verb",
+  },
+  elocution: {
+    meaning: "The skill of clear and expressive speech.",
+    pos: "noun",
+  },
+
   embolden: { meaning: "To give someone courage or confidence.", pos: "verb" },
-  emboss: { meaning: "To carve or mould a design on a surface so that it stands out.", pos: "verb" },
-  emigration: { meaning: "The act of leaving one's own country to settle in another.", pos: "noun" },
-  emollient: { meaning: "A substance that softens or soothes the skin; having a softening effect.", pos: "noun" },
-  emolument: { meaning: "Payment or profit from employment or office; salary.", pos: "noun" },
-  emotive: { meaning: "Arousing intense feeling; relating to emotions.", pos: "adjective" },
-  empathy: { meaning: "The ability to understand and share the feelings of another.", pos: "noun" },
-  empress: { meaning: "A female ruler of an empire; the wife of an emperor.", pos: "noun" },
-  emulate: { meaning: "To strive to equal or surpass, often by imitating.", pos: "verb" },
-  emulsion: { meaning: "A fine dispersion of one liquid in another, e.g., milk.", pos: "noun" },
-  endemic: { meaning: "Native or restricted to a particular place or population.", pos: "adjective" },
-  endorsement: { meaning: "An expression of approval or support; the act of endorsing.", pos: "noun" },
-  engender: { meaning: "To cause or give rise to a feeling, situation, or condition.", pos: "verb" },
+  emboss: {
+    meaning: "To carve or mould a design on a surface so that it stands out.",
+    pos: "verb",
+  },
+  emigration: {
+    meaning: "The act of leaving one's own country to settle in another.",
+    pos: "noun",
+  },
+  emollient: {
+    meaning:
+      "A substance that softens or soothes the skin; having a softening effect.",
+    pos: "noun",
+  },
+  emolument: {
+    meaning: "Payment or profit from employment or office; salary.",
+    pos: "noun",
+  },
+  emotive: {
+    meaning: "Arousing intense feeling; relating to emotions.",
+    pos: "adjective",
+  },
+  empathy: {
+    meaning: "The ability to understand and share the feelings of another.",
+    pos: "noun",
+  },
+  empress: {
+    meaning: "A female ruler of an empire; the wife of an emperor.",
+    pos: "noun",
+  },
+  emulate: {
+    meaning: "To strive to equal or surpass, often by imitating.",
+    pos: "verb",
+  },
+  emulsion: {
+    meaning: "A fine dispersion of one liquid in another, e.g., milk.",
+    pos: "noun",
+  },
+  endemic: {
+    meaning: "Native or restricted to a particular place or population.",
+    pos: "adjective",
+  },
+  endorsement: {
+    meaning: "An expression of approval or support; the act of endorsing.",
+    pos: "noun",
+  },
+  engender: {
+    meaning: "To cause or give rise to a feeling, situation, or condition.",
+    pos: "verb",
+  },
   engulf: { meaning: "To swallow up or overwhelm completely.", pos: "verb" },
-  enjoin: { meaning: "To instruct or urge someone to do something; to prohibit.", pos: "verb" },
-  enliven: { meaning: "To make more lively, interesting, or cheerful.", pos: "verb" },
-  enormity: { meaning: "The great or extreme scale of something; a serious crime.", pos: "noun" },
+  enjoin: {
+    meaning: "To instruct or urge someone to do something; to prohibit.",
+    pos: "verb",
+  },
+  enliven: {
+    meaning: "To make more lively, interesting, or cheerful.",
+    pos: "verb",
+  },
+  enormity: {
+    meaning: "The great or extreme scale of something; a serious crime.",
+    pos: "noun",
+  },
   ensue: { meaning: "To happen afterwards or as a result.", pos: "verb" },
-  entropy: { meaning: "A measure of disorder or randomness in a system.", pos: "noun" },
-  envoy: { meaning: "A messenger or representative, especially on a diplomatic mission.", pos: "noun" },
-  epigram: { meaning: "A short, witty, and often satirical saying or poem.", pos: "noun" },
-  epistemology: { meaning: "The branch of philosophy concerned with the nature of knowledge.", pos: "noun" },
-  equanimity: { meaning: "Calmness and composure, especially in difficult situations.", pos: "noun" },
-  equinox: { meaning: "The time when day and night are of equal length, occurring twice a year.", pos: "noun" },
-  equivocal: { meaning: "Open to more than one interpretation; ambiguous.", pos: "adjective" },
-  estranged: { meaning: "No longer close or affectionate; alienated.", pos: "adjective" },
-  ethanol: { meaning: "A colorless, flammable alcohol used as a fuel and in beverages.", pos: "noun" },
-  evangelical: { meaning: "Relating to the Christian gospel; emphasizing salvation by faith.", pos: "adjective" },
-  exasperate: { meaning: "To irritate or provoke to a high degree; to anger.", pos: "verb" },
-  exactness: { meaning: "The quality of being precise, accurate, or strict.", pos: "noun" },
-  excise: { meaning: "A tax on certain goods; to remove by cutting out.", pos: "noun" },
-  excruciating: { meaning: "Intensely painful; agonizing; causing great suffering.", pos: "adjective" },
-  executioner: { meaning: "A person who carries out a sentence of death.", pos: "noun" },
-  exegesis: { meaning: "A critical interpretation or analysis of a text, especially scripture.", pos: "noun" },
-  exemplar: { meaning: "A person or thing that serves as a perfect example or model.", pos: "noun" },
-  exemplary: { meaning: "Serving as a desirable model; commendable.", pos: "adjective" },
-  exhilarate: { meaning: "To make someone feel very happy, animated, or elated.", pos: "verb" },
-  exhort: { meaning: "To strongly encourage or urge someone to do something.", pos: "verb" },
-  exigency: { meaning: "An urgent need or demand; a pressing situation.", pos: "noun" },
-  expandable: { meaning: "Capable of being increased in size, scope, or volume.", pos: "adjective" },
-  expediency: { meaning: "The quality of being convenient and practical, even if improper.", pos: "noun" },
-  exquisitely: { meaning: "In a manner that is extremely beautiful or intense; flawlessly.", pos: "adverb" },
-  extemporaneous: { meaning: "Spoken or performed without preparation; improvised.", pos: "adjective" },
+  entropy: {
+    meaning: "A measure of disorder or randomness in a system.",
+    pos: "noun",
+  },
+  envoy: {
+    meaning:
+      "A messenger or representative, especially on a diplomatic mission.",
+    pos: "noun",
+  },
+  epigram: {
+    meaning: "A short, witty, and often satirical saying or poem.",
+    pos: "noun",
+  },
+  epistemology: {
+    meaning: "The branch of philosophy concerned with the nature of knowledge.",
+    pos: "noun",
+  },
+  equanimity: {
+    meaning: "Calmness and composure, especially in difficult situations.",
+    pos: "noun",
+  },
+  equinox: {
+    meaning:
+      "The time when day and night are of equal length, occurring twice a year.",
+    pos: "noun",
+  },
+  equivocal: {
+    meaning: "Open to more than one interpretation; ambiguous.",
+    pos: "adjective",
+  },
+  estranged: {
+    meaning: "No longer close or affectionate; alienated.",
+    pos: "adjective",
+  },
+  ethanol: {
+    meaning: "A colorless, flammable alcohol used as a fuel and in beverages.",
+    pos: "noun",
+  },
+  evangelical: {
+    meaning:
+      "Relating to the Christian gospel; emphasizing salvation by faith.",
+    pos: "adjective",
+  },
+  exasperate: {
+    meaning: "To irritate or provoke to a high degree; to anger.",
+    pos: "verb",
+  },
+  exactness: {
+    meaning: "The quality of being precise, accurate, or strict.",
+    pos: "noun",
+  },
+  excise: {
+    meaning: "A tax on certain goods; to remove by cutting out.",
+    pos: "noun",
+  },
+  excruciating: {
+    meaning: "Intensely painful; agonizing; causing great suffering.",
+    pos: "adjective",
+  },
+  executioner: {
+    meaning: "A person who carries out a sentence of death.",
+    pos: "noun",
+  },
+  exegesis: {
+    meaning:
+      "A critical interpretation or analysis of a text, especially scripture.",
+    pos: "noun",
+  },
+  exemplar: {
+    meaning: "A person or thing that serves as a perfect example or model.",
+    pos: "noun",
+  },
+  exemplary: {
+    meaning: "Serving as a desirable model; commendable.",
+    pos: "adjective",
+  },
+  exhilarate: {
+    meaning: "To make someone feel very happy, animated, or elated.",
+    pos: "verb",
+  },
+  exhort: {
+    meaning: "To strongly encourage or urge someone to do something.",
+    pos: "verb",
+  },
+  exigency: {
+    meaning: "An urgent need or demand; a pressing situation.",
+    pos: "noun",
+  },
+  expandable: {
+    meaning: "Capable of being increased in size, scope, or volume.",
+    pos: "adjective",
+  },
+  expediency: {
+    meaning: "The quality of being convenient and practical, even if improper.",
+    pos: "noun",
+  },
+  exquisitely: {
+    meaning: "In a manner that is extremely beautiful or intense; flawlessly.",
+    pos: "adverb",
+  },
+  extemporaneous: {
+    meaning: "Spoken or performed without preparation; improvised.",
+    pos: "adjective",
+  },
   extirpate: { meaning: "To root out and destroy completely.", pos: "verb" },
-  extremism: { meaning: "The holding of extreme political or religious views.", pos: "noun" },
-  extremist: { meaning: "A person who holds extreme views, especially in politics or religion.", pos: "noun" },
-  exultant: { meaning: "Feeling or expressing great joy and triumph.", pos: "adjective" },
-  eyeball: { meaning: "The round part of the eye; to look at closely.", pos: "noun" },
-  eyestrain: { meaning: "A condition of fatigue or discomfort in the eyes from prolonged use.", pos: "noun" },
+  extremism: {
+    meaning: "The holding of extreme political or religious views.",
+    pos: "noun",
+  },
+  extremist: {
+    meaning:
+      "A person who holds extreme views, especially in politics or religion.",
+    pos: "noun",
+  },
+  exultant: {
+    meaning: "Feeling or expressing great joy and triumph.",
+    pos: "adjective",
+  },
+  eyeball: {
+    meaning: "The round part of the eye; to look at closely.",
+    pos: "noun",
+  },
+  eyestrain: {
+    meaning:
+      "A condition of fatigue or discomfort in the eyes from prolonged use.",
+    pos: "noun",
+  },
 };
-
-

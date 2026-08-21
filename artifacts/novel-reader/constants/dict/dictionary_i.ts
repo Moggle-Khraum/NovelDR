@@ -1042,19 +1042,32 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ivory: { meaning: "A hard white material from tusks; a color.", pos: "noun" },
   ivy: { meaning: "A climbing plant.", pos: "noun" },
 
-  iamb: { meaning: "A metrical foot of one unstressed followed by one stressed syllable.", pos: "noun" },
+  iamb: {
+    meaning:
+      "A metrical foot of one unstressed followed by one stressed syllable.",
+    pos: "noun",
+  },
   iambic: { meaning: "Relating to iambs.", pos: "adjective" },
   ibex: { meaning: "A wild mountain goat with large horns.", pos: "noun" },
   ibidem: { meaning: "In the same place; used in citations.", pos: "adverb" },
   ibis: { meaning: "A wading bird with a curved bill.", pos: "noun" },
   iceberg: { meaning: "A large floating mass of ice.", pos: "noun" },
   icebound: { meaning: "Surrounded or obstructed by ice.", pos: "adjective" },
-  icebox: { meaning: "A refrigerator or insulated box for keeping food cold.", pos: "noun" },
+  icebox: {
+    meaning: "A refrigerator or insulated box for keeping food cold.",
+    pos: "noun",
+  },
   icecap: { meaning: "A covering of ice over an area.", pos: "noun" },
-  icefall: { meaning: "A steep part of a glacier with crevasses.", pos: "noun" },
+  icefall: {
+    meaning: "A steep part of a glacier with crevasses.",
+    pos: "noun",
+  },
   icehouse: { meaning: "A building for storing ice.", pos: "noun" },
   icemaker: { meaning: "A device that makes ice.", pos: "noun" },
-  ichor: { meaning: "Fluid flowing like blood in the veins of the gods.", pos: "noun" },
+  ichor: {
+    meaning: "Fluid flowing like blood in the veins of the gods.",
+    pos: "noun",
+  },
   ichthyology: { meaning: "The study of fishes.", pos: "noun" },
   icily: { meaning: "In an icy or unfriendly manner.", pos: "adverb" },
   iciness: { meaning: "The state of being icy or unfriendly.", pos: "noun" },
@@ -1063,12 +1076,18 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   iconography: { meaning: "Visual images and symbols in art.", pos: "noun" },
   icosahedron: { meaning: "A polyhedron with twenty faces.", pos: "noun" },
   idealist: { meaning: "A person guided by ideals.", pos: "noun" },
-  idealistic: { meaning: "Believing in ideals; aiming for perfection.", pos: "adjective" },
+  idealistic: {
+    meaning: "Believing in ideals; aiming for perfection.",
+    pos: "adjective",
+  },
   idealize: { meaning: "To regard or represent as perfect.", pos: "verb" },
   ideally: { meaning: "In an ideal way; preferably.", pos: "adverb" },
   ideate: { meaning: "To form ideas; to think.", pos: "verb" },
   ideation: { meaning: "The formation of ideas.", pos: "noun" },
-  idempotent: { meaning: "Unchanged when applied multiple times.", pos: "adjective" },
+  idempotent: {
+    meaning: "Unchanged when applied multiple times.",
+    pos: "adjective",
+  },
   identic: { meaning: "Identical in substance or wording.", pos: "adjective" },
   identifiable: { meaning: "Able to be recognized.", pos: "adjective" },
   identifiably: { meaning: "In a way that can be identified.", pos: "adverb" },
@@ -1077,24 +1096,42 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   identifies: { meaning: "Third-person singular of identify.", pos: "verb" },
   identifying: { meaning: "Present participle of identify.", pos: "verb" },
   ideological: { meaning: "Relating to ideology.", pos: "adjective" },
-  ideologist: { meaning: "A person who studies or promotes an ideology.", pos: "noun" },
+  ideologist: {
+    meaning: "A person who studies or promotes an ideology.",
+    pos: "noun",
+  },
   ideologue: { meaning: "An adherent of an ideology.", pos: "noun" },
   ides: { meaning: "A day in the Roman calendar.", pos: "noun" },
-  idiolect: { meaning: "An individual's distinct use of language.", pos: "noun" },
-  idiomatic: { meaning: "Using expressions natural to a language.", pos: "adjective" },
+  idiolect: {
+    meaning: "An individual's distinct use of language.",
+    pos: "noun",
+  },
+  idiomatic: {
+    meaning: "Using expressions natural to a language.",
+    pos: "adjective",
+  },
   idiotic: { meaning: "Extremely foolish.", pos: "adjective" },
   idler: { meaning: "A lazy person.", pos: "noun" },
   idles: { meaning: "Third-person singular of idle.", pos: "verb" },
-  idling: { meaning: "Present participle of idle; running an engine slowly.", pos: "verb" },
+  idling: {
+    meaning: "Present participle of idle; running an engine slowly.",
+    pos: "verb",
+  },
   idolater: { meaning: "A worshiper of idols.", pos: "noun" },
   idolatrous: { meaning: "Worshiping idols.", pos: "adjective" },
   idolize: { meaning: "To admire excessively.", pos: "verb" },
-  idyll: { meaning: "A short poem about rustic life; a peaceful scene.", pos: "noun" },
+  idyll: {
+    meaning: "A short poem about rustic life; a peaceful scene.",
+    pos: "noun",
+  },
   idyllic: { meaning: "Charmingly simple and peaceful.", pos: "adjective" },
   iffy: { meaning: "Uncertain or doubtful.", pos: "adjective" },
   igloo: { meaning: "A dome-shaped snow house.", pos: "noun" },
   ignitable: { meaning: "Capable of catching fire.", pos: "adjective" },
-  ignition: { meaning: "The act of catching fire; starting an engine.", pos: "noun" },
+  ignition: {
+    meaning: "The act of catching fire; starting an engine.",
+    pos: "noun",
+  },
   ignobility: { meaning: "Lack of nobility; baseness.", pos: "noun" },
   ignominious: { meaning: "Deserving public disgrace.", pos: "adjective" },
   ignoramus: { meaning: "An ignorant person.", pos: "noun" },
@@ -1106,11 +1143,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ilium: { meaning: "The large pelvic bone.", pos: "noun" },
   "ill-advised": { meaning: "Not wise or sensible.", pos: "adjective" },
   "ill-defined": { meaning: "Not clearly defined.", pos: "adjective" },
-  "ill-fated": { meaning: "Destined to fail or have bad luck.", pos: "adjective" },
+  "ill-fated": {
+    meaning: "Destined to fail or have bad luck.",
+    pos: "adjective",
+  },
   "ill-gotten": { meaning: "Obtained dishonestly.", pos: "adjective" },
   "ill-mannered": { meaning: "Rude.", pos: "adjective" },
   "ill-tempered": { meaning: "Irritable or bad-tempered.", pos: "adjective" },
-  "ill-timed": { meaning: "Happening at an inappropriate time.", pos: "adjective" },
+  "ill-timed": {
+    meaning: "Happening at an inappropriate time.",
+    pos: "adjective",
+  },
   illation: { meaning: "An inference or conclusion.", pos: "noun" },
   illative: { meaning: "Relating to inference.", pos: "adjective" },
   illegality: { meaning: "The state of being illegal.", pos: "noun" },
@@ -1118,21 +1161,36 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   illegibility: { meaning: "The quality of being hard to read.", pos: "noun" },
   illegibly: { meaning: "In a way that is hard to read.", pos: "adverb" },
   illegitimacy: { meaning: "The state of being illegitimate.", pos: "noun" },
-  illiberal: { meaning: "Opposed to liberal principles; intolerant.", pos: "adjective" },
+  illiberal: {
+    meaning: "Opposed to liberal principles; intolerant.",
+    pos: "adjective",
+  },
   illimitable: { meaning: "Impossible to limit.", pos: "adjective" },
   illiteracy: { meaning: "Inability to read or write.", pos: "noun" },
   illogic: { meaning: "Lack of logic.", pos: "noun" },
   illume: { meaning: "To light up; to illuminate.", pos: "verb" },
-  illuminance: { meaning: "The amount of light falling on a surface.", pos: "noun" },
+  illuminance: {
+    meaning: "The amount of light falling on a surface.",
+    pos: "noun",
+  },
   illuminant: { meaning: "A substance that gives light.", pos: "noun" },
-  illuminated: { meaning: "Lit up; past tense of illuminate.", pos: "adjective" },
-  illuminating: { meaning: "Providing insight; present participle of illuminate.", pos: "adjective" },
+  illuminated: {
+    meaning: "Lit up; past tense of illuminate.",
+    pos: "adjective",
+  },
+  illuminating: {
+    meaning: "Providing insight; present participle of illuminate.",
+    pos: "adjective",
+  },
   illumination: { meaning: "Light; enlightenment.", pos: "noun" },
   illumine: { meaning: "To light up.", pos: "verb" },
   illusionary: { meaning: "Based on illusion.", pos: "adjective" },
   illusive: { meaning: "Deceptive; unreal.", pos: "adjective" },
   illusory: { meaning: "Based on false impression.", pos: "adjective" },
-  illustrated: { meaning: "Having pictures; past tense of illustrate.", pos: "adjective" },
+  illustrated: {
+    meaning: "Having pictures; past tense of illustrate.",
+    pos: "adjective",
+  },
   illustrative: { meaning: "Serving as an example.", pos: "adjective" },
   illustrator: { meaning: "A person who draws illustrations.", pos: "noun" },
   illustrious: { meaning: "Famous and admired.", pos: "adjective" },
@@ -1165,11 +1223,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   immensely: { meaning: "Extremely; very.", pos: "adverb" },
   immensity: { meaning: "Vastness.", pos: "noun" },
   immersible: { meaning: "Able to be immersed.", pos: "adjective" },
-  immersion: { meaning: "The act of immersing; deep involvement.", pos: "noun" },
+  immersion: {
+    meaning: "The act of immersing; deep involvement.",
+    pos: "noun",
+  },
   immigrated: { meaning: "Past tense of immigrate.", pos: "verb" },
   immigration: { meaning: "The act of immigrating.", pos: "noun" },
   imminence: { meaning: "The state of being about to happen.", pos: "noun" },
-  immiscible: { meaning: "Not forming a homogeneous mixture.", pos: "adjective" },
+  immiscible: {
+    meaning: "Not forming a homogeneous mixture.",
+    pos: "adjective",
+  },
   immobilize: { meaning: "To prevent from moving.", pos: "verb" },
   immoderate: { meaning: "Excessive; lacking moderation.", pos: "adjective" },
   immodest: { meaning: "Lacking modesty.", pos: "adjective" },
@@ -1183,17 +1247,29 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   immovable: { meaning: "Unable to be moved.", pos: "adjective" },
   immunize: { meaning: "To make immune.", pos: "verb" },
   immunized: { meaning: "Made immune.", pos: "adjective" },
-  immunodeficiency: { meaning: "A condition of weakened immune system.", pos: "noun" },
+  immunodeficiency: {
+    meaning: "A condition of weakened immune system.",
+    pos: "noun",
+  },
   immunogenic: { meaning: "Producing an immune response.", pos: "adjective" },
   immunologist: { meaning: "A specialist in immunology.", pos: "noun" },
-  immunosuppression: { meaning: "Suppression of the immune system.", pos: "noun" },
+  immunosuppression: {
+    meaning: "Suppression of the immune system.",
+    pos: "noun",
+  },
   immure: { meaning: "To enclose within walls; to imprison.", pos: "verb" },
   immutable: { meaning: "Unchangeable.", pos: "adjective" },
   impacted: { meaning: "Strongly affected; wedged.", pos: "adjective" },
   impacting: { meaning: "Present participle of impact.", pos: "verb" },
   impactful: { meaning: "Having a strong effect.", pos: "adjective" },
-  impaction: { meaning: "The condition of being wedged; compression.", pos: "noun" },
-  impacts: { meaning: "Plural or third-person singular of impact.", pos: "noun" },
+  impaction: {
+    meaning: "The condition of being wedged; compression.",
+    pos: "noun",
+  },
+  impacts: {
+    meaning: "Plural or third-person singular of impact.",
+    pos: "noun",
+  },
   impaired: { meaning: "Weakened or damaged.", pos: "adjective" },
   impairment: { meaning: "Loss or reduction of function.", pos: "noun" },
   impalement: { meaning: "The act of impaling.", pos: "noun" },
@@ -1213,7 +1289,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   impendent: { meaning: "Impending; hanging over.", pos: "adjective" },
   impenitent: { meaning: "Not repentant.", pos: "adjective" },
   imperatively: { meaning: "In a commanding manner.", pos: "adverb" },
-  imperceptibly: { meaning: "In a way too slight to be noticed.", pos: "adverb" },
+  imperceptibly: {
+    meaning: "In a way too slight to be noticed.",
+    pos: "adverb",
+  },
   imperfection: { meaning: "A flaw or defect.", pos: "noun" },
   imperialism: { meaning: "Policy of extending power.", pos: "noun" },
   imperialist: { meaning: "A supporter of imperialism.", pos: "noun" },
@@ -1222,7 +1301,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   imperishable: { meaning: "Not subject to decay.", pos: "adjective" },
   impermanence: { meaning: "The state of not lasting.", pos: "noun" },
   impermanent: { meaning: "Not permanent.", pos: "adjective" },
-  impermeable: { meaning: "Not allowing fluid to pass through.", pos: "adjective" },
+  impermeable: {
+    meaning: "Not allowing fluid to pass through.",
+    pos: "adjective",
+  },
   impermissible: { meaning: "Not allowed.", pos: "adjective" },
   impersonation: { meaning: "Pretending to be someone else.", pos: "noun" },
   impertinence: { meaning: "Rudeness.", pos: "noun" },
@@ -1237,10 +1319,16 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   implantation: { meaning: "The act of implanting.", pos: "noun" },
   implanted: { meaning: "Inserted; past tense of implant.", pos: "adjective" },
   implausible: { meaning: "Not believable.", pos: "adjective" },
-  implementation: { meaning: "The process of putting into effect.", pos: "noun" },
+  implementation: {
+    meaning: "The process of putting into effect.",
+    pos: "noun",
+  },
   implemented: { meaning: "Past tense of implement.", pos: "verb" },
   implementing: { meaning: "Present participle of implement.", pos: "verb" },
-  implements: { meaning: "Tools; third-person singular of implement.", pos: "noun" },
+  implements: {
+    meaning: "Tools; third-person singular of implement.",
+    pos: "noun",
+  },
   implicated: { meaning: "Shown to be involved.", pos: "adjective" },
   implicitly: { meaning: "In an implied manner.", pos: "adverb" },
   implode: { meaning: "To collapse inward.", pos: "verb" },
@@ -1256,10 +1344,16 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   importune: { meaning: "To ask persistently.", pos: "verb" },
   importunity: { meaning: "Persistence in requesting.", pos: "noun" },
   imposed: { meaning: "Past tense of impose.", pos: "verb" },
-  imposition: { meaning: "A burdensome demand; the act of imposing.", pos: "noun" },
+  imposition: {
+    meaning: "A burdensome demand; the act of imposing.",
+    pos: "noun",
+  },
   impossibility: { meaning: "The state of being impossible.", pos: "noun" },
   impost: { meaning: "A tax or duty.", pos: "noun" },
-  imposture: { meaning: "Deception; pretending to be someone else.", pos: "noun" },
+  imposture: {
+    meaning: "Deception; pretending to be someone else.",
+    pos: "noun",
+  },
   impotence: { meaning: "Powerlessness; inability.", pos: "noun" },
   impotency: { meaning: "Powerlessness.", pos: "noun" },
   impounded: { meaning: "Past tense of impound.", pos: "verb" },
@@ -1269,7 +1363,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   impregnated: { meaning: "Made pregnant; saturated.", pos: "adjective" },
   impregnation: { meaning: "The act of impregnating.", pos: "noun" },
   impresario: { meaning: "An organizer of entertainment.", pos: "noun" },
-  impressed: { meaning: "Strongly affected; past tense of impress.", pos: "adjective" },
+  impressed: {
+    meaning: "Strongly affected; past tense of impress.",
+    pos: "adjective",
+  },
   impressionable: { meaning: "Easily influenced.", pos: "adjective" },
   impressionism: { meaning: "An art movement.", pos: "noun" },
   impressionist: { meaning: "An artist of impressionism.", pos: "noun" },
@@ -1280,7 +1377,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   imprisonment: { meaning: "The state of being imprisoned.", pos: "noun" },
   improbability: { meaning: "Unlikelihood.", pos: "noun" },
   impropriety: { meaning: "Improper behavior.", pos: "noun" },
-  improved: { meaning: "Made better; past tense of improve.", pos: "adjective" },
+  improved: {
+    meaning: "Made better; past tense of improve.",
+    pos: "adjective",
+  },
   improver: { meaning: "A person or thing that improves.", pos: "noun" },
   improving: { meaning: "Making better.", pos: "adjective" },
   improvident: { meaning: "Lacking foresight.", pos: "adjective" },
@@ -1313,7 +1413,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inborn: { meaning: "Innate; existing from birth.", pos: "adjective" },
   inbound: { meaning: "Traveling toward a place.", pos: "adjective" },
   inbred: { meaning: "Produced by inbreeding; innate.", pos: "adjective" },
-  inbreed: { meaning: "To breed from closely related individuals.", pos: "verb" },
+  inbreed: {
+    meaning: "To breed from closely related individuals.",
+    pos: "verb",
+  },
   incandescence: { meaning: "Glowing heat.", pos: "noun" },
   incapacity: { meaning: "Lack of ability.", pos: "noun" },
   incarcerated: { meaning: "Imprisoned.", pos: "adjective" },
@@ -1322,7 +1425,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incestuous: { meaning: "Relating to incest.", pos: "adjective" },
   inched: { meaning: "Past tense of inch.", pos: "verb" },
   inchoate: { meaning: "Just begun; not fully formed.", pos: "adjective" },
-  incidentally: { meaning: "By the way; in an incidental manner.", pos: "adverb" },
+  incidentally: {
+    meaning: "By the way; in an incidental manner.",
+    pos: "adverb",
+  },
   incineration: { meaning: "Burning to ashes.", pos: "noun" },
   incipience: { meaning: "Beginning.", pos: "noun" },
   incitement: { meaning: "Provocation.", pos: "noun" },
@@ -1350,13 +1456,22 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inconsistency: { meaning: "Lack of consistency.", pos: "noun" },
   inconsonant: { meaning: "Not in harmony.", pos: "adjective" },
   incontestable: { meaning: "Certain; undeniable.", pos: "adjective" },
-  incontinence: { meaning: "Lack of control; inability to retain.", pos: "noun" },
+  incontinence: {
+    meaning: "Lack of control; inability to retain.",
+    pos: "noun",
+  },
   incontinent: { meaning: "Lacking self-control.", pos: "adjective" },
-  incorporated: { meaning: "Included; formed into a corporation.", pos: "adjective" },
+  incorporated: {
+    meaning: "Included; formed into a corporation.",
+    pos: "adjective",
+  },
   incorporation: { meaning: "The act of incorporating.", pos: "noun" },
   incorrigibility: { meaning: "The state of being incorrigible.", pos: "noun" },
   incorrupt: { meaning: "Not corrupt.", pos: "adjective" },
-  increased: { meaning: "Made larger; past tense of increase.", pos: "adjective" },
+  increased: {
+    meaning: "Made larger; past tense of increase.",
+    pos: "adjective",
+  },
   increasing: { meaning: "Growing in number or size.", pos: "adjective" },
   increasingly: { meaning: "More and more.", pos: "adverb" },
   incredulity: { meaning: "Disbelief.", pos: "noun" },
@@ -1388,7 +1503,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   indicates: { meaning: "Third-person singular of indicate.", pos: "verb" },
   indicating: { meaning: "Present participle of indicate.", pos: "verb" },
   indication: { meaning: "A sign or symptom.", pos: "noun" },
-  indicative: { meaning: "Serving as a sign; a grammatical mood.", pos: "adjective" },
+  indicative: {
+    meaning: "Serving as a sign; a grammatical mood.",
+    pos: "adjective",
+  },
   indictable: { meaning: "Subject to indictment.", pos: "adjective" },
   indiction: { meaning: "A fiscal period; proclamation.", pos: "noun" },
   indifference: { meaning: "Lack of interest.", pos: "noun" },
@@ -1416,7 +1534,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   induct: { meaning: "To admit formally; to install.", pos: "verb" },
   inductance: { meaning: "Property causing electromotive force.", pos: "noun" },
   inductee: { meaning: "A person inducted.", pos: "noun" },
-  induction: { meaning: "Formal admission; deriving general principles.", pos: "noun" },
+  induction: {
+    meaning: "Formal admission; deriving general principles.",
+    pos: "noun",
+  },
   inductive: { meaning: "Based on induction.", pos: "adjective" },
   indulgence: { meaning: "Gratification; forgiveness.", pos: "noun" },
   indulgent: { meaning: "Lenient; permissive.", pos: "adjective" },
@@ -1486,7 +1607,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   informed: { meaning: "Knowledgeable.", pos: "adjective" },
   informer: { meaning: "A person who informs on others.", pos: "noun" },
   infrangible: { meaning: "Unbreakable.", pos: "adjective" },
-  infrasonic: { meaning: "Below the range of human hearing.", pos: "adjective" },
+  infrasonic: {
+    meaning: "Below the range of human hearing.",
+    pos: "adjective",
+  },
   infrequency: { meaning: "Rarity.", pos: "noun" },
   infringement: { meaning: "A violation.", pos: "noun" },
   infuriated: { meaning: "Extremely angry.", pos: "adjective" },
@@ -1508,12 +1632,18 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inhaler: { meaning: "A device for inhaling medicine.", pos: "noun" },
   inhaling: { meaning: "Present participle of inhale.", pos: "verb" },
   inheritable: { meaning: "Able to be inherited.", pos: "adjective" },
-  inherited: { meaning: "Passed down genetically or by will.", pos: "adjective" },
+  inherited: {
+    meaning: "Passed down genetically or by will.",
+    pos: "adjective",
+  },
   inheriting: { meaning: "Present participle of inherit.", pos: "verb" },
   inheritor: { meaning: "An heir.", pos: "noun" },
   inhibited: { meaning: "Restrained; shy.", pos: "adjective" },
   inhibiting: { meaning: "Hindering.", pos: "adjective" },
-  inhibition: { meaning: "A feeling that restrains; suppression.", pos: "noun" },
+  inhibition: {
+    meaning: "A feeling that restrains; suppression.",
+    pos: "noun",
+  },
   inhibitory: { meaning: "Inhibiting.", pos: "adjective" },
   inhuman: { meaning: "Cruel; not human.", pos: "adjective" },
   inhumane: { meaning: "Cruel; lacking compassion.", pos: "adjective" },
@@ -1536,7 +1666,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inkling: { meaning: "A slight suspicion.", pos: "noun" },
   inkwell: { meaning: "A container for ink.", pos: "noun" },
   inlay: { meaning: "A design set into a surface.", pos: "noun" },
-  inlier: { meaning: "An outcrop of older rock surrounded by younger.", pos: "noun" },
+  inlier: {
+    meaning: "An outcrop of older rock surrounded by younger.",
+    pos: "noun",
+  },
   inmate: { meaning: "A person confined to an institution.", pos: "noun" },
   inmost: { meaning: "Deepest; innermost.", pos: "adjective" },
   innards: { meaning: "Internal organs.", pos: "noun" },
@@ -1545,17 +1678,29 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   innervate: { meaning: "To supply nerves to an organ or part.", pos: "verb" },
   innervation: { meaning: "The supply of nerves to a body part.", pos: "noun" },
   innkeeper: { meaning: "A person who runs an inn.", pos: "noun" },
-  innocence: { meaning: "The state of being innocent; freedom from guilt.", pos: "noun" },
+  innocence: {
+    meaning: "The state of being innocent; freedom from guilt.",
+    pos: "noun",
+  },
   innocency: { meaning: "Innocence; harmlessness.", pos: "noun" },
   innocently: { meaning: "In an innocent manner.", pos: "adverb" },
   innocuous: { meaning: "Harmless; not offensive.", pos: "adjective" },
   innocuously: { meaning: "In a harmless manner.", pos: "adverb" },
   innocuousness: { meaning: "The quality of being harmless.", pos: "noun" },
   innominate: { meaning: "Not named; anonymous.", pos: "adjective" },
-  innovative: { meaning: "Introducing new ideas; original and creative.", pos: "adjective" },
-  innovator: { meaning: "A person who introduces new methods or ideas.", pos: "noun" },
+  innovative: {
+    meaning: "Introducing new ideas; original and creative.",
+    pos: "adjective",
+  },
+  innovator: {
+    meaning: "A person who introduces new methods or ideas.",
+    pos: "noun",
+  },
   innumerably: { meaning: "In too great numbers to count.", pos: "adverb" },
-  innumerate: { meaning: "Unfamiliar with basic mathematics.", pos: "adjective" },
+  innumerate: {
+    meaning: "Unfamiliar with basic mathematics.",
+    pos: "adjective",
+  },
   inoculant: { meaning: "A substance used to inoculate.", pos: "noun" },
   inoculation: { meaning: "The act of inoculating; vaccination.", pos: "noun" },
   inoculative: { meaning: "Relating to inoculation.", pos: "adjective" },
@@ -1563,20 +1708,44 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inodorous: { meaning: "Having no odor.", pos: "adjective" },
   inoffensively: { meaning: "In a harmless manner.", pos: "adverb" },
   inordinacy: { meaning: "Excessiveness.", pos: "noun" },
-  inordinately: { meaning: "Excessively; beyond normal limits.", pos: "adverb" },
+  inordinately: {
+    meaning: "Excessively; beyond normal limits.",
+    pos: "adverb",
+  },
   inosculate: { meaning: "To join or unite by openings.", pos: "verb" },
-  inpatient: { meaning: "A patient who stays in a hospital while receiving treatment.", pos: "noun" },
+  inpatient: {
+    meaning: "A patient who stays in a hospital while receiving treatment.",
+    pos: "noun",
+  },
   inputted: { meaning: "Past tense of input.", pos: "verb" },
   inquietude: { meaning: "Physical or mental restlessness.", pos: "noun" },
   inquirer: { meaning: "A person who asks for information.", pos: "noun" },
-  inquiring: { meaning: "Showing an interest in learning; asking questions.", pos: "adjective" },
-  inquiringly: { meaning: "In a curious or questioning manner.", pos: "adverb" },
-  inquisition: { meaning: "A period of prolonged questioning; a historical tribunal.", pos: "noun" },
-  inquisitorial: { meaning: "Relating to an inquisitor or inquisition.", pos: "adjective" },
-  inroad: { meaning: "An encroachment or advance, especially at another's expense.", pos: "noun" },
+  inquiring: {
+    meaning: "Showing an interest in learning; asking questions.",
+    pos: "adjective",
+  },
+  inquiringly: {
+    meaning: "In a curious or questioning manner.",
+    pos: "adverb",
+  },
+  inquisition: {
+    meaning: "A period of prolonged questioning; a historical tribunal.",
+    pos: "noun",
+  },
+  inquisitorial: {
+    meaning: "Relating to an inquisitor or inquisition.",
+    pos: "adjective",
+  },
+  inroad: {
+    meaning: "An encroachment or advance, especially at another's expense.",
+    pos: "noun",
+  },
   inrush: { meaning: "A sudden inward flow or rush.", pos: "noun" },
   insalubrious: { meaning: "Unhealthy; unwholesome.", pos: "adjective" },
-  insanely: { meaning: "In an insane or extremely foolish manner.", pos: "adverb" },
+  insanely: {
+    meaning: "In an insane or extremely foolish manner.",
+    pos: "adverb",
+  },
   insanitary: { meaning: "Not sanitary; unclean.", pos: "adjective" },
   insatiability: { meaning: "Inability to be satisfied.", pos: "noun" },
   insatiably: { meaning: "In an insatiable manner.", pos: "adverb" },
@@ -1584,27 +1753,60 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inscribed: { meaning: "Written or engraved on a surface.", pos: "adjective" },
   inscriber: { meaning: "A person or device that inscribes.", pos: "noun" },
   inscribing: { meaning: "Present participle of inscribe.", pos: "verb" },
-  inscriptive: { meaning: "Relating to or resembling an inscription.", pos: "adjective" },
-  inscrutability: { meaning: "The quality of being impossible to understand.", pos: "noun" },
-  inscrutably: { meaning: "In a mysterious or unfathomable manner.", pos: "adverb" },
-  insecticidal: { meaning: "Having the property of killing insects.", pos: "adjective" },
+  inscriptive: {
+    meaning: "Relating to or resembling an inscription.",
+    pos: "adjective",
+  },
+  inscrutability: {
+    meaning: "The quality of being impossible to understand.",
+    pos: "noun",
+  },
+  inscrutably: {
+    meaning: "In a mysterious or unfathomable manner.",
+    pos: "adverb",
+  },
+  insecticidal: {
+    meaning: "Having the property of killing insects.",
+    pos: "adjective",
+  },
   insectivore: { meaning: "An animal that eats insects.", pos: "noun" },
   insectivorous: { meaning: "Feeding on insects.", pos: "adjective" },
-  insecurely: { meaning: "In a manner lacking security or confidence.", pos: "adverb" },
+  insecurely: {
+    meaning: "In a manner lacking security or confidence.",
+    pos: "adverb",
+  },
   insecurity: { meaning: "Lack of confidence or safety.", pos: "noun" },
-  insemination: { meaning: "The introduction of sperm into a female reproductive tract.", pos: "noun" },
-  insensate: { meaning: "Lacking physical sensation or awareness.", pos: "adjective" },
+  insemination: {
+    meaning: "The introduction of sperm into a female reproductive tract.",
+    pos: "noun",
+  },
+  insensate: {
+    meaning: "Lacking physical sensation or awareness.",
+    pos: "adjective",
+  },
   insensibility: { meaning: "Unconsciousness; lack of feeling.", pos: "noun" },
-  insensibly: { meaning: "Gradually or imperceptibly; without awareness.", pos: "adverb" },
+  insensibly: {
+    meaning: "Gradually or imperceptibly; without awareness.",
+    pos: "adverb",
+  },
   insensitively: { meaning: "In a manner lacking sensitivity.", pos: "adverb" },
   insensitivity: { meaning: "Lack of sensitivity.", pos: "noun" },
-  insentient: { meaning: "Not sentient; without consciousness.", pos: "adjective" },
+  insentient: {
+    meaning: "Not sentient; without consciousness.",
+    pos: "adjective",
+  },
   inseparability: { meaning: "The quality of being inseparable.", pos: "noun" },
   inseparably: { meaning: "In a way that cannot be separated.", pos: "adverb" },
   inserted: { meaning: "Placed inside; past tense of insert.", pos: "verb" },
   inserting: { meaning: "Present participle of insert.", pos: "verb" },
-  insertion: { meaning: "The act of inserting; something inserted.", pos: "noun" },
-  inset: { meaning: "A small picture or map set within a larger one; an insert.", pos: "noun" },
+  insertion: {
+    meaning: "The act of inserting; something inserted.",
+    pos: "noun",
+  },
+  inset: {
+    meaning: "A small picture or map set within a larger one; an insert.",
+    pos: "noun",
+  },
   inshore: { meaning: "Near or toward the shore.", pos: "adjective" },
   inside: { meaning: "The inner side or part; within.", pos: "preposition" },
   insidiously: { meaning: "In a subtle and treacherous way.", pos: "adverb" },
@@ -1615,11 +1817,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   insignificantly: { meaning: "In an unimportant way.", pos: "adverb" },
   insincerely: { meaning: "In a manner lacking sincerity.", pos: "adverb" },
   insincerity: { meaning: "Lack of sincerity.", pos: "noun" },
-  insinuating: { meaning: "Suggesting something indirectly; ingratiating.", pos: "adjective" },
+  insinuating: {
+    meaning: "Suggesting something indirectly; ingratiating.",
+    pos: "adjective",
+  },
   insinuation: { meaning: "An indirect suggestion or hint.", pos: "noun" },
   insipidity: { meaning: "Lack of flavor or interest.", pos: "noun" },
   insipidly: { meaning: "In a dull or flavorless manner.", pos: "adverb" },
-  insistence: { meaning: "The act of demanding something forcefully.", pos: "noun" },
+  insistence: {
+    meaning: "The act of demanding something forcefully.",
+    pos: "noun",
+  },
   insistent: { meaning: "Persisting in a demand; firm.", pos: "adjective" },
   insistently: { meaning: "In an insistent manner.", pos: "adverb" },
   insisting: { meaning: "Present participle of insist.", pos: "verb" },
@@ -1628,127 +1836,265 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   insole: { meaning: "The inner sole of a shoe.", pos: "noun" },
   insolence: { meaning: "Rude and disrespectful behavior.", pos: "noun" },
   insolently: { meaning: "In a rude and disrespectful manner.", pos: "adverb" },
-  insolubility: { meaning: "The quality of being impossible to dissolve or solve.", pos: "noun" },
-  insolvency: { meaning: "The state of being unable to pay debts.", pos: "noun" },
+  insolubility: {
+    meaning: "The quality of being impossible to dissolve or solve.",
+    pos: "noun",
+  },
+  insolvency: {
+    meaning: "The state of being unable to pay debts.",
+    pos: "noun",
+  },
   insomniac: { meaning: "A person who suffers from insomnia.", pos: "noun" },
-  insouciance: { meaning: "Casual lack of concern; indifference.", pos: "noun" },
-  insouciantly: { meaning: "In a carefree or unconcerned manner.", pos: "adverb" },
-  inspected: { meaning: "Examined carefully; past tense of inspect.", pos: "verb" },
+  insouciance: {
+    meaning: "Casual lack of concern; indifference.",
+    pos: "noun",
+  },
+  insouciantly: {
+    meaning: "In a carefree or unconcerned manner.",
+    pos: "adverb",
+  },
+  inspected: {
+    meaning: "Examined carefully; past tense of inspect.",
+    pos: "verb",
+  },
   inspecting: { meaning: "Present participle of inspect.", pos: "verb" },
-  inspector: { meaning: "A person whose job is to inspect things.", pos: "noun" },
+  inspector: {
+    meaning: "A person whose job is to inspect things.",
+    pos: "noun",
+  },
   inspectorate: { meaning: "A body of inspectors.", pos: "noun" },
-  inspiration: { meaning: "The process of being mentally stimulated to do something.", pos: "noun" },
+  inspiration: {
+    meaning: "The process of being mentally stimulated to do something.",
+    pos: "noun",
+  },
   inspirational: { meaning: "Providing inspiration.", pos: "adjective" },
-  inspired: { meaning: "Filled with inspiration; outstanding.", pos: "adjective" },
-  inspiring: { meaning: "Having the effect of inspiring someone.", pos: "adjective" },
+  inspired: {
+    meaning: "Filled with inspiration; outstanding.",
+    pos: "adjective",
+  },
+  inspiring: {
+    meaning: "Having the effect of inspiring someone.",
+    pos: "adjective",
+  },
   inspiriting: { meaning: "Encouraging; enlivening.", pos: "adjective" },
-  installation: { meaning: "The act of installing; something installed.", pos: "noun" },
-  installed: { meaning: "Placed in position; past tense of install.", pos: "verb" },
+  installation: {
+    meaning: "The act of installing; something installed.",
+    pos: "noun",
+  },
+  installed: {
+    meaning: "Placed in position; past tense of install.",
+    pos: "verb",
+  },
   installing: { meaning: "Present participle of install.", pos: "verb" },
   installment: { meaning: "A part of a series; a payment.", pos: "noun" },
   instancy: { meaning: "Urgency; immediate presence.", pos: "noun" },
   instantaneously: { meaning: "In an instant; immediately.", pos: "adverb" },
   instantly: { meaning: "Immediately; at once.", pos: "adverb" },
-  instar: { meaning: "A stage in the life of an insect between molts.", pos: "noun" },
+  instar: {
+    meaning: "A stage in the life of an insect between molts.",
+    pos: "noun",
+  },
   instate: { meaning: "To place in a position; to install.", pos: "verb" },
-  instatement: { meaning: "The act of installing someone in a position.", pos: "noun" },
+  instatement: {
+    meaning: "The act of installing someone in a position.",
+    pos: "noun",
+  },
   instauration: { meaning: "Restoration; renewal.", pos: "noun" },
   instep: { meaning: "The arched part of the foot.", pos: "noun" },
-  instigated: { meaning: "Provoked or incited; past tense of instigate.", pos: "verb" },
+  instigated: {
+    meaning: "Provoked or incited; past tense of instigate.",
+    pos: "verb",
+  },
   instigating: { meaning: "Present participle of instigate.", pos: "verb" },
   instigation: { meaning: "The act of provoking or inciting.", pos: "noun" },
   instigator: { meaning: "A person who instigates.", pos: "noun" },
   instillation: { meaning: "The act of instilling gradually.", pos: "noun" },
-  instilled: { meaning: "Introduced gradually; past tense of instill.", pos: "verb" },
+  instilled: {
+    meaning: "Introduced gradually; past tense of instill.",
+    pos: "verb",
+  },
   instilling: { meaning: "Present participle of instill.", pos: "verb" },
   instinctive: { meaning: "Based on instinct; natural.", pos: "adjective" },
   instinctively: { meaning: "In an instinctive manner.", pos: "adverb" },
   instituted: { meaning: "Established; past tense of institute.", pos: "verb" },
   instituting: { meaning: "Present participle of institute.", pos: "verb" },
   institutional: { meaning: "Relating to an institution.", pos: "adjective" },
-  institutionalize: { meaning: "To make into an institution; to place in an institution.", pos: "verb" },
-  instructed: { meaning: "Taught or directed; past tense of instruct.", pos: "verb" },
+  institutionalize: {
+    meaning: "To make into an institution; to place in an institution.",
+    pos: "verb",
+  },
+  instructed: {
+    meaning: "Taught or directed; past tense of instruct.",
+    pos: "verb",
+  },
   instructing: { meaning: "Present participle of instruct.", pos: "verb" },
   instructional: { meaning: "Intended for teaching.", pos: "adjective" },
   instructive: { meaning: "Providing useful information.", pos: "adjective" },
   instructively: { meaning: "In an informative way.", pos: "adverb" },
   instructorship: { meaning: "The position of an instructor.", pos: "noun" },
-  instrumentalist: { meaning: "A musician who plays an instrument.", pos: "noun" },
-  instrumentation: { meaning: "The arrangement or use of instruments.", pos: "noun" },
+  instrumentalist: {
+    meaning: "A musician who plays an instrument.",
+    pos: "noun",
+  },
+  instrumentation: {
+    meaning: "The arrangement or use of instruments.",
+    pos: "noun",
+  },
   insubordination: { meaning: "Defiance of authority.", pos: "noun" },
-  insubstantial: { meaning: "Lacking substance or strength.", pos: "adjective" },
+  insubstantial: {
+    meaning: "Lacking substance or strength.",
+    pos: "adjective",
+  },
   insufferably: { meaning: "In an intolerable manner.", pos: "adverb" },
   insufficiency: { meaning: "Lack of sufficiency.", pos: "noun" },
   insufficiently: { meaning: "In an inadequate manner.", pos: "adverb" },
   insularity: { meaning: "The quality of being insular.", pos: "noun" },
-  insulated: { meaning: "Protected from heat or electricity; past tense of insulate.", pos: "adjective" },
-  insulating: { meaning: "Preventing passage of heat or electricity.", pos: "adjective" },
+  insulated: {
+    meaning: "Protected from heat or electricity; past tense of insulate.",
+    pos: "adjective",
+  },
+  insulating: {
+    meaning: "Preventing passage of heat or electricity.",
+    pos: "adjective",
+  },
   insulation: { meaning: "Material used to insulate.", pos: "noun" },
-  insulator: { meaning: "A substance that does not conduct heat or electricity.", pos: "noun" },
+  insulator: {
+    meaning: "A substance that does not conduct heat or electricity.",
+    pos: "noun",
+  },
   insulted: { meaning: "Offended; past tense of insult.", pos: "verb" },
   insulting: { meaning: "Causing offense; disrespectful.", pos: "adjective" },
   insultingly: { meaning: "In a manner that insults.", pos: "adverb" },
   insuperable: { meaning: "Impossible to overcome.", pos: "adjective" },
-  insupportable: { meaning: "Unable to be supported or endured.", pos: "adjective" },
+  insupportable: {
+    meaning: "Unable to be supported or endured.",
+    pos: "adjective",
+  },
   insuppressible: { meaning: "Impossible to suppress.", pos: "adjective" },
   insurant: { meaning: "A person who is insured.", pos: "noun" },
-  insured: { meaning: "Covered by insurance; past tense of insure.", pos: "adjective" },
+  insured: {
+    meaning: "Covered by insurance; past tense of insure.",
+    pos: "adjective",
+  },
   insurer: { meaning: "A company that provides insurance.", pos: "noun" },
   insurgence: { meaning: "A rising in revolt.", pos: "noun" },
   insurgency: { meaning: "An active revolt or uprising.", pos: "noun" },
-  insurrectionary: { meaning: "Relating to or engaging in insurrection.", pos: "adjective" },
+  insurrectionary: {
+    meaning: "Relating to or engaging in insurrection.",
+    pos: "adjective",
+  },
   intaglio: { meaning: "An incised or engraved design.", pos: "noun" },
   intangibility: { meaning: "The quality of being intangible.", pos: "noun" },
   intangibly: { meaning: "In an intangible manner.", pos: "adverb" },
-  integrally: { meaning: "In an integral manner; as an essential part.", pos: "adverb" },
+  integrally: {
+    meaning: "In an integral manner; as an essential part.",
+    pos: "adverb",
+  },
   integrant: { meaning: "A constituent part.", pos: "noun" },
-  integrated: { meaning: "Combined into a whole; past tense of integrate.", pos: "adjective" },
+  integrated: {
+    meaning: "Combined into a whole; past tense of integrate.",
+    pos: "adjective",
+  },
   integrating: { meaning: "Present participle of integrate.", pos: "verb" },
-  integration: { meaning: "The process of combining or integrating.", pos: "noun" },
+  integration: {
+    meaning: "The process of combining or integrating.",
+    pos: "noun",
+  },
   integrative: { meaning: "Serving to integrate.", pos: "adjective" },
   integrator: { meaning: "A person or device that integrates.", pos: "noun" },
-  integument: { meaning: "An outer protective covering, such as skin.", pos: "noun" },
+  integument: {
+    meaning: "An outer protective covering, such as skin.",
+    pos: "noun",
+  },
   intellection: { meaning: "The action or process of thinking.", pos: "noun" },
-  intellectualism: { meaning: "The pursuit of intellectual interests.", pos: "noun" },
-  intellectuality: { meaning: "Intellectual quality or character.", pos: "noun" },
+  intellectualism: {
+    meaning: "The pursuit of intellectual interests.",
+    pos: "noun",
+  },
+  intellectuality: {
+    meaning: "Intellectual quality or character.",
+    pos: "noun",
+  },
   intellectually: { meaning: "In an intellectual way.", pos: "adverb" },
   intelligently: { meaning: "In a smart or rational manner.", pos: "adverb" },
-  intelligentsia: { meaning: "The intellectual elite of a society.", pos: "noun" },
-  intelligibility: { meaning: "The quality of being understandable.", pos: "noun" },
+  intelligentsia: {
+    meaning: "The intellectual elite of a society.",
+    pos: "noun",
+  },
+  intelligibility: {
+    meaning: "The quality of being understandable.",
+    pos: "noun",
+  },
   intelligibly: { meaning: "In a way that can be understood.", pos: "adverb" },
-  intemperance: { meaning: "Lack of moderation; excessive indulgence.", pos: "noun" },
-  intended: { meaning: "Planned or meant; past tense of intend.", pos: "adjective" },
+  intemperance: {
+    meaning: "Lack of moderation; excessive indulgence.",
+    pos: "noun",
+  },
+  intended: {
+    meaning: "Planned or meant; past tense of intend.",
+    pos: "adjective",
+  },
   intending: { meaning: "Present participle of intend.", pos: "verb" },
   intendment: { meaning: "Intention or purpose.", pos: "noun" },
   intensely: { meaning: "In an intense manner.", pos: "adverb" },
   intensification: { meaning: "The act of making more intense.", pos: "noun" },
-  intensified: { meaning: "Made more intense; past tense of intensify.", pos: "verb" },
+  intensified: {
+    meaning: "Made more intense; past tense of intensify.",
+    pos: "verb",
+  },
   intensifier: { meaning: "A word that intensifies.", pos: "noun" },
   intensifying: { meaning: "Present participle of intensify.", pos: "verb" },
   intension: { meaning: "The content of a concept; intensity.", pos: "noun" },
-  intensively: { meaning: "In a concentrated or thorough manner.", pos: "adverb" },
+  intensively: {
+    meaning: "In a concentrated or thorough manner.",
+    pos: "adverb",
+  },
   intentionally: { meaning: "On purpose; deliberately.", pos: "adverb" },
   intently: { meaning: "With earnest attention.", pos: "adverb" },
-  intentness: { meaning: "The quality of being intent or focused.", pos: "noun" },
+  intentness: {
+    meaning: "The quality of being intent or focused.",
+    pos: "noun",
+  },
   interacting: { meaning: "Present participle of interact.", pos: "verb" },
   interaction: { meaning: "Reciprocal action or influence.", pos: "noun" },
-  interactive: { meaning: "Involving two-way communication or action.", pos: "adjective" },
+  interactive: {
+    meaning: "Involving two-way communication or action.",
+    pos: "adjective",
+  },
   interactivity: { meaning: "The quality of being interactive.", pos: "noun" },
   interagency: { meaning: "Involving two or more agencies.", pos: "adjective" },
-  interbreed: { meaning: "To breed with another species or variety.", pos: "verb" },
-  intercalary: { meaning: "Inserted between days, months, etc.", pos: "adjective" },
-  intercalate: { meaning: "To insert something between layers or days.", pos: "verb" },
+  interbreed: {
+    meaning: "To breed with another species or variety.",
+    pos: "verb",
+  },
+  intercalary: {
+    meaning: "Inserted between days, months, etc.",
+    pos: "adjective",
+  },
+  intercalate: {
+    meaning: "To insert something between layers or days.",
+    pos: "verb",
+  },
   intercede: { meaning: "To intervene on behalf of another.", pos: "verb" },
   interceder: { meaning: "A person who intercedes.", pos: "noun" },
-  intercepted: { meaning: "Stopped or seized in transit; past tense of intercept.", pos: "verb" },
+  intercepted: {
+    meaning: "Stopped or seized in transit; past tense of intercept.",
+    pos: "verb",
+  },
   intercepting: { meaning: "Present participle of intercept.", pos: "verb" },
   interception: { meaning: "The act of intercepting.", pos: "noun" },
   interceptor: { meaning: "A person or thing that intercepts.", pos: "noun" },
-  intercession: { meaning: "The act of interceding; prayer on behalf of another.", pos: "noun" },
+  intercession: {
+    meaning: "The act of interceding; prayer on behalf of another.",
+    pos: "noun",
+  },
   intercessor: { meaning: "A person who intercedes.", pos: "noun" },
   interchangeable: { meaning: "Able to be exchanged.", pos: "adjective" },
   interchangeably: { meaning: "In an interchangeable manner.", pos: "adverb" },
-  interchanged: { meaning: "Exchanged; past tense of interchange.", pos: "verb" },
+  interchanged: {
+    meaning: "Exchanged; past tense of interchange.",
+    pos: "verb",
+  },
   interchanging: { meaning: "Present participle of interchange.", pos: "verb" },
   intercity: { meaning: "Between cities.", pos: "adjective" },
   intercollegiate: { meaning: "Between colleges.", pos: "adjective" },
@@ -1759,13 +2105,19 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interconnection: { meaning: "A mutual connection.", pos: "noun" },
   intercontinental: { meaning: "Between continents.", pos: "adjective" },
   intercostal: { meaning: "Between the ribs.", pos: "adjective" },
-  interdenominational: { meaning: "Between religious denominations.", pos: "adjective" },
+  interdenominational: {
+    meaning: "Between religious denominations.",
+    pos: "adjective",
+  },
   interdepartmental: { meaning: "Between departments.", pos: "adjective" },
   interdependence: { meaning: "Mutual dependence.", pos: "noun" },
   interdependency: { meaning: "Mutual dependence.", pos: "noun" },
   interdict: { meaning: "To prohibit or forbid.", pos: "verb" },
   interdiction: { meaning: "The act of prohibiting.", pos: "noun" },
-  interdisciplinary: { meaning: "Combining two or more academic disciplines.", pos: "adjective" },
+  interdisciplinary: {
+    meaning: "Combining two or more academic disciplines.",
+    pos: "adjective",
+  },
   interested: { meaning: "Showing curiosity or concern.", pos: "adjective" },
   interestedly: { meaning: "In an interested manner.", pos: "adverb" },
   interestingly: { meaning: "In an interesting way.", pos: "adverb" },
@@ -1773,14 +2125,23 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interfered: { meaning: "Past tense of interfere.", pos: "verb" },
   interference: { meaning: "The act of interfering; disruption.", pos: "noun" },
   interfering: { meaning: "Inclined to interfere.", pos: "adjective" },
-  interferometer: { meaning: "An instrument that uses interference of waves.", pos: "noun" },
+  interferometer: {
+    meaning: "An instrument that uses interference of waves.",
+    pos: "noun",
+  },
   intergalactic: { meaning: "Between galaxies.", pos: "adjective" },
   intergenerational: { meaning: "Between generations.", pos: "adjective" },
   interglacial: { meaning: "Between glacial periods.", pos: "adjective" },
-  interiority: { meaning: "The quality of being interior or inward.", pos: "noun" },
+  interiority: {
+    meaning: "The quality of being interior or inward.",
+    pos: "noun",
+  },
   interjection: { meaning: "An exclamation; a word inserted.", pos: "noun" },
   interlace: { meaning: "To weave together.", pos: "verb" },
-  interlaced: { meaning: "Woven together; past tense of interlace.", pos: "adjective" },
+  interlaced: {
+    meaning: "Woven together; past tense of interlace.",
+    pos: "adjective",
+  },
   interlayer: { meaning: "A layer between others.", pos: "noun" },
   interleaf: { meaning: "A blank leaf inserted between pages.", pos: "noun" },
   interleave: { meaning: "To insert pages alternately.", pos: "verb" },
@@ -1790,66 +2151,123 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interlock: { meaning: "To lock together.", pos: "verb" },
   interlocking: { meaning: "Locking together.", pos: "adjective" },
   intermarriage: { meaning: "Marriage between different groups.", pos: "noun" },
-  intermarry: { meaning: "To marry someone of a different group.", pos: "verb" },
+  intermarry: {
+    meaning: "To marry someone of a different group.",
+    pos: "verb",
+  },
   interment: { meaning: "Burial.", pos: "noun" },
   intermesh: { meaning: "To mesh together.", pos: "verb" },
   interminably: { meaning: "In an endless or tedious manner.", pos: "adverb" },
-  intermingled: { meaning: "Mixed together; past tense of intermingle.", pos: "verb" },
+  intermingled: {
+    meaning: "Mixed together; past tense of intermingle.",
+    pos: "verb",
+  },
   intermit: { meaning: "To suspend or discontinue temporarily.", pos: "verb" },
   intermittence: { meaning: "The state of being intermittent.", pos: "noun" },
   intermittency: { meaning: "Intermittence.", pos: "noun" },
   intermittently: { meaning: "At irregular intervals.", pos: "adverb" },
   intermix: { meaning: "To mix together.", pos: "verb" },
   intermixture: { meaning: "A mixture; the act of intermixing.", pos: "noun" },
-  intern: { meaning: "A student or trainee; to confine as a prisoner.", pos: "noun" },
+  intern: {
+    meaning: "A student or trainee; to confine as a prisoner.",
+    pos: "noun",
+  },
   internalize: { meaning: "To make internal or personal.", pos: "verb" },
   internally: { meaning: "In an internal manner.", pos: "adverb" },
   internationalism: { meaning: "Cooperation between nations.", pos: "noun" },
   internationalize: { meaning: "To make international.", pos: "verb" },
   internationally: { meaning: "In an international way.", pos: "adverb" },
-  internecine: { meaning: "Destructive to both sides; mutually ruinous.", pos: "adjective" },
-  interneuron: { meaning: "A neuron that connects other neurons.", pos: "noun" },
-  internist: { meaning: "A doctor specializing in internal medicine.", pos: "noun" },
+  internecine: {
+    meaning: "Destructive to both sides; mutually ruinous.",
+    pos: "adjective",
+  },
+  interneuron: {
+    meaning: "A neuron that connects other neurons.",
+    pos: "noun",
+  },
+  internist: {
+    meaning: "A doctor specializing in internal medicine.",
+    pos: "noun",
+  },
   internship: { meaning: "A period of supervised training.", pos: "noun" },
   interpellate: { meaning: "To question formally.", pos: "verb" },
   interpellation: { meaning: "The act of formal questioning.", pos: "noun" },
   interpenetrate: { meaning: "To penetrate mutually.", pos: "verb" },
   interphone: { meaning: "An internal telephone system.", pos: "noun" },
-  interpolation: { meaning: "The act of inserting or estimating.", pos: "noun" },
-  interposed: { meaning: "Placed between; past tense of interpose.", pos: "verb" },
+  interpolation: {
+    meaning: "The act of inserting or estimating.",
+    pos: "noun",
+  },
+  interposed: {
+    meaning: "Placed between; past tense of interpose.",
+    pos: "verb",
+  },
   interposition: { meaning: "The act of placing between.", pos: "noun" },
   interpretative: { meaning: "Relating to interpretation.", pos: "adjective" },
-  interpreted: { meaning: "Explained or translated; past tense of interpret.", pos: "verb" },
+  interpreted: {
+    meaning: "Explained or translated; past tense of interpret.",
+    pos: "verb",
+  },
   interpreter: { meaning: "A person who translates or explains.", pos: "noun" },
   interpreting: { meaning: "Present participle of interpret.", pos: "verb" },
   interpretive: { meaning: "Relating to interpretation.", pos: "adjective" },
   interracial: { meaning: "Between races.", pos: "adjective" },
-  interregnum: { meaning: "A period between reigns or governments.", pos: "noun" },
+  interregnum: {
+    meaning: "A period between reigns or governments.",
+    pos: "noun",
+  },
   interrelate: { meaning: "To relate to each other.", pos: "verb" },
   interrelated: { meaning: "Mutually related.", pos: "adjective" },
   interrelation: { meaning: "Mutual relation.", pos: "noun" },
   interrelationship: { meaning: "A relationship between things.", pos: "noun" },
-  interrogated: { meaning: "Questioned; past tense of interrogate.", pos: "verb" },
+  interrogated: {
+    meaning: "Questioned; past tense of interrogate.",
+    pos: "verb",
+  },
   interrogating: { meaning: "Present participle of interrogate.", pos: "verb" },
   interrogation: { meaning: "The act of questioning.", pos: "noun" },
-  interrogative: { meaning: "Having the form of a question.", pos: "adjective" },
+  interrogative: {
+    meaning: "Having the form of a question.",
+    pos: "adjective",
+  },
   interrogator: { meaning: "A person who interrogates.", pos: "noun" },
-  interrogatory: { meaning: "A formal question or set of questions.", pos: "noun" },
-  interrupted: { meaning: "Stopped temporarily; past tense of interrupt.", pos: "verb" },
+  interrogatory: {
+    meaning: "A formal question or set of questions.",
+    pos: "noun",
+  },
+  interrupted: {
+    meaning: "Stopped temporarily; past tense of interrupt.",
+    pos: "verb",
+  },
   interrupter: { meaning: "A person or device that interrupts.", pos: "noun" },
   interrupting: { meaning: "Present participle of interrupt.", pos: "verb" },
   interruption: { meaning: "A break or halt.", pos: "noun" },
   intersected: { meaning: "Crossed; past tense of intersect.", pos: "verb" },
   intersecting: { meaning: "Present participle of intersect.", pos: "verb" },
-  intersectional: { meaning: "Relating to intersections or overlapping identities.", pos: "adjective" },
-  interspersed: { meaning: "Scattered among; past tense of intersperse.", pos: "verb" },
+  intersectional: {
+    meaning: "Relating to intersections or overlapping identities.",
+    pos: "adjective",
+  },
+  interspersed: {
+    meaning: "Scattered among; past tense of intersperse.",
+    pos: "verb",
+  },
   interspersing: { meaning: "Present participle of intersperse.", pos: "verb" },
   interstate: { meaning: "Between states.", pos: "adjective" },
   interstice: { meaning: "A small space between things.", pos: "noun" },
-  interstitial: { meaning: "Relating to small spaces between things.", pos: "adjective" },
-  intertwined: { meaning: "Twisted together; past tense of intertwine.", pos: "adjective" },
+  interstitial: {
+    meaning: "Relating to small spaces between things.",
+    pos: "adjective",
+  },
+  intertwined: {
+    meaning: "Twisted together; past tense of intertwine.",
+    pos: "adjective",
+  },
   interurban: { meaning: "Between cities or towns.", pos: "adjective" },
-  intervened: { meaning: "Came between; past tense of intervene.", pos: "verb" },
+  intervened: {
+    meaning: "Came between; past tense of intervene.",
+    pos: "verb",
+  },
   intervenient: { meaning: "Intervening.", pos: "adjective" },
   intervening: { meaning: "Occurring between events.", pos: "adjective" },
   intervention: { meaning: "The act of intervening.", pos: "noun" },
@@ -1866,7 +2284,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intimacy: { meaning: "Close familiarity or friendship.", pos: "noun" },
   intimately: { meaning: "In an intimate manner.", pos: "adverb" },
   intimation: { meaning: "An indirect suggestion or hint.", pos: "noun" },
-  intimidated: { meaning: "Frightened; past tense of intimidate.", pos: "verb" },
+  intimidated: {
+    meaning: "Frightened; past tense of intimidate.",
+    pos: "verb",
+  },
   intimidating: { meaning: "Causing fear or timidity.", pos: "adjective" },
   intimidation: { meaning: "The act of intimidating.", pos: "noun" },
   intimidatory: { meaning: "Intended to intimidate.", pos: "adjective" },
@@ -1874,11 +2295,20 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intolerably: { meaning: "In an intolerable manner.", pos: "adverb" },
   intolerance: { meaning: "Unwillingness to accept differences.", pos: "noun" },
   intonate: { meaning: "To speak with a particular intonation.", pos: "verb" },
-  intoned: { meaning: "Spoken with a particular intonation; past tense of intonate.", pos: "verb" },
+  intoned: {
+    meaning: "Spoken with a particular intonation; past tense of intonate.",
+    pos: "verb",
+  },
   intoning: { meaning: "Present participle of intone.", pos: "verb" },
   intoxicant: { meaning: "A substance that intoxicates.", pos: "noun" },
-  intoxicated: { meaning: "Drunk; past tense of intoxicate.", pos: "adjective" },
-  intoxicating: { meaning: "Causing intoxication; exhilarating.", pos: "adjective" },
+  intoxicated: {
+    meaning: "Drunk; past tense of intoxicate.",
+    pos: "adjective",
+  },
+  intoxicating: {
+    meaning: "Causing intoxication; exhilarating.",
+    pos: "adjective",
+  },
   intoxication: { meaning: "The state of being intoxicated.", pos: "noun" },
   intracellular: { meaning: "Within a cell.", pos: "adjective" },
   intracity: { meaning: "Within a city.", pos: "adjective" },
@@ -1886,11 +2316,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intractability: { meaning: "The quality of being intractable.", pos: "noun" },
   intractable: { meaning: "Hard to control or deal with.", pos: "adjective" },
   intradermal: { meaning: "Within the skin.", pos: "adjective" },
-  intramural: { meaning: "Within an institution, especially a school.", pos: "adjective" },
+  intramural: {
+    meaning: "Within an institution, especially a school.",
+    pos: "adjective",
+  },
   intramuscular: { meaning: "Within a muscle.", pos: "adjective" },
   intransigence: { meaning: "Refusal to compromise.", pos: "noun" },
   intransigent: { meaning: "Unwilling to compromise.", pos: "adjective" },
-  intransitive: { meaning: "Not taking a direct object (verb).", pos: "adjective" },
+  intransitive: {
+    meaning: "Not taking a direct object (verb).",
+    pos: "adjective",
+  },
   intraocular: { meaning: "Within the eye.", pos: "adjective" },
   intrapersonal: { meaning: "Within the individual mind.", pos: "adjective" },
   intrapsychic: { meaning: "Within the psyche.", pos: "adjective" },
@@ -1902,7 +2338,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intrepidly: { meaning: "In a fearless manner.", pos: "adverb" },
   intricacy: { meaning: "The quality of being intricate.", pos: "noun" },
   intricately: { meaning: "In an intricate manner.", pos: "adverb" },
-  intrigued: { meaning: "Aroused curiosity; past tense of intrigue.", pos: "verb" },
+  intrigued: {
+    meaning: "Aroused curiosity; past tense of intrigue.",
+    pos: "verb",
+  },
   intriguer: { meaning: "A person who intrigues.", pos: "noun" },
   intriguing: { meaning: "Arousing curiosity or interest.", pos: "adjective" },
   intriguingly: { meaning: "In an intriguing manner.", pos: "adverb" },
@@ -1911,28 +2350,55 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   introducer: { meaning: "A person who introduces.", pos: "noun" },
   introducing: { meaning: "Present participle of introduce.", pos: "verb" },
   introductory: { meaning: "Serving as an introduction.", pos: "adjective" },
-  introject: { meaning: "To incorporate unconsciously into one's own mind.", pos: "verb" },
-  introjection: { meaning: "The unconscious adoption of another's ideas.", pos: "noun" },
+  introject: {
+    meaning: "To incorporate unconsciously into one's own mind.",
+    pos: "verb",
+  },
+  introjection: {
+    meaning: "The unconscious adoption of another's ideas.",
+    pos: "noun",
+  },
   intromission: { meaning: "The act of inserting or admitting.", pos: "noun" },
-  introspection: { meaning: "The examination of one's own thoughts.", pos: "noun" },
+  introspection: {
+    meaning: "The examination of one's own thoughts.",
+    pos: "noun",
+  },
   introspective: { meaning: "Given to introspection.", pos: "adjective" },
   introspectively: { meaning: "In an introspective manner.", pos: "adverb" },
-  introversion: { meaning: "The tendency to be inwardly directed.", pos: "noun" },
+  introversion: {
+    meaning: "The tendency to be inwardly directed.",
+    pos: "noun",
+  },
   introverted: { meaning: "Shy and inward-looking.", pos: "adjective" },
-  intruded: { meaning: "Entered without welcome; past tense of intrude.", pos: "verb" },
+  intruded: {
+    meaning: "Entered without welcome; past tense of intrude.",
+    pos: "verb",
+  },
   intruding: { meaning: "Present participle of intrude.", pos: "verb" },
   intrusion: { meaning: "The act of intruding.", pos: "noun" },
   intrusive: { meaning: "Causing disruption; intruding.", pos: "adjective" },
   intrusively: { meaning: "In an intrusive manner.", pos: "adverb" },
   intuit: { meaning: "To know by intuition.", pos: "verb" },
-  intuited: { meaning: "Known by intuition; past tense of intuit.", pos: "verb" },
-  intuitionism: { meaning: "A philosophical theory based on intuition.", pos: "noun" },
+  intuited: {
+    meaning: "Known by intuition; past tense of intuit.",
+    pos: "verb",
+  },
+  intuitionism: {
+    meaning: "A philosophical theory based on intuition.",
+    pos: "noun",
+  },
   intuitively: { meaning: "In an intuitive manner.", pos: "adverb" },
   intuitiveness: { meaning: "The quality of being intuitive.", pos: "noun" },
-  inundated: { meaning: "Flooded; overwhelmed; past tense of inundate.", pos: "verb" },
+  inundated: {
+    meaning: "Flooded; overwhelmed; past tense of inundate.",
+    pos: "verb",
+  },
   inundating: { meaning: "Present participle of inundate.", pos: "verb" },
   inundation: { meaning: "A flood; an overwhelming flow.", pos: "noun" },
-  inured: { meaning: "Accustomed to hardship; past tense of inure.", pos: "verb" },
+  inured: {
+    meaning: "Accustomed to hardship; past tense of inure.",
+    pos: "verb",
+  },
   inurement: { meaning: "The process of becoming accustomed.", pos: "noun" },
   invaded: { meaning: "Entered by force; past tense of invade.", pos: "verb" },
   invader: { meaning: "A person who invades.", pos: "noun" },
@@ -1947,7 +2413,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   invariant: { meaning: "Unchanging.", pos: "adjective" },
   invasive: { meaning: "Tending to spread or intrude.", pos: "adjective" },
   inveighed: { meaning: "Spoke against; past tense of inveigh.", pos: "verb" },
-  inveigled: { meaning: "Persuaded by trickery; past tense of inveigle.", pos: "verb" },
+  inveigled: {
+    meaning: "Persuaded by trickery; past tense of inveigle.",
+    pos: "verb",
+  },
   inveiglement: { meaning: "The act of inveigling.", pos: "noun" },
   invented: { meaning: "Created; past tense of invent.", pos: "verb" },
   inventing: { meaning: "Present participle of invent.", pos: "verb" },
@@ -1956,11 +2425,20 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inversely: { meaning: "In an inverse manner.", pos: "adverb" },
   inversion: { meaning: "The act of inverting; a reversal.", pos: "noun" },
   invertase: { meaning: "An enzyme that breaks down sucrose.", pos: "noun" },
-  inverted: { meaning: "Turned upside down; past tense of invert.", pos: "adjective" },
-  inverter: { meaning: "A device that converts direct current to alternating current.", pos: "noun" },
+  inverted: {
+    meaning: "Turned upside down; past tense of invert.",
+    pos: "adjective",
+  },
+  inverter: {
+    meaning: "A device that converts direct current to alternating current.",
+    pos: "noun",
+  },
   invertible: { meaning: "Able to be inverted.", pos: "adjective" },
   invested: { meaning: "Put money into; past tense of invest.", pos: "verb" },
-  investigated: { meaning: "Examined; past tense of investigate.", pos: "verb" },
+  investigated: {
+    meaning: "Examined; past tense of investigate.",
+    pos: "verb",
+  },
   investigating: { meaning: "Present participle of investigate.", pos: "verb" },
   investigation: { meaning: "A systematic examination.", pos: "noun" },
   investigative: { meaning: "Relating to investigation.", pos: "adjective" },
@@ -1971,7 +2449,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inviable: { meaning: "Not viable; unable to survive.", pos: "adjective" },
   invidiously: { meaning: "In an invidious manner.", pos: "adverb" },
   invigorated: { meaning: "Energized; past tense of invigorate.", pos: "verb" },
-  invigorating: { meaning: "Making one feel strong and refreshed.", pos: "adjective" },
+  invigorating: {
+    meaning: "Making one feel strong and refreshed.",
+    pos: "adjective",
+  },
   invigoration: { meaning: "The act of invigorating.", pos: "noun" },
   invincibility: { meaning: "The quality of being invincible.", pos: "noun" },
   invincibly: { meaning: "In an invincible manner.", pos: "adverb" },
@@ -1989,11 +2470,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   invoking: { meaning: "Present participle of invoke.", pos: "verb" },
   involuntarily: { meaning: "In an involuntary manner.", pos: "adverb" },
   involute: { meaning: "Complex or curled inward.", pos: "adjective" },
-  involution: { meaning: "The process of involving or complicating; a turning inward.", pos: "noun" },
+  involution: {
+    meaning: "The process of involving or complicating; a turning inward.",
+    pos: "noun",
+  },
   involved: { meaning: "Complicated; implicated.", pos: "adjective" },
   involvement: { meaning: "The state of being involved.", pos: "noun" },
   involving: { meaning: "Present participle of involve.", pos: "verb" },
-  invulnerability: { meaning: "The quality of being invulnerable.", pos: "noun" },
+  invulnerability: {
+    meaning: "The quality of being invulnerable.",
+    pos: "noun",
+  },
   invulnerably: { meaning: "In an invulnerable manner.", pos: "adverb" },
   inwardly: { meaning: "In an inward manner; internally.", pos: "adverb" },
   inwardness: { meaning: "The quality of being inward.", pos: "noun" },
@@ -2006,12 +2493,24 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ionic: { meaning: "Relating to ions.", pos: "adjective" },
   ionization: { meaning: "The process of forming ions.", pos: "noun" },
   ionize: { meaning: "To convert into ions.", pos: "verb" },
-  ionosphere: { meaning: "A layer of the atmosphere containing ions.", pos: "noun" },
-  ipecac: { meaning: "A medicinal plant used to induce vomiting.", pos: "noun" },
-  irascibility: { meaning: "The quality of being easily angered.", pos: "noun" },
+  ionosphere: {
+    meaning: "A layer of the atmosphere containing ions.",
+    pos: "noun",
+  },
+  ipecac: {
+    meaning: "A medicinal plant used to induce vomiting.",
+    pos: "noun",
+  },
+  irascibility: {
+    meaning: "The quality of being easily angered.",
+    pos: "noun",
+  },
   ireful: { meaning: "Full of anger.", pos: "adjective" },
   irenic: { meaning: "Promoting peace.", pos: "adjective" },
-  iridescence: { meaning: "The quality of showing rainbow colors.", pos: "noun" },
+  iridescence: {
+    meaning: "The quality of showing rainbow colors.",
+    pos: "noun",
+  },
   iridium: { meaning: "A dense metallic element.", pos: "noun" },
   irked: { meaning: "Annoyed; past tense of irk.", pos: "verb" },
   irksome: { meaning: "Causing annoyance; tedious.", pos: "adjective" },
@@ -2022,14 +2521,26 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ironmaster: { meaning: "An owner of an ironworks.", pos: "noun" },
   ironmonger: { meaning: "A dealer in hardware.", pos: "noun" },
   ironmongery: { meaning: "Hardware goods.", pos: "noun" },
-  ironside: { meaning: "A person with great strength; a type of ship.", pos: "noun" },
+  ironside: {
+    meaning: "A person with great strength; a type of ship.",
+    pos: "noun",
+  },
   ironstone: { meaning: "A type of iron ore.", pos: "noun" },
   ironware: { meaning: "Articles made of iron.", pos: "noun" },
   ironwood: { meaning: "A very hard wood.", pos: "noun" },
-  ironwork: { meaning: "Things made of iron, especially decorative.", pos: "noun" },
+  ironwork: {
+    meaning: "Things made of iron, especially decorative.",
+    pos: "noun",
+  },
   ironworker: { meaning: "A person who works with iron.", pos: "noun" },
-  irradiance: { meaning: "The amount of light or radiation received.", pos: "noun" },
-  irradiated: { meaning: "Exposed to radiation; past tense of irradiate.", pos: "verb" },
+  irradiance: {
+    meaning: "The amount of light or radiation received.",
+    pos: "noun",
+  },
+  irradiated: {
+    meaning: "Exposed to radiation; past tense of irradiate.",
+    pos: "verb",
+  },
   irradiating: { meaning: "Present participle of irradiate.", pos: "verb" },
   irradiation: { meaning: "Exposure to radiation.", pos: "noun" },
   irrationality: { meaning: "The quality of being irrational.", pos: "noun" },
@@ -2068,19 +2579,37 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   irrigating: { meaning: "Present participle of irrigate.", pos: "verb" },
   irrigation: { meaning: "The supply of water to land.", pos: "noun" },
   irrigator: { meaning: "A device or person that irrigates.", pos: "noun" },
-  irritability: { meaning: "The tendency to become easily irritated.", pos: "noun" },
+  irritability: {
+    meaning: "The tendency to become easily irritated.",
+    pos: "noun",
+  },
   irritably: { meaning: "In an irritable manner.", pos: "adverb" },
   irritant: { meaning: "A substance that irritates.", pos: "noun" },
-  irritated: { meaning: "Annoyed; inflamed; past tense of irritate.", pos: "verb" },
-  irritating: { meaning: "Causing annoyance or inflammation.", pos: "adjective" },
+  irritated: {
+    meaning: "Annoyed; inflamed; past tense of irritate.",
+    pos: "verb",
+  },
+  irritating: {
+    meaning: "Causing annoyance or inflammation.",
+    pos: "adjective",
+  },
   irritatingly: { meaning: "In an irritating manner.", pos: "adverb" },
   irritation: { meaning: "Annoyance; inflammation.", pos: "noun" },
   irrupt: { meaning: "To burst in suddenly.", pos: "verb" },
-  irruptive: { meaning: "Characterized by sudden incursion.", pos: "adjective" },
-  isinglass: { meaning: "A gelatinous substance from fish bladders.", pos: "noun" },
+  irruptive: {
+    meaning: "Characterized by sudden incursion.",
+    pos: "adjective",
+  },
+  isinglass: {
+    meaning: "A gelatinous substance from fish bladders.",
+    pos: "noun",
+  },
   islander: { meaning: "A person who lives on an island.", pos: "noun" },
   islet: { meaning: "A small island.", pos: "noun" },
-  isobar: { meaning: "A line on a map connecting equal pressure points.", pos: "noun" },
+  isobar: {
+    meaning: "A line on a map connecting equal pressure points.",
+    pos: "noun",
+  },
   isobaric: { meaning: "Relating to equal pressure.", pos: "adjective" },
   isoclinal: { meaning: "Having equal inclination.", pos: "adjective" },
   isocracy: { meaning: "A system of equal political power.", pos: "noun" },
@@ -2088,113 +2617,222 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   isogamy: { meaning: "Reproduction by similar gametes.", pos: "noun" },
   isogloss: { meaning: "A line separating linguistic features.", pos: "noun" },
   isogonal: { meaning: "Having equal angles.", pos: "adjective" },
-  isolated: { meaning: "Separated from others; past tense of isolate.", pos: "adjective" },
-  isolating: { meaning: "Separating; present participle of isolate.", pos: "verb" },
-  isolationism: { meaning: "A policy of remaining apart from others.", pos: "noun" },
+  isolated: {
+    meaning: "Separated from others; past tense of isolate.",
+    pos: "adjective",
+  },
+  isolating: {
+    meaning: "Separating; present participle of isolate.",
+    pos: "verb",
+  },
+  isolationism: {
+    meaning: "A policy of remaining apart from others.",
+    pos: "noun",
+  },
   isolationist: { meaning: "A person who favors isolationism.", pos: "noun" },
   isolative: { meaning: "Tending to isolate.", pos: "adjective" },
-  isomer: { meaning: "A compound with the same formula but different structure.", pos: "noun" },
+  isomer: {
+    meaning: "A compound with the same formula but different structure.",
+    pos: "noun",
+  },
   isomeric: { meaning: "Relating to isomers.", pos: "adjective" },
   isomerism: { meaning: "The phenomenon of isomers.", pos: "noun" },
   isometrics: { meaning: "A system of exercises.", pos: "noun" },
-  isomorphic: { meaning: "Having the same form or structure.", pos: "adjective" },
+  isomorphic: {
+    meaning: "Having the same form or structure.",
+    pos: "adjective",
+  },
   isomorphism: { meaning: "A one-to-one correspondence.", pos: "noun" },
   isopod: { meaning: "A crustacean with seven pairs of legs.", pos: "noun" },
-  isosceles: { meaning: "Having two equal sides (triangle).", pos: "adjective" },
-  isotherm: { meaning: "A line connecting points of equal temperature.", pos: "noun" },
-  isothermal: { meaning: "Relating to constant temperature.", pos: "adjective" },
+  isosceles: {
+    meaning: "Having two equal sides (triangle).",
+    pos: "adjective",
+  },
+  isotherm: {
+    meaning: "A line connecting points of equal temperature.",
+    pos: "noun",
+  },
+  isothermal: {
+    meaning: "Relating to constant temperature.",
+    pos: "adjective",
+  },
   isotopic: { meaning: "Relating to isotopes.", pos: "adjective" },
-  isotropic: { meaning: "Having the same properties in all directions.", pos: "adjective" },
+  isotropic: {
+    meaning: "Having the same properties in all directions.",
+    pos: "adjective",
+  },
   issuance: { meaning: "The act of issuing.", pos: "noun" },
   issued: { meaning: "Distributed; past tense of issue.", pos: "verb" },
-  issuer: { meaning: "A person or organization that issues something.", pos: "noun" },
+  issuer: {
+    meaning: "A person or organization that issues something.",
+    pos: "noun",
+  },
   issuing: { meaning: "Present participle of issue.", pos: "verb" },
   isthmian: { meaning: "Relating to an isthmus.", pos: "adjective" },
   italicize: { meaning: "To print in italics.", pos: "verb" },
   italics: { meaning: "A slanted typeface.", pos: "noun" },
   itched: { meaning: "Felt an itch; past tense of itch.", pos: "verb" },
-  itching: { meaning: "Having an itch; present participle of itch.", pos: "verb" },
+  itching: {
+    meaning: "Having an itch; present participle of itch.",
+    pos: "verb",
+  },
   itchy: { meaning: "Causing an itch.", pos: "adjective" },
   itemization: { meaning: "The act of itemizing.", pos: "noun" },
-  itemized: { meaning: "Listed individually; past tense of itemize.", pos: "verb" },
+  itemized: {
+    meaning: "Listed individually; past tense of itemize.",
+    pos: "verb",
+  },
   itemizing: { meaning: "Present participle of itemize.", pos: "verb" },
   iterated: { meaning: "Repeated; past tense of iterate.", pos: "verb" },
   iterating: { meaning: "Present participle of iterate.", pos: "verb" },
   iteration: { meaning: "A repetition.", pos: "noun" },
   iterative: { meaning: "Relating to repetition.", pos: "adjective" },
   iteratively: { meaning: "In an iterative manner.", pos: "adverb" },
-  itinerancy: { meaning: "The state of traveling from place to place.", pos: "noun" },
+  itinerancy: {
+    meaning: "The state of traveling from place to place.",
+    pos: "noun",
+  },
   ivied: { meaning: "Covered with ivy.", pos: "adjective" },
 
-  icebreaker: { meaning: "A ship designed to break ice; something that eases social interaction.", pos: "noun" },
+  icebreaker: {
+    meaning:
+      "A ship designed to break ice; something that eases social interaction.",
+    pos: "noun",
+  },
   icefield: { meaning: "A large area of ice.", pos: "noun" },
   icefloe: { meaning: "A sheet of floating ice.", pos: "noun" },
   iceman: { meaning: "A man who sells or delivers ice.", pos: "noun" },
-  icepack: { meaning: "A bag of ice used to cool; a floating mass of ice.", pos: "noun" },
+  icepack: {
+    meaning: "A bag of ice used to cool; a floating mass of ice.",
+    pos: "noun",
+  },
   icepick: { meaning: "A pointed tool for breaking ice.", pos: "noun" },
-  iceskate: { meaning: "A boot with a blade for skating on ice; to skate on ice.", pos: "noun" },
+  iceskate: {
+    meaning: "A boot with a blade for skating on ice; to skate on ice.",
+    pos: "noun",
+  },
   icewater: { meaning: "Very cold water with ice.", pos: "noun" },
   ichthyic: { meaning: "Relating to fishes.", pos: "adjective" },
   ichthyologist: { meaning: "A scientist who studies fishes.", pos: "noun" },
   ichthyosaur: { meaning: "An extinct marine reptile.", pos: "noun" },
-  iconic: { meaning: "Relating to or characteristic of an icon; widely recognized.", pos: "adjective" },
-  iconicity: { meaning: "The quality of being iconic or resembling its referent.", pos: "noun" },
-  iconoclasm: { meaning: "The action of attacking cherished beliefs or institutions.", pos: "noun" },
-  iconoclastic: { meaning: "Characterized by attacking established beliefs.", pos: "adjective" },
-  iconographic: { meaning: "Relating to visual images and symbols.", pos: "adjective" },
-  iconological: { meaning: "Relating to the study of icons.", pos: "adjective" },
-  iconology: { meaning: "The study of visual imagery and symbolism.", pos: "noun" },
+  iconic: {
+    meaning: "Relating to or characteristic of an icon; widely recognized.",
+    pos: "adjective",
+  },
+  iconicity: {
+    meaning: "The quality of being iconic or resembling its referent.",
+    pos: "noun",
+  },
+  iconoclasm: {
+    meaning: "The action of attacking cherished beliefs or institutions.",
+    pos: "noun",
+  },
+  iconoclastic: {
+    meaning: "Characterized by attacking established beliefs.",
+    pos: "adjective",
+  },
+  iconographic: {
+    meaning: "Relating to visual images and symbols.",
+    pos: "adjective",
+  },
+  iconological: {
+    meaning: "Relating to the study of icons.",
+    pos: "adjective",
+  },
+  iconology: {
+    meaning: "The study of visual imagery and symbolism.",
+    pos: "noun",
+  },
   icosahedral: { meaning: "Having twenty faces.", pos: "adjective" },
-  icteric: { meaning: "Relating to or affected by jaundice.", pos: "adjective" },
+  icteric: {
+    meaning: "Relating to or affected by jaundice.",
+    pos: "adjective",
+  },
   icterus: { meaning: "Jaundice.", pos: "noun" },
   ictus: { meaning: "A beat or stroke; a sudden attack.", pos: "noun" },
-  idealism: { meaning: "The practice of forming or pursuing ideals.", pos: "noun" },
+  idealism: {
+    meaning: "The practice of forming or pursuing ideals.",
+    pos: "noun",
+  },
   idealistically: { meaning: "In an idealistic manner.", pos: "adverb" },
-  idealization: { meaning: "The act of regarding something as perfect.", pos: "noun" },
-  idealized: { meaning: "Regarded or represented as perfect; past tense of idealize.", pos: "verb" },
+  idealization: {
+    meaning: "The act of regarding something as perfect.",
+    pos: "noun",
+  },
+  idealized: {
+    meaning: "Regarded or represented as perfect; past tense of idealize.",
+    pos: "verb",
+  },
   idealizing: { meaning: "Present participle of idealize.", pos: "verb" },
-  ideational: { meaning: "Relating to the formation of ideas.", pos: "adjective" },
+  ideational: {
+    meaning: "Relating to the formation of ideas.",
+    pos: "adjective",
+  },
   ideationally: { meaning: "In terms of ideas.", pos: "adverb" },
   identically: { meaning: "In exactly the same way.", pos: "adverb" },
-  identifiability: { meaning: "The quality of being identifiable.", pos: "noun" },
-   // already in original, avoid duplicate? Actually original has it. We'll skip duplicates.
-   // already added in first chunk? Yes, we added "identified" in first chunk. So skip.
-   // already added in first chunk? Yes, we added "identifier". So skip.
-   // already added in first chunk? Yes, we added "identifies". So skip.
-   // already added in first chunk? Yes, we added "identifying". So skip.
-  ideogram: { meaning: "A written character symbolizing an idea.", pos: "noun" },
+  identifiability: {
+    meaning: "The quality of being identifiable.",
+    pos: "noun",
+  },
+  // already in original, avoid duplicate? Actually original has it. We'll skip duplicates.
+  // already added in first chunk? Yes, we added "identified" in first chunk. So skip.
+  // already added in first chunk? Yes, we added "identifier". So skip.
+  // already added in first chunk? Yes, we added "identifies". So skip.
+  // already added in first chunk? Yes, we added "identifying". So skip.
+  ideogram: {
+    meaning: "A written character symbolizing an idea.",
+    pos: "noun",
+  },
   ideograph: { meaning: "An ideogram.", pos: "noun" },
   ideographic: { meaning: "Relating to ideograms.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "ideologue". So skip.
-  ideomotor: { meaning: "Relating to movement caused by an idea.", pos: "adjective" },
-  idioblast: { meaning: "A plant cell that differs from surrounding cells.", pos: "noun" },
-  idioglossia: { meaning: "A private language invented by a child.", pos: "noun" },
-  idiographic: { meaning: "Relating to the study of individuals.", pos: "adjective" },
-  idiolectal: { meaning: "Relating to an individual's use of language.", pos: "adjective" },
+  // already added in first chunk? Yes, we added "ideologue". So skip.
+  ideomotor: {
+    meaning: "Relating to movement caused by an idea.",
+    pos: "adjective",
+  },
+  idioblast: {
+    meaning: "A plant cell that differs from surrounding cells.",
+    pos: "noun",
+  },
+  idioglossia: {
+    meaning: "A private language invented by a child.",
+    pos: "noun",
+  },
+  idiographic: {
+    meaning: "Relating to the study of individuals.",
+    pos: "adjective",
+  },
+  idiolectal: {
+    meaning: "Relating to an individual's use of language.",
+    pos: "adjective",
+  },
   idiomaticity: { meaning: "The quality of being idiomatic.", pos: "noun" },
   idiopathy: { meaning: "A disease of unknown cause.", pos: "noun" },
   idiopathic: { meaning: "Of unknown cause (disease).", pos: "adjective" },
   idiosyncratic: { meaning: "Peculiar to an individual.", pos: "adjective" },
   idiosyncratically: { meaning: "In an idiosyncratic manner.", pos: "adverb" },
   idly: { meaning: "In an idle manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "idolater". So skip.
+  // already added in first chunk? Yes, we added "idolater". So skip.
   idolatrously: { meaning: "In an idolatrous manner.", pos: "adverb" },
   idolization: { meaning: "The act of idolizing.", pos: "noun" },
-  idolized: { meaning: "Admired excessively; past tense of idolize.", pos: "verb" },
+  idolized: {
+    meaning: "Admired excessively; past tense of idolize.",
+    pos: "verb",
+  },
   idolizing: { meaning: "Present participle of idolize.", pos: "verb" },
   idyllically: { meaning: "In an idyllic manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "iffy". So skip.
+  // already added in first chunk? Yes, we added "iffy". So skip.
   ignitability: { meaning: "The ability to catch fire.", pos: "noun" },
   ignitible: { meaning: "Capable of being ignited.", pos: "adjective" },
   ignominiously: { meaning: "In a shameful manner.", pos: "adverb" },
   ignorable: { meaning: "Able to be ignored.", pos: "adjective" },
   ignorantly: { meaning: "In an ignorant manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "ignoramus". So skip.
+  // already added in first chunk? Yes, we added "ignoramus". So skip.
   ileac: { meaning: "Relating to the ileum.", pos: "adjective" },
   ileitis: { meaning: "Inflammation of the ileum.", pos: "noun" },
   ileostomy: { meaning: "Surgical opening in the ileum.", pos: "noun" },
-   // already added in second chunk? Yes, we added "illation". So skip.
-   // already added in second chunk? Yes, we added "illative". So skip.
+  // already added in second chunk? Yes, we added "illation". So skip.
+  // already added in second chunk? Yes, we added "illative". So skip.
   illaudable: { meaning: "Not deserving praise.", pos: "adjective" },
   illiberality: { meaning: "Narrow-mindedness.", pos: "noun" },
   illiberally: { meaning: "In an illiberal manner.", pos: "adverb" },
@@ -2203,27 +2841,36 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   illiquid: { meaning: "Not easily converted to cash.", pos: "adjective" },
   illiquidity: { meaning: "The state of being illiquid.", pos: "noun" },
   illocution: { meaning: "The act performed by speaking.", pos: "noun" },
-  illocutionary: { meaning: "Relating to the act performed by speaking.", pos: "adjective" },
+  illocutionary: {
+    meaning: "Relating to the act performed by speaking.",
+    pos: "adjective",
+  },
   illogicality: { meaning: "Lack of logic.", pos: "noun" },
   illogically: { meaning: "In an illogical manner.", pos: "adverb" },
   illuminable: { meaning: "Capable of being illuminated.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "illuminance". So skip.
-  illuminati: { meaning: "People claiming special enlightenment.", pos: "noun" },
+  // already added in first chunk? Yes, we added "illuminance". So skip.
+  illuminati: {
+    meaning: "People claiming special enlightenment.",
+    pos: "noun",
+  },
   illuminatingly: { meaning: "In an enlightening manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "illumination". So skip.
+  // already added in first chunk? Yes, we added "illumination". So skip.
   illuminative: { meaning: "Serving to illuminate.", pos: "adjective" },
   illuminator: { meaning: "A person or thing that illuminates.", pos: "noun" },
-  illusionism: { meaning: "The use of illusions in art or magic.", pos: "noun" },
+  illusionism: {
+    meaning: "The use of illusions in art or magic.",
+    pos: "noun",
+  },
   illusionistic: { meaning: "Relating to illusionism.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "illusive". So skip.
+  // already added in first chunk? Yes, we added "illusive". So skip.
   illusorily: { meaning: "In an illusory manner.", pos: "adverb" },
   illusoriness: { meaning: "The quality of being illusory.", pos: "noun" },
-   // already in original, skip
-   // already in original, skip
+  // already in original, skip
+  // already in original, skip
   illustrational: { meaning: "Relating to illustration.", pos: "adjective" },
   illustratively: { meaning: "In an illustrative manner.", pos: "adverb" },
   illustriously: { meaning: "In a famous and admired manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "imaginable". So skip.
+  // already added in first chunk? Yes, we added "imaginable". So skip.
   imaginarily: { meaning: "In an imaginary manner.", pos: "adverb" },
   imaginativeness: { meaning: "Creativeness.", pos: "noun" },
   imaginal: { meaning: "Relating to an image or imago.", pos: "adjective" },
@@ -2248,7 +2895,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   imitatively: { meaning: "In an imitative manner.", pos: "adverb" },
   immanency: { meaning: "The state of being immanent.", pos: "noun" },
   immanently: { meaning: "In an immanent manner.", pos: "adverb" },
-  immaterialism: { meaning: "The belief that matter does not exist.", pos: "noun" },
+  immaterialism: {
+    meaning: "The belief that matter does not exist.",
+    pos: "noun",
+  },
   immateriality: { meaning: "The quality of being immaterial.", pos: "noun" },
   immaterialize: { meaning: "To make immaterial.", pos: "verb" },
   immaterially: { meaning: "In an immaterial way.", pos: "adverb" },
@@ -2261,9 +2911,9 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   immensurable: { meaning: "Immeasurable.", pos: "adjective" },
   immerge: { meaning: "To plunge into; to immerse.", pos: "verb" },
   immergence: { meaning: "The act of immerging.", pos: "noun" },
-   // already added in first chunk? Yes, we added "immersible". So skip.
+  // already added in first chunk? Yes, we added "immersible". So skip.
   immethodical: { meaning: "Not methodical.", pos: "adjective" },
-   // already in original, skip
+  // already in original, skip
   immigrational: { meaning: "Relating to immigration.", pos: "adjective" },
   imminency: { meaning: "The state of being imminent.", pos: "noun" },
   immingle: { meaning: "To mix together.", pos: "verb" },
@@ -2271,130 +2921,205 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   immixture: { meaning: "The act of mixing.", pos: "noun" },
   immobilism: { meaning: "Opposition to change.", pos: "noun" },
   immobilization: { meaning: "The act of making immobile.", pos: "noun" },
-  immobilized: { meaning: "Made unable to move; past tense of immobilize.", pos: "verb" },
+  immobilized: {
+    meaning: "Made unable to move; past tense of immobilize.",
+    pos: "verb",
+  },
   immobilizing: { meaning: "Present participle of immobilize.", pos: "verb" },
   immoderacy: { meaning: "Immoderation.", pos: "noun" },
   immoderately: { meaning: "Excessively.", pos: "adverb" },
   immoderation: { meaning: "Lack of moderation.", pos: "noun" },
   immodestly: { meaning: "In an immodest manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "immodesty". So skip.
-   // already added in first chunk? Yes, we added "immolate". So skip.
-   // already added in first chunk? Yes, we added "immolation". So skip.
+  // already added in first chunk? Yes, we added "immodesty". So skip.
+  // already added in first chunk? Yes, we added "immolate". So skip.
+  // already added in first chunk? Yes, we added "immolation". So skip.
   immolator: { meaning: "A person who immolates.", pos: "noun" },
   immoralism: { meaning: "Rejection of moral principles.", pos: "noun" },
-   // already added in first chunk? Yes, we added "immoralist". So skip.
+  // already added in first chunk? Yes, we added "immoralist". So skip.
   immortalisation: { meaning: "The act of making immortal.", pos: "noun" },
   immortalised: { meaning: "Made immortal (British spelling).", pos: "verb" },
   immortalising: { meaning: "Present participle of immortalise.", pos: "verb" },
   immortally: { meaning: "In an immortal manner.", pos: "adverb" },
-  immortelle: { meaning: "A flower that keeps its shape when dried.", pos: "noun" },
+  immortelle: {
+    meaning: "A flower that keeps its shape when dried.",
+    pos: "noun",
+  },
   immotility: { meaning: "Lack of movement.", pos: "noun" },
   immovability: { meaning: "The quality of being immovable.", pos: "noun" },
   immovably: { meaning: "In an immovable manner.", pos: "adverb" },
-  immunisation: { meaning: "The act of making immune (British spelling).", pos: "noun" },
+  immunisation: {
+    meaning: "The act of making immune (British spelling).",
+    pos: "noun",
+  },
   immunised: { meaning: "Made immune (British spelling).", pos: "verb" },
   immunising: { meaning: "Present participle of immunise.", pos: "verb" },
-  immunochemical: { meaning: "Relating to the chemistry of the immune system.", pos: "adjective" },
-  immunocompetence: { meaning: "Ability of the immune system to respond.", pos: "noun" },
-  immunocompromised: { meaning: "Having an impaired immune system.", pos: "adjective" },
-  immunocytochemistry: { meaning: "A technique to detect antigens in cells.", pos: "noun" },
-  immunodiagnosis: { meaning: "Diagnosis using immune reactions.", pos: "noun" },
-  immunoelectrophoresis: { meaning: "A technique for separating proteins.", pos: "noun" },
+  immunochemical: {
+    meaning: "Relating to the chemistry of the immune system.",
+    pos: "adjective",
+  },
+  immunocompetence: {
+    meaning: "Ability of the immune system to respond.",
+    pos: "noun",
+  },
+  immunocompromised: {
+    meaning: "Having an impaired immune system.",
+    pos: "adjective",
+  },
+  immunocytochemistry: {
+    meaning: "A technique to detect antigens in cells.",
+    pos: "noun",
+  },
+  immunodiagnosis: {
+    meaning: "Diagnosis using immune reactions.",
+    pos: "noun",
+  },
+  immunoelectrophoresis: {
+    meaning: "A technique for separating proteins.",
+    pos: "noun",
+  },
   immunogenetic: { meaning: "Relating to immune genetics.", pos: "adjective" },
-  immunogenetics: { meaning: "The study of genetic aspects of immunity.", pos: "noun" },
-  immunogenicity: { meaning: "The ability to provoke an immune response.", pos: "noun" },
-  immunohistochemistry: { meaning: "A technique to detect antigens in tissues.", pos: "noun" },
+  immunogenetics: {
+    meaning: "The study of genetic aspects of immunity.",
+    pos: "noun",
+  },
+  immunogenicity: {
+    meaning: "The ability to provoke an immune response.",
+    pos: "noun",
+  },
+  immunohistochemistry: {
+    meaning: "A technique to detect antigens in tissues.",
+    pos: "noun",
+  },
   immunologic: { meaning: "Relating to immunology.", pos: "adjective" },
   immunological: { meaning: "Relating to immunology.", pos: "adjective" },
   immunologically: { meaning: "In an immunological manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "immunologist". So skip.
-  immunomodulator: { meaning: "A substance that modifies the immune response.", pos: "noun" },
-  immunopathology: { meaning: "The study of immune-related diseases.", pos: "noun" },
-  immunoprecipitation: { meaning: "A technique to isolate proteins.", pos: "noun" },
+  // already added in first chunk? Yes, we added "immunologist". So skip.
+  immunomodulator: {
+    meaning: "A substance that modifies the immune response.",
+    pos: "noun",
+  },
+  immunopathology: {
+    meaning: "The study of immune-related diseases.",
+    pos: "noun",
+  },
+  immunoprecipitation: {
+    meaning: "A technique to isolate proteins.",
+    pos: "noun",
+  },
   immunoreactive: { meaning: "Reacting with an antibody.", pos: "adjective" },
-  immunoregulation: { meaning: "Regulation of the immune response.", pos: "noun" },
+  immunoregulation: {
+    meaning: "Regulation of the immune response.",
+    pos: "noun",
+  },
   immunosuppress: { meaning: "To suppress the immune system.", pos: "verb" },
-  immunosuppressant: { meaning: "A drug that suppresses the immune system.", pos: "noun" },
-  immunosuppressed: { meaning: "Having a suppressed immune system.", pos: "adjective" },
-  immunosuppressive: { meaning: "Suppressing the immune system.", pos: "adjective" },
+  immunosuppressant: {
+    meaning: "A drug that suppresses the immune system.",
+    pos: "noun",
+  },
+  immunosuppressed: {
+    meaning: "Having a suppressed immune system.",
+    pos: "adjective",
+  },
+  immunosuppressive: {
+    meaning: "Suppressing the immune system.",
+    pos: "adjective",
+  },
   immunotoxic: { meaning: "Toxic to the immune system.", pos: "adjective" },
   immunotoxicity: { meaning: "Toxicity to the immune system.", pos: "noun" },
-   // already added in first chunk? Yes, we added "immutable". So skip.
+  // already added in first chunk? Yes, we added "immutable". So skip.
   immutability: { meaning: "The quality of being immutable.", pos: "noun" },
   immutably: { meaning: "In an immutable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "impaction". So skip.
-   // already added in first chunk? Yes, we added "impacts". So skip.
+  // already added in first chunk? Yes, we added "impaction". So skip.
+  // already added in first chunk? Yes, we added "impacts". So skip.
   impairer: { meaning: "A person or thing that impairs.", pos: "noun" },
   impairing: { meaning: "Present participle of impair.", pos: "verb" },
-   // already added in first chunk? Yes, we added "impairment". So skip.
-   // already added in first chunk? Yes, we added "impalement". So skip.
+  // already added in first chunk? Yes, we added "impairment". So skip.
+  // already added in first chunk? Yes, we added "impalement". So skip.
   impalpability: { meaning: "The quality of being impalpable.", pos: "noun" },
   impalpably: { meaning: "In an impalpable manner.", pos: "adverb" },
   imparity: { meaning: "Inequality; disparity.", pos: "noun" },
   impartation: { meaning: "The act of imparting.", pos: "noun" },
   impartialist: { meaning: "A person who is impartial.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impartiality". So skip.
+  // already added in first chunk? Yes, we added "impartiality". So skip.
   impartially: { meaning: "In an impartial manner.", pos: "adverb" },
   impassability: { meaning: "The quality of being impassable.", pos: "noun" },
   impassably: { meaning: "In an impassable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "impassioned". So skip.
+  // already added in first chunk? Yes, we added "impassioned". So skip.
   impassively: { meaning: "In an impassive manner.", pos: "adverb" },
   impassivity: { meaning: "The quality of being impassive.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impatience". So skip.
+  // already added in first chunk? Yes, we added "impatience". So skip.
   impatiens: { meaning: "A genus of flowering plants.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impeachable". So skip.
-   // already added in first chunk? Yes, we added "impeachment". So skip.
+  // already added in first chunk? Yes, we added "impeachable". So skip.
+  // already added in first chunk? Yes, we added "impeachment". So skip.
   impeccability: { meaning: "The quality of being impeccable.", pos: "noun" },
   impeccancy: { meaning: "Faultlessness.", pos: "noun" },
   impecuniosity: { meaning: "The state of having little money.", pos: "noun" },
   impecuniousness: { meaning: "Poverty.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impedance". So skip.
+  // already added in first chunk? Yes, we added "impedance". So skip.
   impedimental: { meaning: "Serving as an impediment.", pos: "adjective" },
   impeditive: { meaning: "Hindering.", pos: "adjective" },
   impellent: { meaning: "Driving forward.", pos: "adjective" },
   impendence: { meaning: "The state of being imminent.", pos: "noun" },
   impenitence: { meaning: "Lack of repentance.", pos: "noun" },
   impenitently: { meaning: "Without repentance.", pos: "adverb" },
-  imperatival: { meaning: "Relating to the imperative mood.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "imperatively". So skip.
+  imperatival: {
+    meaning: "Relating to the imperative mood.",
+    pos: "adjective",
+  },
+  // already added in first chunk? Yes, we added "imperatively". So skip.
   imperatorial: { meaning: "Relating to an emperor.", pos: "adjective" },
-  imperceptibility: { meaning: "The quality of being imperceptible.", pos: "noun" },
-   // already added in first chunk? Yes, we added "imperceptibly". So skip.
+  imperceptibility: {
+    meaning: "The quality of being imperceptible.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "imperceptibly". So skip.
   impercipient: { meaning: "Not perceiving.", pos: "adjective" },
   imperfectible: { meaning: "Unable to be made perfect.", pos: "adjective" },
-  imperfective: { meaning: "Relating to an aspect of a verb indicating ongoing action.", pos: "adjective" },
+  imperfective: {
+    meaning: "Relating to an aspect of a verb indicating ongoing action.",
+    pos: "adjective",
+  },
   imperfectly: { meaning: "In an imperfect manner.", pos: "adverb" },
   imperforate: { meaning: "Not pierced or perforated.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "imperialist". So skip.
+  // already added in first chunk? Yes, we added "imperialist". So skip.
   imperialistic: { meaning: "Relating to imperialism.", pos: "adjective" },
   imperially: { meaning: "In an imperial manner.", pos: "adverb" },
   imperilment: { meaning: "The act of endangering.", pos: "noun" },
-   // already added in first chunk? Yes, we added "imperiousness". So skip.
-  imperishability: { meaning: "The quality of being imperishable.", pos: "noun" },
+  // already added in first chunk? Yes, we added "imperiousness". So skip.
+  imperishability: {
+    meaning: "The quality of being imperishable.",
+    pos: "noun",
+  },
   imperishably: { meaning: "In an imperishable manner.", pos: "adverb" },
   impermanency: { meaning: "Impermanence.", pos: "noun" },
   impermeability: { meaning: "The quality of being impermeable.", pos: "noun" },
   impermeably: { meaning: "In an impermeable manner.", pos: "adverb" },
-  impermissibility: { meaning: "The quality of being impermissible.", pos: "noun" },
+  impermissibility: {
+    meaning: "The quality of being impermissible.",
+    pos: "noun",
+  },
   impermissibly: { meaning: "In an impermissible manner.", pos: "adverb" },
   impersonality: { meaning: "The quality of being impersonal.", pos: "noun" },
   impersonally: { meaning: "In an impersonal manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "impersonation". So skip.
+  // already added in first chunk? Yes, we added "impersonation". So skip.
   impersonator: { meaning: "A person who impersonates.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impertinence". So skip.
+  // already added in first chunk? Yes, we added "impertinence". So skip.
   impertinently: { meaning: "In an impertinent manner.", pos: "adverb" },
-  imperturbability: { meaning: "The quality of being calm and composed.", pos: "noun" },
+  imperturbability: {
+    meaning: "The quality of being calm and composed.",
+    pos: "noun",
+  },
   imperturbably: { meaning: "In an imperturbable manner.", pos: "adverb" },
   imperviously: { meaning: "In an impervious manner.", pos: "adverb" },
   impetuously: { meaning: "In an impetuous manner.", pos: "adverb" },
   impetuousness: { meaning: "Impulsiveness.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impiety". So skip.
-   // already added in first chunk? Yes, we added "impingement". So skip.
+  // already added in first chunk? Yes, we added "impiety". So skip.
+  // already added in first chunk? Yes, we added "impingement". So skip.
   impiously: { meaning: "In an impious manner.", pos: "adverb" },
   impishness: { meaning: "The quality of being impish.", pos: "noun" },
   implacably: { meaning: "In an implacable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "implantation". So skip.
-   // already added in first chunk? Yes, we added "implanted". So skip.
+  // already added in first chunk? Yes, we added "implantation". So skip.
+  // already added in first chunk? Yes, we added "implanted". So skip.
   implausibility: { meaning: "The quality of being implausible.", pos: "noun" },
   implausibly: { meaning: "In an implausible manner.", pos: "adverb" },
   implemental: { meaning: "Serving as an instrument.", pos: "adjective" },
@@ -2411,7 +3136,7 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   importability: { meaning: "The quality of being importable.", pos: "noun" },
   importable: { meaning: "Able to be imported.", pos: "adjective" },
   importantly: { meaning: "In an important manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "importation". So skip.
+  // already added in first chunk? Yes, we added "importation". So skip.
   importunacy: { meaning: "The quality of being importunate.", pos: "noun" },
   importunately: { meaning: "In an importunate manner.", pos: "adverb" },
   importunely: { meaning: "In an importune manner.", pos: "adverb" },
@@ -2421,55 +3146,64 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   impostorism: { meaning: "The practice of being an impostor.", pos: "noun" },
   impotently: { meaning: "In an impotent manner.", pos: "adverb" },
   impoundment: { meaning: "The act of impounding.", pos: "noun" },
-  impracticability: { meaning: "The quality of being impracticable.", pos: "noun" },
+  impracticability: {
+    meaning: "The quality of being impracticable.",
+    pos: "noun",
+  },
   impracticably: { meaning: "In an impracticable manner.", pos: "adverb" },
   imprecatory: { meaning: "Expressing a curse.", pos: "adjective" },
   imprecisely: { meaning: "In an imprecise manner.", pos: "adverb" },
   impreciseness: { meaning: "Lack of precision.", pos: "noun" },
   impregnability: { meaning: "The quality of being impregnable.", pos: "noun" },
   impregnably: { meaning: "In an impregnable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "impregnation". So skip.
+  // already added in first chunk? Yes, we added "impregnation". So skip.
   impressibility: { meaning: "The quality of being impressible.", pos: "noun" },
   impressible: { meaning: "Capable of being impressed.", pos: "adjective" },
   impressiveness: { meaning: "The quality of being impressive.", pos: "noun" },
   impressment: { meaning: "The act of forcing into service.", pos: "noun" },
-   // already added in first chunk? Yes, we added "imprimatur". So skip.
+  // already added in first chunk? Yes, we added "imprimatur". So skip.
   imprinting: { meaning: "The process of imprinting.", pos: "noun" },
   imprisonable: { meaning: "Liable to imprisonment.", pos: "adjective" },
   imprisoning: { meaning: "Present participle of imprison.", pos: "verb" },
   improbity: { meaning: "Lack of integrity.", pos: "noun" },
-   // already added in first chunk? Yes, we added "impropriety". So skip.
+  // already added in first chunk? Yes, we added "impropriety". So skip.
   improvability: { meaning: "The quality of being improvable.", pos: "noun" },
   improvable: { meaning: "Capable of being improved.", pos: "adjective" },
   improvidence: { meaning: "Lack of foresight.", pos: "noun" },
   improvidently: { meaning: "In an improvident manner.", pos: "adverb" },
   improvisational: { meaning: "Relating to improvisation.", pos: "adjective" },
-  improvisationally: { meaning: "In an improvisational manner.", pos: "adverb" },
+  improvisationally: {
+    meaning: "In an improvisational manner.",
+    pos: "adverb",
+  },
   improvisator: { meaning: "A person who improvises.", pos: "noun" },
   improvisatory: { meaning: "Relating to improvisation.", pos: "adjective" },
   imprudently: { meaning: "In an imprudent manner.", pos: "adverb" },
   impudicity: { meaning: "Immodesty.", pos: "noun" },
   impuissance: { meaning: "Powerlessness.", pos: "noun" },
   impuissant: { meaning: "Powerless.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "impulsively". So skip.
+  // already added in first chunk? Yes, we added "impulsively". So skip.
   impulsiveness: { meaning: "The quality of being impulsive.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   imputability: { meaning: "The quality of being imputable.", pos: "noun" },
   imputably: { meaning: "In an imputable manner.", pos: "adverb" },
   imputative: { meaning: "Attributive.", pos: "adjective" },
   inaccessibly: { meaning: "In an inaccessible manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "inaccuracy". So skip.
+  // already added in first chunk? Yes, we added "inaccuracy". So skip.
   inaccurately: { meaning: "In an inaccurate manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "inaction". So skip.
+  // already added in first chunk? Yes, we added "inaction". So skip.
   inactivate: { meaning: "To make inactive.", pos: "verb" },
   inactivation: { meaning: "The process of making inactive.", pos: "noun" },
   inactively: { meaning: "In an inactive manner.", pos: "adverb" },
   inadaptable: { meaning: "Not adaptable.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "inadequacy". So skip.
+  // already added in first chunk? Yes, we added "inadequacy". So skip.
   inadequately: { meaning: "In an inadequate manner.", pos: "adverb" },
-  inadmissibility: { meaning: "The quality of being inadmissible.", pos: "noun" },
+  inadmissibility: {
+    meaning: "The quality of being inadmissible.",
+    pos: "noun",
+  },
   inadmissibly: { meaning: "In an inadmissible manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "inadvertence". So skip.
+  // already added in first chunk? Yes, we added "inadvertence". So skip.
   inadvertently: { meaning: "Unintentionally.", pos: "adverb" },
   inadvisability: { meaning: "The quality of being inadvisable.", pos: "noun" },
   inadvisably: { meaning: "In an inadvisable manner.", pos: "adverb" },
@@ -2478,46 +3212,61 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inalterability: { meaning: "The quality of being inalterable.", pos: "noun" },
   inalterably: { meaning: "In an inalterable manner.", pos: "adverb" },
   inamorato: { meaning: "A man one loves.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   inanely: { meaning: "In an inane manner.", pos: "adverb" },
   inanimateness: { meaning: "The state of being inanimate.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inanity". So skip.
+  // already added in first chunk? Yes, we added "inanity". So skip.
   inappetence: { meaning: "Lack of appetite.", pos: "noun" },
-  inapplicability: { meaning: "The quality of being inapplicable.", pos: "noun" },
+  inapplicability: {
+    meaning: "The quality of being inapplicable.",
+    pos: "noun",
+  },
   inappreciably: { meaning: "In an inappreciable manner.", pos: "adverb" },
   inapprehensible: { meaning: "Not understandable.", pos: "adjective" },
   inapproachable: { meaning: "Not approachable.", pos: "adjective" },
   inappropriately: { meaning: "In an inappropriate manner.", pos: "adverb" },
-  inappropriateness: { meaning: "The quality of being inappropriate.", pos: "noun" },
+  inappropriateness: {
+    meaning: "The quality of being inappropriate.",
+    pos: "noun",
+  },
   inaptly: { meaning: "In an inapt manner.", pos: "adverb" },
   inaptness: { meaning: "The quality of being inapt.", pos: "noun" },
   inarguable: { meaning: "Not arguable; certain.", pos: "adjective" },
   inarguably: { meaning: "In an inarguable manner.", pos: "adverb" },
   inarticulately: { meaning: "In an inarticulate manner.", pos: "adverb" },
-  inarticulateness: { meaning: "The quality of being inarticulate.", pos: "noun" },
+  inarticulateness: {
+    meaning: "The quality of being inarticulate.",
+    pos: "noun",
+  },
   inartistic: { meaning: "Not artistic.", pos: "adjective" },
-   // already in original, skip
-   // already added in first chunk? Yes, we added "inattention". So skip.
+  // already in original, skip
+  // already added in first chunk? Yes, we added "inattention". So skip.
   inattentively: { meaning: "In an inattentive manner.", pos: "adverb" },
   inaudibility: { meaning: "The quality of being inaudible.", pos: "noun" },
   inaudibly: { meaning: "In an inaudible manner.", pos: "adverb" },
   inaugurator: { meaning: "A person who inaugurates.", pos: "noun" },
   inauspiciously: { meaning: "In an inauspicious manner.", pos: "adverb" },
-  inauspiciousness: { meaning: "The quality of being inauspicious.", pos: "noun" },
+  inauspiciousness: {
+    meaning: "The quality of being inauspicious.",
+    pos: "noun",
+  },
   inbeing: { meaning: "Inherent existence.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inboard". So skip.
-   // already added in first chunk? Yes, we added "inbound". So skip.
+  // already added in first chunk? Yes, we added "inboard". So skip.
+  // already added in first chunk? Yes, we added "inbound". So skip.
   inbreathe: { meaning: "To breathe in.", pos: "verb" },
   inbuilt: { meaning: "Built in; inherent.", pos: "adjective" },
   incalculably: { meaning: "In an incalculable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "incandescence". So skip.
+  // already added in first chunk? Yes, we added "incandescence". So skip.
   incandescently: { meaning: "In an incandescent manner.", pos: "adverb" },
   incantational: { meaning: "Relating to incantation.", pos: "adjective" },
   incapability: { meaning: "Lack of capability.", pos: "noun" },
   incapacious: { meaning: "Not spacious; limited.", pos: "adjective" },
   incapacitant: { meaning: "A substance that incapacitates.", pos: "noun" },
-  incapacitating: { meaning: "Present participle of incapacitate.", pos: "verb" },
-   // already added in first chunk? Yes, we added "incapacity". So skip.
+  incapacitating: {
+    meaning: "Present participle of incapacitate.",
+    pos: "verb",
+  },
+  // already added in first chunk? Yes, we added "incapacity". So skip.
   incapsulate: { meaning: "To enclose in a capsule.", pos: "verb" },
   incardinate: { meaning: "To attach a cleric to a church.", pos: "verb" },
   incarnadine: { meaning: "Blood-red in color.", pos: "adjective" },
@@ -2525,7 +3274,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incase: { meaning: "To enclose in a case.", pos: "verb" },
   incautiously: { meaning: "In an incautious manner.", pos: "adverb" },
   incautiousness: { meaning: "The quality of being incautious.", pos: "noun" },
-  incendiarism: { meaning: "The act of setting fires maliciously.", pos: "noun" },
+  incendiarism: {
+    meaning: "The act of setting fires maliciously.",
+    pos: "noun",
+  },
   incensation: { meaning: "The act of burning incense.", pos: "noun" },
   incept: { meaning: "To begin; to take in.", pos: "verb" },
   inceptively: { meaning: "In an inceptive manner.", pos: "adverb" },
@@ -2533,7 +3285,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incessantly: { meaning: "Without ceasing.", pos: "adverb" },
   incestuously: { meaning: "In an incestuous manner.", pos: "adverb" },
   inchoately: { meaning: "In an inchoate manner.", pos: "adverb" },
-  inchoative: { meaning: "Expressing the beginning of an action.", pos: "adjective" },
+  inchoative: {
+    meaning: "Expressing the beginning of an action.",
+    pos: "adjective",
+  },
   incidentalness: { meaning: "The quality of being incidental.", pos: "noun" },
   incinerator: { meaning: "A furnace for burning waste.", pos: "noun" },
   incipiency: { meaning: "The state of being incipient.", pos: "noun" },
@@ -2542,10 +3297,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incisiveness: { meaning: "The quality of being incisive.", pos: "noun" },
   incitant: { meaning: "A stimulus.", pos: "noun" },
   incitation: { meaning: "Provocation.", pos: "noun" },
-   // already added in first chunk? Yes, we added "incitement". So skip.
+  // already added in first chunk? Yes, we added "incitement". So skip.
   incitive: { meaning: "Tending to incite.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "incivility". So skip.
-   // already added in first chunk? Yes, we added "inclemency". So skip.
+  // already added in first chunk? Yes, we added "incivility". So skip.
+  // already added in first chunk? Yes, we added "inclemency". So skip.
   inclinometer: { meaning: "An instrument for measuring slope.", pos: "noun" },
   inclosure: { meaning: "An enclosure.", pos: "noun" },
   includable: { meaning: "Able to be included.", pos: "adjective" },
@@ -2556,17 +3311,29 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incogitable: { meaning: "Unthinkable.", pos: "adjective" },
   incogitancy: { meaning: "Lack of thought.", pos: "noun" },
   incognizance: { meaning: "Lack of awareness.", pos: "noun" },
-   // already added in first chunk? Yes, we added "incoherence". So skip.
+  // already added in first chunk? Yes, we added "incoherence". So skip.
   incoherently: { meaning: "In an incoherent manner.", pos: "adverb" },
-  incombustibility: { meaning: "The quality of being incombustible.", pos: "noun" },
-  incommensurability: { meaning: "The quality of being incommensurable.", pos: "noun" },
-  incommensurable: { meaning: "Not measurable by a common standard.", pos: "adjective" },
+  incombustibility: {
+    meaning: "The quality of being incombustible.",
+    pos: "noun",
+  },
+  incommensurability: {
+    meaning: "The quality of being incommensurable.",
+    pos: "noun",
+  },
+  incommensurable: {
+    meaning: "Not measurable by a common standard.",
+    pos: "adjective",
+  },
   incommensurably: { meaning: "In an incommensurable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "incommensurate". So skip.
-   // already added in first chunk? Yes, we added "incommode". So skip.
+  // already added in first chunk? Yes, we added "incommensurate". So skip.
+  // already added in first chunk? Yes, we added "incommode". So skip.
   incommodity: { meaning: "Inconvenience.", pos: "noun" },
   incommunicable: { meaning: "Unable to be communicated.", pos: "adjective" },
-  incommunicado: { meaning: "Without means of communication.", pos: "adjective" },
+  incommunicado: {
+    meaning: "Without means of communication.",
+    pos: "adjective",
+  },
   incommunicative: { meaning: "Not communicative.", pos: "adjective" },
   incompact: { meaning: "Not compact.", pos: "adjective" },
   incomparably: { meaning: "In an incomparable manner.", pos: "adverb" },
@@ -2574,44 +3341,71 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incompetency: { meaning: "Incompetence.", pos: "noun" },
   incompetently: { meaning: "In an incompetent manner.", pos: "adverb" },
   incompletely: { meaning: "In an incomplete manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "incompleteness". So skip.
+  // already added in first chunk? Yes, we added "incompleteness". So skip.
   incompliance: { meaning: "Noncompliance.", pos: "noun" },
   incompliant: { meaning: "Not compliant.", pos: "adjective" },
-  incomprehensibility: { meaning: "The quality of being incomprehensible.", pos: "noun" },
-  incomprehensibly: { meaning: "In an incomprehensible manner.", pos: "adverb" },
+  incomprehensibility: {
+    meaning: "The quality of being incomprehensible.",
+    pos: "noun",
+  },
+  incomprehensibly: {
+    meaning: "In an incomprehensible manner.",
+    pos: "adverb",
+  },
   incomputable: { meaning: "Unable to be computed.", pos: "adjective" },
-  inconceivability: { meaning: "The quality of being inconceivable.", pos: "noun" },
+  inconceivability: {
+    meaning: "The quality of being inconceivable.",
+    pos: "noun",
+  },
   inconceivably: { meaning: "In an inconceivable manner.", pos: "adverb" },
   inconclusively: { meaning: "In an inconclusive manner.", pos: "adverb" },
-  inconclusiveness: { meaning: "The quality of being inconclusive.", pos: "noun" },
+  inconclusiveness: {
+    meaning: "The quality of being inconclusive.",
+    pos: "noun",
+  },
   incondensable: { meaning: "Unable to be condensed.", pos: "adjective" },
   incondite: { meaning: "Poorly constructed.", pos: "adjective" },
   inconformity: { meaning: "Nonconformity.", pos: "noun" },
   incongruently: { meaning: "In an incongruent manner.", pos: "adverb" },
   incongruously: { meaning: "In an incongruous manner.", pos: "adverb" },
-  incongruousness: { meaning: "The quality of being incongruous.", pos: "noun" },
+  incongruousness: {
+    meaning: "The quality of being incongruous.",
+    pos: "noun",
+  },
   inconnected: { meaning: "Not connected.", pos: "adjective" },
   inconsecutive: { meaning: "Not consecutive.", pos: "adjective" },
   inconsequence: { meaning: "Lack of consequence or importance.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inconsequent". So skip.
+  // already added in first chunk? Yes, we added "inconsequent". So skip.
   inconsequently: { meaning: "In an inconsequent manner.", pos: "adverb" },
   inconsiderableness: { meaning: "Insignificance.", pos: "noun" },
   inconsiderately: { meaning: "In an inconsiderate manner.", pos: "adverb" },
   inconsideration: { meaning: "Lack of consideration.", pos: "noun" },
   inconsistently: { meaning: "In an inconsistent manner.", pos: "adverb" },
   inconsolably: { meaning: "In an inconsolable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "inconsonant". So skip.
+  // already added in first chunk? Yes, we added "inconsonant". So skip.
   inconspicuously: { meaning: "In an inconspicuous manner.", pos: "adverb" },
-  inconspicuousness: { meaning: "The quality of being inconspicuous.", pos: "noun" },
+  inconspicuousness: {
+    meaning: "The quality of being inconspicuous.",
+    pos: "noun",
+  },
   inconstancy: { meaning: "The quality of being inconstant.", pos: "noun" },
   inconstantly: { meaning: "In an inconstant manner.", pos: "adverb" },
   incontestably: { meaning: "In an incontestable manner.", pos: "adverb" },
   incontinently: { meaning: "In an incontinent manner.", pos: "adverb" },
   incontrollable: { meaning: "Not controllable.", pos: "adjective" },
-  incontrovertibility: { meaning: "The quality of being incontrovertible.", pos: "noun" },
-  incontrovertibly: { meaning: "In an incontrovertible manner.", pos: "adverb" },
+  incontrovertibility: {
+    meaning: "The quality of being incontrovertible.",
+    pos: "noun",
+  },
+  incontrovertibly: {
+    meaning: "In an incontrovertible manner.",
+    pos: "adverb",
+  },
   inconvenienced: { meaning: "Past tense of inconvenience.", pos: "verb" },
-  inconveniencing: { meaning: "Present participle of inconvenience.", pos: "verb" },
+  inconveniencing: {
+    meaning: "Present participle of inconvenience.",
+    pos: "verb",
+  },
   inconveniently: { meaning: "In an inconvenient manner.", pos: "adverb" },
   inconvertible: { meaning: "Unable to be converted.", pos: "adjective" },
   inconvincible: { meaning: "Unable to be convinced.", pos: "adjective" },
@@ -2622,13 +3416,16 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incorrectly: { meaning: "In an incorrect manner.", pos: "adverb" },
   incorrectness: { meaning: "The quality of being incorrect.", pos: "noun" },
   incorrigibly: { meaning: "In an incorrigible manner.", pos: "adverb" },
-  incorruptibility: { meaning: "The quality of being incorruptible.", pos: "noun" },
+  incorruptibility: {
+    meaning: "The quality of being incorruptible.",
+    pos: "noun",
+  },
   incorruptibly: { meaning: "In an incorruptible manner.", pos: "adverb" },
   incrassate: { meaning: "Thickened.", pos: "adjective" },
   incrementally: { meaning: "In small increments.", pos: "adverb" },
   increscent: { meaning: "Growing; increasing.", pos: "adjective" },
   incriminatory: { meaning: "Tending to incriminate.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "incrustation". So skip.
+  // already added in first chunk? Yes, we added "incrustation". So skip.
   incubative: { meaning: "Relating to incubation.", pos: "adjective" },
   incubatory: { meaning: "Serving for incubation.", pos: "adjective" },
   inculcator: { meaning: "A person who inculcates.", pos: "noun" },
@@ -2640,14 +3437,14 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   incuriosity: { meaning: "Lack of curiosity.", pos: "noun" },
   incurious: { meaning: "Not curious.", pos: "adjective" },
   incuriously: { meaning: "In an incurious manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   incurvate: { meaning: "To curve inward.", pos: "verb" },
   incurvation: { meaning: "The act of curving inward.", pos: "noun" },
   incus: { meaning: "A bone in the middle ear.", pos: "noun" },
   incuse: { meaning: "An impression stamped on a coin.", pos: "noun" },
   indeciduous: { meaning: "Not deciduous; evergreen.", pos: "adjective" },
   indecipherable: { meaning: "Unable to be deciphered.", pos: "adjective" },
-   // already in original, skip
+  // already in original, skip
   indecisively: { meaning: "In an indecisive manner.", pos: "adverb" },
   indecisiveness: { meaning: "The quality of being indecisive.", pos: "noun" },
   indeclinable: { meaning: "Not declined (grammar).", pos: "adjective" },
@@ -2655,32 +3452,44 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   indecorously: { meaning: "In an indecorous manner.", pos: "adverb" },
   indecorousness: { meaning: "The quality of being indecorous.", pos: "noun" },
   indefatigably: { meaning: "Tirelessly.", pos: "adverb" },
-  indefeasibility: { meaning: "The quality of being indefeasible.", pos: "noun" },
+  indefeasibility: {
+    meaning: "The quality of being indefeasible.",
+    pos: "noun",
+  },
   indefeasibly: { meaning: "In an indefeasible manner.", pos: "adverb" },
   indefectible: { meaning: "Not liable to fail.", pos: "adjective" },
-  indefensibility: { meaning: "The quality of being indefensible.", pos: "noun" },
+  indefensibility: {
+    meaning: "The quality of being indefensible.",
+    pos: "noun",
+  },
   indefensibly: { meaning: "In an indefensible manner.", pos: "adverb" },
   indefinability: { meaning: "The quality of being indefinable.", pos: "noun" },
-   // already added in first chunk? Yes, we added "indefinitely". So skip.
+  // already added in first chunk? Yes, we added "indefinitely". So skip.
   indefiniteness: { meaning: "The quality of being indefinite.", pos: "noun" },
   indelibly: { meaning: "In an indelible manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "indelicate". So skip.
+  // already added in first chunk? Yes, we added "indelicate". So skip.
   indelicately: { meaning: "In an indelicate manner.", pos: "adverb" },
   indemnitor: { meaning: "A person who indemnifies.", pos: "noun" },
   indemonstrable: { meaning: "Unable to be demonstrated.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "indentation". So skip.
-   // already added in first chunk? Yes, we added "indented". So skip.
+  // already added in first chunk? Yes, we added "indentation". So skip.
+  // already added in first chunk? Yes, we added "indented". So skip.
   indentured: { meaning: "Bound by indenture.", pos: "adjective" },
-   // already in original, skip
+  // already in original, skip
   independency: { meaning: "Independence.", pos: "noun" },
   indescribably: { meaning: "In an indescribable manner.", pos: "adverb" },
-  indestructibility: { meaning: "The quality of being indestructible.", pos: "noun" },
+  indestructibility: {
+    meaning: "The quality of being indestructible.",
+    pos: "noun",
+  },
   indestructibly: { meaning: "In an indestructible manner.", pos: "adverb" },
   indeterminable: { meaning: "Unable to be determined.", pos: "adjective" },
   indeterminably: { meaning: "In an indeterminable manner.", pos: "adverb" },
   indeterminately: { meaning: "In an indeterminate manner.", pos: "adverb" },
   indetermination: { meaning: "Indecision.", pos: "noun" },
-  indeterminism: { meaning: "The doctrine that events are not predetermined.", pos: "noun" },
+  indeterminism: {
+    meaning: "The doctrine that events are not predetermined.",
+    pos: "noun",
+  },
   indeterministic: { meaning: "Relating to indeterminism.", pos: "adjective" },
   indexer: { meaning: "A person who compiles indexes.", pos: "noun" },
   indexicality: { meaning: "The quality of being indexical.", pos: "noun" },
@@ -2688,14 +3497,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   indianite: { meaning: "A mineral.", pos: "noun" },
   indicant: { meaning: "Something that indicates.", pos: "noun" },
   indicatively: { meaning: "In an indicative manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "indiction". So skip.
+  // already added in first chunk? Yes, we added "indiction". So skip.
   indifferency: { meaning: "Indifference.", pos: "noun" },
   indigenously: { meaning: "In an indigenous manner.", pos: "adverb" },
-   // duplicate, skip
+  // duplicate, skip
   indigently: { meaning: "In poverty.", pos: "adverb" },
-  indigestibility: { meaning: "The quality of being indigestible.", pos: "noun" },
+  indigestibility: {
+    meaning: "The quality of being indigestible.",
+    pos: "noun",
+  },
   indignantly: { meaning: "In an indignant manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   indigoes: { meaning: "Plural of indigo.", pos: "noun" },
   indirectness: { meaning: "The quality of being indirect.", pos: "noun" },
   indirectly: { meaning: "In an indirect manner.", pos: "adverb" },
@@ -2703,24 +3515,39 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   indiscoverable: { meaning: "Unable to be discovered.", pos: "adjective" },
   indiscreetly: { meaning: "In an indiscreet manner.", pos: "adverb" },
   indiscreetness: { meaning: "Lack of discretion.", pos: "noun" },
-   // already added in first chunk? Yes, we added "indiscretion". So skip.
+  // already added in first chunk? Yes, we added "indiscretion". So skip.
   indiscriminating: { meaning: "Not discriminating.", pos: "adjective" },
   indiscrimination: { meaning: "Lack of discrimination.", pos: "noun" },
-  indispensability: { meaning: "The quality of being indispensable.", pos: "noun" },
+  indispensability: {
+    meaning: "The quality of being indispensable.",
+    pos: "noun",
+  },
   indispensably: { meaning: "In an indispensable manner.", pos: "adverb" },
   indispose: { meaning: "To make unwell or unwilling.", pos: "verb" },
   indisposedness: { meaning: "The state of being indisposed.", pos: "noun" },
   indisputably: { meaning: "In an indisputable manner.", pos: "adverb" },
-  indissolubility: { meaning: "The quality of being indissoluble.", pos: "noun" },
+  indissolubility: {
+    meaning: "The quality of being indissoluble.",
+    pos: "noun",
+  },
   indissolubly: { meaning: "In an indissoluble manner.", pos: "adverb" },
   indistinctly: { meaning: "In an indistinct manner.", pos: "adverb" },
   indistinctness: { meaning: "The quality of being indistinct.", pos: "noun" },
-  indistinguishably: { meaning: "In an indistinguishable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "indite". So skip.
+  indistinguishably: {
+    meaning: "In an indistinguishable manner.",
+    pos: "adverb",
+  },
+  // already added in first chunk? Yes, we added "indite". So skip.
   inditement: { meaning: "The act of writing.", pos: "noun" },
   individualistic: { meaning: "Relating to individualism.", pos: "adjective" },
-  individualistically: { meaning: "In an individualistic manner.", pos: "adverb" },
-  individuation: { meaning: "The process of becoming an individual.", pos: "noun" },
+  individualistically: {
+    meaning: "In an individualistic manner.",
+    pos: "adverb",
+  },
+  individuation: {
+    meaning: "The process of becoming an individual.",
+    pos: "noun",
+  },
   indivisibility: { meaning: "The quality of being indivisible.", pos: "noun" },
   indivisibly: { meaning: "In an indivisible manner.", pos: "adverb" },
   indocibility: { meaning: "Unteachableness.", pos: "noun" },
@@ -2730,19 +3557,25 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   indorsement: { meaning: "Endorsement.", pos: "noun" },
   indoxyl: { meaning: "A chemical compound.", pos: "noun" },
   indubitably: { meaning: "Without doubt.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "induced". So skip.
-   // already added in first chunk? Yes, we added "inducement". So skip.
+  // already added in first chunk? Yes, we added "induced". So skip.
+  // already added in first chunk? Yes, we added "inducement". So skip.
   inducible: { meaning: "Capable of being induced.", pos: "adjective" },
   inductile: { meaning: "Not ductile.", pos: "adjective" },
   inductional: { meaning: "Relating to induction.", pos: "adjective" },
   inductively: { meaning: "In an inductive manner.", pos: "adverb" },
-  inductor: { meaning: "A device that stores energy in a magnetic field.", pos: "noun" },
+  inductor: {
+    meaning: "A device that stores energy in a magnetic field.",
+    pos: "noun",
+  },
   indulged: { meaning: "Past tense of indulge.", pos: "verb" },
   indulger: { meaning: "A person who indulges.", pos: "noun" },
   indulging: { meaning: "Present participle of indulge.", pos: "verb" },
   indurate: { meaning: "To harden; to make callous.", pos: "verb" },
   induration: { meaning: "Hardening.", pos: "noun" },
-  industrialisation: { meaning: "The development of industry (British).", pos: "noun" },
+  industrialisation: {
+    meaning: "The development of industry (British).",
+    pos: "noun",
+  },
   industrialise: { meaning: "To develop industry.", pos: "verb" },
   industrialised: { meaning: "Having developed industry.", pos: "adjective" },
   industrially: { meaning: "In an industrial manner.", pos: "adverb" },
@@ -2770,7 +3603,7 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ineluctably: { meaning: "In an ineluctable manner.", pos: "adverb" },
   ineptly: { meaning: "In an inept manner.", pos: "adverb" },
   ineptness: { meaning: "Lack of skill.", pos: "noun" },
-   // already in original? Original has "inequitable". So skip.
+  // already in original? Original has "inequitable". So skip.
   inequitably: { meaning: "In an inequitable manner.", pos: "adverb" },
   ineradicably: { meaning: "In an ineradicable manner.", pos: "adverb" },
   inerrable: { meaning: "Incapable of error.", pos: "adjective" },
@@ -2781,7 +3614,7 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inescapably: { meaning: "In an inescapable manner.", pos: "adverb" },
   inessentiality: { meaning: "The quality of being inessential.", pos: "noun" },
   inevasible: { meaning: "Unable to be avoided.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "inevitably". So skip.
+  // already added in first chunk? Yes, we added "inevitably". So skip.
   inexcusably: { meaning: "In an inexcusable manner.", pos: "adverb" },
   inexhaustibly: { meaning: "In an inexhaustible manner.", pos: "adverb" },
   inexorably: { meaning: "In an inexorable manner.", pos: "adverb" },
@@ -2789,17 +3622,29 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inexpediency: { meaning: "Inexpedience.", pos: "noun" },
   inexpediently: { meaning: "In an inexpedient manner.", pos: "adverb" },
   inexpensively: { meaning: "In an inexpensive manner.", pos: "adverb" },
-  inexpensiveness: { meaning: "The quality of being inexpensive.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inexperience". So skip.
-  inexplicability: { meaning: "The quality of being inexplicable.", pos: "noun" },
+  inexpensiveness: {
+    meaning: "The quality of being inexpensive.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "inexperience". So skip.
+  inexplicability: {
+    meaning: "The quality of being inexplicable.",
+    pos: "noun",
+  },
   inexplicably: { meaning: "In an inexplicable manner.", pos: "adverb" },
   inexplicit: { meaning: "Not explicit.", pos: "adjective" },
-  inexpressibility: { meaning: "The quality of being inexpressible.", pos: "noun" },
+  inexpressibility: {
+    meaning: "The quality of being inexpressible.",
+    pos: "noun",
+  },
   inexpressibly: { meaning: "In an inexpressible manner.", pos: "adverb" },
   inexpressive: { meaning: "Not expressive.", pos: "adjective" },
   inexpressively: { meaning: "In an inexpressive manner.", pos: "adverb" },
   inexpugnable: { meaning: "Unable to be overcome.", pos: "adjective" },
-  inextensibility: { meaning: "The quality of being inextensible.", pos: "noun" },
+  inextensibility: {
+    meaning: "The quality of being inextensible.",
+    pos: "noun",
+  },
   inextensible: { meaning: "Not extensible.", pos: "adjective" },
   inextension: { meaning: "Lack of extension.", pos: "noun" },
   inextricably: { meaning: "In an inextricable manner.", pos: "adverb" },
@@ -2807,28 +3652,28 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   infamously: { meaning: "In an infamous manner.", pos: "adverb" },
   infamousness: { meaning: "The quality of being infamous.", pos: "noun" },
   infanticidal: { meaning: "Relating to infanticide.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "infantilism". So skip.
+  // already added in first chunk? Yes, we added "infantilism". So skip.
   infantility: { meaning: "Childishness.", pos: "noun" },
   infantine: { meaning: "Infantile.", pos: "adjective" },
   infatuatedly: { meaning: "In an infatuated manner.", pos: "adverb" },
   infeasibility: { meaning: "The quality of being infeasible.", pos: "noun" },
   infeasible: { meaning: "Not feasible.", pos: "adjective" },
   infectiously: { meaning: "In an infectious manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   infecundity: { meaning: "Infertility.", pos: "noun" },
   infelicitously: { meaning: "In an infelicitous manner.", pos: "adverb" },
   inferable: { meaning: "Able to be inferred.", pos: "adjective" },
   inferably: { meaning: "In an inferable manner.", pos: "adverb" },
   inferentially: { meaning: "By inference.", pos: "adverb" },
   inferiorly: { meaning: "In an inferior manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   infernally: { meaning: "In an infernal manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   infertilize: { meaning: "To make infertile.", pos: "verb" },
   infestant: { meaning: "A pest.", pos: "noun" },
-   // already added in first chunk? Yes, we added "infestation". So skip.
+  // already added in first chunk? Yes, we added "infestation". So skip.
   infidelic: { meaning: "Relating to infidels.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "infield". So skip.
+  // already added in first chunk? Yes, we added "infield". So skip.
   infighter: { meaning: "A person who fights at close quarters.", pos: "noun" },
   infiltrative: { meaning: "Relating to infiltration.", pos: "adjective" },
   infiltrator: { meaning: "A person who infiltrates.", pos: "noun" },
@@ -2836,21 +3681,24 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   infinitival: { meaning: "Relating to the infinitive.", pos: "adjective" },
   infinitively: { meaning: "In an infinitive manner.", pos: "adverb" },
   infinitize: { meaning: "To make infinite.", pos: "verb" },
-   // already added in first chunk? Yes, we added "infinitude". So skip.
+  // already added in first chunk? Yes, we added "infinitude". So skip.
   infinitum: { meaning: "To infinity (Latin).", pos: "adverb" },
   infirmarian: { meaning: "A person in charge of an infirmary.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   infirmly: { meaning: "In an infirm manner.", pos: "adverb" },
   inflammability: { meaning: "Flammability.", pos: "noun" },
   inflammableness: { meaning: "Flammability.", pos: "noun" },
   inflammatorily: { meaning: "In an inflammatory manner.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   inflater: { meaning: "A person or device that inflates.", pos: "noun" },
   inflating: { meaning: "Present participle of inflate.", pos: "verb" },
-   // already added in first chunk? Yes, we added "inflationary". So skip.
+  // already added in first chunk? Yes, we added "inflationary". So skip.
   inflationist: { meaning: "A person who favors inflation.", pos: "noun" },
   inflectable: { meaning: "Able to be inflected.", pos: "adjective" },
-  inflected: { meaning: "Changed in form; past tense of inflect.", pos: "verb" },
+  inflected: {
+    meaning: "Changed in form; past tense of inflect.",
+    pos: "verb",
+  },
   inflectional: { meaning: "Relating to inflection.", pos: "adjective" },
   inflexibly: { meaning: "In an inflexible manner.", pos: "adverb" },
   inflictive: { meaning: "Tending to inflict.", pos: "adjective" },
@@ -2864,14 +3712,17 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   infomercial: { meaning: "A long television commercial.", pos: "noun" },
   infopreneur: { meaning: "A person who sells information.", pos: "noun" },
   informatically: { meaning: "In an informatic manner.", pos: "adverb" },
-  informativeness: { meaning: "The quality of being informative.", pos: "noun" },
+  informativeness: {
+    meaning: "The quality of being informative.",
+    pos: "noun",
+  },
   infract: { meaning: "To violate; to break.", pos: "verb" },
   infractor: { meaning: "A violator.", pos: "noun" },
   infrangibly: { meaning: "In an infrangible manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "infrasonic". So skip.
+  // already added in first chunk? Yes, we added "infrasonic". So skip.
   infrasound: { meaning: "Sound below human hearing.", pos: "noun" },
   infrequence: { meaning: "Rarity.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   infringer: { meaning: "A person who infringes.", pos: "noun" },
   infundibular: { meaning: "Funnel-shaped.", pos: "adjective" },
   infundibulum: { meaning: "A funnel-shaped structure.", pos: "noun" },
@@ -2892,23 +3743,23 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ingloriously: { meaning: "In an inglorious manner.", pos: "adverb" },
   ingloriousness: { meaning: "The quality of being inglorious.", pos: "noun" },
   ingoing: { meaning: "Going in; entering.", pos: "adjective" },
-   // already in original, skip
+  // already in original, skip
   ingraft: { meaning: "To graft.", pos: "verb" },
-   // already added in first chunk? Yes, we added "ingrain". So skip.
+  // already added in first chunk? Yes, we added "ingrain". So skip.
   ingratefully: { meaning: "Ungratefully.", pos: "adverb" },
-   // already in original, skip
+  // already in original, skip
   ingratiatingly: { meaning: "In an ingratiating manner.", pos: "adverb" },
   ingratiation: { meaning: "The act of ingratiating.", pos: "noun" },
   ingratiatory: { meaning: "Intended to win favor.", pos: "adjective" },
   ingravescent: { meaning: "Becoming more severe.", pos: "adjective" },
-   // already in original, skip
+  // already in original, skip
   ingression: { meaning: "The act of entering.", pos: "noun" },
   ingressive: { meaning: "Relating to entrance.", pos: "adjective" },
   ingrowth: { meaning: "Growth inward.", pos: "noun" },
   inguinal: { meaning: "Relating to the groin.", pos: "adjective" },
   ingurgitate: { meaning: "To swallow greedily.", pos: "verb" },
   ingurgitation: { meaning: "Greedy swallowing.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inhabitable". So skip.
+  // already added in first chunk? Yes, we added "inhabitable". So skip.
   inhabitancy: { meaning: "The state of inhabiting.", pos: "noun" },
   inhabitation: { meaning: "The act of inhabiting.", pos: "noun" },
   inhauler: { meaning: "A rope used to haul in a sail.", pos: "noun" },
@@ -2921,10 +3772,16 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inheritedly: { meaning: "By inheritance.", pos: "adverb" },
   inheritress: { meaning: "A female inheritor.", pos: "noun" },
   inhibitable: { meaning: "Capable of being inhibited.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "inhibitory". So skip.
-  inholding: { meaning: "Privately owned land within a protected area.", pos: "noun" },
+  // already added in first chunk? Yes, we added "inhibitory". So skip.
+  inholding: {
+    meaning: "Privately owned land within a protected area.",
+    pos: "noun",
+  },
   inhospitably: { meaning: "In an inhospitable manner.", pos: "adverb" },
-  inhospitableness: { meaning: "The quality of being inhospitable.", pos: "noun" },
+  inhospitableness: {
+    meaning: "The quality of being inhospitable.",
+    pos: "noun",
+  },
   inhumanely: { meaning: "In an inhumane manner.", pos: "adverb" },
   inhumanly: { meaning: "In an inhuman manner.", pos: "adverb" },
   inhumation: { meaning: "Burial.", pos: "noun" },
@@ -2934,11 +3791,14 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   iniquitously: { meaning: "In an iniquitous manner.", pos: "adverb" },
   iniquitousness: { meaning: "Wickedness.", pos: "noun" },
   initialise: { meaning: "To set to a starting value.", pos: "verb" },
-  initialism: { meaning: "An abbreviation using initial letters.", pos: "noun" },
+  initialism: {
+    meaning: "An abbreviation using initial letters.",
+    pos: "noun",
+  },
   initialization: { meaning: "The act of initializing.", pos: "noun" },
   initialize: { meaning: "To set to a starting value.", pos: "verb" },
-   // already added in first chunk? Yes, we added "initially". So skip.
-   // already added in first chunk? Yes, we added "initiation". So skip.
+  // already added in first chunk? Yes, we added "initially". So skip.
+  // already added in first chunk? Yes, we added "initiation". So skip.
   initiatory: { meaning: "Introductory.", pos: "adjective" },
   injectable: { meaning: "Capable of being injected.", pos: "adjective" },
   injectant: { meaning: "A substance injected.", pos: "noun" },
@@ -2946,20 +3806,23 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   injudicial: { meaning: "Not judicial.", pos: "adjective" },
   injudicious: { meaning: "Not judicious; unwise.", pos: "adjective" },
   injudiciously: { meaning: "In an injudicious manner.", pos: "adverb" },
-  injudiciousness: { meaning: "The quality of being injudicious.", pos: "noun" },
-   // already in original, skip
+  injudiciousness: {
+    meaning: "The quality of being injudicious.",
+    pos: "noun",
+  },
+  // already in original, skip
   injunctive: { meaning: "Relating to an injunction.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "injured". So skip.
+  // already added in first chunk? Yes, we added "injured". So skip.
   injuredly: { meaning: "In an injured manner.", pos: "adverb" },
   injurer: { meaning: "A person who injures.", pos: "noun" },
   injuriousness: { meaning: "The quality of being injurious.", pos: "noun" },
   injustly: { meaning: "Unjustly.", pos: "adverb" },
   inkberry: { meaning: "A type of holly.", pos: "noun" },
-   // already added in first chunk? Yes, we added "inkblot". So skip.
-   // already added in first chunk? Yes, we added "inkhorn". So skip.
+  // already added in first chunk? Yes, we added "inkblot". So skip.
+  // already added in first chunk? Yes, we added "inkhorn". So skip.
   inkle: { meaning: "A type of linen tape.", pos: "noun" },
   inkless: { meaning: "Without ink.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "inkling". So skip.
+  // already added in first chunk? Yes, we added "inkling". So skip.
   inkstand: { meaning: "A stand for ink and pens.", pos: "noun" },
   inkstone: { meaning: "A stone used to grind ink.", pos: "noun" },
   inky: { meaning: "Dark with ink; black.", pos: "adjective" },
@@ -2967,13 +3830,13 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inlander: { meaning: "A person living inland.", pos: "noun" },
   inletting: { meaning: "The act of letting in.", pos: "noun" },
   inly: { meaning: "Inwardly.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "inmate". So skip.
+  // already added in first chunk? Yes, we added "inmate". So skip.
   innermost: { meaning: "Deepest.", pos: "adjective" },
   innervational: { meaning: "Relating to innervation.", pos: "adjective" },
   innholder: { meaning: "An innkeeper.", pos: "noun" },
-   // already added in second chunk? Yes, we added "innocently". So skip.
-   // already added in second chunk? Yes, we added "innocuously". So skip.
-   // already added in second chunk? Yes, we added "innocuousness". So skip.
+  // already added in second chunk? Yes, we added "innocently". So skip.
+  // already added in second chunk? Yes, we added "innocuously". So skip.
+  // already added in second chunk? Yes, we added "innocuousness". So skip.
   innovational: { meaning: "Relating to innovation.", pos: "adjective" },
   innovatory: { meaning: "Innovative.", pos: "adjective" },
   innoxious: { meaning: "Harmless.", pos: "adjective" },
@@ -2982,18 +3845,21 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inobservance: { meaning: "Nonobservance.", pos: "noun" },
   inobservant: { meaning: "Not observant.", pos: "adjective" },
   inoccupation: { meaning: "Lack of occupation.", pos: "noun" },
-   // already in original, skip
-   // already in original, skip
+  // already in original, skip
+  // already in original, skip
   inopportunely: { meaning: "At an inconvenient time.", pos: "adverb" },
-  inopportuneness: { meaning: "The quality of being inopportune.", pos: "noun" },
-   // already in original, skip
+  inopportuneness: {
+    meaning: "The quality of being inopportune.",
+    pos: "noun",
+  },
+  // already in original, skip
   inordinateness: { meaning: "Excessiveness.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   inorganically: { meaning: "In an inorganic manner.", pos: "adverb" },
   inosculation: { meaning: "The act of joining by openings.", pos: "noun" },
   inotropic: { meaning: "Affecting muscle contraction.", pos: "adjective" },
-   // already added in second chunk? Yes, we added "inputted". So skip.
-   // already added in second chunk? Yes, we added "inquietude". So skip.
+  // already added in second chunk? Yes, we added "inputted". So skip.
+  // already added in second chunk? Yes, we added "inquietude". So skip.
   inquisitress: { meaning: "A female inquisitor.", pos: "noun" },
   insalivate: { meaning: "To mix with saliva while chewing.", pos: "verb" },
   insalivation: { meaning: "The act of mixing with saliva.", pos: "noun" },
@@ -3005,12 +3871,12 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inscriptional: { meaning: "Relating to inscriptions.", pos: "adjective" },
   inscrutableness: { meaning: "Mysteriousness.", pos: "noun" },
   insectarium: { meaning: "A place for keeping insects.", pos: "noun" },
-   // already added in second chunk? Yes, we added "insecticidal". So skip.
+  // already added in second chunk? Yes, we added "insecticidal". So skip.
   insectifuge: { meaning: "A substance that repels insects.", pos: "noun" },
   insectile: { meaning: "Insect-like.", pos: "adjective" },
   insectival: { meaning: "Relating to insects.", pos: "adjective" },
   insecureness: { meaning: "Insecurity.", pos: "noun" },
-   // already added in second chunk? Yes, we added "insecurity". So skip.
+  // already added in second chunk? Yes, we added "insecurity". So skip.
   inseminated: { meaning: "Past tense of inseminate.", pos: "verb" },
   inseminating: { meaning: "Present participle of inseminate.", pos: "verb" },
   inseminator: { meaning: "A person or device that inseminates.", pos: "noun" },
@@ -3022,7 +3888,7 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   insheathe: { meaning: "To enclose in a sheath.", pos: "verb" },
   inshrine: { meaning: "To enshrine.", pos: "verb" },
   insidiate: { meaning: "To lie in wait for.", pos: "verb" },
-   // already added in second chunk? Yes, we added "insightfully". So skip.
+  // already added in second chunk? Yes, we added "insightfully". So skip.
   insightfulness: { meaning: "The quality of being insightful.", pos: "noun" },
   insignificancy: { meaning: "Insignificance.", pos: "noun" },
   insincereness: { meaning: "Insincerity.", pos: "noun" },
@@ -3034,7 +3900,7 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   insociable: { meaning: "Not sociable.", pos: "adjective" },
   insolate: { meaning: "To expose to sunlight.", pos: "verb" },
   insolation: { meaning: "Solar radiation; sunstroke.", pos: "noun" },
-   // already added in second chunk? Yes, we added "insole". So skip.
+  // already added in second chunk? Yes, we added "insole". So skip.
   insolency: { meaning: "Insolence.", pos: "noun" },
   insolubilize: { meaning: "To make insoluble.", pos: "verb" },
   insolvable: { meaning: "Unable to be solved.", pos: "adjective" },
@@ -3054,35 +3920,41 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   inspissation: { meaning: "Thickening by evaporation.", pos: "noun" },
   instable: { meaning: "Unstable.", pos: "adjective" },
   installable: { meaning: "Capable of being installed.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "installment". So skip.
+  // already added in first chunk? Yes, we added "installment". So skip.
   instantiate: { meaning: "To represent as an instance.", pos: "verb" },
   instantiation: { meaning: "The act of instantiating.", pos: "noun" },
   instantness: { meaning: "Immediacy.", pos: "noun" },
-   // already added in first chunk? Yes, we added "instatement". So skip.
-   // already added in first chunk? Yes, we added "instauration". So skip.
+  // already added in first chunk? Yes, we added "instatement". So skip.
+  // already added in first chunk? Yes, we added "instauration". So skip.
   instaurator: { meaning: "A person who restores.", pos: "noun" },
-   // already added in first chunk? Yes, we added "instep". So skip.
+  // already added in first chunk? Yes, we added "instep". So skip.
   instigatingly: { meaning: "In an instigating manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "instillation". So skip.
+  // already added in first chunk? Yes, we added "instillation". So skip.
   instinctual: { meaning: "Relating to instinct.", pos: "adjective" },
   instinctually: { meaning: "In an instinctual manner.", pos: "adverb" },
   instituter: { meaning: "A person who institutes.", pos: "noun" },
   institutionalism: { meaning: "The belief in institutions.", pos: "noun" },
-  institutionalist: { meaning: "A person who supports institutions.", pos: "noun" },
+  institutionalist: {
+    meaning: "A person who supports institutions.",
+    pos: "noun",
+  },
   institutionally: { meaning: "In an institutional manner.", pos: "adverb" },
-  instructiveness: { meaning: "The quality of being instructive.", pos: "noun" },
-   // already added in first chunk? Yes, we added "instructorship". So skip.
+  instructiveness: {
+    meaning: "The quality of being instructive.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "instructorship". So skip.
   instrumentality: { meaning: "The agency or means.", pos: "noun" },
   instrumentally: { meaning: "In an instrumental manner.", pos: "adverb" },
   insuavity: { meaning: "Lack of suavity; bluntness.", pos: "noun" },
   insubordinately: { meaning: "In an insubordinate manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "insubordination". So skip.
+  // already added in first chunk? Yes, we added "insubordination". So skip.
   insubstantiality: { meaning: "Lack of substance.", pos: "noun" },
   insubstantially: { meaning: "In an insubstantial manner.", pos: "adverb" },
   insuccess: { meaning: "Failure.", pos: "noun" },
   insudate: { meaning: "To sweat into.", pos: "verb" },
   insufferableness: { meaning: "Intolerability.", pos: "noun" },
-   // already added in first chunk? Yes, we added "insufficiently". So skip.
+  // already added in first chunk? Yes, we added "insufficiently". So skip.
   insufflate: { meaning: "To blow or breathe into.", pos: "verb" },
   insufflation: { meaning: "The act of blowing into.", pos: "noun" },
   insularism: { meaning: "Narrow-mindedness.", pos: "noun" },
@@ -3095,33 +3967,45 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   insuppressibly: { meaning: "In an insuppressible manner.", pos: "adverb" },
   insurability: { meaning: "The quality of being insurable.", pos: "noun" },
   insurable: { meaning: "Capable of being insured.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "insurant". So skip.
-   // already added in first chunk? Yes, we added "insurgence". So skip.
+  // already added in first chunk? Yes, we added "insurant". So skip.
+  // already added in first chunk? Yes, we added "insurgence". So skip.
   insurrectional: { meaning: "Relating to insurrection.", pos: "adjective" },
-  insurrectionist: { meaning: "A person who takes part in an insurrection.", pos: "noun" },
+  insurrectionist: {
+    meaning: "A person who takes part in an insurrection.",
+    pos: "noun",
+  },
   insusceptible: { meaning: "Not susceptible.", pos: "adjective" },
-  insusceptibility: { meaning: "The quality of being insusceptible.", pos: "noun" },
+  insusceptibility: {
+    meaning: "The quality of being insusceptible.",
+    pos: "noun",
+  },
   intagliated: { meaning: "Engraved.", pos: "adjective" },
   intaglioed: { meaning: "Having an intaglio.", pos: "adjective" },
   intangibleness: { meaning: "Intangibility.", pos: "noun" },
   intarsia: { meaning: "A decorative inlay technique.", pos: "noun" },
-   // already in original, skip
-   // already added in first chunk? Yes, we added "integrant". So skip.
+  // already in original, skip
+  // already added in first chunk? Yes, we added "integrant". So skip.
   integratable: { meaning: "Capable of being integrated.", pos: "adjective" },
   integrationist: { meaning: "A person who favors integration.", pos: "noun" },
-   // already added in first chunk? Yes, we added "integrative". So skip.
-   // already added in first chunk? Yes, we added "integrator". So skip.
+  // already added in first chunk? Yes, we added "integrative". So skip.
+  // already added in first chunk? Yes, we added "integrator". So skip.
   integumental: { meaning: "Relating to integument.", pos: "adjective" },
   integumentary: { meaning: "Relating to integument.", pos: "adjective" },
   intellective: { meaning: "Relating to intellect.", pos: "adjective" },
   intellectively: { meaning: "In an intellective manner.", pos: "adverb" },
   intellectualist: { meaning: "A person who values intellect.", pos: "noun" },
-  intellectualistic: { meaning: "Relating to intellectualism.", pos: "adjective" },
-  intellectualization: { meaning: "The act of intellectualizing.", pos: "noun" },
+  intellectualistic: {
+    meaning: "Relating to intellectualism.",
+    pos: "adjective",
+  },
+  intellectualization: {
+    meaning: "The act of intellectualizing.",
+    pos: "noun",
+  },
   intellectualize: { meaning: "To treat rationally.", pos: "verb" },
-   // already added in first chunk? Yes, we added "intellectually". So skip.
+  // already added in first chunk? Yes, we added "intellectually". So skip.
   intelligential: { meaning: "Relating to intelligence.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intelligibility". So skip.
+  // already added in first chunk? Yes, we added "intelligibility". So skip.
   intemerate: { meaning: "Pure; undefiled.", pos: "adjective" },
   intemperately: { meaning: "Excessively.", pos: "adverb" },
   intemperateness: { meaning: "Lack of moderation.", pos: "noun" },
@@ -3130,13 +4014,16 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intenerate: { meaning: "To make tender.", pos: "verb" },
   intensionality: { meaning: "The quality of being intensional.", pos: "noun" },
   intentively: { meaning: "Attentively.", pos: "adverb" },
-  interabang: { meaning: "A combined question mark and exclamation point.", pos: "noun" },
+  interabang: {
+    meaning: "A combined question mark and exclamation point.",
+    pos: "noun",
+  },
   interactant: { meaning: "A participant in interaction.", pos: "noun" },
   interactional: { meaning: "Relating to interaction.", pos: "adjective" },
   interactionism: { meaning: "A theory emphasizing interaction.", pos: "noun" },
   interactively: { meaning: "In an interactive manner.", pos: "adverb" },
   interage: { meaning: "Between ages.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interagency". So skip.
+  // already added in first chunk? Yes, we added "interagency". So skip.
   interallied: { meaning: "Between allies.", pos: "adjective" },
   interambulacral: { meaning: "Between ambulacra.", pos: "adjective" },
   interarticular: { meaning: "Between joints.", pos: "adjective" },
@@ -3146,9 +4033,9 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interborough: { meaning: "Between boroughs.", pos: "adjective" },
   interbrain: { meaning: "The diencephalon.", pos: "noun" },
   interbranchial: { meaning: "Between gills.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interbreed". So skip.
-   // already added in first chunk? Yes, we added "intercalary". So skip.
-   // already added in first chunk? Yes, we added "intercalate". So skip.
+  // already added in first chunk? Yes, we added "interbreed". So skip.
+  // already added in first chunk? Yes, we added "intercalary". So skip.
+  // already added in first chunk? Yes, we added "intercalate". So skip.
   intercalation: { meaning: "The act of intercalating.", pos: "noun" },
   intercellular: { meaning: "Between cells.", pos: "adjective" },
   intercessional: { meaning: "Relating to intercession.", pos: "adjective" },
@@ -3159,46 +4046,61 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intercommunication: { meaning: "Mutual communication.", pos: "noun" },
   intercommunity: { meaning: "Between communities.", pos: "adjective" },
   intercomparison: { meaning: "Comparison between things.", pos: "noun" },
-  interconnectivity: { meaning: "The state of being interconnected.", pos: "noun" },
+  interconnectivity: {
+    meaning: "The state of being interconnected.",
+    pos: "noun",
+  },
   interconversion: { meaning: "Conversion between forms.", pos: "noun" },
   interconvert: { meaning: "To convert mutually.", pos: "verb" },
   interconvertible: { meaning: "Able to be interconverted.", pos: "adjective" },
   intercool: { meaning: "To cool between stages.", pos: "verb" },
   intercooler: { meaning: "A device that cools between stages.", pos: "noun" },
-   // already added in first chunk? Yes, we added "intercostal". So skip.
+  // already added in first chunk? Yes, we added "intercostal". So skip.
   intercounty: { meaning: "Between counties.", pos: "adjective" },
   intercouple: { meaning: "To couple together.", pos: "verb" },
   intercrural: { meaning: "Between the legs.", pos: "adjective" },
-  intercurrent: { meaning: "Occurring during something else.", pos: "adjective" },
+  intercurrent: {
+    meaning: "Occurring during something else.",
+    pos: "adjective",
+  },
   intercut: { meaning: "To alternate scenes in a film.", pos: "verb" },
-   // already added in first chunk? Yes, we added "interdenominational". So skip.
+  // already added in first chunk? Yes, we added "interdenominational". So skip.
   interdental: { meaning: "Between the teeth.", pos: "adjective" },
   interdepart: { meaning: "To separate.", pos: "verb" },
-   // already added in first chunk? Yes, we added "interdepartmental". So skip.
+  // already added in first chunk? Yes, we added "interdepartmental". So skip.
   interdepend: { meaning: "To depend on each other.", pos: "verb" },
-   // already added in first chunk? Yes, we added "interdependency". So skip.
+  // already added in first chunk? Yes, we added "interdependency". So skip.
   interdependently: { meaning: "In an interdependent manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "interdiction". So skip.
+  // already added in first chunk? Yes, we added "interdiction". So skip.
   interdictor: { meaning: "A person or thing that interdicts.", pos: "noun" },
   interdigital: { meaning: "Between fingers or toes.", pos: "adjective" },
   interdigitate: { meaning: "To interlock like fingers.", pos: "verb" },
-  interdisciplinarity: { meaning: "The quality of being interdisciplinary.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interested". So skip.
-   // already added in first chunk? Yes, we added "interestedly". So skip.
-  interestingness: { meaning: "The quality of being interesting.", pos: "noun" },
+  interdisciplinarity: {
+    meaning: "The quality of being interdisciplinary.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "interested". So skip.
+  // already added in first chunk? Yes, we added "interestedly". So skip.
+  interestingness: {
+    meaning: "The quality of being interesting.",
+    pos: "noun",
+  },
   interfaculty: { meaning: "Between faculties.", pos: "adjective" },
   interfamilial: { meaning: "Between families.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interfered". So skip.
+  // already added in first chunk? Yes, we added "interfered". So skip.
   interferer: { meaning: "A person who interferes.", pos: "noun" },
   interferometric: { meaning: "Relating to interferometry.", pos: "adjective" },
-  interferometry: { meaning: "A technique using wave interference.", pos: "noun" },
+  interferometry: {
+    meaning: "A technique using wave interference.",
+    pos: "noun",
+  },
   interfibrillar: { meaning: "Between fibrils.", pos: "adjective" },
   interfile: { meaning: "To arrange in a file sequence.", pos: "verb" },
   interflow: { meaning: "To flow between.", pos: "verb" },
   interfluent: { meaning: "Flowing between.", pos: "adjective" },
   interfold: { meaning: "To fold together.", pos: "verb" },
   interfrontal: { meaning: "Between frontal bones.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intergalactic". So skip.
+  // already added in first chunk? Yes, we added "intergalactic". So skip.
   intergenic: { meaning: "Between genes.", pos: "adjective" },
   intergrade: { meaning: "To merge gradually.", pos: "verb" },
   intergradation: { meaning: "Gradual merging.", pos: "noun" },
@@ -3215,87 +4117,123 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interlaminate: { meaning: "To place between layers.", pos: "verb" },
   interlard: { meaning: "To insert something at intervals.", pos: "verb" },
   interlaying: { meaning: "The act of laying between.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interleaf". So skip.
+  // already added in first chunk? Yes, we added "interleaf". So skip.
   interleaving: { meaning: "Present participle of interleave.", pos: "verb" },
   interlineal: { meaning: "Interlinear.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interlinear". So skip.
+  // already added in first chunk? Yes, we added "interlinear". So skip.
   interlineation: { meaning: "The act of writing between lines.", pos: "noun" },
   interlingua: { meaning: "An artificial language.", pos: "noun" },
   interlingual: { meaning: "Between languages.", pos: "adjective" },
   interlobular: { meaning: "Between lobules.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interlock". So skip.
-   // already added in first chunk? Yes, we added "interlocking". So skip.
-  interlocutor: { meaning: "A person who takes part in dialogue.", pos: "noun" },
-  interlocutory: { meaning: "Relating to dialogue or interim.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intermarriage". So skip.
-   // already added in first chunk? Yes, we added "intermarry". So skip.
+  // already added in first chunk? Yes, we added "interlock". So skip.
+  // already added in first chunk? Yes, we added "interlocking". So skip.
+  interlocutor: {
+    meaning: "A person who takes part in dialogue.",
+    pos: "noun",
+  },
+  interlocutory: {
+    meaning: "Relating to dialogue or interim.",
+    pos: "adjective",
+  },
+  // already added in first chunk? Yes, we added "intermarriage". So skip.
+  // already added in first chunk? Yes, we added "intermarry". So skip.
   intermeddle: { meaning: "To meddle in others' affairs.", pos: "verb" },
   intermeddler: { meaning: "A person who meddles.", pos: "noun" },
   intermedia: { meaning: "Intermediate forms.", pos: "noun" },
   intermediacy: { meaning: "The state of being intermediate.", pos: "noun" },
   intermedial: { meaning: "Intermediate.", pos: "adjective" },
   intermediation: { meaning: "The act of mediating.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interment". So skip.
+  // already added in first chunk? Yes, we added "interment". So skip.
   intermetallic: { meaning: "Between metals.", pos: "adjective" },
   intermigration: { meaning: "Migration between places.", pos: "noun" },
-  interminableness: { meaning: "The quality of being interminable.", pos: "noun" },
-   // already in original, skip
-   // already added in first chunk? Yes, we added "intermittence". So skip.
-   // already added in first chunk? Yes, we added "intermittently". So skip.
-   // already added in first chunk? Yes, we added "intermix". So skip.
+  interminableness: {
+    meaning: "The quality of being interminable.",
+    pos: "noun",
+  },
+  // already in original, skip
+  // already added in first chunk? Yes, we added "intermittence". So skip.
+  // already added in first chunk? Yes, we added "intermittently". So skip.
+  // already added in first chunk? Yes, we added "intermix". So skip.
   intermixed: { meaning: "Mixed together.", pos: "adjective" },
   intermural: { meaning: "Between walls or institutions.", pos: "adjective" },
   internalization: { meaning: "The act of internalizing.", pos: "noun" },
   internalized: { meaning: "Made internal.", pos: "verb" },
   internalizing: { meaning: "Present participle of internalize.", pos: "verb" },
-  internationalist: { meaning: "A person who supports internationalism.", pos: "noun" },
-  internationalistic: { meaning: "Relating to internationalism.", pos: "adjective" },
-  internationality: { meaning: "The quality of being international.", pos: "noun" },
-  internationalization: { meaning: "The act of making international.", pos: "noun" },
+  internationalist: {
+    meaning: "A person who supports internationalism.",
+    pos: "noun",
+  },
+  internationalistic: {
+    meaning: "Relating to internationalism.",
+    pos: "adjective",
+  },
+  internationality: {
+    meaning: "The quality of being international.",
+    pos: "noun",
+  },
+  internationalization: {
+    meaning: "The act of making international.",
+    pos: "noun",
+  },
   internationalized: { meaning: "Made international.", pos: "verb" },
-  internationalizing: { meaning: "Present participle of internationalize.", pos: "verb" },
+  internationalizing: {
+    meaning: "Present participle of internationalize.",
+    pos: "verb",
+  },
   internecion: { meaning: "Mutual destruction.", pos: "noun" },
   internet: { meaning: "A global computer network.", pos: "noun" },
   internetwork: { meaning: "A network of networks.", pos: "noun" },
   interneuronal: { meaning: "Between neurons.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "internist". So skip.
+  // already added in first chunk? Yes, we added "internist". So skip.
   internment: { meaning: "Confinement as a prisoner.", pos: "noun" },
   internodal: { meaning: "Between nodes.", pos: "adjective" },
   internode: { meaning: "A part between nodes.", pos: "noun" },
   internuncio: { meaning: "A messenger; a papal representative.", pos: "noun" },
   interoceanic: { meaning: "Between oceans.", pos: "adjective" },
-  interoceptor: { meaning: "A sensory receptor responding to internal stimuli.", pos: "noun" },
+  interoceptor: {
+    meaning: "A sensory receptor responding to internal stimuli.",
+    pos: "noun",
+  },
   interoffice: { meaning: "Between offices.", pos: "adjective" },
   interorbital: { meaning: "Between orbits.", pos: "adjective" },
   interosculant: { meaning: "Mutually adapted.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interpellate". So skip.
-   // already added in first chunk? Yes, we added "interpellation". So skip.
+  // already added in first chunk? Yes, we added "interpellate". So skip.
+  // already added in first chunk? Yes, we added "interpellation". So skip.
   interpenetration: { meaning: "The act of interpenetrating.", pos: "noun" },
   interpersonally: { meaning: "In an interpersonal manner.", pos: "adverb" },
   interphase: { meaning: "A stage in cell division.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   interplant: { meaning: "To plant between.", pos: "verb" },
   interplead: { meaning: "To litigate between parties.", pos: "verb" },
   interpleader: { meaning: "A legal action to determine rights.", pos: "noun" },
   interpolymer: { meaning: "A polymer made from two monomers.", pos: "noun" },
   interpolater: { meaning: "A person who interpolates.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interposition". So skip.
-  interpretability: { meaning: "The quality of being interpretable.", pos: "noun" },
+  // already added in first chunk? Yes, we added "interposition". So skip.
+  interpretability: {
+    meaning: "The quality of being interpretable.",
+    pos: "noun",
+  },
   interpretable: { meaning: "Able to be interpreted.", pos: "adjective" },
-   // already in original, skip
-  interpretational: { meaning: "Relating to interpretation.", pos: "adjective" },
+  // already in original, skip
+  interpretational: {
+    meaning: "Relating to interpretation.",
+    pos: "adjective",
+  },
   interpretively: { meaning: "In an interpretive manner.", pos: "adverb" },
   interprofessional: { meaning: "Between professions.", pos: "adjective" },
   interprovincial: { meaning: "Between provinces.", pos: "adjective" },
   interpsychic: { meaning: "Between minds.", pos: "adjective" },
   interpupillary: { meaning: "Between pupils of the eyes.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interracial". So skip.
+  // already added in first chunk? Yes, we added "interracial". So skip.
   interradial: { meaning: "Between radii.", pos: "adjective" },
   interred: { meaning: "Buried; past tense of inter.", pos: "verb" },
   interregna: { meaning: "Plural of interregnum.", pos: "noun" },
   interregnal: { meaning: "Relating to an interregnum.", pos: "adjective" },
-  interrelatedness: { meaning: "The state of being interrelated.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interrelation". So skip.
+  interrelatedness: {
+    meaning: "The state of being interrelated.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "interrelation". So skip.
   interreligious: { meaning: "Between religions.", pos: "adjective" },
   interrenal: { meaning: "Between kidneys.", pos: "adjective" },
   interrogable: { meaning: "Able to be interrogated.", pos: "adjective" },
@@ -3303,31 +4241,44 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   interrogatingly: { meaning: "In an interrogating manner.", pos: "adverb" },
   interrogational: { meaning: "Relating to interrogation.", pos: "adjective" },
   interrogatively: { meaning: "In an interrogative manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "interrogatory". So skip.
+  // already added in first chunk? Yes, we added "interrogatory". So skip.
   interruptible: { meaning: "Able to be interrupted.", pos: "adjective" },
   interruptive: { meaning: "Tending to interrupt.", pos: "adjective" },
   interscholastic: { meaning: "Between schools.", pos: "adjective" },
   interschool: { meaning: "Between schools.", pos: "adjective" },
-  intersex: { meaning: "Having reproductive or sexual anatomy that doesn't fit typical definitions.", pos: "noun" },
-  intersexual: { meaning: "Between sexes; relating to intersex.", pos: "adjective" },
+  intersex: {
+    meaning:
+      "Having reproductive or sexual anatomy that doesn't fit typical definitions.",
+    pos: "noun",
+  },
+  intersexual: {
+    meaning: "Between sexes; relating to intersex.",
+    pos: "adjective",
+  },
   intersidereal: { meaning: "Between stars.", pos: "adjective" },
   intersocial: { meaning: "Between social groups.", pos: "adjective" },
   interspace: { meaning: "A space between things.", pos: "noun" },
   interspecies: { meaning: "Between species.", pos: "adjective" },
   interspecific: { meaning: "Between species.", pos: "adjective" },
-  interstadial: { meaning: "A warmer period within a glacial period.", pos: "noun" },
-   // already added in first chunk? Yes, we added "interstate". So skip.
-   // already in original, skip
-   // already added in first chunk? Yes, we added "interstice". So skip.
-   // already added in first chunk? Yes, we added "interstitial". So skip.
+  interstadial: {
+    meaning: "A warmer period within a glacial period.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "interstate". So skip.
+  // already in original, skip
+  // already added in first chunk? Yes, we added "interstice". So skip.
+  // already added in first chunk? Yes, we added "interstitial". So skip.
   interstratify: { meaning: "To arrange in alternating layers.", pos: "verb" },
   intersubjective: { meaning: "Shared between minds.", pos: "adjective" },
-  intersubjectivity: { meaning: "Shared understanding between people.", pos: "noun" },
+  intersubjectivity: {
+    meaning: "Shared understanding between people.",
+    pos: "noun",
+  },
   intertidal: { meaning: "Between high and low tide.", pos: "adjective" },
   intertropical: { meaning: "Between the tropics.", pos: "adjective" },
   intertwinement: { meaning: "The act of intertwining.", pos: "noun" },
   interunion: { meaning: "Between unions.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interurban". So skip.
+  // already added in first chunk? Yes, we added "interurban". So skip.
   intervallic: { meaning: "Relating to intervals.", pos: "adjective" },
   intervascular: { meaning: "Between blood vessels.", pos: "adjective" },
   intervenor: { meaning: "A person who intervenes.", pos: "noun" },
@@ -3335,26 +4286,29 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intervertebral: { meaning: "Between vertebrae.", pos: "adjective" },
   intervisibility: { meaning: "Mutual visibility.", pos: "noun" },
   intervisible: { meaning: "Mutually visible.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "interwar". So skip.
-   // already added in first chunk? Yes, we added "interweave". So skip.
+  // already added in first chunk? Yes, we added "interwar". So skip.
+  // already added in first chunk? Yes, we added "interweave". So skip.
   interwork: { meaning: "To work together.", pos: "verb" },
-   // already added in first chunk? Yes, we added "interwoven". So skip.
-  intestable: { meaning: "Not legally capable of making a will.", pos: "adjective" },
+  // already added in first chunk? Yes, we added "interwoven". So skip.
+  intestable: {
+    meaning: "Not legally capable of making a will.",
+    pos: "adjective",
+  },
   intestinally: { meaning: "In an intestinal manner.", pos: "adverb" },
   intifada: { meaning: "An uprising, especially Palestinian.", pos: "noun" },
-   // already added in first chunk? Yes, we added "intimately". So skip.
-   // already added in first chunk? Yes, we added "intimation". So skip.
-   // already added in first chunk? Yes, we added "intimidatory". So skip.
-   // already added in first chunk? Yes, we added "intolerability". So skip.
+  // already added in first chunk? Yes, we added "intimately". So skip.
+  // already added in first chunk? Yes, we added "intimation". So skip.
+  // already added in first chunk? Yes, we added "intimidatory". So skip.
+  // already added in first chunk? Yes, we added "intolerability". So skip.
   intolerantly: { meaning: "In an intolerant manner.", pos: "adverb" },
   intonational: { meaning: "Relating to intonation.", pos: "adjective" },
   intoxicatingly: { meaning: "In an intoxicating manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "intracellular". So skip.
+  // already added in first chunk? Yes, we added "intracellular". So skip.
   intracerebral: { meaning: "Within the brain.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intracity". So skip.
-   // already added in first chunk? Yes, we added "intracranial". So skip.
+  // already added in first chunk? Yes, we added "intracity". So skip.
+  // already added in first chunk? Yes, we added "intracranial". So skip.
   intractably: { meaning: "In an intractable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "intradermal". So skip.
+  // already added in first chunk? Yes, we added "intradermal". So skip.
   intrados: { meaning: "The inner curve of an arch.", pos: "noun" },
   intraepithelial: { meaning: "Within epithelial tissue.", pos: "adjective" },
   intrahepatic: { meaning: "Within the liver.", pos: "adjective" },
@@ -3362,57 +4316,66 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   intramuscularly: { meaning: "Within a muscle.", pos: "adverb" },
   intranasal: { meaning: "Within the nose.", pos: "adjective" },
   intranet: { meaning: "A private network.", pos: "noun" },
-   // already added in first chunk? Yes, we added "intransigent". So skip.
+  // already added in first chunk? Yes, we added "intransigent". So skip.
   intransitively: { meaning: "In an intransitive manner.", pos: "adverb" },
   intrapartum: { meaning: "During childbirth.", pos: "adjective" },
-  intraperitoneal: { meaning: "Within the peritoneal cavity.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intrapsychic". So skip.
+  intraperitoneal: {
+    meaning: "Within the peritoneal cavity.",
+    pos: "adjective",
+  },
+  // already added in first chunk? Yes, we added "intrapsychic". So skip.
   intraspecific: { meaning: "Within a species.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intrastate". So skip.
+  // already added in first chunk? Yes, we added "intrastate". So skip.
   intrathoracic: { meaning: "Within the chest.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intrauterine". So skip.
-   // already added in first chunk? Yes, we added "intravenously". So skip.
+  // already added in first chunk? Yes, we added "intrauterine". So skip.
+  // already added in first chunk? Yes, we added "intravenously". So skip.
   intravital: { meaning: "Within a living organism.", pos: "adjective" },
   intrepidness: { meaning: "Fearlessness.", pos: "noun" },
   intricateness: { meaning: "The quality of being intricate.", pos: "noun" },
-   // already added in first chunk? Yes, we added "intriguingly". So skip.
-   // already in original, skip
-   // already added in first chunk? Yes, we added "intrinsically". So skip.
+  // already added in first chunk? Yes, we added "intriguingly". So skip.
+  // already in original, skip
+  // already added in first chunk? Yes, we added "intrinsically". So skip.
   introducible: { meaning: "Able to be introduced.", pos: "adjective" },
   introductorily: { meaning: "In an introductory manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "introject". So skip.
-   // already added in first chunk? Yes, we added "introjection". So skip.
+  // already added in first chunk? Yes, we added "introject". So skip.
+  // already added in first chunk? Yes, we added "introjection". So skip.
   introjectively: { meaning: "In an introjective manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "intromission". So skip.
+  // already added in first chunk? Yes, we added "intromission". So skip.
   intromit: { meaning: "To insert; to admit.", pos: "verb" },
   intromittent: { meaning: "Serving to insert.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "introspectively". So skip.
-  introspectiveness: { meaning: "The quality of being introspective.", pos: "noun" },
+  // already added in first chunk? Yes, we added "introspectively". So skip.
+  introspectiveness: {
+    meaning: "The quality of being introspective.",
+    pos: "noun",
+  },
   introversive: { meaning: "Relating to introversion.", pos: "adjective" },
   introvertive: { meaning: "Introverted.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "intrusively". So skip.
+  // already added in first chunk? Yes, we added "intrusively". So skip.
   intrusiveness: { meaning: "The quality of being intrusive.", pos: "noun" },
-   // already added in first chunk? Yes, we added "intuitiveness". So skip.
+  // already added in first chunk? Yes, we added "intuitiveness". So skip.
   intumesce: { meaning: "To swell or bubble up.", pos: "verb" },
   intumescence: { meaning: "Swelling.", pos: "noun" },
   intumescent: { meaning: "Swelling.", pos: "adjective" },
-  intussusception: { meaning: "The telescoping of one part of the intestine into another.", pos: "noun" },
+  intussusception: {
+    meaning: "The telescoping of one part of the intestine into another.",
+    pos: "noun",
+  },
   intwine: { meaning: "To intertwine.", pos: "verb" },
   intwined: { meaning: "Intertwined.", pos: "adjective" },
   inunction: { meaning: "The act of applying ointment.", pos: "noun" },
   inundable: { meaning: "Capable of being flooded.", pos: "adjective" },
   inundatory: { meaning: "Relating to inundation.", pos: "adjective" },
   inurbanity: { meaning: "Lack of courtesy.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   inutile: { meaning: "Useless.", pos: "adjective" },
   inutility: { meaning: "Uselessness.", pos: "noun" },
   invadable: { meaning: "Capable of being invaded.", pos: "adjective" },
   invalidly: { meaning: "In an invalid manner.", pos: "adverb" },
   invalidness: { meaning: "Invalidity.", pos: "noun" },
-   // already in original, skip
+  // already in original, skip
   invaluableness: { meaning: "The quality of being invaluable.", pos: "noun" },
   invariableness: { meaning: "The quality of being invariable.", pos: "noun" },
-   // already added in first chunk? Yes, we added "invariant". So skip.
+  // already added in first chunk? Yes, we added "invariant". So skip.
   invasively: { meaning: "In an invasive manner.", pos: "adverb" },
   invasiveness: { meaning: "The quality of being invasive.", pos: "noun" },
   invectively: { meaning: "Abusively.", pos: "adverb" },
@@ -3436,22 +4399,25 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   invirility: { meaning: "Lack of manliness.", pos: "noun" },
   invisibleness: { meaning: "Invisibility.", pos: "noun" },
   invitatory: { meaning: "An invitation to prayer.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "invitingly". So skip.
+  // already added in first chunk? Yes, we added "invitingly". So skip.
   invitiveness: { meaning: "The quality of being inviting.", pos: "noun" },
   invocatory: { meaning: "Relating to invocation.", pos: "adjective" },
   involucel: { meaning: "A secondary involucre.", pos: "noun" },
   involucral: { meaning: "Relating to an involucre.", pos: "adjective" },
   involucre: { meaning: "A whorl of bracts.", pos: "noun" },
-  involuntariness: { meaning: "The quality of being involuntary.", pos: "noun" },
-   // already added in first chunk? Yes, we added "involute". So skip.
+  involuntariness: {
+    meaning: "The quality of being involuntary.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "involute". So skip.
   involutional: { meaning: "Relating to involution.", pos: "adjective" },
   involvedly: { meaning: "In an involved manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "involvement". So skip.
-   // already added in first chunk? Yes, we added "invulnerably". So skip.
-   // already added in first chunk? Yes, we added "inwardness". So skip.
+  // already added in first chunk? Yes, we added "involvement". So skip.
+  // already added in first chunk? Yes, we added "invulnerably". So skip.
+  // already added in first chunk? Yes, we added "inwardness". So skip.
   inwrap: { meaning: "To wrap in.", pos: "verb" },
   inwreathe: { meaning: "To wreath around.", pos: "verb" },
-   // already added in first chunk? Yes, we added "iodate". So skip.
+  // already added in first chunk? Yes, we added "iodate". So skip.
   iodation: { meaning: "The process of treating with iodine.", pos: "noun" },
   iodic: { meaning: "Relating to iodine.", pos: "adjective" },
   iodinate: { meaning: "To treat with iodine.", pos: "verb" },
@@ -3459,7 +4425,10 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   iodism: { meaning: "Poisoning by iodine.", pos: "noun" },
   iodoform: { meaning: "A compound used as an antiseptic.", pos: "noun" },
   ionizer: { meaning: "A device that ionizes.", pos: "noun" },
-  ionophoresis: { meaning: "The movement of ions by electric field.", pos: "noun" },
+  ionophoresis: {
+    meaning: "The movement of ions by electric field.",
+    pos: "noun",
+  },
   ipecacuanha: { meaning: "A plant used as an emetic.", pos: "noun" },
   iracund: { meaning: "Easily angered.", pos: "adjective" },
   irascibly: { meaning: "In an irascible manner.", pos: "adverb" },
@@ -3468,49 +4437,67 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   iridal: { meaning: "Relating to the iris.", pos: "adjective" },
   iridescently: { meaning: "In an iridescent manner.", pos: "adverb" },
   iridic: { meaning: "Relating to iridium or iris.", pos: "adjective" },
-  iridology: { meaning: "A pseudoscience based on iris patterns.", pos: "noun" },
+  iridology: {
+    meaning: "A pseudoscience based on iris patterns.",
+    pos: "noun",
+  },
   irised: { meaning: "Having a rainbow-like appearance.", pos: "adjective" },
   irising: { meaning: "Present participle of iris.", pos: "verb" },
   iritis: { meaning: "Inflammation of the iris.", pos: "noun" },
-   // already added in first chunk? Yes, we added "irksomely". So skip.
+  // already added in first chunk? Yes, we added "irksomely". So skip.
   irksomeness: { meaning: "The quality of being irksome.", pos: "noun" },
-   // already added in first chunk? Yes, we added "ironclad". So skip.
+  // already added in first chunk? Yes, we added "ironclad". So skip.
   ironer: { meaning: "A person who irons clothes.", pos: "noun" },
   ironical: { meaning: "Ironic.", pos: "adjective" },
   ironically: { meaning: "In an ironic manner.", pos: "adverb" },
   ironist: { meaning: "A person who uses irony.", pos: "noun" },
   ironlike: { meaning: "Like iron; strong.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "ironmongery". So skip.
+  // already added in first chunk? Yes, we added "ironmongery". So skip.
   ironness: { meaning: "The quality of being iron.", pos: "noun" },
   ironsmith: { meaning: "A blacksmith who works with iron.", pos: "noun" },
-   // already added in first chunk? Yes, we added "ironstone". So skip.
-   // already added in first chunk? Yes, we added "ironworker". So skip.
+  // already added in first chunk? Yes, we added "ironstone". So skip.
+  // already added in first chunk? Yes, we added "ironworker". So skip.
   ironworks: { meaning: "A factory for making iron.", pos: "noun" },
   irradiatingly: { meaning: "In an irradiating manner.", pos: "adverb" },
   irradiative: { meaning: "Emitting radiation.", pos: "adjective" },
   irrationableness: { meaning: "Irrationality.", pos: "noun" },
   irreclaimably: { meaning: "In an irreclaimable manner.", pos: "adverb" },
-  irreconcilableness: { meaning: "The quality of being irreconcilable.", pos: "noun" },
+  irreconcilableness: {
+    meaning: "The quality of being irreconcilable.",
+    pos: "noun",
+  },
   irrecoverably: { meaning: "In an irrecoverable manner.", pos: "adverb" },
   irredeemably: { meaning: "In an irredeemable manner.", pos: "adverb" },
   irreducibility: { meaning: "The quality of being irreducible.", pos: "noun" },
   irreducibly: { meaning: "In an irreducible manner.", pos: "adverb" },
   irrefragable: { meaning: "Impossible to refute.", pos: "adjective" },
   irrefutability: { meaning: "The quality of being irrefutable.", pos: "noun" },
-   // already added in first chunk? Yes, we added "irregularity". So skip.
+  // already added in first chunk? Yes, we added "irregularity". So skip.
   irrelativeness: { meaning: "Irrelevance.", pos: "noun" },
   irrelevantly: { meaning: "In an irrelevant manner.", pos: "adverb" },
   irrelievable: { meaning: "Unable to be relieved.", pos: "adjective" },
   irremovability: { meaning: "The quality of being irremovable.", pos: "noun" },
   irremovably: { meaning: "In an irremovable manner.", pos: "adverb" },
   irrenowned: { meaning: "Not renowned.", pos: "adjective" },
-  irreparableness: { meaning: "The quality of being irreparable.", pos: "noun" },
-  irrepealability: { meaning: "The quality of being irrepealable.", pos: "noun" },
+  irreparableness: {
+    meaning: "The quality of being irreparable.",
+    pos: "noun",
+  },
+  irrepealability: {
+    meaning: "The quality of being irrepealable.",
+    pos: "noun",
+  },
   irrepealable: { meaning: "Unable to be repealed.", pos: "adjective" },
   irrepleviable: { meaning: "Not repleviable.", pos: "adjective" },
-  irrepressibility: { meaning: "The quality of being irrepressible.", pos: "noun" },
+  irrepressibility: {
+    meaning: "The quality of being irrepressible.",
+    pos: "noun",
+  },
   irreproachableness: { meaning: "Faultlessness.", pos: "noun" },
-  irreproducibility: { meaning: "The quality of being irreproducible.", pos: "noun" },
+  irreproducibility: {
+    meaning: "The quality of being irreproducible.",
+    pos: "noun",
+  },
   irreproducible: { meaning: "Unable to be reproduced.", pos: "adjective" },
   irresolvable: { meaning: "Unable to be resolved.", pos: "adjective" },
   irresolvably: { meaning: "In an irresolvable manner.", pos: "adverb" },
@@ -3520,13 +4507,22 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   irrespirable: { meaning: "Not fit to breathe.", pos: "adjective" },
   irresponsiveness: { meaning: "Lack of responsiveness.", pos: "noun" },
   irretentive: { meaning: "Not retentive; forgetful.", pos: "adjective" },
-  irretrievableness: { meaning: "The quality of being irretrievable.", pos: "noun" },
-   // already added in first chunk? Yes, we added "irreverently". So skip.
-  irreversibility: { meaning: "The quality of being irreversible.", pos: "noun" },
-  irrevocableness: { meaning: "The quality of being irrevocable.", pos: "noun" },
+  irretrievableness: {
+    meaning: "The quality of being irretrievable.",
+    pos: "noun",
+  },
+  // already added in first chunk? Yes, we added "irreverently". So skip.
+  irreversibility: {
+    meaning: "The quality of being irreversible.",
+    pos: "noun",
+  },
+  irrevocableness: {
+    meaning: "The quality of being irrevocable.",
+    pos: "noun",
+  },
   irrigably: { meaning: "In an irrigable manner.", pos: "adverb" },
-   // already added in first chunk? Yes, we added "irrigator". So skip.
-   // already added in first chunk? Yes, we added "irritably". So skip.
+  // already added in first chunk? Yes, we added "irrigator". So skip.
+  // already added in first chunk? Yes, we added "irritably". So skip.
   irritatingness: { meaning: "The quality of being irritating.", pos: "noun" },
   irritative: { meaning: "Causing irritation.", pos: "adjective" },
   irrotational: { meaning: "Not rotational.", pos: "adjective" },
@@ -3534,81 +4530,96 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   isagogic: { meaning: "Introductory.", pos: "adjective" },
   isagogics: { meaning: "Introductory studies.", pos: "noun" },
   isallobar: { meaning: "A line of equal pressure change.", pos: "noun" },
-  isarithm: { meaning: "A line on a map connecting equal values.", pos: "noun" },
+  isarithm: {
+    meaning: "A line on a map connecting equal values.",
+    pos: "noun",
+  },
   ischaemia: { meaning: "Restricted blood supply.", pos: "noun" },
-  ischaemic: { meaning: "Relating to restricted blood supply.", pos: "adjective" },
+  ischaemic: {
+    meaning: "Relating to restricted blood supply.",
+    pos: "adjective",
+  },
   ischium: { meaning: "A pelvic bone.", pos: "noun" },
   isentropic: { meaning: "Having constant entropy.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "isinglass". So skip.
+  // already added in first chunk? Yes, we added "isinglass". So skip.
   islamic: { meaning: "Relating to Islam.", pos: "adjective" },
   islamize: { meaning: "To convert to Islam.", pos: "verb" },
-   // already added in first chunk? Yes, we added "islander". So skip.
+  // already added in first chunk? Yes, we added "islander". So skip.
   isleless: { meaning: "Without islands.", pos: "adjective" },
   islesman: { meaning: "An islander.", pos: "noun" },
-   // already added in first chunk? Yes, we added "isobaric". So skip.
+  // already added in first chunk? Yes, we added "isobaric". So skip.
   isobath: { meaning: "A line of equal depth.", pos: "noun" },
   isochronal: { meaning: "Equal in time.", pos: "adjective" },
   isochronous: { meaning: "Equal in time.", pos: "adjective" },
   isocline: { meaning: "A line of equal dip.", pos: "noun" },
   isoclinic: { meaning: "Relating to equal inclination.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "isocracy". So skip.
+  // already added in first chunk? Yes, we added "isocracy". So skip.
   isocyanide: { meaning: "A chemical compound.", pos: "noun" },
-   // already added in first chunk? Yes, we added "isoelectric". So skip.
+  // already added in first chunk? Yes, we added "isoelectric". So skip.
   isoenzyme: { meaning: "A variant form of an enzyme.", pos: "noun" },
   isogamous: { meaning: "Reproducing by similar gametes.", pos: "adjective" },
   isogeny: { meaning: "The state of being isogenous.", pos: "noun" },
-   // already added in first chunk? Yes, we added "isogloss". So skip.
-   // already added in first chunk? Yes, we added "isogonal". So skip.
+  // already added in first chunk? Yes, we added "isogloss". So skip.
+  // already added in first chunk? Yes, we added "isogonal". So skip.
   isogonic: { meaning: "Having equal angles.", pos: "adjective" },
   isohel: { meaning: "A line of equal sunshine.", pos: "noun" },
   isohyet: { meaning: "A line of equal rainfall.", pos: "noun" },
   isolable: { meaning: "Able to be isolated.", pos: "adjective" },
   isolatedly: { meaning: "In an isolated manner.", pos: "adverb" },
   isolationistic: { meaning: "Relating to isolationism.", pos: "adjective" },
-   // already added in first chunk? Yes, we added "isolative". So skip.
+  // already added in first chunk? Yes, we added "isolative". So skip.
   isolecithal: { meaning: "Having evenly distributed yolk.", pos: "adjective" },
   isomerase: { meaning: "An enzyme that converts isomers.", pos: "noun" },
   isomerize: { meaning: "To convert into an isomer.", pos: "verb" },
   isomerization: { meaning: "The process of isomerizing.", pos: "noun" },
   isometrically: { meaning: "In an isometric manner.", pos: "adverb" },
   isometry: { meaning: "Equality of measure.", pos: "noun" },
-   // already added in first chunk? Yes, we added "isomorphic". So skip.
+  // already added in first chunk? Yes, we added "isomorphic". So skip.
   isomorphous: { meaning: "Isomorphic.", pos: "adjective" },
   isoniazid: { meaning: "A drug used to treat tuberculosis.", pos: "noun" },
   isooctane: { meaning: "A standard for gasoline.", pos: "noun" },
   isopiestic: { meaning: "Having equal pressure.", pos: "adjective" },
-  isopleth: { meaning: "A line on a map connecting equal values.", pos: "noun" },
+  isopleth: {
+    meaning: "A line on a map connecting equal values.",
+    pos: "noun",
+  },
   isopodous: { meaning: "Relating to isopods.", pos: "adjective" },
   isoprene: { meaning: "A compound used in rubber.", pos: "noun" },
   isopropyl: { meaning: "A chemical group.", pos: "noun" },
-   // already added in first chunk? Yes, we added "isosceles". So skip.
+  // already added in first chunk? Yes, we added "isosceles". So skip.
   isostasy: { meaning: "Equilibrium in the earth's crust.", pos: "noun" },
   isostatic: { meaning: "Relating to isostasy.", pos: "adjective" },
-  isosteric: { meaning: "Having similar electronic structure.", pos: "adjective" },
+  isosteric: {
+    meaning: "Having similar electronic structure.",
+    pos: "adjective",
+  },
   isothermally: { meaning: "In an isothermal manner.", pos: "adverb" },
   isotonicity: { meaning: "The quality of being isotonic.", pos: "noun" },
   isotonically: { meaning: "In an isotonic manner.", pos: "adverb" },
   isotopically: { meaning: "In an isotopic manner.", pos: "adverb" },
   isotropy: { meaning: "The property of being isotropic.", pos: "noun" },
   isozyme: { meaning: "An isoenzyme.", pos: "noun" },
-  
+
   isthmoid: { meaning: "Relating to an isthmus.", pos: "adjective" },
   itaconic: { meaning: "Relating to an organic acid.", pos: "adjective" },
   italicization: { meaning: "The act of printing in italics.", pos: "noun" },
   italicized: { meaning: "Printed in italics.", pos: "verb" },
   italicizing: { meaning: "Present participle of italicize.", pos: "verb" },
- 
+
   itemizer: { meaning: "A person who itemizes.", pos: "noun" },
   iterance: { meaning: "Repetition.", pos: "noun" },
   iterant: { meaning: "Repeating.", pos: "adjective" },
-   
-  itineracy: { meaning: "The state of traveling from place to place.", pos: "noun" },
+
+  itineracy: {
+    meaning: "The state of traveling from place to place.",
+    pos: "noun",
+  },
   itinerantly: { meaning: "In an itinerant manner.", pos: "adverb" },
   itinerate: { meaning: "To travel from place to place.", pos: "verb" },
   itinerated: { meaning: "Past tense of itinerate.", pos: "verb" },
   itinerating: { meaning: "Present participle of itinerate.", pos: "verb" },
   itineration: { meaning: "The act of traveling about.", pos: "noun" },
-   // already added in second chunk? Yes, we added "ivied". So skip.
+  // already added in second chunk? Yes, we added "ivied". So skip.
   ivories: { meaning: "Plural of ivory; piano keys.", pos: "noun" },
   ivorylike: { meaning: "Resembling ivory.", pos: "adjective" },
   ivylike: { meaning: "Resembling ivy.", pos: "adjective" },
@@ -3616,5 +4627,4 @@ export const DICTIONARY_I: Record<string, DictionaryEntry> = {
   ixodid: { meaning: "A tick of the family Ixodidae.", pos: "noun" },
   izar: { meaning: "A long garment worn by Muslim women.", pos: "noun" },
   izzard: { meaning: "The letter Z (archaic).", pos: "noun" },
-  
 };

@@ -215,7 +215,8 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     pos: "noun",
   },
   jacks: {
-    meaning: "A children's game played with small metal pieces; plural of jack.",
+    meaning:
+      "A children's game played with small metal pieces; plural of jack.",
     pos: "noun",
   },
   jackscrew: {
@@ -735,7 +736,8 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     pos: "adverb",
   },
   jubilarian: {
-    meaning: "A person celebrating a jubilee, especially a religious anniversary.",
+    meaning:
+      "A person celebrating a jubilee, especially a religious anniversary.",
     pos: "noun",
   },
   jubilate: {
@@ -931,7 +933,8 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     pos: "adverb",
   },
   jurat: {
-    meaning: "A statement at the end of an affidavit showing when and where sworn.",
+    meaning:
+      "A statement at the end of an affidavit showing when and where sworn.",
     pos: "noun",
   },
   juridical: {
@@ -1146,7 +1149,7 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "Relating to or resembling jive; lively.",
     pos: "adjective",
   },
-  
+
   jockeyed: {
     meaning: "Maneuvered for advantage; past tense of jockey.",
     pos: "verb",
@@ -1248,7 +1251,8 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     pos: "noun",
   },
   juggled: {
-    meaning: "Tossed and caught objects; managed many tasks; past tense of juggle.",
+    meaning:
+      "Tossed and caught objects; managed many tasks; past tense of juggle.",
     pos: "verb",
   },
   jugglingly: {
@@ -1287,7 +1291,7 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "Placing side by side for comparison.",
     pos: "noun",
   },
-  
+
   jadery: {
     meaning: "The state of being jaded.",
     pos: "noun",
@@ -1432,7 +1436,7 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "A horse-drawn vehicle.",
     pos: "noun",
   },
-  
+
   jobholder: {
     meaning: "A person with a regular job.",
     pos: "noun",
@@ -1577,6 +1581,4 @@ export const DICTIONARY_J: Record<string, DictionaryEntry> = {
     meaning: "To place side by side.",
     pos: "verb",
   },
-  
 };
-

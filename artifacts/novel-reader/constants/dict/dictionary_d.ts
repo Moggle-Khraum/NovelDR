@@ -871,41 +871,112 @@ export const DICTIONARY_D: Record<string, DictionaryEntry> = {
     pos: "noun",
   },
   dysfunction: { meaning: "Abnormal or impaired function.", pos: "noun" },
-    // --- Additional common "D" words (120+ new entries) ---
-  dab: { meaning: "To touch or pat lightly; a small amount of something.", pos: "verb" },
-    // --- Batch 2: 155+ additional "D" words ---
-  dabble: { meaning: "To take part in an activity in a casual way; to splash about in water.", pos: "verb" },
-  dachshund: { meaning: "A small breed of dog with a long body and short legs.", pos: "noun" },
+  // --- Additional common "D" words (120+ new entries) ---
+  dab: {
+    meaning: "To touch or pat lightly; a small amount of something.",
+    pos: "verb",
+  },
+  // --- Batch 2: 155+ additional "D" words ---
+  dabble: {
+    meaning:
+      "To take part in an activity in a casual way; to splash about in water.",
+    pos: "verb",
+  },
+  dachshund: {
+    meaning: "A small breed of dog with a long body and short legs.",
+    pos: "noun",
+  },
   dad: { meaning: "An informal term for father.", pos: "noun" },
   daddy: { meaning: "A child's term for father.", pos: "noun" },
-  daffodil: { meaning: "A yellow flower that blooms in early spring.", pos: "noun" },
-  dainty: { meaning: "Delicately small and pretty; fussy about food.", pos: "adjective" },
+  daffodil: {
+    meaning: "A yellow flower that blooms in early spring.",
+    pos: "noun",
+  },
+  dainty: {
+    meaning: "Delicately small and pretty; fussy about food.",
+    pos: "adjective",
+  },
   dale: { meaning: "A valley, especially a broad one.", pos: "noun" },
-  dame: { meaning: "A woman, especially an older or distinguished one.", pos: "noun" },
-  dampen: { meaning: "To make slightly wet; to reduce enthusiasm.", pos: "verb" },
+  dame: {
+    meaning: "A woman, especially an older or distinguished one.",
+    pos: "noun",
+  },
+  dampen: {
+    meaning: "To make slightly wet; to reduce enthusiasm.",
+    pos: "verb",
+  },
   damsel: { meaning: "A young unmarried woman.", pos: "noun" },
-  dancer: { meaning: "A person who dances professionally or for enjoyment.", pos: "noun" },
+  dancer: {
+    meaning: "A person who dances professionally or for enjoyment.",
+    pos: "noun",
+  },
   dandruff: { meaning: "Small flakes of dead skin on the scalp.", pos: "noun" },
-  daring: { meaning: "Brave; adventurous; willingness to take risks.", pos: "adjective" },
-  "dark elf": { meaning: "A subterranean elf race, often associated with darkness and magic.", pos: "noun" },
+  daring: {
+    meaning: "Brave; adventurous; willingness to take risks.",
+    pos: "adjective",
+  },
+  "dark elf": {
+    meaning:
+      "A subterranean elf race, often associated with darkness and magic.",
+    pos: "noun",
+  },
   darken: { meaning: "To make or become dark; to cloud over.", pos: "verb" },
-  "dark one": { meaning: "A being of great evil; a malevolent force.", pos: "noun" },
-  dataset: { meaning: "A collection of related data for analysis.", pos: "noun" },
-  dative: { meaning: "The grammatical case indicating the indirect object.", pos: "noun" },
-  daybreak: { meaning: "The time in the morning when daylight first appears.", pos: "noun" },
+  "dark one": {
+    meaning: "A being of great evil; a malevolent force.",
+    pos: "noun",
+  },
+  dataset: {
+    meaning: "A collection of related data for analysis.",
+    pos: "noun",
+  },
+  dative: {
+    meaning: "The grammatical case indicating the indirect object.",
+    pos: "noun",
+  },
+  daybreak: {
+    meaning: "The time in the morning when daylight first appears.",
+    pos: "noun",
+  },
   daydream: { meaning: "A pleasant fantasy during waking hours.", pos: "noun" },
   daylight: { meaning: "The light of day; dawn.", pos: "noun" },
-  daytime: { meaning: "The period of time when it is light outside.", pos: "noun" },
+  daytime: {
+    meaning: "The period of time when it is light outside.",
+    pos: "noun",
+  },
   dazed: { meaning: "Unable to think clearly; bewildered.", pos: "adjective" },
-  dazzling: { meaning: "Extremely bright; impressive and striking.", pos: "adjective" },
+  dazzling: {
+    meaning: "Extremely bright; impressive and striking.",
+    pos: "adjective",
+  },
   deadly: { meaning: "Causing or able to cause death.", pos: "adjective" },
-  dealer: { meaning: "A person who buys and sells goods; a card player.", pos: "noun" },
-  dean: { meaning: "The head of a university faculty or department.", pos: "noun" },
-  deathly: { meaning: "Resembling or characteristic of death; deadly.", pos: "adjective" },
+  dealer: {
+    meaning: "A person who buys and sells goods; a card player.",
+    pos: "noun",
+  },
+  dean: {
+    meaning: "The head of a university faculty or department.",
+    pos: "noun",
+  },
+  deathly: {
+    meaning: "Resembling or characteristic of death; deadly.",
+    pos: "adjective",
+  },
   debtor: { meaning: "A person who owes money.", pos: "noun" },
-  "deep one": { meaning: "An ancient aquatic creature from the depths.", pos: "noun" },
+  "deep one": {
+    meaning: "An ancient aquatic creature from the depths.",
+    pos: "noun",
+  },
   defrost: { meaning: "To remove frost or ice from; to thaw.", pos: "verb" },
-  dizzy: { meaning: "Feeling lightheaded or unsteady; confused.", pos: "adjective" },
-  dragonborn: { meaning: "A being with dragon ancestry or traits.", pos: "noun" },
-  dragonrider: { meaning: "A warrior who rides a dragon into battle.", pos: "noun" },
+  dizzy: {
+    meaning: "Feeling lightheaded or unsteady; confused.",
+    pos: "adjective",
+  },
+  dragonborn: {
+    meaning: "A being with dragon ancestry or traits.",
+    pos: "noun",
+  },
+  dragonrider: {
+    meaning: "A warrior who rides a dragon into battle.",
+    pos: "noun",
+  },
 };
