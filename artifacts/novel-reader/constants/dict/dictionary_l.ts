@@ -687,7 +687,7 @@ laic: {
   meaning: "Relating to the laity; secular; not ecclesiastical.",
   pos: "adjective",
 },
-laissez-faire: {
+"laissez-faire": {
   meaning: "Policy of non‑interference; a hands‑off approach.",
   pos: "noun",
 },
@@ -1104,7 +1104,7 @@ licensee: {
   meaning: "The holder of a license or permit.",
   pos: "noun",
 },
-lickety-split: {
+"lickety-split": {
   meaning: "Very quickly; at great speed.",
   pos: "adverb",
 },
@@ -1132,9 +1132,5 @@ lionize: {
   meaning: "To treat as a celebrity; to glorify.",
   pos: "verb",
 },
-
-
-
-
   
 };
