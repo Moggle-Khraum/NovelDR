@@ -25,13 +25,13 @@ import { DICTIONARY_R } from "./dict/dictionary_r";
 import { DICTIONARY_S } from "./dict/dictionary_s";
 import { DICTIONARY_T } from "./dict/dictionary_t";
 import { DICTIONARY_U } from "./dict/dictionary_u";
-import { DICTIONARY_V } from "./dict/dictionary_v"; // <-- ADD THIS
+import { DICTIONARY_V } from "./dict/dictionary_v";
 import { DICTIONARY_W } from "./dict/dictionary_w";
 import { DICTIONARY_X } from "./dict/dictionary_x";
 import { DICTIONARY_Y } from "./dict/dictionary_y";
 import { DICTIONARY_Z } from "./dict/dictionary_z";
 
-export const SIMPLE_DICTIONARY: Record<string, DictionaryEntry> = {
+const COMBINED: Record<string, DictionaryEntry> = {
   ...DICTIONARY_A,
   ...DICTIONARY_B,
   ...DICTIONARY_C,
@@ -53,9 +53,25 @@ export const SIMPLE_DICTIONARY: Record<string, DictionaryEntry> = {
   ...DICTIONARY_S,
   ...DICTIONARY_T,
   ...DICTIONARY_U,
-  ...DICTIONARY_V, // <-- ADD THIS
+  ...DICTIONARY_V,
   ...DICTIONARY_W,
   ...DICTIONARY_X,
   ...DICTIONARY_Y,
   ...DICTIONARY_Z,
 };
+
+// Extract base word from keys like "contract1", "contract2" → "contract"
+function getBaseWord(key: string): string {
+  return key.replace(/\d+$/, "");
+}
+
+// Build a multi-entry dictionary: base word → array of meanings
+export const SIMPLE_DICTIONARY: Record<string, DictionaryEntry[]> = {};
+
+for (const [key, entry] of Object.entries(COMBINED)) {
+  const baseWord = getBaseWord(key);
+  if (!SIMPLE_DICTIONARY[baseWord]) {
+    SIMPLE_DICTIONARY[baseWord] = [];
+  }
+  SIMPLE_DICTIONARY[baseWord].push(entry);
+}
