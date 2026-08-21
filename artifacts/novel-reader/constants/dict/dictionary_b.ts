@@ -227,7 +227,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   batten: { meaning: "A strip of wood; to grow fat.", pos: "noun" },
   batter: {
     meaning:
-      "To strike repeatedly; a mixture of flour, eggs, and liquid for cooking.",
+      "To strike repeatedly; a mixture of flour, eggs, and liquid for cooking; a player in baseball.",
     pos: "verb",
   },
   battery: {
@@ -801,7 +801,10 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   bum: { meaning: "A vagrant; the buttocks; to borrow.", pos: "noun" },
   bump: { meaning: "A jolt; a small swelling.", pos: "noun" },
   bunch: { meaning: "A group or cluster.", pos: "noun" },
-  bundle: { meaning: "A group of things tied together.", pos: "noun" },
+  bundle: {
+    meaning: "A group of things tied together; to wrap or package.",
+    pos: "noun",
+  },
   bungle: { meaning: "To do clumsily; a botch.", pos: "verb" },
   bunk: { meaning: "A bed; nonsense; to sleep.", pos: "noun" },
   bunko: { meaning: "A swindle or trick.", pos: "noun" },
@@ -921,11 +924,6 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
     meaning: "To lie exposed to warmth, often for relaxation.",
     pos: "verb",
   },
-  batter: {
-    meaning:
-      "To strike repeatedly; a mixture for frying; a player in baseball.",
-    pos: "verb",
-  },
   birthday: {
     meaning: "The anniversary of the day on which a person was born.",
     pos: "noun",
@@ -977,10 +975,6 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   },
   budget: {
     meaning: "A plan for how money will be spent; to allocate resources.",
-    pos: "noun",
-  },
-  bundle: {
-    meaning: "A group of things tied together; to wrap or package.",
     pos: "noun",
   },
 };
