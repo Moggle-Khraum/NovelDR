@@ -887,7 +887,251 @@ lyricism: {
   meaning: "The quality of being lyrical; poetic expression.",
   pos: "noun",
 },
-
+// Add these entries to DICTIONARY_L
+labial: {
+  meaning: "Relating to the lips; a sound produced with the lips.",
+  pos: "adjective",
+},
+labile: {
+  meaning: "Liable to change; unstable; readily altered.",
+  pos: "adjective",
+},
+laborer: {
+  meaning: "A person who does physical work; a manual worker.",
+  pos: "noun",
+},
+lackluster: {
+  meaning: "Dull; lacking brilliance, vitality, or excitement.",
+  pos: "adjective",
+},
+lacrosse: {
+  meaning: "A team sport played with a netted stick and a ball.",
+  pos: "noun",
+},
+lallygag: {
+  meaning: "To spend time idly; to loiter or dawdle.",
+  pos: "verb",
+},
+lancet: {
+  meaning: "A small, sharp surgical knife; a pointed window arch.",
+  pos: "noun",
+},
+landlocked: {
+  meaning: "Surrounded by land; having no coastline.",
+  pos: "adjective",
+},
+larkspur: {
+  meaning: "A tall plant with spurred, brightly colored flowers.",
+  pos: "noun",
+},
+larval: {
+  meaning: "Relating to the immature, wormlike stage of an insect.",
+  pos: "adjective",
+},
+lasagna: {
+  meaning: "A baked Italian dish of wide pasta sheets layered with sauce and cheese.",
+  pos: "noun",
+},
+lasso: {
+  meaning: "A rope with a noose, used for catching livestock.",
+  pos: "noun",
+},
+lasting: {
+  meaning: "Enduring; continuing for a long time.",
+  pos: "adjective",
+},
+lately: {
+  meaning: "Recently; in the recent past.",
+  pos: "adverb",
+},
+laudatory: {
+  meaning: "Expressing praise; commendatory.",
+  pos: "adjective",
+},
+lawmaker: {
+  meaning: "A person who makes laws; a legislator.",
+  pos: "noun",
+},
+lawnmower: {
+  meaning: "A machine used for cutting grass on a lawn.",
+  pos: "noun",
+},
+laxity: {
+  meaning: "Lack of strictness; looseness; negligence.",
+  pos: "noun",
+},
+layabout: {
+  meaning: "A lazy, idle person; a loafer.",
+  pos: "noun",
+},
+leaden: {
+  meaning: "Heavy; dull; made of or resembling lead.",
+  pos: "adjective",
+},
+leafy: {
+  meaning: "Covered with or having many leaves.",
+  pos: "adjective",
+},
+leakage: {
+  meaning: "The act of leaking; an amount that leaks out.",
+  pos: "noun",
+},
+leaning: {
+  meaning: "An inclination; a tendency or preference.",
+  pos: "noun",
+},
+learner: {
+  meaning: "A person who is learning; a student.",
+  pos: "noun",
+},
+leathery: {
+  meaning: "Tough and flexible like leather.",
+  pos: "adjective",
+},
+leavings: {
+  meaning: "Remnants; leftovers; things left behind.",
+  pos: "noun",
+},
+lecturer: {
+  meaning: "A person who gives lectures, especially in a university.",
+  pos: "noun",
+},
+leftist: {
+  meaning: "A person with liberal or progressive political views.",
+  pos: "noun",
+},
+legato: {
+  meaning: "Smooth and flowing; without noticeable breaks between notes.",
+  pos: "adverb",
+},
+legatee: {
+  meaning: "A person who receives a legacy or inheritance.",
+  pos: "noun",
+},
+legality: {
+  meaning: "The quality or state of being lawful.",
+  pos: "noun",
+},
+legibility: {
+  meaning: "The quality of being clear enough to read.",
+  pos: "noun",
+},
+legionnaire: {
+  meaning: "A soldier belonging to a legion.",
+  pos: "noun",
+},
+legislative: {
+  meaning: "Having the power to make laws; relating to legislation.",
+  pos: "adjective",
+},
+leisurely: {
+  meaning: "Done without hurry; relaxed; unhurried.",
+  pos: "adjective",
+},
+lemony: {
+  meaning: "Tasting or smelling of lemon.",
+  pos: "adjective",
+},
+lender: {
+  meaning: "A person or institution that lends money or goods.",
+  pos: "noun",
+},
+lengthen: {
+  meaning: "To make or become longer; to extend.",
+  pos: "verb",
+},
+leniency: {
+  meaning: "Mildness; mercy; lack of severity.",
+  pos: "noun",
+},
+lenticular: {
+  meaning: "Shaped like a lens; biconvex.",
+  pos: "adjective",
+},
+leprous: {
+  meaning: "Affected with leprosy; resembling leprosy.",
+  pos: "adjective",
+},
+lessee: {
+  meaning: "A person who rents or leases property.",
+  pos: "noun",
+},
+letdown: {
+  meaning: "A disappointment; a feeling of disillusionment.",
+  pos: "noun",
+},
+lethality: {
+  meaning: "The capacity to cause death; deadliness.",
+  pos: "noun",
+},
+letterhead: {
+  meaning: "The printed heading at the top of a sheet of stationery.",
+  pos: "noun",
+},
+leveler: {
+  meaning: "A person who promotes equality; something that makes things equal.",
+  pos: "noun",
+},
+lewdness: {
+  meaning: "Obscenity; lascivious behavior.",
+  pos: "noun",
+},
+lexical: {
+  meaning: "Relating to words or vocabulary.",
+  pos: "adjective",
+},
+libelous: {
+  meaning: "Containing a written defamation; slanderous.",
+  pos: "adjective",
+},
+liberalism: {
+  meaning: "A political or social philosophy advocating freedom and reform.",
+  pos: "noun",
+},
+liberator: {
+  meaning: "A person who sets others free from oppression.",
+  pos: "noun",
+},
+libertarian: {
+  meaning: "A person who believes in maximum freedom and minimal government.",
+  pos: "noun",
+},
+librarian: {
+  meaning: "A person who works in or manages a library.",
+  pos: "noun",
+},
+licensee: {
+  meaning: "The holder of a license or permit.",
+  pos: "noun",
+},
+lickety-split: {
+  meaning: "Very quickly; at great speed.",
+  pos: "adverb",
+},
+lidded: {
+  meaning: "Having a lid or cover.",
+  pos: "adjective",
+},
+lifeblood: {
+  meaning: "A vital or essential element; sustaining force.",
+  pos: "noun",
+},
+liftoff: {
+  meaning: "The vertical takeoff of a rocket or spacecraft.",
+  pos: "noun",
+},
+lighten: {
+  meaning: "To make or become lighter in weight, color, or mood.",
+  pos: "verb",
+},
+likable: {
+  meaning: "Pleasant; easy to like.",
+  pos: "adjective",
+},
+lionize: {
+  meaning: "To treat as a celebrity; to glorify.",
+  pos: "verb",
+},
 
 
 
