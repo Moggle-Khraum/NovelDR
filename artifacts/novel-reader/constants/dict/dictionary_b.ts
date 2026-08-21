@@ -15,6 +15,8 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   bachelor: { meaning: "An unmarried man; a degree recipient.", pos: "noun" },
   bacillary: { meaning: "Relating to rod-shaped bacteria.", pos: "adjective" },
   back: { meaning: "The rear part of the body; to support.", pos: "noun" },
+  backbone: { meaning: "The spine; strength of character.", pos: "noun" },
+  backyard: { meaning: "An area behind a house.", pos: "noun" },
   backfill: {
     meaning: "To fill an excavated hole with material.",
     pos: "verb",
@@ -23,6 +25,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   bacteria: { meaning: "Single-celled microorganisms.", pos: "noun" },
   bactericide: { meaning: "A substance that kills bacteria.", pos: "noun" },
   bad: { meaning: "Of poor quality; not good.", pos: "adjective" },
+  badge: { meaning: "An emblem or token worn to show membership or achievement.", pos: "noun" },
   badger: { meaning: "A nocturnal mammal; to pester.", pos: "noun" },
   badinage: { meaning: "Lighthearted, playful banter.", pos: "noun" },
   baffle: { meaning: "To bewilder; to frustrate.", pos: "verb" },
@@ -33,6 +36,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   baggage: { meaning: "Luggage; emotional burdens.", pos: "noun" },
   bailiff: { meaning: "A court official; a land agent.", pos: "noun" },
   bait: { meaning: "Food used to attract fish; to taunt.", pos: "noun" },
+  bake: { meaning: "To cook by dry heat, especially in an oven.", pos: "verb" },
   balaclava: {
     meaning: "A knitted hat covering the head and neck.",
     pos: "noun",
@@ -65,8 +69,10 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   balsam: { meaning: "A fragrant resin; a healing substance.", pos: "noun" },
   bamboozle: { meaning: "To deceive or confuse.", pos: "verb" },
   ban: { meaning: "To prohibit officially.", pos: "verb" },
+  banana: { meaning: "A tropical fruit with yellow skin and soft, sweet flesh.", pos: "noun" },
   banal: { meaning: "Lacking originality; trite.", pos: "adjective" },
   band: { meaning: "A group of people; a strip.", pos: "noun" },
+  bandage: { meaning: "A strip of material used to cover and protect a wound.", pos: "noun" },
   bandanna: { meaning: "A large, colorful scarf.", pos: "noun" },
   bandersnatch: {
     meaning: "A mythical creature; a person of unpredictable behavior.",
@@ -74,6 +80,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   },
   bandit: { meaning: "A robber, especially a member of a gang.", pos: "noun" },
   bandoleer: { meaning: "A belt with ammunition pockets.", pos: "noun" },
+  bang: { meaning: "A sudden loud noise; to strike or hit forcefully.", pos: "noun" },
   banish: { meaning: "To expel from a country or place.", pos: "verb" },
   banished: {
     meaning: "Forced away or expelled, often to another realm.",
@@ -127,6 +134,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   },
   baritone: { meaning: "A male voice of medium range.", pos: "noun" },
   barium: { meaning: "A chemical element used in imaging.", pos: "noun" },
+  bark: { meaning: "The outer covering of a tree; the sound a dog makes.", pos: "noun" },
   barley: { meaning: "A cereal grain.", pos: "noun" },
   barn: {
     meaning: "A building for storing grain or housing livestock.",
@@ -150,6 +158,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
     meaning: "A concentrated outpouring; an artificial obstacle.",
     pos: "noun",
   },
+  barrel: { meaning: "A cylindrical container, often made of wood or metal.", pos: "noun" },
   barren: { meaning: "Unable to produce crops or children.", pos: "adjective" },
   barricade: { meaning: "An improvised barrier.", pos: "noun" },
   barrier: {
@@ -198,6 +207,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
     pos: "noun",
   },
   batten: { meaning: "A strip of wood; to grow fat.", pos: "noun" },
+  batter: { meaning: "To strike repeatedly; a mixture of flour, eggs, and liquid for cooking.", pos: "verb" },
   battery: {
     meaning: "A device for storing electricity; an assault.",
     pos: "noun",
@@ -241,6 +251,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   beam: { meaning: "A long, sturdy timber; a ray of light.", pos: "noun" },
   bean: { meaning: "An edible seed in a pod.", pos: "noun" },
   bear: { meaning: "A large mammal; to carry or endure.", pos: "noun" },
+  beard: { meaning: "Hair that grows on the chin and cheeks of a man.", pos: "noun" },
   bearer: { meaning: "A person who carries or brings something.", pos: "noun" },
   beast: {
     meaning:
@@ -271,6 +282,8 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   bee: { meaning: "A flying insect that produces honey.", pos: "noun" },
   beef: { meaning: "Meat from cattle; to complain.", pos: "noun" },
   beeline: { meaning: "A straight, direct route.", pos: "noun" },
+  been: { meaning: "The past participle of 'be'.", pos: "verb" },
+  beer: { meaning: "An alcoholic beverage made from fermented grains.", pos: "noun" },
   beetle: { meaning: "An insect with hard wing covers.", pos: "noun" },
   befall: { meaning: "To happen to someone.", pos: "verb" },
   before: { meaning: "Earlier than; in front of.", pos: "preposition" },
@@ -285,6 +298,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   behind: { meaning: "At the back of; after.", pos: "preposition" },
   being: { meaning: "Existence; a creature.", pos: "noun" },
   beldam: { meaning: "An old woman, especially a hag.", pos: "noun" },
+  belief: { meaning: "An acceptance that something is true or exists.", pos: "noun" },
   believe: { meaning: "To accept as true.", pos: "verb" },
   bell: { meaning: "A hollow instrument that rings.", pos: "noun" },
   bellwether: { meaning: "A leader or indicator of trends.", pos: "noun" },
@@ -321,6 +335,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   besmirch: { meaning: "To soil or tarnish.", pos: "verb" },
   best: { meaning: "Of the most excellent kind.", pos: "adjective" },
   bestial: { meaning: "Like a beast; savage.", pos: "adjective" },
+  bet: { meaning: "To wager money or something of value on an outcome; a wager.", pos: "verb" },
   bethink: { meaning: "To remind oneself.", pos: "verb" },
   betray: { meaning: "To be disloyal to; to reveal.", pos: "verb" },
   betrayal: {
@@ -346,8 +361,10 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
     meaning: "A seller of books, especially rare ones.",
     pos: "noun",
   },
+  bicycle: { meaning: "A two-wheeled vehicle powered by pedaling.", pos: "noun" },
   bifurcate: { meaning: "To divide into two branches.", pos: "verb" },
   big: { meaning: "Large in size or extent.", pos: "adjective" },
+  bike: { meaning: "A short form of bicycle or motorcycle.", pos: "noun" },
   bilateral: {
     meaning: "Having two sides; involving two parties.",
     pos: "adjective",
@@ -355,6 +372,7 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   bile: { meaning: "A digestive fluid; anger.", pos: "noun" },
   bilious: { meaning: "Irritable; affected by bile.", pos: "adjective" },
   billet: { meaning: "A soldier's lodging; a piece of paper.", pos: "noun" },
+  bill: { meaning: "A statement of charges; a bird's beak; a proposed law.", pos: "noun" },
   bimonthly: { meaning: "Occurring every two months.", pos: "adjective" },
   bin: { meaning: "A container for storage.", pos: "noun" },
   binate: { meaning: "Growing in pairs.", pos: "adjective" },
