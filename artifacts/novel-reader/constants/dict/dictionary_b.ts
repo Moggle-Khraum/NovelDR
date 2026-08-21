@@ -891,5 +891,4 @@ export const DICTIONARY_B: Record<string, DictionaryEntry> = {
   billion: { meaning: "The number 1,000,000,000; a very large quantity.", pos: "noun" },
   budget: { meaning: "A plan for how money will be spent; to allocate resources.", pos: "noun" },
   bundle: { meaning: "A group of things tied together; to wrap or package.", pos: "noun" },
-  buzz: { meaning: "A humming sound; excitement.", pos: "noun" },
 };
