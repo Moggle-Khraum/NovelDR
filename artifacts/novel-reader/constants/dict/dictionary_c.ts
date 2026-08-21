@@ -1084,7 +1084,10 @@ export const DICTIONARY_C: Record<string, DictionaryEntry> = {
   },
   contort: { meaning: "To twist violently.", pos: "verb" },
   contraband: { meaning: "Illegal goods.", pos: "noun" },
-  contract1: { meaning: "A binding agreement, often sealed with spiritual power.", pos: "noun", },
+  contract1: {
+    meaning: "A binding agreement, often sealed with spiritual power.",
+    pos: "noun",
+  },
   contract2: { meaning: "To shrink; to make a formal agreement.", pos: "verb" },
   contradict: { meaning: "To assert the opposite of.", pos: "verb" },
   contradistinction: { meaning: "Distinction by contrast.", pos: "noun" },
