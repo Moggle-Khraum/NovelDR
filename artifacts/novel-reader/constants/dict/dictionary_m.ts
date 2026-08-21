@@ -1538,7 +1538,7 @@ mandala: {
   meaning: "A circular geometric design representing the universe, used in Hindu and Buddhist spiritual art.",
   pos: "noun",
 },
-man‑eating: {
+"man-eating": {
   meaning: "That eats or is prone to eat humans; used of animals.",
   pos: "adjective",
 },

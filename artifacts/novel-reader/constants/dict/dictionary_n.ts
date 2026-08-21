@@ -530,7 +530,7 @@ nitpicking: {
   meaning: "The act of finding minor faults or errors; overly critical.",
   pos: "noun",
 },
-no-brainer: {
+"no-brainer": {
   meaning: "A decision or problem that is very easy or obvious.",
   pos: "noun",
 },
@@ -579,7 +579,7 @@ narratology: {
   meaning: "The structural analysis and study of narrative forms and storytelling.",
   pos: "noun",
 },
-narrow‑minded: {
+"narrow-minded": {
   meaning: "Lacking tolerance or openness to new ideas; prejudiced or bigoted.",
   pos: "adjective",
 },
@@ -925,7 +925,7 @@ nerdy: {
   meaning: "Socially awkward, intellectually inclined, and overly obsessed with niche interests, often in a positive or neutral sense.",
   pos: "adjective",
 },
-nerve‑racking: {
+"nerve-racking": {
   meaning: "Causing anxiety or mental strain; extremely stressful.",
   pos: "adjective",
 },
@@ -1094,7 +1094,7 @@ nacreous: {
   meaning: "Having a lustrous, pearly appearance like mother‑of‑pearl; iridescent.",
   pos: "adjective",
 },
-namby-pamby: {
+"namby-pamby": {
   meaning: "Weak, sentimental, or lacking in character; overly gentle or delicate.",
   pos: "adjective",
 },
@@ -1134,7 +1134,7 @@ natterjack: {
   meaning: "A small, toad (Epidalea calamita) found in sandy heaths in Europe, with a distinctive yellow stripe.",
   pos: "noun",
 },
-natural‑born: {
+"natural-born": {
   meaning: "Holding citizenship or status by birth, rather than by naturalization; innate.",
   pos: "adjective",
 },
@@ -1150,7 +1150,7 @@ nautilus: {
   meaning: "A marine mollusk with a spiral, chambered shell, belonging to the genus Nautilus.",
   pos: "noun",
 },
-near‑death: {
+"near-death": {
   meaning: "Occurring or experienced at the point of death; relating to a close brush with mortality.",
   pos: "adjective",
 },
@@ -1170,7 +1170,7 @@ nectarous: {
   meaning: "Sweet and delicious, like nectar; ambrosial.",
   pos: "adjective",
 },
-needle‑like: {
+"needle-like": {
   meaning: "Resembling a needle in shape; slender, sharp, and pointed.",
   pos: "adjective",
 },
@@ -1238,7 +1238,7 @@ nepotistic: {
   meaning: "Favoring relatives or friends, especially in giving jobs or appointments.",
   pos: "adjective",
 },
-nerve gas: {
+"nerve gas": {
   meaning: "A highly toxic chemical weapon that disrupts nerve signal transmission.",
   pos: "noun",
 },
@@ -1246,7 +1246,7 @@ nervine: {
   meaning: "A remedy that soothes or calms the nerves; also having such an effect.",
   pos: "noun",
 },
-nest egg: {
+"nest egg": {
   meaning: "A sum of money saved for the future; retirement savings.",
   pos: "noun",
 },

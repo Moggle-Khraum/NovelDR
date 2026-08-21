@@ -795,7 +795,7 @@ lighthearted: {
   meaning: "Carefree; cheerful; not serious.",
   pos: "adjective",
 },
-like‑minded: {
+"like-minded": {
   meaning: "Having similar tastes, opinions, or goals.",
   pos: "adjective",
 },
@@ -843,7 +843,7 @@ logician: {
   meaning: "A person skilled in logic; a reasoning expert.",
   pos: "noun",
 },
-long‑winded: {
+"long-winded": {
   meaning: "Using many words; verbose; tedious.",
   pos: "adjective",
 },
