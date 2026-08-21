@@ -637,4 +637,260 @@ export const DICTIONARY_L: Record<string, DictionaryEntry> = {
     meaning: "An enzyme that breaks down bacterial cell walls.",
     pos: "noun",
   },
+
+  // Add these entries to DICTIONARY_L (after the existing entries, before the closing brace)
+labyrinthine: {
+  meaning: "Complex and intricate; like a maze; bewildering.",
+  pos: "adjective",
+},
+lacerate: {
+  meaning: "To tear or cut deeply; to wound or rend.",
+  pos: "verb",
+},
+laceration: {
+  meaning: "A deep cut or tear in the skin or flesh.",
+  pos: "noun",
+},
+lachrymose: {
+  meaning: "Tearful; given to weeping; mournful.",
+  pos: "adjective",
+},
+lackadaisical: {
+  meaning: "Lacking enthusiasm or effort; lazy; careless.",
+  pos: "adjective",
+},
+lackey: {
+  meaning: "A servant or follower who obeys without question; a sycophant.",
+  pos: "noun",
+},
+lactose: {
+  meaning: "A sugar present in milk; a disaccharide.",
+  pos: "noun",
+},
+lacuna: {
+  meaning: "A gap or missing part; a cavity or hiatus.",
+  pos: "noun",
+},
+laden: {
+  meaning: "Burdened; loaded heavily with something.",
+  pos: "adjective",
+},
+laggard: {
+  meaning: "A person who falls behind; slow; sluggish.",
+  pos: "noun",
+},
+lagniappe: {
+  meaning: "A small bonus or extra gift; a gratuity.",
+  pos: "noun",
+},
+laic: {
+  meaning: "Relating to the laity; secular; not ecclesiastical.",
+  pos: "adjective",
+},
+laissez-faire: {
+  meaning: "Policy of non‑interference; a hands‑off approach.",
+  pos: "noun",
+},
+lama: {
+  meaning: "A Buddhist monk or spiritual leader; especially in Tibetan Buddhism.",
+  pos: "noun",
+},
+lambaste: {
+  meaning: "To criticize harshly; to beat severely.",
+  pos: "verb",
+},
+lambent: {
+  meaning: "Glowing softly; flickering; radiant.",
+  pos: "adjective",
+},
+lamentable: {
+  meaning: "Regrettable; deplorable; inspiring sorrow.",
+  pos: "adjective",
+},
+laminate: {
+  meaning: "To bond layers together; a layered material made by bonding.",
+  pos: "verb",
+},
+lampoon: {
+  meaning: "A humorous satire; to ridicule or parody.",
+  pos: "noun",
+},
+languor: {
+  meaning: "A state of weakness or lethargy; a dreamy stillness.",
+  pos: "noun",
+},
+lapidary: {
+  meaning: "Relating to stones; a cutter or engraver of gems.",
+  pos: "adjective",
+},
+laryngeal: {
+  meaning: "Relating to the larynx or voice box.",
+  pos: "adjective",
+},
+lascivious: {
+  meaning: "Feeling or showing lust; lewd; wanton.",
+  pos: "adjective",
+},
+latchkey: {
+  meaning: "A key for a latch; a child who returns home alone.",
+  pos: "noun",
+},
+latecomer: {
+  meaning: "One who arrives late.",
+  pos: "noun",
+},
+latex: {
+  meaning: "A milky fluid from plants; used in rubber production.",
+  pos: "noun",
+},
+laudanum: {
+  meaning: "An alcoholic tincture of opium; a sedative.",
+  pos: "noun",
+},
+laughable: {
+  meaning: "So amusing as to deserve laughter; ridiculous.",
+  pos: "adjective",
+},
+laurel: {
+  meaning: "A shrub with aromatic leaves; a symbol of victory or honor.",
+  pos: "noun",
+},
+lava: {
+  meaning: "Molten rock expelled from a volcano.",
+  pos: "noun",
+},
+lawless: {
+  meaning: "Not governed by law; unruly; undisciplined.",
+  pos: "adjective",
+},
+legalese: {
+  meaning: "The formal language of legal documents; legal jargon.",
+  pos: "noun",
+},
+legitimize: {
+  meaning: "To make legitimate; to validate or justify.",
+  pos: "verb",
+},
+lethargic: {
+  meaning: "Affected by lethargy; sluggish; drowsy.",
+  pos: "adjective",
+},
+leukocyte: {
+  meaning: "A white blood cell; a component of the immune system.",
+  pos: "noun",
+},
+libido: {
+  meaning: "Sexual desire; psychic energy; life instinct.",
+  pos: "noun",
+},
+licentious: {
+  meaning: "Promiscuous; disregarding morality; lewd.",
+  pos: "adjective",
+},
+lifespan: {
+  meaning: "The length of time a person or organism lives.",
+  pos: "noun",
+},
+lighthearted: {
+  meaning: "Carefree; cheerful; not serious.",
+  pos: "adjective",
+},
+like‑minded: {
+  meaning: "Having similar tastes, opinions, or goals.",
+  pos: "adjective",
+},
+limestone: {
+  meaning: "A sedimentary rock composed mainly of calcium carbonate.",
+  pos: "noun",
+},
+limitless: {
+  meaning: "Without end; infinite; boundless.",
+  pos: "adjective",
+},
+lineament: {
+  meaning: "A distinctive feature or characteristic, especially of the face.",
+  pos: "noun",
+},
+linseed: {
+  meaning: "The seed of flax; used to make linseed oil.",
+  pos: "noun",
+},
+lipstick: {
+  meaning: "A cosmetic for coloring the lips; a stick of such.",
+  pos: "noun",
+},
+liquidity: {
+  meaning: "The availability of liquid assets; ease of converting to cash.",
+  pos: "noun",
+},
+litigious: {
+  meaning: "Prone to engage in lawsuits; argumentative.",
+  pos: "adjective",
+},
+loath: {
+  meaning: "Reluctant; unwilling; disinclined.",
+  pos: "adjective",
+},
+loathsome: {
+  meaning: "Causing hatred; repulsive; disgusting.",
+  pos: "adjective",
+},
+lobotomy: {
+  meaning: "A surgical incision into the frontal lobe of the brain.",
+  pos: "noun",
+},
+logician: {
+  meaning: "A person skilled in logic; a reasoning expert.",
+  pos: "noun",
+},
+long‑winded: {
+  meaning: "Using many words; verbose; tedious.",
+  pos: "adjective",
+},
+lowbrow: {
+  meaning: "Not intellectual; uncultured; vulgar.",
+  pos: "adjective",
+},
+lubricious: {
+  meaning: "Slippery; lewd; lustful.",
+  pos: "adjective",
+},
+luciferase: {
+  meaning: "An enzyme that produces bioluminescence; a reporter gene.",
+  pos: "noun",
+},
+luminescence: {
+  meaning: "The emission of light by a substance without heating.",
+  pos: "noun",
+},
+lunchbox: {
+  meaning: "A container for carrying lunch.",
+  pos: "noun",
+},
+lungfish: {
+  meaning: "A fish that breathes air; a sarcopterygian fish.",
+  pos: "noun",
+},
+lustful: {
+  meaning: "Full of lust; lecherous; lascivious.",
+  pos: "adjective",
+},
+luteal: {
+  meaning: "Relating to the corpus luteum; of the luteal phase.",
+  pos: "adjective",
+},
+lynchpin: {
+  meaning: "A person or thing that is essential; a central element.",
+  pos: "noun",
+},
+lyricism: {
+  meaning: "The quality of being lyrical; poetic expression.",
+  pos: "noun",
+},
+
+
+
+
+
+  
 };
