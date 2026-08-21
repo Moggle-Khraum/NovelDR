@@ -163,14 +163,17 @@ const ParagraphBlock = React.memo(
             >
               {trimmed.split(/(\s+)/).map((segment, wIdx) => {
                 if (!segment.trim()) return segment;
-                
+
                 // Check if this word matches the highlighted word
                 const cleanSegment = segment
                   .toLowerCase()
                   .replace(/^[^a-z']+|[^a-z']+$/g, "");
                 const isWordHighlighted =
                   highlightedWord &&
-                  cleanSegment === highlightedWord.toLowerCase().replace(/^[^a-z']+|[^a-z']+$/g, "");
+                  cleanSegment ===
+                    highlightedWord
+                      .toLowerCase()
+                      .replace(/^[^a-z']+|[^a-z']+$/g, "");
 
                 return (
                   <Text
@@ -189,11 +192,15 @@ const ParagraphBlock = React.memo(
                         lastWordTapRef.time = now;
                       }
                     }}
-                    style={isWordHighlighted ? {
-                      backgroundColor: `${accentColor}40`,
-                      borderRadius: 4,
-                      paddingHorizontal: 3,
-                    } : {}}
+                    style={
+                      isWordHighlighted
+                        ? {
+                            backgroundColor: `${accentColor}40`,
+                            borderRadius: 4,
+                            paddingHorizontal: 3,
+                          }
+                        : {}
+                    }
                   >
                     {segment}
                   </Text>
@@ -2643,7 +2650,12 @@ export default function ReaderScreen() {
               ) : (
                 <View style={{ marginBottom: 20 }}>
                   {dictEntries.map((entry, idx) => (
-                    <View key={idx} style={{ marginBottom: idx < dictEntries.length - 1 ? 12 : 0 }}>
+                    <View
+                      key={idx}
+                      style={{
+                        marginBottom: idx < dictEntries.length - 1 ? 12 : 0,
+                      }}
+                    >
                       {entry.pos && (
                         <Text
                           style={{
