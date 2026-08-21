@@ -75,6 +75,7 @@ type ParagraphBlockProps = {
   contentStyle: any;
   regularFamily: string;
   boldFamily: string;
+  highlightedWord: string | null;
   onParaLayout: (paraIdx: number, y: number, height: number) => void;
   onHighlightedSentenceLayout: (relY: number) => void;
   onWordDoubleTap: (word: string) => void;
@@ -99,6 +100,7 @@ const ParagraphBlock = React.memo(
     contentStyle,
     regularFamily,
     boldFamily,
+    highlightedWord,
     onParaLayout,
     onHighlightedSentenceLayout,
     onWordDoubleTap,
@@ -161,6 +163,15 @@ const ParagraphBlock = React.memo(
             >
               {trimmed.split(/(\s+)/).map((segment, wIdx) => {
                 if (!segment.trim()) return segment;
+                
+                // Check if this word matches the highlighted word
+                const cleanSegment = segment
+                  .toLowerCase()
+                  .replace(/^[^a-z']+|[^a-z']+$/g, "");
+                const isWordHighlighted =
+                  highlightedWord &&
+                  cleanSegment === highlightedWord.toLowerCase().replace(/^[^a-z']+|[^a-z']+$/g, "");
+
                 return (
                   <Text
                     key={wIdx}
@@ -178,6 +189,11 @@ const ParagraphBlock = React.memo(
                         lastWordTapRef.time = now;
                       }
                     }}
+                    style={isWordHighlighted ? {
+                      backgroundColor: `${accentColor}40`,
+                      borderRadius: 4,
+                      paddingHorizontal: 3,
+                    } : {}}
                   >
                     {segment}
                   </Text>
@@ -198,7 +214,8 @@ const ParagraphBlock = React.memo(
     prev.accentColor === next.accentColor &&
     prev.textColor === next.textColor &&
     prev.regularFamily === next.regularFamily &&
-    prev.boldFamily === next.boldFamily,
+    prev.boldFamily === next.boldFamily &&
+    prev.highlightedWord === next.highlightedWord,
 );
 
 // ─── Rapid‑tap guard ──────────────────────────────────────────────────────
@@ -326,8 +343,7 @@ export default function ReaderScreen() {
   // ── Dictionary lookup (double-tap a word) ──
   const {
     word: dictWord,
-    definition: dictDefinition,
-    partOfSpeech: dictPartOfSpeech,
+    entries: dictEntries,
     notFound: dictNotFound,
     isOpen: showDictModal,
     lookup: handleWordDoubleTap,
@@ -1296,6 +1312,7 @@ export default function ReaderScreen() {
                       contentStyle={styles.content}
                       regularFamily={activeFontPreset.regularFamily}
                       boldFamily={activeFontPreset.boldFamily}
+                      highlightedWord={dictWord}
                       onParaLayout={handleParaLayout}
                       onHighlightedSentenceLayout={
                         handleHighlightedSentenceLayout
@@ -2611,32 +2628,47 @@ export default function ReaderScreen() {
               >
                 {dictWord}
               </Text>
-              {dictPartOfSpeech && (
+              {dictNotFound ? (
                 <Text
                   style={{
-                    color: adaptiveColors.textSecondary,
-                    fontSize: 12,
-                    fontStyle: "italic",
+                    color: adaptiveColors.text,
+                    fontSize: 14,
+                    lineHeight: 20,
                     textAlign: "center",
-                    marginBottom: 8,
+                    marginBottom: 20,
                   }}
                 >
-                  {dictPartOfSpeech}
+                  No definition found for this word yet.
                 </Text>
+              ) : (
+                <View style={{ marginBottom: 20 }}>
+                  {dictEntries.map((entry, idx) => (
+                    <View key={idx} style={{ marginBottom: idx < dictEntries.length - 1 ? 12 : 0 }}>
+                      {entry.pos && (
+                        <Text
+                          style={{
+                            color: adaptiveColors.textSecondary,
+                            fontSize: 12,
+                            fontStyle: "italic",
+                            marginBottom: 4,
+                          }}
+                        >
+                          ({entry.pos})
+                        </Text>
+                      )}
+                      <Text
+                        style={{
+                          color: adaptiveColors.text,
+                          fontSize: 14,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {entry.meaning}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               )}
-              <Text
-                style={{
-                  color: adaptiveColors.text,
-                  fontSize: 14,
-                  lineHeight: 20,
-                  textAlign: "center",
-                  marginBottom: 20,
-                }}
-              >
-                {dictNotFound
-                  ? "No definition found for this word yet."
-                  : dictDefinition}
-              </Text>
               <Pressable
                 style={[
                   styles.closeSearchBtn,
