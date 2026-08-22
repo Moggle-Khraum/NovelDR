@@ -1449,10 +1449,6 @@ opalescence: {
   meaning: "The quality of showing a milky iridescence, like that of an opal.",
   pos: "noun",
 },
-op‑ed: {
-  meaning: "A page or section in a newspaper featuring opinion articles, usually opposite the editorial page.",
-  pos: "noun",
-},
 openwork: {
   meaning: "Ornamental work, especially in metal, fabric, or stone, with open spaces or perforations.",
   pos: "noun",
@@ -1481,7 +1477,7 @@ optimal: {
   meaning: "Best or most favourable; most desirable.",
   pos: "adjective",
 },
-opt‑out: {
+"opt‑out": {
   meaning: "The act of choosing not to participate; a clause allowing such a choice.",
   pos: "noun",
 },
