@@ -1561,2863 +1561,2722 @@ export const DICTIONARY_P: Record<string, DictionaryEntry> = {
   python: { meaning: "A large snake; a python.", pos: "noun" },
 
   // Add these entries to DICTIONARY_P (500+ new entries, no duplicates)
-  pablum: {
-    meaning: "Soft, bland food for infants; also insipid or trite material.",
-    pos: "noun",
-  },
-  pabulum: {
-    meaning: "Food, especially for nourishment; also intellectual sustenance.",
-    pos: "noun",
-  },
-  pacifist: {
-    meaning: "A person who believes that war and violence are unjustifiable.",
-    pos: "noun",
-  },
-  pacific: {
-    meaning: "Peaceful in character or intent; calm and tranquil.",
-    pos: "adjective",
-  },
-  pacifier: {
-    meaning: "A rubber or plastic teat given to a baby to suck on.",
-    pos: "noun",
-  },
-  pacifism: {
-    meaning:
-      "The belief that war and violence are unacceptable and disputes should be settled peacefully.",
-    pos: "noun",
-  },
-  packable: {
-    meaning: "Capable of being packed or compressed for storage or transport.",
-    pos: "adjective",
-  },
-  packer: {
-    meaning: "A person or machine that packs goods or materials.",
-    pos: "noun",
-  },
-  packing: {
-    meaning:
-      "The act of packing; material used to fill and protect items in a container.",
-    pos: "noun",
-  },
-  packman: {
-    meaning: "A peddler or travelling salesman carrying goods in a pack.",
-    pos: "noun",
-  },
-  padlock: {
-    meaning:
-      "A detachable lock with a hinged shackle that can be passed through a ring or staple.",
-    pos: "noun",
-  },
-  padre: {
-    meaning: "A chaplain or priest, especially in the military.",
-    pos: "noun",
-  },
-  pageantry: {
-    meaning:
-      "Elaborate show, display, or ceremony, often involving costumes and processions.",
-    pos: "noun",
-  },
-  pagination: {
-    meaning: "The numbering of pages in a book or document.",
-    pos: "noun",
-  },
-  pagoda: {
-    meaning:
-      "A Hindu or Buddhist temple, typically tiered with upward-curving roofs.",
-    pos: "noun",
-  },
-  pained: {
-    meaning: "Showing or feeling physical or mental suffering; hurt.",
-    pos: "adjective",
-  },
-  painless: {
-    meaning: "Causing no pain or discomfort; easy or effortless.",
-    pos: "adjective",
-  },
-  painterly: {
-    meaning:
-      "Having qualities characteristic of a painting, especially in texture and brushwork.",
-    pos: "adjective",
-  },
-  palatal: {
-    meaning:
-      "Relating to the palate; pronounced with the tongue against the palate.",
-    pos: "adjective",
-  },
-  palate: {
-    meaning: "The roof of the mouth; the sense of taste.",
-    pos: "noun",
-  },
-  palatial: {
-    meaning: "Large, impressive, and reminiscent of a palace; magnificent.",
-    pos: "adjective",
-  },
-  paleolithic: {
-    meaning:
-      "Relating to the earlier part of the Stone Age, characterized by the use of chipped stone tools.",
-    pos: "adjective",
-  },
-  paleontology: {
-    meaning: "The branch of science concerned with fossil animals and plants.",
-    pos: "noun",
-  },
-  palimpsest: {
-    meaning:
-      "A manuscript or piece of writing material on which later writing has been superimposed on earlier (effaced) writing.",
-    pos: "noun",
-  },
-  palindrome: {
-    meaning:
-      "A word, phrase, or sequence that reads the same forwards and backwards.",
-    pos: "noun",
-  },
-  palisade: {
-    meaning: "A fence of wooden stakes, used as a defensive barrier.",
-    pos: "noun",
-  },
-  pallbearer: {
-    meaning: "A person who helps carry the coffin at a funeral.",
-    pos: "noun",
-  },
-  pallet: {
-    meaning:
-      "A portable platform for storing and moving goods; also a primitive bed.",
-    pos: "noun",
-  },
-  palliate: {
-    meaning:
-      "To make less severe or unpleasant (without curing); to excuse or lessen blame.",
-    pos: "verb",
-  },
-  palliative: {
-    meaning:
-      "A treatment or action that alleviates symptoms without curing the underlying disease.",
-    pos: "noun",
-  },
-  palpate: {
-    meaning: "To examine by touch, especially for medical diagnosis.",
-    pos: "verb",
-  },
-  palsy: {
-    meaning:
-      "Paralysis, especially with involuntary tremors; also a state of helplessness.",
-    pos: "noun",
-  },
-  panache: {
-    meaning: "Flamboyant confidence or style; a distinct show of flair.",
-    pos: "noun",
-  },
-  pancake: {
-    meaning: "A thin, flat cake of batter fried in a pan or on a griddle.",
-    pos: "noun",
-  },
-  panhandle: {
-    meaning:
-      "A narrow strip of territory extending from a larger area; also to beg on the street.",
-    pos: "noun",
-  },
-  panicle: {
-    meaning: "A loose, branching cluster of flowers, as in oats or lilac.",
-    pos: "noun",
-  },
-  pannier: {
-    meaning:
-      "A basket, bag, or storage container carried on a bicycle, motorcycle, or animal.",
-    pos: "noun",
-  },
-  pansexual: {
-    meaning:
-      "Not limited in sexual choice with regard to biological sex, gender, or gender identity.",
-    pos: "adjective",
-  },
-  pantaloons: {
-    meaning: "Trousers; especially baggy ones worn by men in the 19th century.",
-    pos: "noun",
-  },
-  pantheon: {
-    meaning:
-      "All the gods of a people or religion; a temple or monument dedicated to all gods.",
-    pos: "noun",
-  },
-  paparazzi: {
-    meaning:
-      "Freelance photographers who pursue celebrities for candid photographs.",
-    pos: "noun",
-  },
-  papaya: {
-    meaning: "A tropical fruit with yellow-orange flesh and black seeds.",
-    pos: "noun",
-  },
-  paperweight: {
-    meaning:
-      "A small, heavy object placed on top of loose papers to keep them from blowing away.",
-    pos: "noun",
-  },
-  papillary: {
-    meaning:
-      "Relating to or having the form of small rounded projections (papillae).",
-    pos: "adjective",
-  },
-  papule: {
-    meaning: "A small, raised, solid pimple or swelling on the skin.",
-    pos: "noun",
-  },
-  parakeet: {
-    meaning: "A small, long-tailed parrot with colorful plumage.",
-    pos: "noun",
-  },
-  paralytic: {
-    meaning:
-      "Affected by or relating to paralysis; also a person with paralysis.",
-    pos: "adjective",
-  },
-  paramedic: {
-    meaning:
-      "A health professional trained to provide emergency medical care, often as part of an ambulance team.",
-    pos: "noun",
-  },
-  parameter: {
-    meaning:
-      "A numerical or other measurable factor forming one of a set that defines a system or sets its conditions.",
-    pos: "noun",
-  },
-  paranormal: {
-    meaning:
-      "Denoting events or phenomena beyond the scope of normal scientific understanding.",
-    pos: "adjective",
-  },
-  paraplegic: {
-    meaning: "A person suffering from paralysis of the legs and lower body.",
-    pos: "noun",
-  },
-  paratrooper: {
-    meaning:
-      "A member of an airborne military unit trained to parachute from aircraft.",
-    pos: "noun",
-  },
-  parboil: {
-    meaning: "To boil partially as a preliminary step in cooking.",
-    pos: "verb",
-  },
-  parfait: {
-    meaning:
-      "A layered dessert of ice cream, fruit, and syrup, often served in a tall glass.",
-    pos: "noun",
-  },
-  parietal: {
-    meaning:
-      "Relating to the walls of a cavity or organ, especially the parietal bones of the skull.",
-    pos: "adjective",
-  },
-  parking: {
-    meaning:
-      "The action of leaving a vehicle in a particular place for a time.",
-    pos: "noun",
-  },
-  parlour: {
-    meaning:
-      "A sitting room or living room; also a shop selling a particular product (e.g., ice‑cream parlour).",
-    pos: "noun",
-  },
-  parmesan: {
-    meaning:
-      "A hard, dry Italian cheese made from cow's milk, often grated over dishes.",
-    pos: "noun",
-  },
-  parochial: {
-    meaning: "Relating to a parish; also narrow or provincial in outlook.",
-    pos: "adjective",
-  },
-  parquet: {
-    meaning: "A floor covering made of blocks of wood arranged in a pattern.",
-    pos: "noun",
-  },
-  parricide: {
-    meaning:
-      "The killing of a parent or close relative; also the person who commits such an act.",
-    pos: "noun",
-  },
-  parsimonious: {
-    meaning: "Stingy; extremely frugal or sparing.",
-    pos: "adjective",
-  },
-  partaken: {
-    meaning: "Past participle of partake; having shared in or participated.",
-    pos: "verb",
-  },
-  partiality: {
-    meaning: "An unfair bias toward one side; a fondness or liking.",
-    pos: "noun",
-  },
-  participant: {
-    meaning: "A person who takes part in an activity or event.",
-    pos: "noun",
-  },
-  particulate: {
-    meaning:
-      "Relating to or consisting of particles; a fine particle of matter.",
-    pos: "adjective",
-  },
-  parturition: {
-    meaning: "The action of giving birth; childbirth.",
-    pos: "noun",
-  },
-  parvenu: {
-    meaning:
-      "A person who has recently achieved wealth or status, often seen as vulgar or pretentious.",
-    pos: "noun",
-  },
-  paschal: {
-    meaning: "Relating to Easter or the Passover.",
-    pos: "adjective",
-  },
-  pasquinade: {
-    meaning: "A satire or lampoon, originally a public posting.",
-    pos: "noun",
-  },
-  pastiche: {
-    meaning:
-      "An artistic work that imitates the style of another period or artist, often in a blend.",
-    pos: "noun",
-  },
-  pastille: {
-    meaning: "A small sweet or lozenge, often medicated or flavoured.",
-    pos: "noun",
-  },
-  pastoral: {
-    meaning:
-      "Relating to the countryside; a literary work describing rural life.",
-    pos: "adjective",
-  },
-  patella: {
-    meaning:
-      "The kneecap; a small triangular bone covering the front of the knee.",
-    pos: "noun",
-  },
-  paternoster: {
-    meaning:
-      "The Lord's Prayer; also a device with a series of moving compartments.",
-    pos: "noun",
-  },
-  pathophysiology: {
-    meaning:
-      "The study of the biological and physical changes in the body caused by disease.",
-    pos: "noun",
-  },
-  pathogenic: {
-    meaning: "Capable of causing disease or infection.",
-    pos: "adjective",
-  },
-  pathological: {
-    meaning:
-      "Relating to disease; also compulsive or involving disease processes.",
-    pos: "adjective",
-  },
-  patronage: {
-    meaning: "The support, encouragement, or business given by a patron.",
-    pos: "noun",
-  },
-  patroness: {
-    meaning: "A female patron or supporter.",
-    pos: "noun",
-  },
-  patterned: {
-    meaning: "Decorated or arranged with a repeated design or motif.",
-    pos: "adjective",
-  },
-  paunch: {
-    meaning: "A large, protruding belly; a potbelly.",
-    pos: "noun",
-  },
-  pauper: {
-    meaning: "A very poor person, especially one dependent on public charity.",
-    pos: "noun",
-  },
-  payable: {
-    meaning: "Able to be paid; requiring payment.",
-    pos: "adjective",
-  },
-  paycheck: {
-    meaning: "A salary or wage payment; a cheque for wages.",
-    pos: "noun",
-  },
-  payday: {
-    meaning: "The day on which wages or salaries are paid.",
-    pos: "noun",
-  },
-  payee: {
-    meaning: "The person to whom money is paid or made payable.",
-    pos: "noun",
-  },
-  payload: {
-    meaning:
-      "The part of a vehicle's load that is carried for hire; also the load carried by a missile or spacecraft.",
-    pos: "noun",
-  },
-  payoff: {
-    meaning: "The outcome or result of a process; a final payment.",
-    pos: "noun",
-  },
-  payroll: {
-    meaning:
-      "A list of employees and their wages; the total amount of wages paid.",
-    pos: "noun",
-  },
-  peaceable: {
-    meaning: "Inclined to peace; not quarrelsome.",
-    pos: "adjective",
-  },
-  peacemaker: {
-    meaning:
-      "A person who brings about peace, especially by resolving conflict.",
-    pos: "noun",
-  },
-  peacetime: {
-    meaning: "A period when a country is not at war.",
-    pos: "noun",
-  },
-  pearlite: {
-    meaning:
-      "A lamellar mixture of ferrite and cementite in steel, formed during cooling.",
-    pos: "noun",
-  },
-  peccadillo: {
-    meaning: "A minor fault or sin; a small transgression.",
-    pos: "noun",
-  },
-  peckish: {
-    meaning: "Slightly hungry; also irritable or peevish.",
-    pos: "adjective",
-  },
-  pectinate: {
-    meaning: "Having a comb‑like structure; arranged like a comb.",
-    pos: "adjective",
-  },
-  pectoral: {
-    meaning: "Relating to the chest or breast; also a muscle in the chest.",
-    pos: "adjective",
-  },
-  pedantic: {
-    meaning:
-      "Overly concerned with minor details and rules, especially in learning.",
-    pos: "adjective",
-  },
-  pediatrics: {
-    meaning: "The branch of medicine dealing with children and their diseases.",
-    pos: "noun",
-  },
-  pedicure: {
-    meaning: "A cosmetic treatment of the feet and toenails.",
-    pos: "noun",
-  },
-  pedometer: {
-    meaning: "An instrument that measures the number of steps taken.",
-    pos: "noun",
-  },
-  peduncle: {
-    meaning:
-      "A stalk or stem bearing a flower, fruit, or leaf; also a connecting structure in the brain.",
-    pos: "noun",
-  },
-  peek: {
-    meaning: "To look quickly or furtively; a quick glance.",
-    pos: "verb",
-  },
-  peel: {
-    meaning: "To remove the outer skin or rind from a fruit or vegetable.",
-    pos: "verb",
-  },
-  peep: {
-    meaning:
-      "To look quickly, especially through a narrow opening; a short high‑pitched sound.",
-    pos: "verb",
-  },
-  peerage: {
-    meaning:
-      "The body of nobles or the noble class; also the rank or title of a peer.",
-    pos: "noun",
-  },
-  pellagra: {
-    meaning:
-      "A deficiency disease caused by lack of niacin, leading to dermatitis, diarrhoea, and dementia.",
-    pos: "noun",
-  },
-  penchant: {
-    meaning: "A strong or habitual liking or tendency.",
-    pos: "noun",
-  },
-  pendulous: {
-    meaning: "Hanging down loosely; swinging or swaying.",
-    pos: "adjective",
-  },
-  penetralia: {
-    meaning: "The innermost parts or secrets of a place or sanctuary.",
-    pos: "noun",
-  },
-  penicillinase: {
-    meaning:
-      "An enzyme that breaks down penicillin, conferring antibiotic resistance.",
-    pos: "noun",
-  },
-  penology: {
-    meaning: "The study of the punishment of crime and prison management.",
-    pos: "noun",
-  },
-  penumbral: {
-    meaning: "Relating to a partial shadow or a fringe area of illumination.",
-    pos: "adjective",
-  },
-  peony: {
-    meaning: "A flowering plant with large, fragrant, showy flowers.",
-    pos: "noun",
-  },
-  peppercorn: {
-    meaning: "The dried fruit of the pepper plant, used as a spice.",
-    pos: "noun",
-  },
-  peppery: {
-    meaning: "Tasting of pepper; also sharp, irritable, or pugnacious.",
-    pos: "adjective",
-  },
-  pepsinogen: {
-    meaning: "The inactive precursor of pepsin, secreted by the stomach.",
-    pos: "noun",
-  },
-  peptidase: {
-    meaning: "An enzyme that breaks down peptides into amino acids.",
-    pos: "noun",
-  },
-  "peptide bond": {
-    meaning: "The chemical bond linking amino acids in a protein chain.",
-    pos: "noun",
-  },
-  perambulate: {
-    meaning:
-      "To walk through, about, or around (an area), especially for inspection.",
-    pos: "verb",
-  },
-  percept: {
-    meaning: "An object of perception; a mental impression.",
-    pos: "noun",
-  },
-  perceptual: {
-    meaning:
-      "Relating to the ability to perceive or interpret sensory information.",
-    pos: "adjective",
-  },
-  perchlorate: {
-    meaning: "A salt or ester of perchloric acid, used as an oxidizer.",
-    pos: "noun",
-  },
-  percolator: {
-    meaning:
-      "A type of coffee pot that forces boiling water up through a tube and back over grounds.",
-    pos: "noun",
-  },
-  perditionist: {
-    meaning: "One who embraces or promotes damnation; a doomed person.",
-    pos: "noun",
-  },
-  peregrine: {
-    meaning: "Travelling widely; also a type of falcon.",
-    pos: "adjective",
-  },
-  peremptory: {
-    meaning:
-      "Insisting on immediate attention or obedience; brooking no refusal.",
-    pos: "adjective",
-  },
-  perfectionist: {
-    meaning:
-      "A person who demands high standards and is not satisfied with less than perfect.",
-    pos: "noun",
-  },
-  perforation: {
-    meaning:
-      "A hole or series of holes, especially for the purpose of tearing.",
-    pos: "noun",
-  },
-  perfumer: {
-    meaning: "A person who makes or sells perfumes.",
-    pos: "noun",
-  },
-  pericardium: {
-    meaning: "The membrane enveloping the heart.",
-    pos: "noun",
-  },
-  perilymph: {
-    meaning:
-      "The fluid within the inner ear, filling the space between the bony and membranous labyrinths.",
-    pos: "noun",
-  },
-  "periodic table": {
-    meaning:
-      "A tabular arrangement of chemical elements, ordered by atomic number.",
-    pos: "noun",
-  },
-  periodontics: {
-    meaning:
-      "The branch of dentistry dealing with the supporting structures of the teeth.",
-    pos: "noun",
-  },
-  peripeteia: {
-    meaning:
-      "A sudden reversal of fortune or change in circumstances, especially in a tragedy.",
-    pos: "noun",
-  },
-  periscope: {
-    meaning:
-      "A device with mirrors or prisms that allows viewing from a concealed or submerged position.",
-    pos: "noun",
-  },
-  peristalsis: {
-    meaning:
-      "The involuntary contraction and relaxation of the muscles in the intestine, pushing food onward.",
-    pos: "noun",
-  },
-  peritoneal: {
-    meaning:
-      "Relating to the peritoneum, the membrane lining the abdominal cavity.",
-    pos: "adjective",
-  },
-  periwinkle: {
-    meaning: "A small plant with blue or white flowers; also a marine snail.",
-    pos: "noun",
-  },
-  perjurer: {
-    meaning: "A person who commits perjury by lying under oath.",
-    pos: "noun",
-  },
-  permeable: {
-    meaning: "Allowing fluids or substances to pass through; penetrable.",
-    pos: "adjective",
-  },
-  permutationist: {
-    meaning: "A person who studies or is expert in permutations.",
-    pos: "noun",
-  },
-  perniciousness: {
-    meaning: "The quality of being destructive, harmful, or fatal.",
-    pos: "noun",
-  },
-  peroxidize: {
-    meaning: "To treat or combine with peroxide.",
-    pos: "verb",
-  },
-  perpendicularity: {
-    meaning: "The state of being at right angles to a given line or plane.",
-    pos: "noun",
-  },
-  perpetrator: {
-    meaning: "A person who carries out a harmful or illegal act.",
-    pos: "noun",
-  },
-  perplexity: {
-    meaning: "The state of being confused or puzzled; a complicated matter.",
-    pos: "noun",
-  },
-  persecutor: {
-    meaning:
-      "A person who harasses or oppresses others, especially for reasons of race, religion, or politics.",
-    pos: "noun",
-  },
-  perseverant: {
-    meaning: "Characterized by steady persistence and determination.",
-    pos: "adjective",
-  },
-  persnickety: {
-    meaning: "Overly fussy or particular about details; exacting.",
-    pos: "adjective",
-  },
-  persona: {
-    meaning: "The social facade or role that a person presents to others.",
-    pos: "noun",
-  },
-  personae: {
-    meaning: "Plural of persona; the characters or roles in a literary work.",
-    pos: "noun",
-  },
-  personage: {
-    meaning:
-      "A person of importance or distinction; also a character in a play.",
-    pos: "noun",
-  },
-  personification: {
-    meaning: "The representation of an abstract quality in human form.",
-    pos: "noun",
-  },
-  perspectivism: {
-    meaning:
-      "The philosophical theory that all knowledge is based on a particular perspective.",
-    pos: "noun",
-  },
-  persuader: {
-    meaning: "A person or thing that persuades; a convincing argument.",
-    pos: "noun",
-  },
-  persuasiveness: {
-    meaning: "The ability to persuade or convince.",
-    pos: "noun",
-  },
-  perturbation: {
-    meaning:
-      "Anxiety or mental agitation; also a deviation from a regular course.",
-    pos: "noun",
-  },
-  perusal: {
-    meaning: "The action of reading or examining something carefully.",
-    pos: "noun",
-  },
-  pervasiveness: {
-    meaning: "The quality of spreading widely throughout an area or group.",
-    pos: "noun",
-  },
-  perversity: {
-    meaning:
-      "A deliberate or stubborn deviation from what is considered right or good.",
-    pos: "noun",
-  },
-  pestilence: {
-    meaning: "A fatal epidemic disease, especially plague.",
-    pos: "noun",
-  },
-  pestilent: {
-    meaning: "Harmful to health or life; also annoyingly destructive.",
-    pos: "adjective",
-  },
-  pestle: {
-    meaning:
-      "A heavy tool with a rounded end, used for crushing substances in a mortar.",
-    pos: "noun",
-  },
-  petechia: {
-    meaning:
-      "A small, red or purple spot on the skin caused by bleeding under the skin.",
-    pos: "noun",
-  },
-  petiole: {
-    meaning: "The stalk attaching a leaf to the stem.",
-    pos: "noun",
-  },
-  petrel: {
-    meaning:
-      "A seabird of the order Procellariiformes, often with a hooked bill.",
-    pos: "noun",
-  },
-  petrifier: {
-    meaning:
-      "A person or thing that petrifies, especially by turning to stone.",
-    pos: "noun",
-  },
-  petroglyph: {
-    meaning:
-      "A carving or inscription on rock, especially from prehistoric times.",
-    pos: "noun",
-  },
-  petrology: {
-    meaning:
-      "The branch of geology that deals with the origin, composition, and structure of rocks.",
-    pos: "noun",
-  },
-  petulance: {
-    meaning: "The quality of being irritable or childishly impatient.",
-    pos: "noun",
-  },
-  phagocyte: {
-    meaning: "A cell that engulfs and destroys foreign particles or bacteria.",
-    pos: "noun",
-  },
-  phagocytosis: {
-    meaning:
-      "The process by which a phagocyte engulfs and destroys foreign matter.",
-    pos: "noun",
-  },
-  phalange: {
-    meaning: "A bone of the finger or toe; also a military formation.",
-    pos: "noun",
-  },
-  pharmaceutical: {
-    meaning: "Relating to medicinal drugs; a drug product.",
-    pos: "adjective",
-  },
-
-  pharmacodynamics: {
-    meaning:
-      "The branch of pharmacology concerned with the effects of drugs on the body.",
-    pos: "noun",
-  },
-  pharmacokinetics: {
-    meaning:
-      "The branch of pharmacology concerned with the movement of drugs within the body.",
-    pos: "noun",
-  },
-  pharmacopoeia: {
-    meaning:
-      "A book containing a list of medicinal drugs and their preparations.",
-    pos: "noun",
-  },
-  pharyngitis: {
-    meaning: "Inflammation of the pharynx, often causing a sore throat.",
-    pos: "noun",
-  },
-  pharynx: {
-    meaning:
-      "The cavity connecting the mouth and nasal passages to the larynx and esophagus.",
-    pos: "noun",
-  },
-  phenobarbital: {
-    meaning: "A barbiturate drug used as a sedative and anticonvulsant.",
-    pos: "noun",
-  },
-  phenolphthalein: {
-    meaning:
-      "A chemical indicator that is colourless in acid and pink in alkali.",
-    pos: "noun",
-  },
-  phenylalanine: {
-    meaning: "An essential amino acid that is a precursor to tyrosine.",
-    pos: "noun",
-  },
-  pheromone: {
-    meaning:
-      "A chemical substance produced and released into the environment by an animal, affecting the behaviour of others of its species.",
-    pos: "noun",
-  },
-  philanderer: {
-    meaning:
-      "A person, usually a man, who engages in casual sexual relationships.",
-    pos: "noun",
-  },
-  philology: {
-    meaning: "The study of the history of languages and their development.",
-    pos: "noun",
-  },
-  phlegmon: {
-    meaning: "A diffuse inflammatory mass, often associated with infection.",
-    pos: "noun",
-  },
-  phobia: {
-    meaning: "An extreme or irrational fear of something.",
-    pos: "noun",
-  },
-  phobic: {
-    meaning: "Having a fear or aversion to something.",
-    pos: "adjective",
-  },
-  phoneme: {
-    meaning:
-      "The smallest unit of sound in a language that distinguishes meaning.",
-    pos: "noun",
-  },
-  phonemics: {
-    meaning: "The study of phonemes and their relationships in a language.",
-    pos: "noun",
-  },
-  phoniatrics: {
-    meaning: "The branch of medicine dealing with voice disorders.",
-    pos: "noun",
-  },
-  phonolite: {
-    meaning: "A fine‑grained volcanic rock with a high alkali content.",
-    pos: "noun",
-  },
-  phonology: {
-    meaning:
-      "The branch of linguistics dealing with the systematic organization of sounds in languages.",
-    pos: "noun",
-  },
-  phosgene: {
-    meaning:
-      "A colourless gas used as a chemical weapon in the First World War.",
-    pos: "noun",
-  },
-  photoelectric: {
-    meaning:
-      "Relating to the emission of electrons when light strikes a surface.",
-    pos: "adjective",
-  },
-  photojournalism: {
-    meaning: "The use of photographs in reporting news stories.",
-    pos: "noun",
-  },
-  photometer: {
-    meaning: "An instrument for measuring the intensity of light.",
-    pos: "noun",
-  },
-  photon: {
-    meaning: "A particle of light or other electromagnetic radiation.",
-    pos: "noun",
-  },
-  photoperiod: {
-    meaning: "The period of daily illumination that an organism receives.",
-    pos: "noun",
-  },
-  photosphere: {
-    meaning: "The luminous surface layer of a star, especially the sun.",
-    pos: "noun",
-  },
-  photosensitive: {
-    meaning: "Sensitive to light, especially as a chemical property.",
-    pos: "adjective",
-  },
-
-  phototropism: {
-    meaning: "The growth or movement of an organism in response to light.",
-    pos: "noun",
-  },
-  phraseology: {
-    meaning:
-      "The way in which words are chosen and arranged, especially in a particular context.",
-    pos: "noun",
-  },
-  phrenic: {
-    meaning: "Relating to the diaphragm or the nerve that supplies it.",
-    pos: "adjective",
-  },
-  phylogenesis: {
-    meaning: "The evolutionary development of a species or group.",
-    pos: "noun",
-  },
-  phylogeny: {
-    meaning: "The evolutionary history and relationships among organisms.",
-    pos: "noun",
-  },
-  physic: {
-    meaning: "Medicine; a curative remedy (archaic).",
-    pos: "noun",
-  },
-  physiognomy: {
-    meaning:
-      "A person's facial features or expression, especially as indicative of character.",
-    pos: "noun",
-  },
-  physiological: {
-    meaning: "Relating to the normal functioning of living organisms.",
-    pos: "adjective",
-  },
-  physiotherapist: {
-    meaning: "A practitioner of physical therapy for rehabilitation.",
-    pos: "noun",
-  },
-  phytochemical: {
-    meaning: "A chemical compound of plant origin, often with health benefits.",
-    pos: "noun",
-  },
-  phytoplankton: {
-    meaning: "Microscopic plants and algae that float in aquatic environments.",
-    pos: "noun",
-  },
-  pianissimo: {
-    meaning: "Very softly (music).",
-    pos: "adverb",
-  },
-  piazza: {
-    meaning: "A public square or marketplace, especially in Italy.",
-    pos: "noun",
-  },
-  pica: {
-    meaning: "A craving for non‑food substances, such as dirt or paper.",
-    pos: "noun",
-  },
-  picador: {
-    meaning: "A mounted bullfighter who provokes the bull with a lance.",
-    pos: "noun",
-  },
-  pichiciego: {
-    meaning: "A small South American armadillo with a pink shell.",
-    pos: "noun",
-  },
-  pickleball: {
-    meaning: "A racket sport played on a court with a perforated ball.",
-    pos: "noun",
-  },
-  pickpocketing: {
-    meaning: "The act of stealing from a person's pocket or bag.",
-    pos: "noun",
-  },
-  picot: {
-    meaning: "A small loop or edge on lace or fabric, often decorative.",
-    pos: "noun",
-  },
-  picturesqueness: {
-    meaning: "The quality of being visually attractive, like a painting.",
-    pos: "noun",
-  },
-  piebald: {
-    meaning:
-      "Having irregular patches of two colours, typically black and white.",
-    pos: "adjective",
-  },
-  piecemeal: {
-    meaning: "Gradually, in stages, or one piece at a time.",
-    pos: "adverb",
-  },
-  pied: {
-    meaning: "Having patches of two or more colours; parti‑coloured.",
-    pos: "adjective",
-  },
-  piercing: {
-    meaning: "Penetrating, sharp, or shrill; also the act of making a hole.",
-    pos: "adjective",
-  },
-  pietà: {
-    meaning: "A depiction of the Virgin Mary holding the dead body of Jesus.",
-    pos: "noun",
-  },
-  piezoelectric: {
-    meaning:
-      "Relating to the production of electricity by pressure on a crystal.",
-    pos: "adjective",
-  },
-  piffle: {
-    meaning: "Nonsense; trivial or foolish talk.",
-    pos: "noun",
-  },
-  pigmentary: {
-    meaning: "Relating to or containing pigment.",
-    pos: "adjective",
-  },
-  pigmentation: {
-    meaning: "The natural colouring of tissue, especially of the skin.",
-    pos: "noun",
-  },
-  pigpen: {
-    meaning: "A pen for keeping pigs; also a messy place.",
-    pos: "noun",
-  },
-  pilaster: {
-    meaning: "A rectangular column attached to a wall, often decorative.",
-    pos: "noun",
-  },
-  pileated: {
-    meaning: "Having a crest or tuft, like a pileated woodpecker.",
-    pos: "adjective",
-  },
-
-  pilocarpine: {
-    meaning: "An alkaloid used to treat glaucoma and dry mouth.",
-    pos: "noun",
-  },
-  pilotage: {
-    meaning: "The act of piloting a ship or aircraft; also a fee for piloting.",
-    pos: "noun",
-  },
-  pinball: {
-    meaning:
-      "A game in which players shoot a steel ball on a tilted table, scoring points by hitting targets.",
-    pos: "noun",
-  },
-  pineal: {
-    meaning:
-      "Relating to the pineal gland, a small endocrine gland in the brain.",
-    pos: "adjective",
-  },
-  pinewood: {
-    meaning: "A forest of pine trees; also the wood of the pine tree.",
-    pos: "noun",
-  },
-  pinion: {
-    meaning:
-      "To restrain or bind a person's arms; also a bird's wing or a gear.",
-    pos: "verb",
-  },
-  pinkie: {
-    meaning: "The little finger.",
-    pos: "noun",
-  },
-  pinniped: {
-    meaning: "A marine mammal with flippers, such as a seal or walrus.",
-    pos: "noun",
-  },
-  pintail: {
-    meaning: "A type of duck with a pointed tail.",
-    pos: "noun",
-  },
-  pinworm: {
-    meaning: "A small parasitic worm that infects the large intestine.",
-    pos: "noun",
-  },
-  pioneering: {
-    meaning: "Involving new ideas or methods; original and trailblazing.",
-    pos: "adjective",
-  },
-  piousness: {
-    meaning: "The quality of being devout or deeply religious.",
-    pos: "noun",
-  },
-  pipefish: {
-    meaning:
-      "A long, slender fish with a tubular snout, related to sea horses.",
-    pos: "noun",
-  },
-
-  piquant: {
-    meaning: "Pleasantly sharp or spicy; stimulating or intriguing.",
-    pos: "adjective",
-  },
-  pique: {
-    meaning: "A feeling of irritation or resentment from wounded pride.",
-    pos: "noun",
-  },
-  piracy: {
-    meaning:
-      "The practice of attacking and robbing ships at sea; also the illegal copying of software.",
-    pos: "noun",
-  },
-  pirouette: {
-    meaning: "A rapid spin of the body on one foot, as in ballet.",
-    pos: "noun",
-  },
-  piscatorial: {
-    meaning: "Relating to fishing or fishermen.",
-    pos: "adjective",
-  },
-  pistachio: {
-    meaning: "A greenish nut with a hard shell, often used in confectionery.",
-    pos: "noun",
-  },
-  pistil: {
-    meaning:
-      "The female reproductive organ of a flower, consisting of the ovary, style, and stigma.",
-    pos: "noun",
-  },
-  "pitcher plant": {
-    meaning:
-      "A carnivorous plant with a deep cavity filled with digestive fluid.",
-    pos: "noun",
-  },
-  pithiness: {
-    meaning: "The quality of being brief and forceful; conciseness.",
-    pos: "noun",
-  },
-  piton: {
-    meaning:
-      "A metal spike driven into rock or ice as a support for a climber.",
-    pos: "noun",
-  },
-
-  pixelated: {
-    meaning: "Having a blocky appearance, as if composed of pixels.",
-    pos: "adjective",
-  },
-  pixilation: {
-    meaning: "The effect of displaying an image as an array of large pixels.",
-    pos: "noun",
-  },
-  placatory: {
-    meaning: "Intended to appease or pacify.",
-    pos: "adjective",
-  },
-  "placebo effect": {
-    meaning:
-      "A beneficial effect produced by a placebo, especially from a patient's expectation.",
-    pos: "noun",
-  },
-  placentation: {
-    meaning:
-      "The arrangement of placenta in the uterus, or its attachment in a plant.",
-    pos: "noun",
-  },
-  plagiarist: {
-    meaning: "A person who plagiarizes; a literary thief.",
-    pos: "noun",
-  },
-  plaint: {
-    meaning: "A complaint; a plaintiff's statement in a lawsuit.",
-    pos: "noun",
-  },
-  planarian: {
-    meaning:
-      "A flatworm of the class Turbellaria, often used in regeneration studies.",
-    pos: "noun",
-  },
-  plankton: {
-    meaning:
-      "Small organisms that drift in water, serving as a food source for aquatic life.",
-    pos: "noun",
-  },
-  plantain: {
-    meaning: "A starchy banana used in cooking; also a low‑growing weed.",
-    pos: "noun",
-  },
-
-  plasmolysis: {
-    meaning: "The shrinking of a plant cell due to water loss by osmosis.",
-    pos: "noun",
-  },
-  plasterboard: {
-    meaning:
-      "A board made of plaster with paper covering, used for interior walls.",
-    pos: "noun",
-  },
-  plasticine: {
-    meaning: "A soft, mouldable substance used for modelling; modelling clay.",
-    pos: "noun",
-  },
-  plasticizer: {
-    meaning: "A substance added to plastic to increase flexibility.",
-    pos: "noun",
-  },
-
-  plausibility: {
-    meaning: "The quality of appearing reasonable or probable.",
-    pos: "noun",
-  },
-  playbill: {
-    meaning: "A poster or program for a theatrical performance.",
-    pos: "noun",
-  },
-  playwright: {
-    meaning: "A person who writes plays.",
-    pos: "noun",
-  },
-  pleading: {
-    meaning: "A formal statement of a legal claim or defense.",
-    pos: "noun",
-  },
-  pleasurable: {
-    meaning: "Pleasant; giving enjoyment.",
-    pos: "adjective",
-  },
-  plebe: {
-    meaning: "A first‑year student at a U.S. military or naval academy.",
-    pos: "noun",
-  },
-  pleiotropy: {
-    meaning: "The phenomenon where one gene influences multiple traits.",
-    pos: "noun",
-  },
-
-  pleomorphic: {
-    meaning: "Existing in multiple forms or shapes.",
-    pos: "adjective",
-  },
-
-  pleural: {
-    meaning: "Relating to the pleura, the membrane around the lungs.",
-    pos: "adjective",
-  },
-  pleuritic: {
-    meaning: "Relating to or suffering from pleurisy.",
-    pos: "adjective",
-  },
-  plexus: {
-    meaning: "A network of nerves or blood vessels in the body.",
-    pos: "noun",
-  },
-  pliability: {
-    meaning: "The quality of being easily bent or flexible.",
-    pos: "noun",
-  },
-  plodding: {
-    meaning: "Slow and laborious; boringly persistent.",
-    pos: "adjective",
-  },
-  plotter: {
-    meaning:
-      "A person who devises a plot or scheme; also a device for drawing.",
-    pos: "noun",
-  },
-  plough: {
-    meaning:
-      "A farm implement for turning soil; to cut the soil (variant spelling).",
-    pos: "noun",
-  },
-  plover: {
-    meaning:
-      "A shorebird with a short tail and a short bill, often found on beaches.",
-    pos: "noun",
-  },
-  pluckiness: {
-    meaning: "Courage and determination; spirit.",
-    pos: "noun",
-  },
-  "plug‑ugly": {
-    meaning: "A violent thug or ruffian; also very ugly.",
-    pos: "noun",
-  },
-  plummeting: {
-    meaning: "Falling sharply or rapidly.",
-    pos: "adjective",
-  },
-  plumpness: {
-    meaning: "The quality of being somewhat fat or full.",
-    pos: "noun",
-  },
-  plunderer: {
-    meaning: "A person who steals goods by force, especially during a war.",
-    pos: "noun",
-  },
-  "plunge pool": {
-    meaning: "A pool of water at the base of a waterfall.",
-    pos: "noun",
-  },
-  pluralism: {
-    meaning:
-      "The coexistence of diverse groups, beliefs, or political systems.",
-    pos: "noun",
-  },
-  plutocrat: {
-    meaning: "A wealthy person who wields political influence.",
-    pos: "noun",
-  },
-  plywood: {
-    meaning: "A manufactured wood product made of thin layers glued together.",
-    pos: "noun",
-  },
-  pneumococcal: {
-    meaning: "Relating to the bacterium Streptococcus pneumoniae.",
-    pos: "adjective",
-  },
-  pneumoconiosis: {
-    meaning: "A lung disease caused by inhalation of dust particles.",
-    pos: "noun",
-  },
-  pneumothorax: {
-    meaning:
-      "The presence of air in the pleural cavity, causing lung collapse.",
-    pos: "noun",
-  },
-  poacher: {
-    meaning:
-      "A person who illegally hunts or catches game; also a cooking utensil.",
-    pos: "noun",
-  },
-  pock: {
-    meaning: "A small pit or swelling on the skin, as from acne or smallpox.",
-    pos: "noun",
-  },
-  pocketbook: {
-    meaning: "A small bag or purse; also a book that fits in a pocket.",
-    pos: "noun",
-  },
-  pockmark: {
-    meaning: "A scar or mark on the skin from a pustule.",
-    pos: "noun",
-  },
-  podcast: {
-    meaning: "A digital audio program available for download or streaming.",
-    pos: "noun",
-  },
-  podiatrist: {
-    meaning: "A specialist in foot and ankle disorders.",
-    pos: "noun",
-  },
-  poeticize: {
-    meaning: "To express in a poetic manner; to make poetic.",
-    pos: "verb",
-  },
-  poignancy: {
-    meaning: "The quality of being deeply moving or affecting.",
-    pos: "noun",
-  },
-  poinsettia: {
-    meaning: "A plant with bright red bracts, popular at Christmas.",
-    pos: "noun",
-  },
-  pointillism: {
-    meaning:
-      "A painting technique using small dots of colour to form an image.",
-    pos: "noun",
-  },
-  poised: {
-    meaning: "Composed, balanced, and ready; also hovering.",
-    pos: "adjective",
-  },
-  poisoning: {
-    meaning:
-      "The state of being affected by a poison; also the act of administering poison.",
-    pos: "noun",
-  },
-  poisonousness: {
-    meaning: "The quality of being toxic or venomous.",
-    pos: "noun",
-  },
-  "polar bear": {
-    meaning: "A large white bear native to the Arctic.",
-    pos: "noun",
-  },
-
-  polecat: {
-    meaning:
-      "A weasel‑like mammal with a strong smell; also a skunk in North America.",
-    pos: "noun",
-  },
-  polemicist: {
-    meaning: "A person who engages in controversial debate.",
-    pos: "noun",
-  },
-  policewoman: {
-    meaning: "A female police officer.",
-    pos: "noun",
-  },
-  "polio vaccine": {
-    meaning: "A vaccine that provides immunity against poliomyelitis.",
-    pos: "noun",
-  },
-  politburo: {
-    meaning: "The principal policy‑making committee of a communist party.",
-    pos: "noun",
-  },
-  politesse: {
-    meaning: "Formal politeness or courteousness.",
-    pos: "noun",
-  },
-  pollination: {
-    meaning:
-      "The transfer of pollen from male to female plant parts for fertilization.",
-    pos: "noun",
-  },
-  pollutant: {
-    meaning: "A substance that contaminates the environment.",
-    pos: "noun",
-  },
-  polonaise: {
-    meaning:
-      "A slow, stately Polish dance; also a woman's dress with a fitted waist and long skirt.",
-    pos: "noun",
-  },
-  poltergeist: {
-    meaning: "A ghost or supernatural being that causes physical disturbances.",
-    pos: "noun",
-  },
-  polyandry: {
-    meaning: "The practice of having multiple husbands.",
-    pos: "noun",
-  },
-  polycarbonate: {
-    meaning: "A strong, durable plastic used in many products.",
-    pos: "noun",
-  },
-  polyclonal: {
-    meaning: "Derived from different cell lines, especially antibodies.",
-    pos: "adjective",
-  },
-  polygynous: {
-    meaning: "Having multiple wives; relating to polygyny.",
-    pos: "adjective",
-  },
-  polyhedron: {
-    meaning: "A solid figure with many flat faces, such as a cube.",
-    pos: "noun",
-  },
-  polymerase: {
-    meaning: "An enzyme that synthesizes long chains of nucleic acids.",
-    pos: "noun",
-  },
-  polymorphic: {
-    meaning: "Occurring in several different forms.",
-    pos: "adjective",
-  },
-  polynomial: {
-    meaning: "An expression of more than two algebraic terms.",
-    pos: "noun",
-  },
-  polyphemus: {
-    meaning: "A giant Cyclops in Greek mythology.",
-    pos: "noun",
-  },
-  polyphenol: {
-    meaning: "A type of organic compound with antioxidant properties.",
-    pos: "noun",
-  },
-  polypropylene: {
-    meaning: "A tough, lightweight plastic used in packaging and textiles.",
-    pos: "noun",
-  },
-  polysaccharide: {
-    meaning: "A carbohydrate consisting of many sugar units.",
-    pos: "noun",
-  },
-  polyunsaturated: {
-    meaning: "Containing multiple double bonds in a fat or oil molecule.",
-    pos: "adjective",
-  },
-  polyurethane: {
-    meaning: "A synthetic resin used in varnishes, adhesives, and foams.",
-    pos: "noun",
-  },
-  pomade: {
-    meaning: "A scented hair‑grooming product with a greasy or waxy base.",
-    pos: "noun",
-  },
-
-  pommelling: {
-    meaning: "The action of striking or beating with the fists.",
-    pos: "noun",
-  },
-  pompier: {
-    meaning: "A fireman, especially in France.",
-    pos: "noun",
-  },
-  pompon: {
-    meaning: "A decorative ball of fluff or feathers, often used as a charm.",
-    pos: "noun",
-  },
-  poncho: {
-    meaning: "A piece of fabric with a slit for the head, worn as a cape.",
-    pos: "noun",
-  },
-  ponderosa: {
-    meaning:
-      "A large pine tree (Pinus ponderosa) native to western North America.",
-    pos: "noun",
-  },
-  pontoon: {
-    meaning:
-      "A flat‑bottomed boat or hollow cylinder used to support a bridge or floating structure.",
-    pos: "noun",
-  },
-  popinjay: {
-    meaning: "A vain or talkative person; also a parrot.",
-    pos: "noun",
-  },
-  "poppy seed": {
-    meaning: "The seed of the poppy plant, used in baking.",
-    pos: "noun",
-  },
-
-  porcine: {
-    meaning: "Relating to pigs.",
-    pos: "adjective",
-  },
-  poriferan: {
-    meaning: "A member of the phylum Porifera (sponges).",
-    pos: "noun",
-  },
-  pornography: {
-    meaning: "Visual or written material intended to elicit sexual arousal.",
-    pos: "noun",
-  },
-  porosity: {
-    meaning: "The quality of being porous; having small holes.",
-    pos: "noun",
-  },
-  porringer: {
-    meaning: "A small bowl or cup for soup or porridge.",
-    pos: "noun",
-  },
-  portcullis: {
-    meaning: "A heavy grating or door lowered to block a gateway.",
-    pos: "noun",
-  },
-  portend: {
-    meaning: "To be an omen of; to signify beforehand.",
-    pos: "verb",
-  },
-  portent: {
-    meaning: "A sign or warning that something important is about to happen.",
-    pos: "noun",
-  },
-  portentous: {
-    meaning: "Ominous; having great significance.",
-    pos: "adjective",
-  },
-
-  portico: {
-    meaning: "A porch or covered entrance with columns.",
-    pos: "noun",
-  },
-  portmanteau: {
-    meaning: "A large travelling bag; also a blend of two words (like 'smog').",
-    pos: "noun",
-  },
-  portrayal: {
-    meaning: "The act of depicting or representing in art or literature.",
-    pos: "noun",
-  },
-  poseidon: {
-    meaning: "The Greek god of the sea, earthquakes, and horses.",
-    pos: "noun",
-  },
-  posit: {
-    meaning: "To assume or put forward as a fact or basis of argument.",
-    pos: "verb",
-  },
-  positional: {
-    meaning: "Relating to position or placement.",
-    pos: "adjective",
-  },
-  positiveity: {
-    meaning: "The state of being positive; optimism or certainty.",
-    pos: "noun",
-  },
-  positron: {
-    meaning: "The antiparticle of an electron, with a positive charge.",
-    pos: "noun",
-  },
-  possibilism: {
-    meaning:
-      "The theory that the environment sets limits but does not determine human actions.",
-    pos: "noun",
-  },
-  postbellum: {
-    meaning: "Occurring after a war, especially the American Civil War.",
-    pos: "adjective",
-  },
-  postboy: {
-    meaning: "A messenger or a boy who rides post horses.",
-    pos: "noun",
-  },
-  postdoctoral: {
-    meaning: "Relating to study or research after a doctorate.",
-    pos: "adjective",
-  },
-  postfix: {
-    meaning: "A suffix; an affix placed after a word.",
-    pos: "noun",
-  },
-  posthumous: {
-    meaning: "Occurring or published after a person's death.",
-    pos: "adjective",
-  },
-  postlude: {
-    meaning: "A concluding piece of music, especially after a church service.",
-    pos: "noun",
-  },
-  postmark: {
-    meaning: "A mark stamped on mail indicating the date and place of mailing.",
-    pos: "noun",
-  },
-  postmaster: {
-    meaning: "The manager of a post office.",
-    pos: "noun",
-  },
-  postmillennial: {
-    meaning: "Relating to the time after the millennium.",
-    pos: "adjective",
-  },
-  postmodern: {
-    meaning:
-      "Relating to a style of art and literature that reacts against modernism.",
-    pos: "adjective",
-  },
-  postulant: {
-    meaning: "A candidate, especially for admission into a religious order.",
-    pos: "noun",
-  },
-  postulator: {
-    meaning:
-      "One who postulates; also an official who advocates a cause for canonization.",
-    pos: "noun",
-  },
-  potentilla: {
-    meaning:
-      "A plant of the rose family with yellow flowers, also called cinquefoil.",
-    pos: "noun",
-  },
-  pothole: {
-    meaning: "A depression in a road surface; also a hole in a cave.",
-    pos: "noun",
-  },
-
-  potpourri: {
-    meaning: "A mixture of dried petals and spices for scent; also a medley.",
-    pos: "noun",
-  },
-  potsherd: {
-    meaning: "A fragment of broken pottery.",
-    pos: "noun",
-  },
-  potters: {
-    meaning:
-      "People who make pottery; also a verb meaning to occupy oneself casually.",
-    pos: "noun",
-  },
-  poult: {
-    meaning: "A young domestic fowl, especially a turkey or chicken.",
-    pos: "noun",
-  },
-  poulterer: {
-    meaning: "A person who sells poultry.",
-    pos: "noun",
-  },
-
-  poundage: {
-    meaning:
-      "A charge or tax per pound of weight; also a weight measured in pounds.",
-    pos: "noun",
-  },
-  pouring: {
-    meaning: "Flowing or streaming copiously; also the act of pouring.",
-    pos: "adjective",
-  },
-  "poverty‑stricken": {
-    meaning: "Extremely poor.",
-    pos: "adjective",
-  },
-  powdered: {
-    meaning: "Reduced to powder; covered with powder.",
-    pos: "adjective",
-  },
-  powerhouse: {
-    meaning: "A person or thing of great energy or strength.",
-    pos: "noun",
-  },
-  powerlessness: {
-    meaning: "The state of lacking power, authority, or ability.",
-    pos: "noun",
-  },
-  practicability: {
-    meaning: "The quality of being feasible or usable.",
-    pos: "noun",
-  },
-  practicum: {
-    meaning: "A practical course of study, often in a professional field.",
-    pos: "noun",
-  },
-  pragmatism: {
-    meaning: "A practical approach to problems and affairs.",
-    pos: "noun",
-  },
-  "prairie dog": {
-    meaning: "A burrowing rodent of the North American plains.",
-    pos: "noun",
-  },
-  praline: {
-    meaning: "A confection made from nuts and caramelized sugar.",
-    pos: "noun",
-  },
-  prankster: {
-    meaning: "A person who plays practical jokes.",
-    pos: "noun",
-  },
-  pratfall: {
-    meaning: "A fall onto one's buttocks, often used for comic effect.",
-    pos: "noun",
-  },
-  prayerful: {
-    meaning: "Given to or expressing prayer; devout.",
-    pos: "adjective",
-  },
-  "pre‑emptive": {
-    meaning: "Taken in anticipation of an enemy action.",
-    pos: "adjective",
-  },
-  preachify: {
-    meaning: "To preach excessively or in a tedious manner.",
-    pos: "verb",
-  },
-  preachy: {
-    meaning: "Tending to preach or moralize in a dull manner.",
-    pos: "adjective",
-  },
-  preadolescent: {
-    meaning: "Relating to the period before adolescence.",
-    pos: "adjective",
-  },
-
-  prearrange: {
-    meaning: "To arrange in advance.",
-    pos: "verb",
-  },
-  prebend: {
-    meaning: "The stipend attached to a canon's position in a cathedral.",
-    pos: "noun",
-  },
-
-  precancerous: {
-    meaning: "Relating to a condition that may develop into cancer.",
-    pos: "adjective",
-  },
-  precariousness: {
-    meaning: "The state of being dangerously insecure or unstable.",
-    pos: "noun",
-  },
-  precautionary: {
-    meaning: "Intended to prevent harm or danger.",
-    pos: "adjective",
-  },
-
-  precedential: {
-    meaning: "Setting a precedent; serving as an example.",
-    pos: "adjective",
-  },
-  preceptor: {
-    meaning:
-      "A teacher or instructor, especially in a school or religious setting.",
-    pos: "noun",
-  },
-
-  precipitant: {
-    meaning: "A substance that causes a precipitate to form; also hasty.",
-    pos: "noun",
-  },
-  precipitous: {
-    meaning: "Sheer and steep; done without careful consideration.",
-    pos: "adjective",
-  },
-  precis: {
-    meaning: "A summary or abstract of a text.",
-    pos: "noun",
-  },
-  preclinical: {
-    meaning:
-      "Relating to the stage before clinical testing, especially of drugs.",
-    pos: "adjective",
-  },
-
-  precocity: {
-    meaning: "The quality of being prematurely developed.",
-    pos: "noun",
-  },
-  precognitive: {
-    meaning: "Having foreknowledge of future events.",
-    pos: "adjective",
-  },
-  preconceive: {
-    meaning: "To form an opinion or idea beforehand.",
-    pos: "verb",
-  },
-
-  predestinate: {
-    meaning: "To determine beforehand, especially by divine will.",
-    pos: "verb",
-  },
-  predetermine: {
-    meaning: "To decide or settle in advance.",
-    pos: "verb",
-  },
-  predicable: {
-    meaning: "Capable of being predicated or stated of something.",
-    pos: "adjective",
-  },
-
-  predispose: {
-    meaning: "To make someone prone to a condition or behaviour.",
-    pos: "verb",
-  },
-  prednisone: {
-    meaning:
-      "A synthetic corticosteroid used to treat inflammation and allergies.",
-    pos: "noun",
-  },
-  preemie: {
-    meaning: "A premature baby.",
-    pos: "noun",
-  },
-
-  preferment: {
-    meaning: "Advancement or promotion, especially in a profession.",
-    pos: "noun",
-  },
-  prefigure: {
-    meaning: "To foreshadow or anticipate.",
-    pos: "verb",
-  },
-  prefrontal: {
-    meaning: "Situated in the front part of the forebrain.",
-    pos: "adjective",
-  },
-  pregnancy: {
-    meaning: "The state of carrying a developing embryo or fetus.",
-    pos: "noun",
-  },
-  pregnant: {
-    meaning: "Carrying a developing fetus; also full of meaning.",
-    pos: "adjective",
-  },
-  prehensile: {
-    meaning: "Able to grasp or wrap around, as a tail.",
-    pos: "adjective",
-  },
-  prehistory: {
-    meaning: "The period of time before written records.",
-    pos: "noun",
-  },
-  prejudge: {
-    meaning: "To form a judgment before knowing all the facts.",
-    pos: "verb",
-  },
-  prejudicial: {
-    meaning: "Causing harm or injury; detrimental.",
-    pos: "adjective",
-  },
-  prelate: {
-    meaning: "A high‑ranking ecclesiastical dignitary.",
-    pos: "noun",
-  },
-
-  premedical: {
-    meaning: "Relating to studies taken before medical school.",
-    pos: "adjective",
-  },
-  premenstrual: {
-    meaning: "Occurring before menstruation.",
-    pos: "adjective",
-  },
-  premie: {
-    meaning: "A premature baby (variant).",
-    pos: "noun",
-  },
-  première: {
-    meaning: "The first performance or showing of a play, film, etc.",
-    pos: "noun",
-  },
-
-  premonitory: {
-    meaning: "Giving a warning or foretelling something.",
-    pos: "adjective",
-  },
-  prenatal: {
-    meaning: "Existing or occurring before birth.",
-    pos: "adjective",
-  },
-  preoccupation: {
-    meaning: "The state of being absorbed in thought; a mental preoccupation.",
-    pos: "noun",
-  },
-
-  preparative: {
-    meaning: "Serving to prepare; a preparatory step.",
-    pos: "adjective",
-  },
-  preparatory: {
-    meaning: "Serving to prepare; introductory.",
-    pos: "adjective",
-  },
-  preponderant: {
-    meaning: "Greater in influence, number, or importance.",
-    pos: "adjective",
-  },
-
-  prepossessing: {
-    meaning: "Attractive, appealing, or impressive.",
-    pos: "adjective",
-  },
-
-  presbyopia: {
-    meaning:
-      "Long‑sightedness caused by loss of elasticity of the lens of the eye, typically in middle age.",
-    pos: "noun",
-  },
-
-  prescient: {
-    meaning: "Having or showing knowledge of events before they take place.",
-    pos: "adjective",
-  },
-
-  prescriptive: {
-    meaning: "Laying down rules or standards; normative.",
-    pos: "adjective",
-  },
-
-  presentable: {
-    meaning: "Looking clean, neat, or appropriate for meeting people.",
-    pos: "adjective",
-  },
-
-  preservationist: {
-    meaning:
-      "A person who advocates for the protection of historic buildings or natural areas.",
-    pos: "noun",
-  },
-  preservative: {
-    meaning: "A substance used to preserve food or other perishables.",
-    pos: "noun",
-  },
-
-  presidency: {
-    meaning: "The office or term of a president.",
-    pos: "noun",
-  },
-
-  pressroom: {
-    meaning:
-      "A room where a printing press is operated or where journalists gather.",
-    pos: "noun",
-  },
-  pressurize: {
-    meaning:
-      "To subject to pressure, especially inside an aircraft or chamber.",
-    pos: "verb",
-  },
-  prestidigitation: {
-    meaning: "Sleight of hand; magic tricks performed with the hands.",
-    pos: "noun",
-  },
-
-  prestigious: {
-    meaning: "Inspiring respect and admiration; having high status.",
-    pos: "adjective",
-  },
-  presumable: {
-    meaning: "Able to be assumed or taken for granted.",
-    pos: "adjective",
-  },
-
-  pretence: {
-    meaning: "A false display of feelings or intentions; a pretext.",
-    pos: "noun",
-  },
-  pretension: {
-    meaning: "A claim or aspiration to a quality or status.",
-    pos: "noun",
-  },
-
-  preternatural: {
-    meaning: "Beyond what is normal or natural; supernatural.",
-    pos: "adjective",
-  },
-  pretrial: {
-    meaning: "Occurring before a trial in court.",
-    pos: "adjective",
-  },
-
-  prevaricate: {
-    meaning: "To speak or act in an evasive way; to lie.",
-    pos: "verb",
-  },
-
-  preventive: {
-    meaning: "Intended to stop something from happening.",
-    pos: "adjective",
-  },
-
-  priapic: {
-    meaning: "Relating to a phallus or male sexual potency.",
-    pos: "adjective",
-  },
-  priceless: {
-    meaning: "So valuable that no price can be set; also extremely amusing.",
-    pos: "adjective",
-  },
-  prickly: {
-    meaning: "Covered with prickles; also irritable or touchy.",
-    pos: "adjective",
-  },
-  prideful: {
-    meaning: "Having an excessively high opinion of oneself.",
-    pos: "adjective",
-  },
-  priestess: {
-    meaning: "A female priest, especially of a pagan religion.",
-    pos: "noun",
-  },
-  priggish: {
-    meaning: "Self‑righteously moralistic or fussy.",
-    pos: "adjective",
-  },
-  primacy: {
-    meaning: "The state of being first or most important.",
-    pos: "noun",
-  },
-  primipara: {
-    meaning: "A woman who gives birth for the first time.",
-    pos: "noun",
-  },
-
-  principality: {
-    meaning: "A state ruled by a prince; also a territory.",
-    pos: "noun",
-  },
-  principium: {
-    meaning: "A fundamental principle or origin (archaic).",
-    pos: "noun",
-  },
-  principled: {
-    meaning: "Acting in accordance with moral principles.",
-    pos: "adjective",
-  },
-  printmaker: {
-    meaning: "An artist who creates prints from a plate or block.",
-    pos: "noun",
-  },
-  prioritize: {
-    meaning: "To designate or treat as more important than others.",
-    pos: "verb",
-  },
-  prismatoid: {
-    meaning: "A polyhedron whose faces are all parallelograms.",
-    pos: "noun",
-  },
-  "prisoner's dilemma": {
-    meaning:
-      "A situation in game theory where two individuals might not cooperate even if it is in their best interest.",
-    pos: "noun",
-  },
-  privateer: {
-    meaning: "A privately owned armed ship authorized to attack enemy vessels.",
-    pos: "noun",
-  },
-
-  privatization: {
-    meaning: "The transfer of a business from government to private ownership.",
-    pos: "noun",
-  },
-
-  privileged: {
-    meaning: "Having special rights or advantages.",
-    pos: "adjective",
-  },
-  "privy council": {
-    meaning: "A body of advisors to a monarch.",
-    pos: "noun",
-  },
-  prizefight: {
-    meaning: "A boxing match fought for prize money.",
-    pos: "noun",
-  },
-  proactive: {
-    meaning: "Creating or controlling a situation rather than just responding.",
-    pos: "adjective",
-  },
-
-  proband: {
-    meaning: "The individual from whom a family's medical history is traced.",
-    pos: "noun",
-  },
-
-  probationary: {
-    meaning: "Relating to a trial period.",
-    pos: "adjective",
-  },
-  probative: {
-    meaning: "Having the quality of proving or testing.",
-    pos: "adjective",
-  },
-
-  probiotics: {
-    meaning: "Beneficial microorganisms used to improve digestive health.",
-    pos: "noun",
-  },
-
-  proboscis: {
-    meaning: "A long, flexible snout or trunk, as of an elephant or tapir.",
-    pos: "noun",
-  },
-  procedural: {
-    meaning: "Relating to a procedure or established process.",
-    pos: "adjective",
-  },
-
-  procession: {
-    meaning:
-      "A group of people moving in an orderly manner, especially for a ceremony.",
-    pos: "noun",
-  },
-  processor: {
-    meaning: "A machine or person that processes; a computer's CPU.",
-    pos: "noun",
-  },
-
-  procrastinator: {
-    meaning: "A person who habitually delays or puts off tasks.",
-    pos: "noun",
-  },
-  procreant: {
-    meaning: "Related to reproduction; generative.",
-    pos: "adjective",
-  },
-  procurator: {
-    meaning: "An agent or official representing another, especially in law.",
-    pos: "noun",
-  },
-  prodromal: {
-    meaning: "Relating to an early symptom or stage of a disease.",
-    pos: "adjective",
-  },
-  producer: {
-    meaning: "A person or thing that produces; also a film or music producer.",
-    pos: "noun",
-  },
-  productivity: {
-    meaning: "The rate at which goods or services are produced.",
-    pos: "noun",
-  },
-  profaneness: {
-    meaning: "The quality of being disrespectful toward sacred things.",
-    pos: "noun",
-  },
-  professorship: {
-    meaning: "The position or rank of a professor.",
-    pos: "noun",
-  },
-  proficiency: {
-    meaning: "A high degree of competence or skill.",
-    pos: "noun",
-  },
-  profitability: {
-    meaning: "The ability to generate profit.",
-    pos: "noun",
-  },
-  profligate: {
-    meaning: "Recklessly extravagant or wasteful; also morally dissolute.",
-    pos: "adjective",
-  },
-  profundity: {
-    meaning: "Great depth of insight or knowledge.",
-    pos: "noun",
-  },
-  profusion: {
-    meaning: "An abundance; a large quantity.",
-    pos: "noun",
-  },
-  progesterone: {
-    meaning: "A steroid hormone involved in the menstrual cycle and pregnancy.",
-    pos: "noun",
-  },
-  prognosticate: {
-    meaning: "To predict or foretell, especially of a disease's outcome.",
-    pos: "verb",
-  },
-  programmer: {
-    meaning: "A person who writes computer programs.",
-    pos: "noun",
-  },
-  progression: {
-    meaning: "A sequence of steps or events; gradual advancement.",
-    pos: "noun",
-  },
-
-  prohibitive: {
-    meaning: "So high or expensive as to prevent purchase or use.",
-    pos: "adjective",
-  },
-  projectile: {
-    meaning: "An object propelled by force, especially from a weapon.",
-    pos: "noun",
-  },
-  projection: {
-    meaning:
-      "The act of projecting; a forecast; also a mental defense mechanism.",
-    pos: "noun",
-  },
-  prokaryote: {
-    meaning: "A single‑celled organism without a nucleus (e.g., bacteria).",
-    pos: "noun",
-  },
-  prolapse: {
-    meaning: "The displacement of an organ from its normal position.",
-    pos: "noun",
-  },
-  proletariat: {
-    meaning:
-      "The working class, especially those who earn a living by manual labour.",
-    pos: "noun",
-  },
-  proliferation: {
-    meaning: "Rapid increase in numbers or spread.",
-    pos: "noun",
-  },
-  prolificacy: {
-    meaning: "The quality of being productive or fruitful.",
-    pos: "noun",
-  },
-
-  prolongation: {
-    meaning: "The act of lengthening or extending in time.",
-    pos: "noun",
-  },
-
-  promethium: {
-    meaning: "A radioactive rare‑earth element (Pm).",
-    pos: "noun",
-  },
-  prominence: {
-    meaning: "The state of being important or noticeable; a protuberance.",
-    pos: "noun",
-  },
-  promiscuity: {
-    meaning: "The practice of having casual sexual relationships.",
-    pos: "noun",
-  },
-  promissory: {
-    meaning: "Containing or conveying a promise.",
-    pos: "adjective",
-  },
-  promontory: {
-    meaning: "A high point of land extending into a body of water.",
-    pos: "noun",
-  },
-
-  promptitude: {
-    meaning: "The quality of being prompt; quickness.",
-    pos: "noun",
-  },
-  promulgator: {
-    meaning: "A person who makes a law or decree known.",
-    pos: "noun",
-  },
-
-  pronouncement: {
-    meaning: "A formal or official announcement or declaration.",
-    pos: "noun",
-  },
-
-  proofread: {
-    meaning: "To read and correct written material for errors.",
-    pos: "verb",
-  },
-  propagandist: {
-    meaning: "A person who spreads propaganda.",
-    pos: "noun",
-  },
-  propagation: {
-    meaning: "The act of reproducing or spreading.",
-    pos: "noun",
-  },
-  propellant: {
-    meaning:
-      "A substance that propels something, especially fuel for a rocket.",
-    pos: "noun",
-  },
-  propeller: {
-    meaning:
-      "A mechanical device with blades that rotates to propel a ship or aircraft.",
-    pos: "noun",
-  },
-
-  propernoun: {
-    meaning: "A noun denoting a particular person, place, or thing.",
-    pos: "noun",
-  },
-  propertied: {
-    meaning: "Owning property; having assets.",
-    pos: "adjective",
-  },
-
-  prophetic: {
-    meaning: "Relating to or characteristic of a prophet.",
-    pos: "adjective",
-  },
-  prophylaxis: {
-    meaning: "Action taken to prevent disease.",
-    pos: "noun",
-  },
-
-  propitiation: {
-    meaning: "The action of appeasing or gaining favour with a deity.",
-    pos: "noun",
-  },
-
-  proportional: {
-    meaning: "Corresponding in size or amount to something else.",
-    pos: "adjective",
-  },
-
-  proprietress: {
-    meaning: "A female proprietor.",
-    pos: "noun",
-  },
-  proprioception: {
-    meaning: "The sense of the relative position of one's own body parts.",
-    pos: "noun",
-  },
-
-  proscenium: {
-    meaning: "The arch or frame separating the stage from the auditorium.",
-    pos: "noun",
-  },
-
-  prosecution: {
-    meaning:
-      "The instituting of legal proceedings against someone; also the prosecuting side.",
-    pos: "noun",
-  },
-  proselytize: {
-    meaning: "To convert someone to a religion or cause.",
-    pos: "verb",
-  },
-  prosody: {
-    meaning: "The patterns of rhythm and sound in poetry.",
-    pos: "noun",
-  },
-  prosopagnosia: {
-    meaning: "Face blindness; difficulty recognizing familiar faces.",
-    pos: "noun",
-  },
-
-  prostaglandin: {
-    meaning:
-      "A hormone‑like substance involved in inflammation and blood flow.",
-    pos: "noun",
-  },
-
-  prosthesis: {
-    meaning: "An artificial device that replaces a missing body part.",
-    pos: "noun",
-  },
-  prosthetics: {
-    meaning: "The branch of medicine dealing with artificial limbs.",
-    pos: "noun",
-  },
-
-  prostration: {
-    meaning: "The act of lying face down in submission or exhaustion.",
-    pos: "noun",
-  },
-
-  protectorate: {
-    meaning: "A state that is controlled and protected by another.",
-    pos: "noun",
-  },
-  protege: {
-    meaning:
-      "A person who is guided and supported by an older, more experienced person.",
-    pos: "noun",
-  },
-  proteinaceous: {
-    meaning: "Consisting of or containing protein.",
-    pos: "adjective",
-  },
-  proteolysis: {
-    meaning: "The breakdown of proteins into peptides and amino acids.",
-    pos: "noun",
-  },
-  protestation: {
-    meaning: "A formal declaration or statement of objection.",
-    pos: "noun",
-  },
-  prothorax: {
-    meaning: "The anterior segment of an insect's thorax.",
-    pos: "noun",
-  },
-
-  protohistory: {
-    meaning: "The period between prehistory and the earliest written records.",
-    pos: "noun",
-  },
-
-  protozoan: {
-    meaning: "A single‑celled eukaryotic organism (e.g., amoeba).",
-    pos: "noun",
-  },
-
-  protractor: {
-    meaning: "A device for measuring angles.",
-    pos: "noun",
-  },
-  protrusion: {
-    meaning: "A thing that projects from a surface.",
-    pos: "noun",
-  },
-  protuberance: {
-    meaning: "A swelling or rounded projection.",
-    pos: "noun",
-  },
-  proudness: {
-    meaning: "The state of being proud; arrogance.",
-    pos: "noun",
-  },
-
-  provident: {
-    meaning: "Providing for future needs; frugal.",
-    pos: "adjective",
-  },
-  providential: {
-    meaning: "Occurring by divine intervention or luck.",
-    pos: "adjective",
-  },
-
-  provincialism: {
-    meaning: "Narrow, parochial outlook; a local expression.",
-    pos: "noun",
-  },
-  proviso: {
-    meaning: "A condition or stipulation in a document.",
-    pos: "noun",
-  },
-  provocateur: {
-    meaning: "A person who provokes others, especially by inciting conflict.",
-    pos: "noun",
-  },
-
-  proxemics: {
-    meaning: "The study of human use of space and distance in communication.",
-    pos: "noun",
-  },
-
-  prudery: {
-    meaning: "Excessive modesty or prudishness.",
-    pos: "noun",
-  },
-
-  prurigo: {
-    meaning: "A chronic skin disease causing severe itching.",
-    pos: "noun",
-  },
-  pruritus: {
-    meaning: "Itching of the skin.",
-    pos: "noun",
-  },
-  psalmody: {
-    meaning: "The singing of psalms in worship.",
-    pos: "noun",
-  },
-  pseudo: {
-    meaning: "Not genuine; spurious; false.",
-    pos: "adjective",
-  },
-  pseudocode: {
-    meaning: "An informal high‑level description of a program's logic.",
-    pos: "noun",
-  },
-
-  psilocybin: {
-    meaning: "A hallucinogenic compound found in certain mushrooms.",
-    pos: "noun",
-  },
-  psyche: {
-    meaning: "The human soul, mind, or spirit.",
-    pos: "noun",
-  },
-  psychiatric: {
-    meaning: "Relating to the treatment of mental disorders.",
-    pos: "adjective",
-  },
-
-  psychoactive: {
-    meaning: "Affecting the mind or behaviour.",
-    pos: "adjective",
-  },
-  psychokinesis: {
-    meaning: "The purported ability to move objects with the mind.",
-    pos: "noun",
-  },
-  psychological: {
-    meaning: "Relating to the mind and behaviour.",
-    pos: "adjective",
-  },
-  psychometric: {
-    meaning: "Relating to the measurement of mental abilities.",
-    pos: "adjective",
-  },
-  psychomotor: {
-    meaning: "Relating to the interaction of mental and physical processes.",
-    pos: "adjective",
-  },
-  psychoneurosis: {
-    meaning: "A mental disorder with anxiety or obsessional symptoms.",
-    pos: "noun",
-  },
-  psychotic: {
-    meaning: "Relating to psychosis; having a severe mental illness.",
-    pos: "adjective",
-  },
-  psychrometer: {
-    meaning: "An instrument for measuring atmospheric humidity.",
-    pos: "noun",
-  },
-  psychrotroph: {
-    meaning: "An organism that grows at low temperatures.",
-    pos: "noun",
-  },
-  pterodactyl: {
-    meaning: "A prehistoric flying reptile of the late Jurassic period.",
-    pos: "noun",
-  },
-  pterosaur: {
-    meaning: "An extinct flying reptile of the Mesozoic era.",
-    pos: "noun",
-  },
-  ptomaine: {
-    meaning: "A toxic compound produced by decay in food.",
-    pos: "noun",
-  },
-  ptyalin: {
-    meaning: "An enzyme in saliva that begins the digestion of starch.",
-    pos: "noun",
-  },
-  pubescence: {
-    meaning: "The state of reaching puberty or having fine, soft hair.",
-    pos: "noun",
-  },
-
-  publican: {
-    meaning: "An innkeeper or tax collector in ancient Rome.",
-    pos: "noun",
-  },
-  publicist: {
-    meaning: "A person who promotes public interest in a person or product.",
-    pos: "noun",
-  },
-
-  publicly: {
-    meaning: "In a public manner; openly.",
-    pos: "adverb",
-  },
-  publisher: {
-    meaning:
-      "A person or company that produces and distributes books, magazines, etc.",
-    pos: "noun",
-  },
-  puck: {
-    meaning: "A disc used in ice hockey; also a mischievous spirit.",
-    pos: "noun",
-  },
-  puckish: {
-    meaning: "Playfully mischievous.",
-    pos: "adjective",
-  },
-  pudendal: {
-    meaning: "Relating to the external genitalia.",
-    pos: "adjective",
-  },
-  puerperal: {
-    meaning: "Relating to childbirth or the period after delivery.",
-    pos: "adjective",
-  },
-  puff: {
-    meaning: "A short burst of air or smoke; also a pastry.",
-    pos: "noun",
-  },
-  puffery: {
-    meaning: "Exaggerated praise or promotion.",
-    pos: "noun",
-  },
-  pugilism: {
-    meaning: "The art of boxing.",
-    pos: "noun",
-  },
-  pugnacity: {
-    meaning: "The quality of being combative or aggressive.",
-    pos: "noun",
-  },
-  puissance: {
-    meaning: "Power, might, or strength.",
-    pos: "noun",
-  },
-  pulchritude: {
-    meaning: "Beauty, especially of a woman.",
-    pos: "noun",
-  },
-
-  pulmonologist: {
-    meaning: "A physician specializing in lung diseases.",
-    pos: "noun",
-  },
-  pulsatile: {
-    meaning: "Characterized by a rhythmic pulsation.",
-    pos: "adjective",
-  },
-  pulsation: {
-    meaning: "A rhythmic beat or vibration.",
-    pos: "noun",
-  },
-  pulsejet: {
-    meaning: "A type of jet engine that operates in pulses.",
-    pos: "noun",
-  },
-  pulverization: {
-    meaning: "The act of crushing or grinding to powder.",
-    pos: "noun",
-  },
-  pumiceous: {
-    meaning: "Of or resembling pumice; light and porous.",
-    pos: "adjective",
-  },
-  "pumpkin pie": {
-    meaning: "A pie made with pumpkin filling.",
-    pos: "noun",
-  },
-  punctilio: {
-    meaning: "A fine point of etiquette or ceremony.",
-    pos: "noun",
-  },
-  punctilious: {
-    meaning: "Showing great attention to detail or correct behaviour.",
-    pos: "adjective",
-  },
-  punctuality: {
-    meaning: "The quality of being on time.",
-    pos: "noun",
-  },
-  punctuational: {
-    meaning: "Relating to punctuation.",
-    pos: "adjective",
-  },
-  punctuator: {
-    meaning: "A person or device that adds punctuation.",
-    pos: "noun",
-  },
-  pungency: {
-    meaning: "The quality of having a strong, sharp smell or taste.",
-    pos: "noun",
-  },
-  punishable: {
-    meaning: "Liable to punishment.",
-    pos: "adjective",
-  },
-
-  punkah: {
-    meaning: "A large, fan‑like device used for cooling rooms.",
-    pos: "noun",
-  },
-  punster: {
-    meaning: "A person who makes puns.",
-    pos: "noun",
-  },
-  pupate: {
-    meaning: "To develop into a pupa.",
-    pos: "verb",
-  },
-  pupillary: {
-    meaning: "Relating to the pupil of the eye.",
-    pos: "adjective",
-  },
-  puppetry: {
-    meaning: "The art of making and performing with puppets.",
-    pos: "noun",
-  },
-  puppyish: {
-    meaning: "Resembling a puppy; playful and lively.",
-    pos: "adjective",
-  },
-
-  purdah: {
-    meaning:
-      "The seclusion of women from public observation, especially in South Asia.",
-    pos: "noun",
-  },
-  purgation: {
-    meaning: "The act of purging or cleansing, especially of the bowels.",
-    pos: "noun",
-  },
-  purgatorial: {
-    meaning: "Relating to purgatory; cleansing or expiatory.",
-    pos: "adjective",
-  },
-  purification: {
-    meaning: "The process of making something pure.",
-    pos: "noun",
-  },
-  puriform: {
-    meaning: "Resembling pus.",
-    pos: "adjective",
-  },
-  puritanical: {
-    meaning: "Strict and austere in morals or religion.",
-    pos: "adjective",
-  },
-  purlieu: {
-    meaning: "The area near or surrounding a place; also a border area.",
-    pos: "noun",
-  },
-  purloiner: {
-    meaning: "A thief; a person who steals.",
-    pos: "noun",
-  },
-  purport: {
-    meaning: "To claim or appear to be; also the meaning or substance.",
-    pos: "verb",
-  },
-  purported: {
-    meaning: "Said to be true, though not proven.",
-    pos: "adjective",
-  },
-  purposeful: {
-    meaning: "Having a clear purpose or determination.",
-    pos: "adjective",
-  },
-  purposive: {
-    meaning: "Having a purpose or intention.",
-    pos: "adjective",
-  },
-
-  purser: {
-    meaning: "An officer on a ship responsible for financial accounts.",
-    pos: "noun",
-  },
-  pursuant: {
-    meaning: "In accordance with; following.",
-    pos: "adjective",
-  },
-
-  pursy: {
-    meaning: "Short‑winded; also fat or plump.",
-    pos: "adjective",
-  },
-  purulence: {
-    meaning: "The condition of producing pus.",
-    pos: "noun",
-  },
-  purveyor: {
-    meaning: "A supplier of goods or services.",
-    pos: "noun",
-  },
-  pushover: {
-    meaning: "A person who is easily influenced or defeated.",
-    pos: "noun",
-  },
-  pusillanimous: {
-    meaning: "Lacking courage; cowardly.",
-    pos: "adjective",
-  },
-  pustule: {
-    meaning: "A small, pus‑filled blister on the skin.",
-    pos: "noun",
-  },
-
-  putrefaction: {
-    meaning: "The decay process of organic matter.",
-    pos: "noun",
-  },
-  putrescence: {
-    meaning: "The state of rotting or decay.",
-    pos: "noun",
-  },
-  putsch: {
-    meaning:
-      "A sudden attempt to overthrow a government, often by the military.",
-    pos: "noun",
-  },
-
-  puttee: {
-    meaning: "A strip of cloth wound around the lower leg for protection.",
-    pos: "noun",
-  },
-  putterer: {
-    meaning: "A person who occupies themselves in a leisurely way.",
-    pos: "noun",
-  },
-
-  puzzlement: {
-    meaning: "The state of being perplexed.",
-    pos: "noun",
-  },
-
-  pyjama: {
-    meaning: "A garment for sleeping (singular form).",
-    pos: "noun",
-  },
-
-  pyorrhea: {
-    meaning: "Inflammation and discharge of pus from the gums.",
-    pos: "noun",
-  },
-
-  pyretic: {
-    meaning: "Relating to fever.",
-    pos: "adjective",
-  },
-  pyroclastic: {
-    meaning: "Composed of rock fragments expelled by a volcanic eruption.",
-    pos: "adjective",
-  },
-  pyrogen: {
-    meaning: "A substance that induces fever.",
-    pos: "noun",
-  },
-  pyromania: {
-    meaning: "An obsessive impulse to set things on fire.",
-    pos: "noun",
-  },
-  pyrotechnics: {
-    meaning: "The art of making and using fireworks; a display of fireworks.",
-    pos: "noun",
-  },
-  pyroxene: {
-    meaning: "A group of dark‑colored rock‑forming minerals.",
-    pos: "noun",
-  },
-  pyrrhic: {
-    meaning: "A victory gained at too great a cost.",
-    pos: "adjective",
-  },
-
-  pyx: {
-    meaning: "A small container for holding the consecrated host in a church.",
-    pos: "noun",
-  },
+pablum: {
+  meaning: "Soft, bland food for infants; also insipid or trite material.",
+  pos: "noun",
+},
+pabulum: {
+  meaning: "Food, especially for nourishment; also intellectual sustenance.",
+  pos: "noun",
+},
+"pacifist": {
+  meaning: "A person who believes that war and violence are unjustifiable.",
+  pos: "noun",
+},
+pacific: {
+  meaning: "Peaceful in character or intent; calm and tranquil.",
+  pos: "adjective",
+},
+pacifier: {
+  meaning: "A rubber or plastic teat given to a baby to suck on.",
+  pos: "noun",
+},
+"pacifism": {
+  meaning: "The belief that war and violence are unacceptable and disputes should be settled peacefully.",
+  pos: "noun",
+},
+packable: {
+  meaning: "Capable of being packed or compressed for storage or transport.",
+  pos: "adjective",
+},
+packer: {
+  meaning: "A person or machine that packs goods or materials.",
+  pos: "noun",
+},
+packing: {
+  meaning: "The act of packing; material used to fill and protect items in a container.",
+  pos: "noun",
+},
+packman: {
+  meaning: "A peddler or travelling salesman carrying goods in a pack.",
+  pos: "noun",
+},
+padlock: {
+  meaning: "A detachable lock with a hinged shackle that can be passed through a ring or staple.",
+  pos: "noun",
+},
+padre: {
+  meaning: "A chaplain or priest, especially in the military.",
+  pos: "noun",
+},
+pageantry: {
+  meaning: "Elaborate show, display, or ceremony, often involving costumes and processions.",
+  pos: "noun",
+},
+pagination: {
+  meaning: "The numbering of pages in a book or document.",
+  pos: "noun",
+},
+pagoda: {
+  meaning: "A Hindu or Buddhist temple, typically tiered with upward-curving roofs.",
+  pos: "noun",
+},
+pained: {
+  meaning: "Showing or feeling physical or mental suffering; hurt.",
+  pos: "adjective",
+},
+"painless": {
+  meaning: "Causing no pain or discomfort; easy or effortless.",
+  pos: "adjective",
+},
+painterly: {
+  meaning: "Having qualities characteristic of a painting, especially in texture and brushwork.",
+  pos: "adjective",
+},
+palatal: {
+  meaning: "Relating to the palate; pronounced with the tongue against the palate.",
+  pos: "adjective",
+},
+palate: {
+  meaning: "The roof of the mouth; the sense of taste.",
+  pos: "noun",
+},
+palatial: {
+  meaning: "Large, impressive, and reminiscent of a palace; magnificent.",
+  pos: "adjective",
+},
+paleolithic: {
+  meaning: "Relating to the earlier part of the Stone Age, characterized by the use of chipped stone tools.",
+  pos: "adjective",
+},
+paleontology: {
+  meaning: "The branch of science concerned with fossil animals and plants.",
+  pos: "noun",
+},
+"palimpsest": {
+  meaning: "A manuscript or piece of writing material on which later writing has been superimposed on earlier (effaced) writing.",
+  pos: "noun",
+},
+palindrome: {
+  meaning: "A word, phrase, or sequence that reads the same forwards and backwards.",
+  pos: "noun",
+},
+"palisade": {
+  meaning: "A fence of wooden stakes, used as a defensive barrier.",
+  pos: "noun",
+},
+pallbearer: {
+  meaning: "A person who helps carry the coffin at a funeral.",
+  pos: "noun",
+},
+pallet: {
+  meaning: "A portable platform for storing and moving goods; also a primitive bed.",
+  pos: "noun",
+},
+palliate: {
+  meaning: "To make less severe or unpleasant (without curing); to excuse or lessen blame.",
+  pos: "verb",
+},
+palliative: {
+  meaning: "A treatment or action that alleviates symptoms without curing the underlying disease.",
+  pos: "noun",
+},
+palpate: {
+  meaning: "To examine by touch, especially for medical diagnosis.",
+  pos: "verb",
+},
+"palsy": {
+  meaning: "Paralysis, especially with involuntary tremors; also a state of helplessness.",
+  pos: "noun",
+},
+panache: {
+  meaning: "Flamboyant confidence or style; a distinct show of flair.",
+  pos: "noun",
+},
+pancake: {
+  meaning: "A thin, flat cake of batter fried in a pan or on a griddle.",
+  pos: "noun",
+},
+panhandle: {
+  meaning: "A narrow strip of territory extending from a larger area; also to beg on the street.",
+  pos: "noun",
+},
+panicle: {
+  meaning: "A loose, branching cluster of flowers, as in oats or lilac.",
+  pos: "noun",
+},
+pannier: {
+  meaning: "A basket, bag, or storage container carried on a bicycle, motorcycle, or animal.",
+  pos: "noun",
+},
+"pansexual": {
+  meaning: "Not limited in sexual choice with regard to biological sex, gender, or gender identity.",
+  pos: "adjective",
+},
+"pantaloons": {
+  meaning: "Trousers; especially baggy ones worn by men in the 19th century.",
+  pos: "noun",
+},
+pantheon: {
+  meaning: "All the gods of a people or religion; a temple or monument dedicated to all gods.",
+  pos: "noun",
+},
+paparazzi: {
+  meaning: "Freelance photographers who pursue celebrities for candid photographs.",
+  pos: "noun",
+},
+papaya: {
+  meaning: "A tropical fruit with yellow-orange flesh and black seeds.",
+  pos: "noun",
+},
+paperweight: {
+  meaning: "A small, heavy object placed on top of loose papers to keep them from blowing away.",
+  pos: "noun",
+},
+papillary: {
+  meaning: "Relating to or having the form of small rounded projections (papillae).",
+  pos: "adjective",
+},
+papule: {
+  meaning: "A small, raised, solid pimple or swelling on the skin.",
+  pos: "noun",
+},
+parakeet: {
+  meaning: "A small, long-tailed parrot with colorful plumage.",
+  pos: "noun",
+},
+paralytic: {
+  meaning: "Affected by or relating to paralysis; also a person with paralysis.",
+  pos: "adjective",
+},
+paramedic: {
+  meaning: "A health professional trained to provide emergency medical care, often as part of an ambulance team.",
+  pos: "noun",
+},
+parameter: {
+  meaning: "A numerical or other measurable factor forming one of a set that defines a system or sets its conditions.",
+  pos: "noun",
+},
+paranormal: {
+  meaning: "Denoting events or phenomena beyond the scope of normal scientific understanding.",
+  pos: "adjective",
+},
+paraplegic: {
+  meaning: "A person suffering from paralysis of the legs and lower body.",
+  pos: "noun",
+},
+paratrooper: {
+  meaning: "A member of an airborne military unit trained to parachute from aircraft.",
+  pos: "noun",
+},
+parboil: {
+  meaning: "To boil partially as a preliminary step in cooking.",
+  pos: "verb",
+},
+parfait: {
+  meaning: "A layered dessert of ice cream, fruit, and syrup, often served in a tall glass.",
+  pos: "noun",
+},
+parietal: {
+  meaning: "Relating to the walls of a cavity or organ, especially the parietal bones of the skull.",
+  pos: "adjective",
+},
+parking: {
+  meaning: "The action of leaving a vehicle in a particular place for a time.",
+  pos: "noun",
+},
+parlour: {
+  meaning: "A sitting room or living room; also a shop selling a particular product (e.g., ice‑cream parlour).",
+  pos: "noun",
+},
+"parmesan": {
+  meaning: "A hard, dry Italian cheese made from cow's milk, often grated over dishes.",
+  pos: "noun",
+},
+parochial: {
+  meaning: "Relating to a parish; also narrow or provincial in outlook.",
+  pos: "adjective",
+},
+parquet: {
+  meaning: "A floor covering made of blocks of wood arranged in a pattern.",
+  pos: "noun",
+},
+parricide: {
+  meaning: "The killing of a parent or close relative; also the person who commits such an act.",
+  pos: "noun",
+},
+"parsimonious": {
+  meaning: "Stingy; extremely frugal or sparing.",
+  pos: "adjective",
+},
+partaken: {
+  meaning: "Past participle of partake; having shared in or participated.",
+  pos: "verb",
+},
+partiality: {
+  meaning: "An unfair bias toward one side; a fondness or liking.",
+  pos: "noun",
+},
+participant: {
+  meaning: "A person who takes part in an activity or event.",
+  pos: "noun",
+},
+particulate: {
+  meaning: "Relating to or consisting of particles; a fine particle of matter.",
+  pos: "adjective",
+},
+parturition: {
+  meaning: "The action of giving birth; childbirth.",
+  pos: "noun",
+},
+parvenu: {
+  meaning: "A person who has recently achieved wealth or status, often seen as vulgar or pretentious.",
+  pos: "noun",
+},
+"paschal": {
+  meaning: "Relating to Easter or the Passover.",
+  pos: "adjective",
+},
+"pasquinade": {
+  meaning: "A satire or lampoon, originally a public posting.",
+  pos: "noun",
+},
+"pastiche": {
+  meaning: "An artistic work that imitates the style of another period or artist, often in a blend.",
+  pos: "noun",
+},
+"pastille": {
+  meaning: "A small sweet or lozenge, often medicated or flavoured.",
+  pos: "noun",
+},
+"pastoral": {
+  meaning: "Relating to the countryside; a literary work describing rural life.",
+  pos: "adjective",
+},
+patella: {
+  meaning: "The kneecap; a small triangular bone covering the front of the knee.",
+  pos: "noun",
+},
+"paternoster": {
+  meaning: "The Lord's Prayer; also a device with a series of moving compartments.",
+  pos: "noun",
+},
+"pathophysiology": {
+  meaning: "The study of the biological and physical changes in the body caused by disease.",
+  pos: "noun",
+},
+pathogenic: {
+  meaning: "Capable of causing disease or infection.",
+  pos: "adjective",
+},
+pathological: {
+  meaning: "Relating to disease; also compulsive or involving disease processes.",
+  pos: "adjective",
+},
+patronage: {
+  meaning: "The support, encouragement, or business given by a patron.",
+  pos: "noun",
+},
+"patroness": {
+  meaning: "A female patron or supporter.",
+  pos: "noun",
+},
+patterned: {
+  meaning: "Decorated or arranged with a repeated design or motif.",
+  pos: "adjective",
+},
+paunch: {
+  meaning: "A large, protruding belly; a potbelly.",
+  pos: "noun",
+},
+pauper: {
+  meaning: "A very poor person, especially one dependent on public charity.",
+  pos: "noun",
+},
+payable: {
+  meaning: "Able to be paid; requiring payment.",
+  pos: "adjective",
+},
+paycheck: {
+  meaning: "A salary or wage payment; a cheque for wages.",
+  pos: "noun",
+},
+payday: {
+  meaning: "The day on which wages or salaries are paid.",
+  pos: "noun",
+},
+payee: {
+  meaning: "The person to whom money is paid or made payable.",
+  pos: "noun",
+},
+payload: {
+  meaning: "The part of a vehicle's load that is carried for hire; also the load carried by a missile or spacecraft.",
+  pos: "noun",
+},
+payoff: {
+  meaning: "The outcome or result of a process; a final payment.",
+  pos: "noun",
+},
+payroll: {
+  meaning: "A list of employees and their wages; the total amount of wages paid.",
+  pos: "noun",
+},
+peaceable: {
+  meaning: "Inclined to peace; not quarrelsome.",
+  pos: "adjective",
+},
+peacemaker: {
+  meaning: "A person who brings about peace, especially by resolving conflict.",
+  pos: "noun",
+},
+peacetime: {
+  meaning: "A period when a country is not at war.",
+  pos: "noun",
+},
+pearlite: {
+  meaning: "A lamellar mixture of ferrite and cementite in steel, formed during cooling.",
+  pos: "noun",
+},
+peccadillo: {
+  meaning: "A minor fault or sin; a small transgression.",
+  pos: "noun",
+},
+"peckish": {
+  meaning: "Slightly hungry; also irritable or peevish.",
+  pos: "adjective",
+},
+pectinate: {
+  meaning: "Having a comb‑like structure; arranged like a comb.",
+  pos: "adjective",
+},
+pectoral: {
+  meaning: "Relating to the chest or breast; also a muscle in the chest.",
+  pos: "adjective",
+},
+pedantic: {
+  meaning: "Overly concerned with minor details and rules, especially in learning.",
+  pos: "adjective",
+},
+"pediatrics": {
+  meaning: "The branch of medicine dealing with children and their diseases.",
+  pos: "noun",
+},
+pedicure: {
+  meaning: "A cosmetic treatment of the feet and toenails.",
+  pos: "noun",
+},
+pedometer: {
+  meaning: "An instrument that measures the number of steps taken.",
+  pos: "noun",
+},
+peduncle: {
+  meaning: "A stalk or stem bearing a flower, fruit, or leaf; also a connecting structure in the brain.",
+  pos: "noun",
+},
+peek: {
+  meaning: "To look quickly or furtively; a quick glance.",
+  pos: "verb",
+},
+peel: {
+  meaning: "To remove the outer skin or rind from a fruit or vegetable.",
+  pos: "verb",
+},
+peep: {
+  meaning: "To look quickly, especially through a narrow opening; a short high‑pitched sound.",
+  pos: "verb",
+},
+peerage: {
+  meaning: "The body of nobles or the noble class; also the rank or title of a peer.",
+  pos: "noun",
+},
+pellagra: {
+  meaning: "A deficiency disease caused by lack of niacin, leading to dermatitis, diarrhoea, and dementia.",
+  pos: "noun",
+},
+penchant: {
+  meaning: "A strong or habitual liking or tendency.",
+  pos: "noun",
+},
+"pendulous": {
+  meaning: "Hanging down loosely; swinging or swaying.",
+  pos: "adjective",
+},
+penetralia: {
+  meaning: "The innermost parts or secrets of a place or sanctuary.",
+  pos: "noun",
+},
+"penicillinase": {
+  meaning: "An enzyme that breaks down penicillin, conferring antibiotic resistance.",
+  pos: "noun",
+},
+penology: {
+  meaning: "The study of the punishment of crime and prison management.",
+  pos: "noun",
+},
+penumbral: {
+  meaning: "Relating to a partial shadow or a fringe area of illumination.",
+  pos: "adjective",
+},
+peony: {
+  meaning: "A flowering plant with large, fragrant, showy flowers.",
+  pos: "noun",
+},
+peppercorn: {
+  meaning: "The dried fruit of the pepper plant, used as a spice.",
+  pos: "noun",
+},
+peppery: {
+  meaning: "Tasting of pepper; also sharp, irritable, or pugnacious.",
+  pos: "adjective",
+},
+"pepsinogen": {
+  meaning: "The inactive precursor of pepsin, secreted by the stomach.",
+  pos: "noun",
+},
+"peptidase": {
+  meaning: "An enzyme that breaks down peptides into amino acids.",
+  pos: "noun",
+},
+"peptide bond": {
+  meaning: "The chemical bond linking amino acids in a protein chain.",
+  pos: "noun",
+},
+perambulate: {
+  meaning: "To walk through, about, or around (an area), especially for inspection.",
+  pos: "verb",
+},
+percept: {
+  meaning: "An object of perception; a mental impression.",
+  pos: "noun",
+},
+perceptual: {
+  meaning: "Relating to the ability to perceive or interpret sensory information.",
+  pos: "adjective",
+},
+perchlorate: {
+  meaning: "A salt or ester of perchloric acid, used as an oxidizer.",
+  pos: "noun",
+},
+percolator: {
+  meaning: "A type of coffee pot that forces boiling water up through a tube and back over grounds.",
+  pos: "noun",
+},
+"perditionist": {
+  meaning: "One who embraces or promotes damnation; a doomed person.",
+  pos: "noun",
+},
+peregrine: {
+  meaning: "Travelling widely; also a type of falcon.",
+  pos: "adjective",
+},
+peremptory: {
+  meaning: "Insisting on immediate attention or obedience; brooking no refusal.",
+  pos: "adjective",
+},
+"perfectionist": {
+  meaning: "A person who demands high standards and is not satisfied with less than perfect.",
+  pos: "noun",
+},
+perforation: {
+  meaning: "A hole or series of holes, especially for the purpose of tearing.",
+  pos: "noun",
+},
+perfumer: {
+  meaning: "A person who makes or sells perfumes.",
+  pos: "noun",
+},
+pericardium: {
+  meaning: "The membrane enveloping the heart.",
+  pos: "noun",
+},
+perilymph: {
+  meaning: "The fluid within the inner ear, filling the space between the bony and membranous labyrinths.",
+  pos: "noun",
+},
+"periodic table": {
+  meaning: "A tabular arrangement of chemical elements, ordered by atomic number.",
+  pos: "noun",
+},
+"periodontics": {
+  meaning: "The branch of dentistry dealing with the supporting structures of the teeth.",
+  pos: "noun",
+},
+peripeteia: {
+  meaning: "A sudden reversal of fortune or change in circumstances, especially in a tragedy.",
+  pos: "noun",
+},
+"periscope": {
+  meaning: "A device with mirrors or prisms that allows viewing from a concealed or submerged position.",
+  pos: "noun",
+},
+"peristalsis": {
+  meaning: "The involuntary contraction and relaxation of the muscles in the intestine, pushing food onward.",
+  pos: "noun",
+},
+peritoneal: {
+  meaning: "Relating to the peritoneum, the membrane lining the abdominal cavity.",
+  pos: "adjective",
+},
+periwinkle: {
+  meaning: "A small plant with blue or white flowers; also a marine snail.",
+  pos: "noun",
+},
+perjurer: {
+  meaning: "A person who commits perjury by lying under oath.",
+  pos: "noun",
+},
+permeable: {
+  meaning: "Allowing fluids or substances to pass through; penetrable.",
+  pos: "adjective",
+},
+"permutationist": {
+  meaning: "A person who studies or is expert in permutations.",
+  pos: "noun",
+},
+"perniciousness": {
+  meaning: "The quality of being destructive, harmful, or fatal.",
+  pos: "noun",
+},
+peroxidize: {
+  meaning: "To treat or combine with peroxide.",
+  pos: "verb",
+},
+perpendicularity: {
+  meaning: "The state of being at right angles to a given line or plane.",
+  pos: "noun",
+},
+perpetrator: {
+  meaning: "A person who carries out a harmful or illegal act.",
+  pos: "noun",
+},
+perplexity: {
+  meaning: "The state of being confused or puzzled; a complicated matter.",
+  pos: "noun",
+},
+"persecutor": {
+  meaning: "A person who harasses or oppresses others, especially for reasons of race, religion, or politics.",
+  pos: "noun",
+},
+"perseverant": {
+  meaning: "Characterized by steady persistence and determination.",
+  pos: "adjective",
+},
+"persnickety": {
+  meaning: "Overly fussy or particular about details; exacting.",
+  pos: "adjective",
+},
+"persona": {
+  meaning: "The social facade or role that a person presents to others.",
+  pos: "noun",
+},
+"personae": {
+  meaning: "Plural of persona; the characters or roles in a literary work.",
+  pos: "noun",
+},
+"personage": {
+  meaning: "A person of importance or distinction; also a character in a play.",
+  pos: "noun",
+},
+"personification": {
+  meaning: "The representation of an abstract quality in human form.",
+  pos: "noun",
+},
+"perspectivism": {
+  meaning: "The philosophical theory that all knowledge is based on a particular perspective.",
+  pos: "noun",
+},
+"persuader": {
+  meaning: "A person or thing that persuades; a convincing argument.",
+  pos: "noun",
+},
+"persuasiveness": {
+  meaning: "The ability to persuade or convince.",
+  pos: "noun",
+},
+perturbation: {
+  meaning: "Anxiety or mental agitation; also a deviation from a regular course.",
+  pos: "noun",
+},
+"perusal": {
+  meaning: "The action of reading or examining something carefully.",
+  pos: "noun",
+},
+"pervasiveness": {
+  meaning: "The quality of spreading widely throughout an area or group.",
+  pos: "noun",
+},
+"perversity": {
+  meaning: "A deliberate or stubborn deviation from what is considered right or good.",
+  pos: "noun",
+},
+"pestilence": {
+  meaning: "A fatal epidemic disease, especially plague.",
+  pos: "noun",
+},
+"pestilent": {
+  meaning: "Harmful to health or life; also annoyingly destructive.",
+  pos: "adjective",
+},
+"pestle": {
+  meaning: "A heavy tool with a rounded end, used for crushing substances in a mortar.",
+  pos: "noun",
+},
+petechia: {
+  meaning: "A small, red or purple spot on the skin caused by bleeding under the skin.",
+  pos: "noun",
+},
+petiole: {
+  meaning: "The stalk attaching a leaf to the stem.",
+  pos: "noun",
+},
+petrel: {
+  meaning: "A seabird of the order Procellariiformes, often with a hooked bill.",
+  pos: "noun",
+},
+petrifier: {
+  meaning: "A person or thing that petrifies, especially by turning to stone.",
+  pos: "noun",
+},
+petroglyph: {
+  meaning: "A carving or inscription on rock, especially from prehistoric times.",
+  pos: "noun",
+},
+petrology: {
+  meaning: "The branch of geology that deals with the origin, composition, and structure of rocks.",
+  pos: "noun",
+},
+petulance: {
+  meaning: "The quality of being irritable or childishly impatient.",
+  pos: "noun",
+},
+phagocyte: {
+  meaning: "A cell that engulfs and destroys foreign particles or bacteria.",
+  pos: "noun",
+},
+"phagocytosis": {
+  meaning: "The process by which a phagocyte engulfs and destroys foreign matter.",
+  pos: "noun",
+},
+phalange: {
+  meaning: "A bone of the finger or toe; also a military formation.",
+  pos: "noun",
+},
+pharmaceutical: {
+  meaning: "Relating to medicinal drugs; a drug product.",
+  pos: "adjective",
+},
+
+"pharmacodynamics": {
+  meaning: "The branch of pharmacology concerned with the effects of drugs on the body.",
+  pos: "noun",
+},
+"pharmacokinetics": {
+  meaning: "The branch of pharmacology concerned with the movement of drugs within the body.",
+  pos: "noun",
+},
+pharmacopoeia: {
+  meaning: "A book containing a list of medicinal drugs and their preparations.",
+  pos: "noun",
+},
+"pharyngitis": {
+  meaning: "Inflammation of the pharynx, often causing a sore throat.",
+  pos: "noun",
+},
+pharynx: {
+  meaning: "The cavity connecting the mouth and nasal passages to the larynx and esophagus.",
+  pos: "noun",
+},
+phenobarbital: {
+  meaning: "A barbiturate drug used as a sedative and anticonvulsant.",
+  pos: "noun",
+},
+phenolphthalein: {
+  meaning: "A chemical indicator that is colourless in acid and pink in alkali.",
+  pos: "noun",
+},
+phenylalanine: {
+  meaning: "An essential amino acid that is a precursor to tyrosine.",
+  pos: "noun",
+},
+pheromone: {
+  meaning: "A chemical substance produced and released into the environment by an animal, affecting the behaviour of others of its species.",
+  pos: "noun",
+},
+philanderer: {
+  meaning: "A person, usually a man, who engages in casual sexual relationships.",
+  pos: "noun",
+},
+philology: {
+  meaning: "The study of the history of languages and their development.",
+  pos: "noun",
+},
+phlegmon: {
+  meaning: "A diffuse inflammatory mass, often associated with infection.",
+  pos: "noun",
+},
+phobia: {
+  meaning: "An extreme or irrational fear of something.",
+  pos: "noun",
+},
+phobic: {
+  meaning: "Having a fear or aversion to something.",
+  pos: "adjective",
+},
+phoneme: {
+  meaning: "The smallest unit of sound in a language that distinguishes meaning.",
+  pos: "noun",
+},
+"phonemics": {
+  meaning: "The study of phonemes and their relationships in a language.",
+  pos: "noun",
+},
+"phoniatrics": {
+  meaning: "The branch of medicine dealing with voice disorders.",
+  pos: "noun",
+},
+phonolite: {
+  meaning: "A fine‑grained volcanic rock with a high alkali content.",
+  pos: "noun",
+},
+phonology: {
+  meaning: "The branch of linguistics dealing with the systematic organization of sounds in languages.",
+  pos: "noun",
+},
+"phosgene": {
+  meaning: "A colourless gas used as a chemical weapon in the First World War.",
+  pos: "noun",
+},
+photoelectric: {
+  meaning: "Relating to the emission of electrons when light strikes a surface.",
+  pos: "adjective",
+},
+"photojournalism": {
+  meaning: "The use of photographs in reporting news stories.",
+  pos: "noun",
+},
+photometer: {
+  meaning: "An instrument for measuring the intensity of light.",
+  pos: "noun",
+},
+photon: {
+  meaning: "A particle of light or other electromagnetic radiation.",
+  pos: "noun",
+},
+photoperiod: {
+  meaning: "The period of daily illumination that an organism receives.",
+  pos: "noun",
+},
+"photosphere": {
+  meaning: "The luminous surface layer of a star, especially the sun.",
+  pos: "noun",
+},
+"photosensitive": {
+  meaning: "Sensitive to light, especially as a chemical property.",
+  pos: "adjective",
+},
+
+"phototropism": {
+  meaning: "The growth or movement of an organism in response to light.",
+  pos: "noun",
+},
+"phraseology": {
+  meaning: "The way in which words are chosen and arranged, especially in a particular context.",
+  pos: "noun",
+},
+phrenic: {
+  meaning: "Relating to the diaphragm or the nerve that supplies it.",
+  pos: "adjective",
+},
+"phylogenesis": {
+  meaning: "The evolutionary development of a species or group.",
+  pos: "noun",
+},
+phylogeny: {
+  meaning: "The evolutionary history and relationships among organisms.",
+  pos: "noun",
+},
+"physic": {
+  meaning: "Medicine; a curative remedy (archaic).",
+  pos: "noun",
+},
+"physiognomy": {
+  meaning: "A person's facial features or expression, especially as indicative of character.",
+  pos: "noun",
+},
+"physiological": {
+  meaning: "Relating to the normal functioning of living organisms.",
+  pos: "adjective",
+},
+"physiotherapist": {
+  meaning: "A practitioner of physical therapy for rehabilitation.",
+  pos: "noun",
+},
+phytochemical: {
+  meaning: "A chemical compound of plant origin, often with health benefits.",
+  pos: "noun",
+},
+phytoplankton: {
+  meaning: "Microscopic plants and algae that float in aquatic environments.",
+  pos: "noun",
+},
+"pianissimo": {
+  meaning: "Very softly (music).",
+  pos: "adverb",
+},
+piazza: {
+  meaning: "A public square or marketplace, especially in Italy.",
+  pos: "noun",
+},
+pica: {
+  meaning: "A craving for non‑food substances, such as dirt or paper.",
+  pos: "noun",
+},
+picador: {
+  meaning: "A mounted bullfighter who provokes the bull with a lance.",
+  pos: "noun",
+},
+pichiciego: {
+  meaning: "A small South American armadillo with a pink shell.",
+  pos: "noun",
+},
+pickleball: {
+  meaning: "A racket sport played on a court with a perforated ball.",
+  pos: "noun",
+},
+pickpocketing: {
+  meaning: "The act of stealing from a person's pocket or bag.",
+  pos: "noun",
+},
+picot: {
+  meaning: "A small loop or edge on lace or fabric, often decorative.",
+  pos: "noun",
+},
+"picturesqueness": {
+  meaning: "The quality of being visually attractive, like a painting.",
+  pos: "noun",
+},
+piebald: {
+  meaning: "Having irregular patches of two colours, typically black and white.",
+  pos: "adjective",
+},
+piecemeal: {
+  meaning: "Gradually, in stages, or one piece at a time.",
+  pos: "adverb",
+},
+pied: {
+  meaning: "Having patches of two or more colours; parti‑coloured.",
+  pos: "adjective",
+},
+piercing: {
+  meaning: "Penetrating, sharp, or shrill; also the act of making a hole.",
+  pos: "adjective",
+},
+pietà: {
+  meaning: "A depiction of the Virgin Mary holding the dead body of Jesus.",
+  pos: "noun",
+},
+piezoelectric: {
+  meaning: "Relating to the production of electricity by pressure on a crystal.",
+  pos: "adjective",
+},
+piffle: {
+  meaning: "Nonsense; trivial or foolish talk.",
+  pos: "noun",
+},
+pigmentary: {
+  meaning: "Relating to or containing pigment.",
+  pos: "adjective",
+},
+pigmentation: {
+  meaning: "The natural colouring of tissue, especially of the skin.",
+  pos: "noun",
+},
+pigpen: {
+  meaning: "A pen for keeping pigs; also a messy place.",
+  pos: "noun",
+},
+"pilaster": {
+  meaning: "A rectangular column attached to a wall, often decorative.",
+  pos: "noun",
+},
+pileated: {
+  meaning: "Having a crest or tuft, like a pileated woodpecker.",
+  pos: "adjective",
+},
+
+pilocarpine: {
+  meaning: "An alkaloid used to treat glaucoma and dry mouth.",
+  pos: "noun",
+},
+pilotage: {
+  meaning: "The act of piloting a ship or aircraft; also a fee for piloting.",
+  pos: "noun",
+},
+pinball: {
+  meaning: "A game in which players shoot a steel ball on a tilted table, scoring points by hitting targets.",
+  pos: "noun",
+},
+pineal: {
+  meaning: "Relating to the pineal gland, a small endocrine gland in the brain.",
+  pos: "adjective",
+},
+pinewood: {
+  meaning: "A forest of pine trees; also the wood of the pine tree.",
+  pos: "noun",
+},
+pinion: {
+  meaning: "To restrain or bind a person's arms; also a bird's wing or a gear.",
+  pos: "verb",
+},
+pinkie: {
+  meaning: "The little finger.",
+  pos: "noun",
+},
+pinniped: {
+  meaning: "A marine mammal with flippers, such as a seal or walrus.",
+  pos: "noun",
+},
+pintail: {
+  meaning: "A type of duck with a pointed tail.",
+  pos: "noun",
+},
+pinworm: {
+  meaning: "A small parasitic worm that infects the large intestine.",
+  pos: "noun",
+},
+pioneering: {
+  meaning: "Involving new ideas or methods; original and trailblazing.",
+  pos: "adjective",
+},
+"piousness": {
+  meaning: "The quality of being devout or deeply religious.",
+  pos: "noun",
+},
+"pipefish": {
+  meaning: "A long, slender fish with a tubular snout, related to sea horses.",
+  pos: "noun",
+},
+
+piquant: {
+  meaning: "Pleasantly sharp or spicy; stimulating or intriguing.",
+  pos: "adjective",
+},
+pique: {
+  meaning: "A feeling of irritation or resentment from wounded pride.",
+  pos: "noun",
+},
+piracy: {
+  meaning: "The practice of attacking and robbing ships at sea; also the illegal copying of software.",
+  pos: "noun",
+},
+pirouette: {
+  meaning: "A rapid spin of the body on one foot, as in ballet.",
+  pos: "noun",
+},
+"piscatorial": {
+  meaning: "Relating to fishing or fishermen.",
+  pos: "adjective",
+},
+"pistachio": {
+  meaning: "A greenish nut with a hard shell, often used in confectionery.",
+  pos: "noun",
+},
+"pistil": {
+  meaning: "The female reproductive organ of a flower, consisting of the ovary, style, and stigma.",
+  pos: "noun",
+},
+"pitcher plant": {
+  meaning: "A carnivorous plant with a deep cavity filled with digestive fluid.",
+  pos: "noun",
+},
+"pithiness": {
+  meaning: "The quality of being brief and forceful; conciseness.",
+  pos: "noun",
+},
+piton: {
+  meaning: "A metal spike driven into rock or ice as a support for a climber.",
+  pos: "noun",
+},
+  
+pixelated: {
+  meaning: "Having a blocky appearance, as if composed of pixels.",
+  pos: "adjective",
+},
+pixilation: {
+  meaning: "The effect of displaying an image as an array of large pixels.",
+  pos: "noun",
+},
+placatory: {
+  meaning: "Intended to appease or pacify.",
+  pos: "adjective",
+},
+"placebo effect": {
+  meaning: "A beneficial effect produced by a placebo, especially from a patient's expectation.",
+  pos: "noun",
+},
+placentation: {
+  meaning: "The arrangement of placenta in the uterus, or its attachment in a plant.",
+  pos: "noun",
+},
+"plagiarist": {
+  meaning: "A person who plagiarizes; a literary thief.",
+  pos: "noun",
+},
+plaint: {
+  meaning: "A complaint; a plaintiff's statement in a lawsuit.",
+  pos: "noun",
+},
+planarian: {
+  meaning: "A flatworm of the class Turbellaria, often used in regeneration studies.",
+  pos: "noun",
+},
+plankton: {
+  meaning: "Small organisms that drift in water, serving as a food source for aquatic life.",
+  pos: "noun",
+},
+plantain: {
+  meaning: "A starchy banana used in cooking; also a low‑growing weed.",
+  pos: "noun",
+},
+
+"plasmolysis": {
+  meaning: "The shrinking of a plant cell due to water loss by osmosis.",
+  pos: "noun",
+},
+"plasterboard": {
+  meaning: "A board made of plaster with paper covering, used for interior walls.",
+  pos: "noun",
+},
+"plasticine": {
+  meaning: "A soft, mouldable substance used for modelling; modelling clay.",
+  pos: "noun",
+},
+"plasticizer": {
+  meaning: "A substance added to plastic to increase flexibility.",
+  pos: "noun",
+},
+
+"plausibility": {
+  meaning: "The quality of appearing reasonable or probable.",
+  pos: "noun",
+},
+playbill: {
+  meaning: "A poster or program for a theatrical performance.",
+  pos: "noun",
+},
+playwright: {
+  meaning: "A person who writes plays.",
+  pos: "noun",
+},
+pleading: {
+  meaning: "A formal statement of a legal claim or defense.",
+  pos: "noun",
+},
+"pleasurable": {
+  meaning: "Pleasant; giving enjoyment.",
+  pos: "adjective",
+},
+plebe: {
+  meaning: "A first‑year student at a U.S. military or naval academy.",
+  pos: "noun",
+},
+pleiotropy: {
+  meaning: "The phenomenon where one gene influences multiple traits.",
+  pos: "noun",
+},
+
+pleomorphic: {
+  meaning: "Existing in multiple forms or shapes.",
+  pos: "adjective",
+},
+
+pleural: {
+  meaning: "Relating to the pleura, the membrane around the lungs.",
+  pos: "adjective",
+},
+pleuritic: {
+  meaning: "Relating to or suffering from pleurisy.",
+  pos: "adjective",
+},
+"plexus": {
+  meaning: "A network of nerves or blood vessels in the body.",
+  pos: "noun",
+},
+pliability: {
+  meaning: "The quality of being easily bent or flexible.",
+  pos: "noun",
+},
+plodding: {
+  meaning: "Slow and laborious; boringly persistent.",
+  pos: "adjective",
+},
+plotter: {
+  meaning: "A person who devises a plot or scheme; also a device for drawing.",
+  pos: "noun",
+},
+plough: {
+  meaning: "A farm implement for turning soil; to cut the soil (variant spelling).",
+  pos: "noun",
+},
+plover: {
+  meaning: "A shorebird with a short tail and a short bill, often found on beaches.",
+  pos: "noun",
+},
+"pluckiness": {
+  meaning: "Courage and determination; spirit.",
+  pos: "noun",
+},
+"plug‑ugly": {
+  meaning: "A violent thug or ruffian; also very ugly.",
+  pos: "noun",
+},
+plummeting: {
+  meaning: "Falling sharply or rapidly.",
+  pos: "adjective",
+},
+"plumpness": {
+  meaning: "The quality of being somewhat fat or full.",
+  pos: "noun",
+},
+plunderer: {
+  meaning: "A person who steals goods by force, especially during a war.",
+  pos: "noun",
+},
+"plunge pool": {
+  meaning: "A pool of water at the base of a waterfall.",
+  pos: "noun",
+},
+"pluralism": {
+  meaning: "The coexistence of diverse groups, beliefs, or political systems.",
+  pos: "noun",
+},
+plutocrat: {
+  meaning: "A wealthy person who wields political influence.",
+  pos: "noun",
+},
+plywood: {
+  meaning: "A manufactured wood product made of thin layers glued together.",
+  pos: "noun",
+},
+pneumococcal: {
+  meaning: "Relating to the bacterium Streptococcus pneumoniae.",
+  pos: "adjective",
+},
+"pneumoconiosis": {
+  meaning: "A lung disease caused by inhalation of dust particles.",
+  pos: "noun",
+},
+pneumothorax: {
+  meaning: "The presence of air in the pleural cavity, causing lung collapse.",
+  pos: "noun",
+},
+poacher: {
+  meaning: "A person who illegally hunts or catches game; also a cooking utensil.",
+  pos: "noun",
+},
+pock: {
+  meaning: "A small pit or swelling on the skin, as from acne or smallpox.",
+  pos: "noun",
+},
+pocketbook: {
+  meaning: "A small bag or purse; also a book that fits in a pocket.",
+  pos: "noun",
+},
+pockmark: {
+  meaning: "A scar or mark on the skin from a pustule.",
+  pos: "noun",
+},
+"podcast": {
+  meaning: "A digital audio program available for download or streaming.",
+  pos: "noun",
+},
+"podiatrist": {
+  meaning: "A specialist in foot and ankle disorders.",
+  pos: "noun",
+},
+poeticize: {
+  meaning: "To express in a poetic manner; to make poetic.",
+  pos: "verb",
+},
+poignancy: {
+  meaning: "The quality of being deeply moving or affecting.",
+  pos: "noun",
+},
+"poinsettia": {
+  meaning: "A plant with bright red bracts, popular at Christmas.",
+  pos: "noun",
+},
+"pointillism": {
+  meaning: "A painting technique using small dots of colour to form an image.",
+  pos: "noun",
+},
+"poised": {
+  meaning: "Composed, balanced, and ready; also hovering.",
+  pos: "adjective",
+},
+"poisoning": {
+  meaning: "The state of being affected by a poison; also the act of administering poison.",
+  pos: "noun",
+},
+"poisonousness": {
+  meaning: "The quality of being toxic or venomous.",
+  pos: "noun",
+},
+"polar bear": {
+  meaning: "A large white bear native to the Arctic.",
+  pos: "noun",
+},
+
+polecat: {
+  meaning: "A weasel‑like mammal with a strong smell; also a skunk in North America.",
+  pos: "noun",
+},
+"polemicist": {
+  meaning: "A person who engages in controversial debate.",
+  pos: "noun",
+},
+policewoman: {
+  meaning: "A female police officer.",
+  pos: "noun",
+},
+"polio vaccine": {
+  meaning: "A vaccine that provides immunity against poliomyelitis.",
+  pos: "noun",
+},
+politburo: {
+  meaning: "The principal policy‑making committee of a communist party.",
+  pos: "noun",
+},
+"politesse": {
+  meaning: "Formal politeness or courteousness.",
+  pos: "noun",
+},
+pollination: {
+  meaning: "The transfer of pollen from male to female plant parts for fertilization.",
+  pos: "noun",
+},
+pollutant: {
+  meaning: "A substance that contaminates the environment.",
+  pos: "noun",
+},
+"polonaise": {
+  meaning: "A slow, stately Polish dance; also a woman's dress with a fitted waist and long skirt.",
+  pos: "noun",
+},
+"poltergeist": {
+  meaning: "A ghost or supernatural being that causes physical disturbances.",
+  pos: "noun",
+},
+polyandry: {
+  meaning: "The practice of having multiple husbands.",
+  pos: "noun",
+},
+polycarbonate: {
+  meaning: "A strong, durable plastic used in many products.",
+  pos: "noun",
+},
+polyclonal: {
+  meaning: "Derived from different cell lines, especially antibodies.",
+  pos: "adjective",
+},
+"polygynous": {
+  meaning: "Having multiple wives; relating to polygyny.",
+  pos: "adjective",
+},
+polyhedron: {
+  meaning: "A solid figure with many flat faces, such as a cube.",
+  pos: "noun",
+},
+"polymerase": {
+  meaning: "An enzyme that synthesizes long chains of nucleic acids.",
+  pos: "noun",
+},
+polymorphic: {
+  meaning: "Occurring in several different forms.",
+  pos: "adjective",
+},
+polynomial: {
+  meaning: "An expression of more than two algebraic terms.",
+  pos: "noun",
+},
+"polyphemus": {
+  meaning: "A giant Cyclops in Greek mythology.",
+  pos: "noun",
+},
+polyphenol: {
+  meaning: "A type of organic compound with antioxidant properties.",
+  pos: "noun",
+},
+polypropylene: {
+  meaning: "A tough, lightweight plastic used in packaging and textiles.",
+  pos: "noun",
+},
+"polysaccharide": {
+  meaning: "A carbohydrate consisting of many sugar units.",
+  pos: "noun",
+},
+"polyunsaturated": {
+  meaning: "Containing multiple double bonds in a fat or oil molecule.",
+  pos: "adjective",
+},
+polyurethane: {
+  meaning: "A synthetic resin used in varnishes, adhesives, and foams.",
+  pos: "noun",
+},
+pomade: {
+  meaning: "A scented hair‑grooming product with a greasy or waxy base.",
+  pos: "noun",
+},
+
+pommelling: {
+  meaning: "The action of striking or beating with the fists.",
+  pos: "noun",
+},
+pompier: {
+  meaning: "A fireman, especially in France.",
+  pos: "noun",
+},
+pompon: {
+  meaning: "A decorative ball of fluff or feathers, often used as a charm.",
+  pos: "noun",
+},
+poncho: {
+  meaning: "A piece of fabric with a slit for the head, worn as a cape.",
+  pos: "noun",
+},
+"ponderosa": {
+  meaning: "A large pine tree (Pinus ponderosa) native to western North America.",
+  pos: "noun",
+},
+pontoon: {
+  meaning: "A flat‑bottomed boat or hollow cylinder used to support a bridge or floating structure.",
+  pos: "noun",
+},
+popinjay: {
+  meaning: "A vain or talkative person; also a parrot.",
+  pos: "noun",
+},
+"poppy seed": {
+  meaning: "The seed of the poppy plant, used in baking.",
+  pos: "noun",
+},
+
+porcine: {
+  meaning: "Relating to pigs.",
+  pos: "adjective",
+},
+poriferan: {
+  meaning: "A member of the phylum Porifera (sponges).",
+  pos: "noun",
+},
+pornography: {
+  meaning: "Visual or written material intended to elicit sexual arousal.",
+  pos: "noun",
+},
+"porosity": {
+  meaning: "The quality of being porous; having small holes.",
+  pos: "noun",
+},
+porringer: {
+  meaning: "A small bowl or cup for soup or porridge.",
+  pos: "noun",
+},
+"portcullis": {
+  meaning: "A heavy grating or door lowered to block a gateway.",
+  pos: "noun",
+},
+portend: {
+  meaning: "To be an omen of; to signify beforehand.",
+  pos: "verb",
+},
+portent: {
+  meaning: "A sign or warning that something important is about to happen.",
+  pos: "noun",
+},
+"portentous": {
+  meaning: "Ominous; having great significance.",
+  pos: "adjective",
+},
+
+portico: {
+  meaning: "A porch or covered entrance with columns.",
+  pos: "noun",
+},
+portmanteau: {
+  meaning: "A large travelling bag; also a blend of two words (like 'smog').",
+  pos: "noun",
+},
+portrayal: {
+  meaning: "The act of depicting or representing in art or literature.",
+  pos: "noun",
+},
+"poseidon": {
+  meaning: "The Greek god of the sea, earthquakes, and horses.",
+  pos: "noun",
+},
+"posit": {
+  meaning: "To assume or put forward as a fact or basis of argument.",
+  pos: "verb",
+},
+"positional": {
+  meaning: "Relating to position or placement.",
+  pos: "adjective",
+},
+"positiveity": {
+  meaning: "The state of being positive; optimism or certainty.",
+  pos: "noun",
+},
+"positron": {
+  meaning: "The antiparticle of an electron, with a positive charge.",
+  pos: "noun",
+},
+"possibilism": {
+  meaning: "The theory that the environment sets limits but does not determine human actions.",
+  pos: "noun",
+},
+"postbellum": {
+  meaning: "Occurring after a war, especially the American Civil War.",
+  pos: "adjective",
+},
+"postboy": {
+  meaning: "A messenger or a boy who rides post horses.",
+  pos: "noun",
+},
+"postdoctoral": {
+  meaning: "Relating to study or research after a doctorate.",
+  pos: "adjective",
+},
+"postfix": {
+  meaning: "A suffix; an affix placed after a word.",
+  pos: "noun",
+},
+"posthumous": {
+  meaning: "Occurring or published after a person's death.",
+  pos: "adjective",
+},
+"postlude": {
+  meaning: "A concluding piece of music, especially after a church service.",
+  pos: "noun",
+},
+"postmark": {
+  meaning: "A mark stamped on mail indicating the date and place of mailing.",
+  pos: "noun",
+},
+"postmaster": {
+  meaning: "The manager of a post office.",
+  pos: "noun",
+},
+"postmillennial": {
+  meaning: "Relating to the time after the millennium.",
+  pos: "adjective",
+},
+"postmodern": {
+  meaning: "Relating to a style of art and literature that reacts against modernism.",
+  pos: "adjective",
+},
+"postulant": {
+  meaning: "A candidate, especially for admission into a religious order.",
+  pos: "noun",
+},
+"postulator": {
+  meaning: "One who postulates; also an official who advocates a cause for canonization.",
+  pos: "noun",
+},
+potentilla: {
+  meaning: "A plant of the rose family with yellow flowers, also called cinquefoil.",
+  pos: "noun",
+},
+pothole: {
+  meaning: "A depression in a road surface; also a hole in a cave.",
+  pos: "noun",
+},
+
+potpourri: {
+  meaning: "A mixture of dried petals and spices for scent; also a medley.",
+  pos: "noun",
+},
+"potsherd": {
+  meaning: "A fragment of broken pottery.",
+  pos: "noun",
+},
+"potters": {
+  meaning: "People who make pottery; also a verb meaning to occupy oneself casually.",
+  pos: "noun",
+},
+poult: {
+  meaning: "A young domestic fowl, especially a turkey or chicken.",
+  pos: "noun",
+},
+poulterer: {
+  meaning: "A person who sells poultry.",
+  pos: "noun",
+},
+
+poundage: {
+  meaning: "A charge or tax per pound of weight; also a weight measured in pounds.",
+  pos: "noun",
+},
+pouring: {
+  meaning: "Flowing or streaming copiously; also the act of pouring.",
+  pos: "adjective",
+},
+"poverty‑stricken": {
+  meaning: "Extremely poor.",
+  pos: "adjective",
+},
+powdered: {
+  meaning: "Reduced to powder; covered with powder.",
+  pos: "adjective",
+},
+"powerhouse": {
+  meaning: "A person or thing of great energy or strength.",
+  pos: "noun",
+},
+"powerlessness": {
+  meaning: "The state of lacking power, authority, or ability.",
+  pos: "noun",
+},
+practicability: {
+  meaning: "The quality of being feasible or usable.",
+  pos: "noun",
+},
+practicum: {
+  meaning: "A practical course of study, often in a professional field.",
+  pos: "noun",
+},
+"pragmatism": {
+  meaning: "A practical approach to problems and affairs.",
+  pos: "noun",
+},
+"prairie dog": {
+  meaning: "A burrowing rodent of the North American plains.",
+  pos: "noun",
+},
+praline: {
+  meaning: "A confection made from nuts and caramelized sugar.",
+  pos: "noun",
+},
+"prankster": {
+  meaning: "A person who plays practical jokes.",
+  pos: "noun",
+},
+pratfall: {
+  meaning: "A fall onto one's buttocks, often used for comic effect.",
+  pos: "noun",
+},
+prayerful: {
+  meaning: "Given to or expressing prayer; devout.",
+  pos: "adjective",
+},
+"pre‑emptive": {
+  meaning: "Taken in anticipation of an enemy action.",
+  pos: "adjective",
+},
+preachify: {
+  meaning: "To preach excessively or in a tedious manner.",
+  pos: "verb",
+},
+preachy: {
+  meaning: "Tending to preach or moralize in a dull manner.",
+  pos: "adjective",
+},
+"preadolescent": {
+  meaning: "Relating to the period before adolescence.",
+  pos: "adjective",
+},
+
+prearrange: {
+  meaning: "To arrange in advance.",
+  pos: "verb",
+},
+prebend: {
+  meaning: "The stipend attached to a canon's position in a cathedral.",
+  pos: "noun",
+},
+
+"precancerous": {
+  meaning: "Relating to a condition that may develop into cancer.",
+  pos: "adjective",
+},
+"precariousness": {
+  meaning: "The state of being dangerously insecure or unstable.",
+  pos: "noun",
+},
+precautionary: {
+  meaning: "Intended to prevent harm or danger.",
+  pos: "adjective",
+},
+
+precedential: {
+  meaning: "Setting a precedent; serving as an example.",
+  pos: "adjective",
+},
+preceptor: {
+  meaning: "A teacher or instructor, especially in a school or religious setting.",
+  pos: "noun",
+},
+
+precipitant: {
+  meaning: "A substance that causes a precipitate to form; also hasty.",
+  pos: "noun",
+},
+"precipitous": {
+  meaning: "Sheer and steep; done without careful consideration.",
+  pos: "adjective",
+},
+"precis": {
+  meaning: "A summary or abstract of a text.",
+  pos: "noun",
+},
+preclinical: {
+  meaning: "Relating to the stage before clinical testing, especially of drugs.",
+  pos: "adjective",
+},
+
+precocity: {
+  meaning: "The quality of being prematurely developed.",
+  pos: "noun",
+},
+precognitive: {
+  meaning: "Having foreknowledge of future events.",
+  pos: "adjective",
+},
+preconceive: {
+  meaning: "To form an opinion or idea beforehand.",
+  pos: "verb",
+},
+
+"predestinate": {
+  meaning: "To determine beforehand, especially by divine will.",
+  pos: "verb",
+},
+predetermine: {
+  meaning: "To decide or settle in advance.",
+  pos: "verb",
+},
+predicable: {
+  meaning: "Capable of being predicated or stated of something.",
+  pos: "adjective",
+},
+
+"predispose": {
+  meaning: "To make someone prone to a condition or behaviour.",
+  pos: "verb",
+},
+"prednisone": {
+  meaning: "A synthetic corticosteroid used to treat inflammation and allergies.",
+  pos: "noun",
+},
+preemie: {
+  meaning: "A premature baby.",
+  pos: "noun",
+},
+
+preferment: {
+  meaning: "Advancement or promotion, especially in a profession.",
+  pos: "noun",
+},
+prefigure: {
+  meaning: "To foreshadow or anticipate.",
+  pos: "verb",
+},
+prefrontal: {
+  meaning: "Situated in the front part of the forebrain.",
+  pos: "adjective",
+},
+pregnancy: {
+  meaning: "The state of carrying a developing embryo or fetus.",
+  pos: "noun",
+},
+pregnant: {
+  meaning: "Carrying a developing fetus; also full of meaning.",
+  pos: "adjective",
+},
+"prehensile": {
+  meaning: "Able to grasp or wrap around, as a tail.",
+  pos: "adjective",
+},
+"prehistory": {
+  meaning: "The period of time before written records.",
+  pos: "noun",
+},
+prejudge: {
+  meaning: "To form a judgment before knowing all the facts.",
+  pos: "verb",
+},
+prejudicial: {
+  meaning: "Causing harm or injury; detrimental.",
+  pos: "adjective",
+},
+prelate: {
+  meaning: "A high‑ranking ecclesiastical dignitary.",
+  pos: "noun",
+},
+
+premedical: {
+  meaning: "Relating to studies taken before medical school.",
+  pos: "adjective",
+},
+"premenstrual": {
+  meaning: "Occurring before menstruation.",
+  pos: "adjective",
+},
+premie: {
+  meaning: "A premature baby (variant).",
+  pos: "noun",
+},
+première: {
+  meaning: "The first performance or showing of a play, film, etc.",
+  pos: "noun",
+},
+
+premonitory: {
+  meaning: "Giving a warning or foretelling something.",
+  pos: "adjective",
+},
+prenatal: {
+  meaning: "Existing or occurring before birth.",
+  pos: "adjective",
+},
+preoccupation: {
+  meaning: "The state of being absorbed in thought; a mental preoccupation.",
+  pos: "noun",
+},
+
+preparative: {
+  meaning: "Serving to prepare; a preparatory step.",
+  pos: "adjective",
+},
+preparatory: {
+  meaning: "Serving to prepare; introductory.",
+  pos: "adjective",
+},
+preponderant: {
+  meaning: "Greater in influence, number, or importance.",
+  pos: "adjective",
+},
+
+"prepossessing": {
+  meaning: "Attractive, appealing, or impressive.",
+  pos: "adjective",
+},
+
+"presbyopia": {
+  meaning: "Long‑sightedness caused by loss of elasticity of the lens of the eye, typically in middle age.",
+  pos: "noun",
+},
+
+"prescient": {
+  meaning: "Having or showing knowledge of events before they take place.",
+  pos: "adjective",
+},
+
+"prescriptive": {
+  meaning: "Laying down rules or standards; normative.",
+  pos: "adjective",
+},
+
+"presentable": {
+  meaning: "Looking clean, neat, or appropriate for meeting people.",
+  pos: "adjective",
+},
+
+"preservationist": {
+  meaning: "A person who advocates for the protection of historic buildings or natural areas.",
+  pos: "noun",
+},
+"preservative": {
+  meaning: "A substance used to preserve food or other perishables.",
+  pos: "noun",
+},
+
+"presidency": {
+  meaning: "The office or term of a president.",
+  pos: "noun",
+},
+
+"pressroom": {
+  meaning: "A room where a printing press is operated or where journalists gather.",
+  pos: "noun",
+},
+"pressurize": {
+  meaning: "To subject to pressure, especially inside an aircraft or chamber.",
+  pos: "verb",
+},
+"prestidigitation": {
+  meaning: "Sleight of hand; magic tricks performed with the hands.",
+  pos: "noun",
+},
+
+"prestigious": {
+  meaning: "Inspiring respect and admiration; having high status.",
+  pos: "adjective",
+},
+"presumable": {
+  meaning: "Able to be assumed or taken for granted.",
+  pos: "adjective",
+},
+
+pretence: {
+  meaning: "A false display of feelings or intentions; a pretext.",
+  pos: "noun",
+},
+"pretension": {
+  meaning: "A claim or aspiration to a quality or status.",
+  pos: "noun",
+},
+
+preternatural: {
+  meaning: "Beyond what is normal or natural; supernatural.",
+  pos: "adjective",
+},
+pretrial: {
+  meaning: "Occurring before a trial in court.",
+  pos: "adjective",
+},
+
+prevaricate: {
+  meaning: "To speak or act in an evasive way; to lie.",
+  pos: "verb",
+},
+
+preventive: {
+  meaning: "Intended to stop something from happening.",
+  pos: "adjective",
+},
+
+priapic: {
+  meaning: "Relating to a phallus or male sexual potency.",
+  pos: "adjective",
+},
+"priceless": {
+  meaning: "So valuable that no price can be set; also extremely amusing.",
+  pos: "adjective",
+},
+prickly: {
+  meaning: "Covered with prickles; also irritable or touchy.",
+  pos: "adjective",
+},
+prideful: {
+  meaning: "Having an excessively high opinion of oneself.",
+  pos: "adjective",
+},
+"priestess": {
+  meaning: "A female priest, especially of a pagan religion.",
+  pos: "noun",
+},
+"priggish": {
+  meaning: "Self‑righteously moralistic or fussy.",
+  pos: "adjective",
+},
+primacy: {
+  meaning: "The state of being first or most important.",
+  pos: "noun",
+},
+primipara: {
+  meaning: "A woman who gives birth for the first time.",
+  pos: "noun",
+},
+
+principality: {
+  meaning: "A state ruled by a prince; also a territory.",
+  pos: "noun",
+},
+principium: {
+  meaning: "A fundamental principle or origin (archaic).",
+  pos: "noun",
+},
+principled: {
+  meaning: "Acting in accordance with moral principles.",
+  pos: "adjective",
+},
+printmaker: {
+  meaning: "An artist who creates prints from a plate or block.",
+  pos: "noun",
+},
+prioritize: {
+  meaning: "To designate or treat as more important than others.",
+  pos: "verb",
+},
+"prismatoid": {
+  meaning: "A polyhedron whose faces are all parallelograms.",
+  pos: "noun",
+},
+"prisoner's dilemma": {
+  meaning: "A situation in game theory where two individuals might not cooperate even if it is in their best interest.",
+  pos: "noun",
+},
+privateer: {
+  meaning: "A privately owned armed ship authorized to attack enemy vessels.",
+  pos: "noun",
+},
+
+privatization: {
+  meaning: "The transfer of a business from government to private ownership.",
+  pos: "noun",
+},
+
+privileged: {
+  meaning: "Having special rights or advantages.",
+  pos: "adjective",
+},
+"privy council": {
+  meaning: "A body of advisors to a monarch.",
+  pos: "noun",
+},
+prizefight: {
+  meaning: "A boxing match fought for prize money.",
+  pos: "noun",
+},
+proactive: {
+  meaning: "Creating or controlling a situation rather than just responding.",
+  pos: "adjective",
+},
+
+proband: {
+  meaning: "The individual from whom a family's medical history is traced.",
+  pos: "noun",
+},
+
+probationary: {
+  meaning: "Relating to a trial period.",
+  pos: "adjective",
+},
+probative: {
+  meaning: "Having the quality of proving or testing.",
+  pos: "adjective",
+},
+
+"probiotics": {
+  meaning: "Beneficial microorganisms used to improve digestive health.",
+  pos: "noun",
+},
+
+"proboscis": {
+  meaning: "A long, flexible snout or trunk, as of an elephant or tapir.",
+  pos: "noun",
+},
+procedural: {
+  meaning: "Relating to a procedure or established process.",
+  pos: "adjective",
+},
+
+"procession": {
+  meaning: "A group of people moving in an orderly manner, especially for a ceremony.",
+  pos: "noun",
+},
+"processor": {
+  meaning: "A machine or person that processes; a computer's CPU.",
+  pos: "noun",
+},
+
+"procrastinator": {
+  meaning: "A person who habitually delays or puts off tasks.",
+  pos: "noun",
+},
+procreant: {
+  meaning: "Related to reproduction; generative.",
+  pos: "adjective",
+},
+procurator: {
+  meaning: "An agent or official representing another, especially in law.",
+  pos: "noun",
+},
+prodromal: {
+  meaning: "Relating to an early symptom or stage of a disease.",
+  pos: "adjective",
+},
+producer: {
+  meaning: "A person or thing that produces; also a film or music producer.",
+  pos: "noun",
+},
+productivity: {
+  meaning: "The rate at which goods or services are produced.",
+  pos: "noun",
+},
+"profaneness": {
+  meaning: "The quality of being disrespectful toward sacred things.",
+  pos: "noun",
+},
+"professorship": {
+  meaning: "The position or rank of a professor.",
+  pos: "noun",
+},
+proficiency: {
+  meaning: "A high degree of competence or skill.",
+  pos: "noun",
+},
+profitability: {
+  meaning: "The ability to generate profit.",
+  pos: "noun",
+},
+profligate: {
+  meaning: "Recklessly extravagant or wasteful; also morally dissolute.",
+  pos: "adjective",
+},
+profundity: {
+  meaning: "Great depth of insight or knowledge.",
+  pos: "noun",
+},
+"profusion": {
+  meaning: "An abundance; a large quantity.",
+  pos: "noun",
+},
+"progesterone": {
+  meaning: "A steroid hormone involved in the menstrual cycle and pregnancy.",
+  pos: "noun",
+},
+"prognosticate": {
+  meaning: "To predict or foretell, especially of a disease's outcome.",
+  pos: "verb",
+},
+programmer: {
+  meaning: "A person who writes computer programs.",
+  pos: "noun",
+},
+"progression": {
+  meaning: "A sequence of steps or events; gradual advancement.",
+  pos: "noun",
+},
+
+prohibitive: {
+  meaning: "So high or expensive as to prevent purchase or use.",
+  pos: "adjective",
+},
+projectile: {
+  meaning: "An object propelled by force, especially from a weapon.",
+  pos: "noun",
+},
+projection: {
+  meaning: "The act of projecting; a forecast; also a mental defense mechanism.",
+  pos: "noun",
+},
+prokaryote: {
+  meaning: "A single‑celled organism without a nucleus (e.g., bacteria).",
+  pos: "noun",
+},
+"prolapse": {
+  meaning: "The displacement of an organ from its normal position.",
+  pos: "noun",
+},
+proletariat: {
+  meaning: "The working class, especially those who earn a living by manual labour.",
+  pos: "noun",
+},
+proliferation: {
+  meaning: "Rapid increase in numbers or spread.",
+  pos: "noun",
+},
+prolificacy: {
+  meaning: "The quality of being productive or fruitful.",
+  pos: "noun",
+},
+
+prolongation: {
+  meaning: "The act of lengthening or extending in time.",
+  pos: "noun",
+},
+
+promethium: {
+  meaning: "A radioactive rare‑earth element (Pm).",
+  pos: "noun",
+},
+prominence: {
+  meaning: "The state of being important or noticeable; a protuberance.",
+  pos: "noun",
+},
+"promiscuity": {
+  meaning: "The practice of having casual sexual relationships.",
+  pos: "noun",
+},
+"promissory": {
+  meaning: "Containing or conveying a promise.",
+  pos: "adjective",
+},
+promontory: {
+  meaning: "A high point of land extending into a body of water.",
+  pos: "noun",
+},
+
+promptitude: {
+  meaning: "The quality of being prompt; quickness.",
+  pos: "noun",
+},
+promulgator: {
+  meaning: "A person who makes a law or decree known.",
+  pos: "noun",
+},
+
+pronouncement: {
+  meaning: "A formal or official announcement or declaration.",
+  pos: "noun",
+},
+
+proofread: {
+  meaning: "To read and correct written material for errors.",
+  pos: "verb",
+},
+"propagandist": {
+  meaning: "A person who spreads propaganda.",
+  pos: "noun",
+},
+propagation: {
+  meaning: "The act of reproducing or spreading.",
+  pos: "noun",
+},
+propellant: {
+  meaning: "A substance that propels something, especially fuel for a rocket.",
+  pos: "noun",
+},
+propeller: {
+  meaning: "A mechanical device with blades that rotates to propel a ship or aircraft.",
+  pos: "noun",
+},
+
+propernoun: {
+  meaning: "A noun denoting a particular person, place, or thing.",
+  pos: "noun",
+},
+propertied: {
+  meaning: "Owning property; having assets.",
+  pos: "adjective",
+},
+
+prophetic: {
+  meaning: "Relating to or characteristic of a prophet.",
+  pos: "adjective",
+},
+"prophylaxis": {
+  meaning: "Action taken to prevent disease.",
+  pos: "noun",
+},
+
+propitiation: {
+  meaning: "The action of appeasing or gaining favour with a deity.",
+  pos: "noun",
+},
+
+proportional: {
+  meaning: "Corresponding in size or amount to something else.",
+  pos: "adjective",
+},
+
+"proprietress": {
+  meaning: "A female proprietor.",
+  pos: "noun",
+},
+proprioception: {
+  meaning: "The sense of the relative position of one's own body parts.",
+  pos: "noun",
+},
+
+"proscenium": {
+  meaning: "The arch or frame separating the stage from the auditorium.",
+  pos: "noun",
+},
+
+"prosecution": {
+  meaning: "The instituting of legal proceedings against someone; also the prosecuting side.",
+  pos: "noun",
+},
+"proselytize": {
+  meaning: "To convert someone to a religion or cause.",
+  pos: "verb",
+},
+"prosody": {
+  meaning: "The patterns of rhythm and sound in poetry.",
+  pos: "noun",
+},
+"prosopagnosia": {
+  meaning: "Face blindness; difficulty recognizing familiar faces.",
+  pos: "noun",
+},
+
+"prostaglandin": {
+  meaning: "A hormone‑like substance involved in inflammation and blood flow.",
+  pos: "noun",
+},
+
+"prosthesis": {
+  meaning: "An artificial device that replaces a missing body part.",
+  pos: "noun",
+},
+"prosthetics": {
+  meaning: "The branch of medicine dealing with artificial limbs.",
+  pos: "noun",
+},
+
+"prostration": {
+  meaning: "The act of lying face down in submission or exhaustion.",
+  pos: "noun",
+},
+
+protectorate: {
+  meaning: "A state that is controlled and protected by another.",
+  pos: "noun",
+},
+protege: {
+  meaning: "A person who is guided and supported by an older, more experienced person.",
+  pos: "noun",
+},
+"proteinaceous": {
+  meaning: "Consisting of or containing protein.",
+  pos: "adjective",
+},
+"proteolysis": {
+  meaning: "The breakdown of proteins into peptides and amino acids.",
+  pos: "noun",
+},
+"protestation": {
+  meaning: "A formal declaration or statement of objection.",
+  pos: "noun",
+},
+prothorax: {
+  meaning: "The anterior segment of an insect's thorax.",
+  pos: "noun",
+},
+
+"protohistory": {
+  meaning: "The period between prehistory and the earliest written records.",
+  pos: "noun",
+},
+
+protozoan: {
+  meaning: "A single‑celled eukaryotic organism (e.g., amoeba).",
+  pos: "noun",
+},
+
+protractor: {
+  meaning: "A device for measuring angles.",
+  pos: "noun",
+},
+"protrusion": {
+  meaning: "A thing that projects from a surface.",
+  pos: "noun",
+},
+protuberance: {
+  meaning: "A swelling or rounded projection.",
+  pos: "noun",
+},
+"proudness": {
+  meaning: "The state of being proud; arrogance.",
+  pos: "noun",
+},
+
+provident: {
+  meaning: "Providing for future needs; frugal.",
+  pos: "adjective",
+},
+providential: {
+  meaning: "Occurring by divine intervention or luck.",
+  pos: "adjective",
+},
+
+"provincialism": {
+  meaning: "Narrow, parochial outlook; a local expression.",
+  pos: "noun",
+},
+"proviso": {
+  meaning: "A condition or stipulation in a document.",
+  pos: "noun",
+},
+provocateur: {
+  meaning: "A person who provokes others, especially by inciting conflict.",
+  pos: "noun",
+},
+
+"proxemics": {
+  meaning: "The study of human use of space and distance in communication.",
+  pos: "noun",
+},
+
+prudery: {
+  meaning: "Excessive modesty or prudishness.",
+  pos: "noun",
+},
+
+prurigo: {
+  meaning: "A chronic skin disease causing severe itching.",
+  pos: "noun",
+},
+"pruritus": {
+  meaning: "Itching of the skin.",
+  pos: "noun",
+},
+"psalmody": {
+  meaning: "The singing of psalms in worship.",
+  pos: "noun",
+},
+"pseudo": {
+  meaning: "Not genuine; spurious; false.",
+  pos: "adjective",
+},
+"pseudocode": {
+  meaning: "An informal high‑level description of a program's logic.",
+  pos: "noun",
+},
+
+"psilocybin": {
+  meaning: "A hallucinogenic compound found in certain mushrooms.",
+  pos: "noun",
+},
+"psyche": {
+  meaning: "The human soul, mind, or spirit.",
+  pos: "noun",
+},
+"psychiatric": {
+  meaning: "Relating to the treatment of mental disorders.",
+  pos: "adjective",
+},
+
+"psychoactive": {
+  meaning: "Affecting the mind or behaviour.",
+  pos: "adjective",
+},
+"psychokinesis": {
+  meaning: "The purported ability to move objects with the mind.",
+  pos: "noun",
+},
+"psychological": {
+  meaning: "Relating to the mind and behaviour.",
+  pos: "adjective",
+},
+"psychometric": {
+  meaning: "Relating to the measurement of mental abilities.",
+  pos: "adjective",
+},
+"psychomotor": {
+  meaning: "Relating to the interaction of mental and physical processes.",
+  pos: "adjective",
+},
+"psychoneurosis": {
+  meaning: "A mental disorder with anxiety or obsessional symptoms.",
+  pos: "noun",
+},
+"psychotic": {
+  meaning: "Relating to psychosis; having a severe mental illness.",
+  pos: "adjective",
+},
+"psychrometer": {
+  meaning: "An instrument for measuring atmospheric humidity.",
+  pos: "noun",
+},
+"psychrotroph": {
+  meaning: "An organism that grows at low temperatures.",
+  pos: "noun",
+},
+pterodactyl: {
+  meaning: "A prehistoric flying reptile of the late Jurassic period.",
+  pos: "noun",
+},
+"pterosaur": {
+  meaning: "An extinct flying reptile of the Mesozoic era.",
+  pos: "noun",
+},
+ptomaine: {
+  meaning: "A toxic compound produced by decay in food.",
+  pos: "noun",
+},
+ptyalin: {
+  meaning: "An enzyme in saliva that begins the digestion of starch.",
+  pos: "noun",
+},
+"pubescence": {
+  meaning: "The state of reaching puberty or having fine, soft hair.",
+  pos: "noun",
+},
+
+publican: {
+  meaning: "An innkeeper or tax collector in ancient Rome.",
+  pos: "noun",
+},
+"publicist": {
+  meaning: "A person who promotes public interest in a person or product.",
+  pos: "noun",
+},
+
+publicly: {
+  meaning: "In a public manner; openly.",
+  pos: "adverb",
+},
+"publisher": {
+  meaning: "A person or company that produces and distributes books, magazines, etc.",
+  pos: "noun",
+},
+puck: {
+  meaning: "A disc used in ice hockey; also a mischievous spirit.",
+  pos: "noun",
+},
+"puckish": {
+  meaning: "Playfully mischievous.",
+  pos: "adjective",
+},
+pudendal: {
+  meaning: "Relating to the external genitalia.",
+  pos: "adjective",
+},
+puerperal: {
+  meaning: "Relating to childbirth or the period after delivery.",
+  pos: "adjective",
+},
+puff: {
+  meaning: "A short burst of air or smoke; also a pastry.",
+  pos: "noun",
+},
+puffery: {
+  meaning: "Exaggerated praise or promotion.",
+  pos: "noun",
+},
+"pugilism": {
+  meaning: "The art of boxing.",
+  pos: "noun",
+},
+pugnacity: {
+  meaning: "The quality of being combative or aggressive.",
+  pos: "noun",
+},
+"puissance": {
+  meaning: "Power, might, or strength.",
+  pos: "noun",
+},
+pulchritude: {
+  meaning: "Beauty, especially of a woman.",
+  pos: "noun",
+},
+
+"pulmonologist": {
+  meaning: "A physician specializing in lung diseases.",
+  pos: "noun",
+},
+"pulsatile": {
+  meaning: "Characterized by a rhythmic pulsation.",
+  pos: "adjective",
+},
+"pulsation": {
+  meaning: "A rhythmic beat or vibration.",
+  pos: "noun",
+},
+"pulsejet": {
+  meaning: "A type of jet engine that operates in pulses.",
+  pos: "noun",
+},
+pulverization: {
+  meaning: "The act of crushing or grinding to powder.",
+  pos: "noun",
+},
+"pumiceous": {
+  meaning: "Of or resembling pumice; light and porous.",
+  pos: "adjective",
+},
+"pumpkin pie": {
+  meaning: "A pie made with pumpkin filling.",
+  pos: "noun",
+},
+punctilio: {
+  meaning: "A fine point of etiquette or ceremony.",
+  pos: "noun",
+},
+"punctilious": {
+  meaning: "Showing great attention to detail or correct behaviour.",
+  pos: "adjective",
+},
+punctuality: {
+  meaning: "The quality of being on time.",
+  pos: "noun",
+},
+punctuational: {
+  meaning: "Relating to punctuation.",
+  pos: "adjective",
+},
+punctuator: {
+  meaning: "A person or device that adds punctuation.",
+  pos: "noun",
+},
+pungency: {
+  meaning: "The quality of having a strong, sharp smell or taste.",
+  pos: "noun",
+},
+"punishable": {
+  meaning: "Liable to punishment.",
+  pos: "adjective",
+},
+
+punkah: {
+  meaning: "A large, fan‑like device used for cooling rooms.",
+  pos: "noun",
+},
+"punster": {
+  meaning: "A person who makes puns.",
+  pos: "noun",
+},
+pupate: {
+  meaning: "To develop into a pupa.",
+  pos: "verb",
+},
+pupillary: {
+  meaning: "Relating to the pupil of the eye.",
+  pos: "adjective",
+},
+puppetry: {
+  meaning: "The art of making and performing with puppets.",
+  pos: "noun",
+},
+"puppyish": {
+  meaning: "Resembling a puppy; playful and lively.",
+  pos: "adjective",
+},
+
+purdah: {
+  meaning: "The seclusion of women from public observation, especially in South Asia.",
+  pos: "noun",
+},
+purgation: {
+  meaning: "The act of purging or cleansing, especially of the bowels.",
+  pos: "noun",
+},
+purgatorial: {
+  meaning: "Relating to purgatory; cleansing or expiatory.",
+  pos: "adjective",
+},
+purification: {
+  meaning: "The process of making something pure.",
+  pos: "noun",
+},
+puriform: {
+  meaning: "Resembling pus.",
+  pos: "adjective",
+},
+puritanical: {
+  meaning: "Strict and austere in morals or religion.",
+  pos: "adjective",
+},
+purlieu: {
+  meaning: "The area near or surrounding a place; also a border area.",
+  pos: "noun",
+},
+purloiner: {
+  meaning: "A thief; a person who steals.",
+  pos: "noun",
+},
+purport: {
+  meaning: "To claim or appear to be; also the meaning or substance.",
+  pos: "verb",
+},
+purported: {
+  meaning: "Said to be true, though not proven.",
+  pos: "adjective",
+},
+"purposeful": {
+  meaning: "Having a clear purpose or determination.",
+  pos: "adjective",
+},
+"purposive": {
+  meaning: "Having a purpose or intention.",
+  pos: "adjective",
+},
+
+"purser": {
+  meaning: "An officer on a ship responsible for financial accounts.",
+  pos: "noun",
+},
+"pursuant": {
+  meaning: "In accordance with; following.",
+  pos: "adjective",
+},
+
+"pursy": {
+  meaning: "Short‑winded; also fat or plump.",
+  pos: "adjective",
+},
+purulence: {
+  meaning: "The condition of producing pus.",
+  pos: "noun",
+},
+purveyor: {
+  meaning: "A supplier of goods or services.",
+  pos: "noun",
+},
+"pushover": {
+  meaning: "A person who is easily influenced or defeated.",
+  pos: "noun",
+},
+"pusillanimous": {
+  meaning: "Lacking courage; cowardly.",
+  pos: "adjective",
+},
+"pustule": {
+  meaning: "A small, pus‑filled blister on the skin.",
+  pos: "noun",
+},
+
+putrefaction: {
+  meaning: "The decay process of organic matter.",
+  pos: "noun",
+},
+"putrescence": {
+  meaning: "The state of rotting or decay.",
+  pos: "noun",
+},
+"putsch": {
+  meaning: "A sudden attempt to overthrow a government, often by the military.",
+  pos: "noun",
+},
+
+puttee: {
+  meaning: "A strip of cloth wound around the lower leg for protection.",
+  pos: "noun",
+},
+putterer: {
+  meaning: "A person who occupies themselves in a leisurely way.",
+  pos: "noun",
+},
+
+puzzlement: {
+  meaning: "The state of being perplexed.",
+  pos: "noun",
+},
+
+pyjama: {
+  meaning: "A garment for sleeping (singular form).",
+  pos: "noun",
+},
+
+pyorrhea: {
+  meaning: "Inflammation and discharge of pus from the gums.",
+  pos: "noun",
+},
+
+pyretic: {
+  meaning: "Relating to fever.",
+  pos: "adjective",
+},
+"pyroclastic": {
+  meaning: "Composed of rock fragments expelled by a volcanic eruption.",
+  pos: "adjective",
+},
+pyrogen: {
+  meaning: "A substance that induces fever.",
+  pos: "noun",
+},
+pyromania: {
+  meaning: "An obsessive impulse to set things on fire.",
+  pos: "noun",
+},
+"pyrotechnics": {
+  meaning: "The art of making and using fireworks; a display of fireworks.",
+  pos: "noun",
+},
+pyroxene: {
+  meaning: "A group of dark‑colored rock‑forming minerals.",
+  pos: "noun",
+},
+pyrrhic: {
+  meaning: "A victory gained at too great a cost.",
+  pos: "adjective",
+},
+
+pyx: {
+  meaning: "A small container for holding the consecrated host in a church.",
+  pos: "noun",
+},
 };
