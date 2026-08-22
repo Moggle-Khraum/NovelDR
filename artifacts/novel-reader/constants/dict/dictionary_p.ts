@@ -2037,7 +2037,7 @@ peptidase: {
   meaning: "An enzyme that breaks down peptides into amino acids.",
   pos: "noun",
 },
-peptide bond: {
+"peptide bond": {
   meaning: "The chemical bond linking amino acids in a protein chain.",
   pos: "noun",
 },
@@ -2093,7 +2093,7 @@ perilymph: {
   meaning: "The fluid within the inner ear, filling the space between the bony and membranous labyrinths.",
   pos: "noun",
 },
-periodic table: {
+"periodic table": {
   meaning: "A tabular arrangement of chemical elements, ordered by atomic number.",
   pos: "noun",
 },
@@ -2585,7 +2585,7 @@ pistil: {
   meaning: "The female reproductive organ of a flower, consisting of the ovary, style, and stigma.",
   pos: "noun",
 },
-pitcher plant: {
+"pitcher plant": {
   meaning: "A carnivorous plant with a deep cavity filled with digestive fluid.",
   pos: "noun",
 },
@@ -2610,7 +2610,7 @@ placatory: {
   meaning: "Intended to appease or pacify.",
   pos: "adjective",
 },
-placebo effect: {
+"placebo effect": {
   meaning: "A beneficial effect produced by a placebo, especially from a patient's expectation.",
   pos: "noun",
 },
@@ -2742,7 +2742,7 @@ plunderer: {
   meaning: "A person who steals goods by force, especially during a war.",
   pos: "noun",
 },
-plunge pool: {
+"plunge pool": {
   meaning: "A pool of water at the base of a waterfall.",
   pos: "noun",
 },
@@ -2822,7 +2822,7 @@ poisonousness: {
   meaning: "The quality of being toxic or venomous.",
   pos: "noun",
 },
-polar bear: {
+"polar bear": {
   meaning: "A large white bear native to the Arctic.",
   pos: "noun",
 },
@@ -2839,7 +2839,7 @@ policewoman: {
   meaning: "A female police officer.",
   pos: "noun",
 },
-polio vaccine: {
+"polio vaccine": {
   meaning: "A vaccine that provides immunity against poliomyelitis.",
   pos: "noun",
 },
@@ -2956,7 +2956,7 @@ popinjay: {
   meaning: "A vain or talkative person; also a parrot.",
   pos: "noun",
 },
-poppy seed: {
+"poppy seed": {
   meaning: "The seed of the poppy plant, used in baking.",
   pos: "noun",
 },
@@ -3148,7 +3148,7 @@ pragmatism: {
   meaning: "A practical approach to problems and affairs.",
   pos: "noun",
 },
-prairie dog: {
+"prairie dog": {
   meaning: "A burrowing rodent of the North American plains.",
   pos: "noun",
 },
@@ -3502,7 +3502,7 @@ prismatoid: {
   meaning: "A polyhedron whose faces are all parallelograms.",
   pos: "noun",
 },
-prisoner's dilemma: {
+"prisoner's dilemma": {
   meaning: "A situation in game theory where two individuals might not cooperate even if it is in their best interest.",
   pos: "noun",
 },
@@ -3520,7 +3520,7 @@ privileged: {
   meaning: "Having special rights or advantages.",
   pos: "adjective",
 },
-privy council: {
+"privy council": {
   meaning: "A body of advisors to a monarch.",
   pos: "noun",
 },
@@ -4068,7 +4068,7 @@ pumiceous: {
   meaning: "Of or resembling pumice; light and porous.",
   pos: "adjective",
 },
-pumpkin pie: {
+"pumpkin pie": {
   meaning: "A pie made with pumpkin filling.",
   pos: "noun",
 },
