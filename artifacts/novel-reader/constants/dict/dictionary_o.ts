@@ -2536,11 +2536,7 @@ export const DICTIONARY_O: Record<string, DictionaryEntry> = {
       "A device that transmits sound through bone, used in hearing aids.",
     pos: "noun",
   },
-  ostensible: {
-    meaning:
-      "Stated or appearing to be true, but not necessarily so; professed.",
-    pos: "adjective",
-  },
+  
   ostensoria: {
     meaning: "A monstrance; a vessel for displaying the consecrated Host.",
     pos: "noun",
