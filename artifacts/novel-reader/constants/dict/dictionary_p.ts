@@ -1989,10 +1989,6 @@ peerage: {
   meaning: "The body of nobles or the noble class; also the rank or title of a peer.",
   pos: "noun",
 },
-pell‑mell: {
-  meaning: "In a confused or hurried manner; headlong.",
-  pos: "adverb",
-},
 pellagra: {
   meaning: "A deficiency disease caused by lack of niacin, leading to dermatitis, diarrhoea, and dementia.",
   pos: "noun",
@@ -3124,7 +3120,7 @@ pouring: {
   meaning: "Flowing or streaming copiously; also the act of pouring.",
   pos: "adjective",
 },
-poverty‑stricken: {
+"poverty‑stricken": {
   meaning: "Extremely poor.",
   pos: "adjective",
 },
@@ -3172,7 +3168,7 @@ prayerful: {
   meaning: "Given to or expressing prayer; devout.",
   pos: "adjective",
 },
-pre‑emptive: {
+"pre‑emptive": {
   meaning: "Taken in anticipation of an enemy action.",
   pos: "adjective",
 },
