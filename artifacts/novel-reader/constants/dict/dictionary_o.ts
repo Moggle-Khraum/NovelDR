@@ -2400,10 +2400,7 @@ export const DICTIONARY_O: Record<string, DictionaryEntry> = {
       "The profession of examining eyes and prescribing corrective lenses.",
     pos: "noun",
   },
-  opulence: {
-    meaning: "Great wealth, abundance, or luxury; rich display.",
-    pos: "noun",
-  },
+  
   oracularly: {
     meaning: "In a prophetic or mysterious manner; like an oracle.",
     pos: "adverb",
