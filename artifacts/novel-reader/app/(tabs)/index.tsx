@@ -86,8 +86,8 @@ const RECENTLY_ADDED_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 const FILTER_TABS: { key: NovelStatus | "all"; label: string }[] = [
   { key: "reading", label: "Reading" },
   { key: "unread", label: "Unread" },
-  { key: "completed", label: "Completed" },
   { key: "all", label: "All" },
+  { key: "completed", label: "Completed" },
 ];
 
 // ── NovelCard ────────────────────────────────────────────────────────────────
