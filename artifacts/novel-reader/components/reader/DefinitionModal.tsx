@@ -229,7 +229,14 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                    }}
+                  >
                     <Text
                       style={{
                         fontSize: 18,
@@ -367,7 +374,14 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                    }}
+                  >
                     <Text
                       style={{
                         fontSize: 18,
