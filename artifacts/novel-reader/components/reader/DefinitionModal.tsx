@@ -8,10 +8,8 @@ import {
   ActivityIndicator,
   Pressable,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DictionaryEntry } from "@/constants/dictionary";
 import { OnlineDefinition } from "@/hooks/reader/useDictionary";
-import { trimRootWord } from "@/lib/trimRootWord";
 
 interface DefinitionModalProps {
   visible: boolean;
@@ -39,7 +37,6 @@ export const DefinitionModal = React.memo(
     onDismiss,
     onOpenGlossary,
   }: DefinitionModalProps) => {
-    const insets = useSafeAreaInsets();
     const [showLoading, setShowLoading] = useState(false);
 
     useEffect(() => {
@@ -229,14 +226,7 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      flex: 1,
-                    }}
-                  >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                     <Text
                       style={{
                         fontSize: 18,
@@ -374,14 +364,7 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      flex: 1,
-                    }}
-                  >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                     <Text
                       style={{
                         fontSize: 18,
