@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -7,11 +7,11 @@ import {
   Text,
   ActivityIndicator,
   Pressable,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DictionaryEntry } from '@/constants/dictionary';
-import { OnlineDefinition } from '@/hooks/reader/useDictionary';
-import { trimRootWord } from '@/lib/trimRootWord';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DictionaryEntry } from "@/constants/dictionary";
+import { OnlineDefinition } from "@/hooks/reader/useDictionary";
+import { trimRootWord } from "@/lib/trimRootWord";
 
 interface DefinitionModalProps {
   visible: boolean;
@@ -67,9 +67,9 @@ export const DefinitionModal = React.memo(
         <Pressable
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            justifyContent: 'center',
-            alignItems: 'center',
+            backgroundColor: "rgba(0, 0, 0, 0.45)",
+            justifyContent: "center",
+            alignItems: "center",
             paddingHorizontal: 16,
           }}
           onPress={onDismiss}
@@ -77,12 +77,12 @@ export const DefinitionModal = React.memo(
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: "white",
               borderRadius: 16,
-              width: '100%',
+              width: "100%",
               maxWidth: 420,
-              maxHeight: '80%',
-              overflow: 'hidden',
+              maxHeight: "80%",
+              overflow: "hidden",
             }}
           >
             {/* EMPTY STATE: Word not found locally */}
@@ -91,14 +91,14 @@ export const DefinitionModal = React.memo(
                 style={{
                   paddingHorizontal: 32,
                   paddingVertical: 32,
-                  alignItems: 'center',
+                  alignItems: "center",
                 }}
               >
                 <Text
                   style={{
                     fontSize: 20,
-                    fontWeight: '500',
-                    color: '#1a1a1a',
+                    fontWeight: "500",
+                    color: "#1a1a1a",
                     marginBottom: 8,
                   }}
                 >
@@ -107,7 +107,7 @@ export const DefinitionModal = React.memo(
                 <Text
                   style={{
                     fontSize: 13,
-                    color: '#666',
+                    color: "#666",
                     marginBottom: 24,
                   }}
                 >
@@ -117,10 +117,10 @@ export const DefinitionModal = React.memo(
                 {/* Two-Column Button Grid */}
                 <View
                   style={{
-                    display: 'flex',
-                    flexDirection: 'row',
+                    display: "flex",
+                    flexDirection: "row",
                     gap: 12,
-                    width: '100%',
+                    width: "100%",
                     marginBottom: 24,
                   }}
                 >
@@ -130,20 +130,20 @@ export const DefinitionModal = React.memo(
                     style={{
                       flex: 1,
                       paddingVertical: 12,
-                      backgroundColor: isConnected ? '#667eea' : '#ccc',
+                      backgroundColor: isConnected ? "#667eea" : "#ccc",
                       borderRadius: 8,
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
                     <Text
                       style={{
-                        fontWeight: '500',
+                        fontWeight: "500",
                         fontSize: 14,
-                        color: 'white',
+                        color: "white",
                       }}
                     >
-                      {isConnected ? 'Fetch Meaning' : 'No Internet'}
+                      {isConnected ? "Fetch Meaning" : "No Internet"}
                     </Text>
                   </TouchableOpacity>
 
@@ -155,19 +155,19 @@ export const DefinitionModal = React.memo(
                     style={{
                       flex: 1,
                       paddingVertical: 12,
-                      backgroundColor: 'white',
+                      backgroundColor: "white",
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: '#667eea',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      borderColor: "#667eea",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
                     <Text
                       style={{
-                        fontWeight: '500',
+                        fontWeight: "500",
                         fontSize: 14,
-                        color: '#667eea',
+                        color: "#667eea",
                       }}
                     >
                       Show Glossary
@@ -178,7 +178,7 @@ export const DefinitionModal = React.memo(
                 <Text
                   style={{
                     fontSize: 12,
-                    color: '#999',
+                    color: "#999",
                   }}
                 >
                   Press outside to dismiss
@@ -191,8 +191,8 @@ export const DefinitionModal = React.memo(
               <View
                 style={{
                   paddingVertical: 48,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <ActivityIndicator size="large" color="#667eea" />
@@ -200,7 +200,7 @@ export const DefinitionModal = React.memo(
                   style={{
                     marginTop: 16,
                     fontSize: 14,
-                    color: '#666',
+                    color: "#666",
                   }}
                 >
                   Fetching from Wiktionary…
@@ -211,7 +211,7 @@ export const DefinitionModal = React.memo(
             {/* OFFLINE DICTIONARY: Show offline entry */}
             {entries.length > 0 && (
               <ScrollView
-                style={{ maxHeight: '100%' }}
+                style={{ maxHeight: "100%" }}
                 contentContainerStyle={{ paddingBottom: 16 }}
               >
                 {/* Word Header */}
@@ -220,25 +220,25 @@ export const DefinitionModal = React.memo(
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                     borderBottomWidth: 1,
-                    borderBottomColor: '#f0f0f0',
-                    backgroundColor: '#f9f9f9',
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                    borderBottomColor: "#f0f0f0",
+                    backgroundColor: "#f9f9f9",
+                    flexDirection: "row",
+                    alignItems: "center",
                     gap: 8,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 18,
-                      fontWeight: '500',
-                      color: '#1a1a1a',
+                      fontWeight: "500",
+                      color: "#1a1a1a",
                     }}
                   >
                     {word}
                   </Text>
                   <View
                     style={{
-                      backgroundColor: '#fff8e1',
+                      backgroundColor: "#fff8e1",
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                       borderRadius: 3,
@@ -247,8 +247,8 @@ export const DefinitionModal = React.memo(
                     <Text
                       style={{
                         fontSize: 10,
-                        fontWeight: '600',
-                        color: '#a67c00',
+                        fontWeight: "600",
+                        color: "#a67c00",
                       }}
                     >
                       Offline
@@ -263,35 +263,35 @@ export const DefinitionModal = React.memo(
                       <Text
                         style={{
                           fontSize: 11,
-                          fontWeight: '600',
-                          color: '#666',
-                          textTransform: 'uppercase',
+                          fontWeight: "600",
+                          color: "#666",
+                          textTransform: "uppercase",
                           letterSpacing: 0.5,
                           marginBottom: 8,
                         }}
                       >
                         <View
                           style={{
-                            backgroundColor: '#fff3e0',
+                            backgroundColor: "#fff3e0",
                             paddingHorizontal: 6,
                             paddingVertical: 2,
                           }}
                         >
                           <Text
                             style={{
-                              color: '#e65100',
+                              color: "#e65100",
                               fontSize: 10,
-                              fontWeight: '600',
+                              fontWeight: "600",
                             }}
                           >
-                            {entry.pos || 'Definition'}
+                            {entry.pos || "Definition"}
                           </Text>
                         </View>
                       </Text>
                       <Text
                         style={{
                           fontSize: 13,
-                          color: '#333',
+                          color: "#333",
                           lineHeight: 18,
                         }}
                       >
@@ -308,14 +308,14 @@ export const DefinitionModal = React.memo(
                     paddingTop: 12,
                     paddingBottom: 12,
                     borderTopWidth: 1,
-                    borderTopColor: '#f0f0f0',
+                    borderTopColor: "#f0f0f0",
                     marginTop: 12,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 12,
-                      color: '#999',
+                      color: "#999",
                     }}
                   >
                     Press outside to dismiss
@@ -327,7 +327,7 @@ export const DefinitionModal = React.memo(
             {/* ONLINE DEFINITION: Show fetched entry */}
             {onlineEntry && (
               <ScrollView
-                style={{ maxHeight: '100%' }}
+                style={{ maxHeight: "100%" }}
                 contentContainerStyle={{ paddingBottom: 16 }}
               >
                 {/* Word Header */}
@@ -336,25 +336,25 @@ export const DefinitionModal = React.memo(
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                     borderBottomWidth: 1,
-                    borderBottomColor: '#f0f0f0',
-                    backgroundColor: '#f9f9f9',
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                    borderBottomColor: "#f0f0f0",
+                    backgroundColor: "#f9f9f9",
+                    flexDirection: "row",
+                    alignItems: "center",
                     gap: 8,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 18,
-                      fontWeight: '500',
-                      color: '#1a1a1a',
+                      fontWeight: "500",
+                      color: "#1a1a1a",
                     }}
                   >
                     {word}
                   </Text>
                   <View
                     style={{
-                      backgroundColor: '#e3f2fd',
+                      backgroundColor: "#e3f2fd",
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                       borderRadius: 3,
@@ -363,8 +363,8 @@ export const DefinitionModal = React.memo(
                     <Text
                       style={{
                         fontSize: 10,
-                        fontWeight: '600',
-                        color: '#0d47a1',
+                        fontWeight: "600",
+                        color: "#0d47a1",
                       }}
                     >
                       Online
@@ -377,25 +377,25 @@ export const DefinitionModal = React.memo(
                   <Text
                     style={{
                       fontSize: 11,
-                      fontWeight: '600',
-                      color: '#666',
-                      textTransform: 'uppercase',
+                      fontWeight: "600",
+                      color: "#666",
+                      textTransform: "uppercase",
                       letterSpacing: 0.5,
                       marginBottom: 8,
                     }}
                   >
                     <View
                       style={{
-                        backgroundColor: '#fff3e0',
+                        backgroundColor: "#fff3e0",
                         paddingHorizontal: 6,
                         paddingVertical: 2,
                       }}
                     >
                       <Text
                         style={{
-                          color: '#e65100',
+                          color: "#e65100",
                           fontSize: 10,
-                          fontWeight: '600',
+                          fontWeight: "600",
                         }}
                       >
                         {onlineEntry.pos}
@@ -405,7 +405,7 @@ export const DefinitionModal = React.memo(
                   <Text
                     style={{
                       fontSize: 13,
-                      color: '#333',
+                      color: "#333",
                       lineHeight: 20,
                       marginBottom: 16,
                     }}
@@ -421,14 +421,14 @@ export const DefinitionModal = React.memo(
                     paddingTop: 12,
                     paddingBottom: 12,
                     borderTopWidth: 1,
-                    borderTopColor: '#f0f0f0',
+                    borderTopColor: "#f0f0f0",
                     marginTop: 12,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 12,
-                      color: '#999',
+                      color: "#999",
                     }}
                   >
                     ✓ Saved to glossary • Press outside to dismiss
@@ -440,7 +440,7 @@ export const DefinitionModal = React.memo(
         </Pressable>
       </Modal>
     );
-  }
+  },
 );
 
-DefinitionModal.displayName = 'DefinitionModal';
+DefinitionModal.displayName = "DefinitionModal";
