@@ -264,7 +264,8 @@ export const GlossaryListModal = React.memo(
               }}
             >
               {sortedEntries.length} word{sortedEntries.length !== 1 ? "s" : ""}
-              {sortedEntries.length === 0 && " — Start saving to build your glossary"}
+              {sortedEntries.length === 0 &&
+                " — Start saving to build your glossary"}
             </Text>
           </View>
 
