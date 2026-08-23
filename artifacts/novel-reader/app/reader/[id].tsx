@@ -61,6 +61,7 @@ import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
 import { useGlossary } from "@/hooks/reader/useGlossary";
 import { DefinitionModal } from "@/components/reader/DefinitionModal";
+import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -348,6 +349,9 @@ export default function ReaderScreen() {
   const [showFontModal, setShowFontModal] = useState(false);
   const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
+
+  // ── Glossary list modal (view all saved words) ──
+  const [showGlossaryListModal, setShowGlossaryListModal] = useState(false);
 
   // ── Dictionary lookup (double-tap a word) ──
   const {
@@ -2631,6 +2635,23 @@ export default function ReaderScreen() {
           isConnected={dictIsConnected}
           onFetch={handleFetchOnline}
           onDismiss={dismissDictModal}
+          onOpenGlossary={() => {
+            dismissDictModal();
+            setShowGlossaryListModal(true);
+          }}
+        />
+
+        {/* ─── GLOSSARY LIST MODAL ─── */}
+        <GlossaryListModal
+          visible={showGlossaryListModal}
+          entries={glossary.getAllEntries()}
+          onEntryPress={(entry) => {
+            // Close glossary list and show definition in the dictionary modal
+            setShowGlossaryListModal(false);
+            handleWordDoubleTap(entry.word);
+          }}
+          onDismiss={() => setShowGlossaryListModal(false)}
+          onRemoveEntry={glossary.removeEntry}
         />
       </View>
     </ContentWrapper>
