@@ -1,7 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { useState, useCallback } from "react";
 
-const GLOSSARY_DIR = `${FileSystem.DocumentDirectory}.library`;
+const GLOSSARY_DIR = `${FileSystem.documentDirectory}.library`;
 const GLOSSARY_FILE = `${GLOSSARY_DIR}/user_glossary.json`;
 const GLOSSARY_METADATA = `${GLOSSARY_DIR}/glossary_metadata.json`;
 
@@ -205,7 +205,7 @@ export function useGlossary() {
       const filename = `user_glossary_${timestamp}.json`;
 
       // Save to Downloads or share
-      const exportPath = `${FileSystem.DocumentDirectory}${filename}`;
+      const exportPath = `${FileSystem.documentDirectory}${filename}`;
       await FileSystem.writeAsStringAsync(exportPath, content);
 
       return exportPath;
