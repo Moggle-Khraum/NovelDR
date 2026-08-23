@@ -22,14 +22,16 @@ export interface OnlineDefinition {
   source: "online" | "glossary";
 }
 
-async function fetchWiktionaryDefinition(word: string): Promise<OnlineDefinition | null> {
+async function fetchWiktionaryDefinition(
+  word: string,
+): Promise<OnlineDefinition | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
     const response = await fetch(
       `${WIKTIONARY_API}/${encodeURIComponent(word)}`,
-      { signal: controller.signal }
+      { signal: controller.signal },
     );
 
     clearTimeout(timeoutId);
@@ -52,14 +54,16 @@ async function fetchWiktionaryDefinition(word: string): Promise<OnlineDefinition
   }
 }
 
-async function fetchFreeDefinition(word: string): Promise<OnlineDefinition | null> {
+async function fetchFreeDefinition(
+  word: string,
+): Promise<OnlineDefinition | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
     const response = await fetch(
       `${FREE_DICT_API}/${encodeURIComponent(word)}`,
-      { signal: controller.signal }
+      { signal: controller.signal },
     );
 
     clearTimeout(timeoutId);
@@ -91,44 +95,48 @@ export function useDictionary() {
   const isConnected = useNetInfo().isConnected;
   const { getEntry: getGlossaryEntry, addEntry: addToGlossary } = useGlossary();
 
-  const lookup = useCallback((raw: string) => {
-    const clean = cleanWord(raw);
-    if (clean.length < 2) return;
+  const lookup = useCallback(
+    (raw: string) => {
+      const clean = cleanWord(raw);
+      if (clean.length < 2) return;
 
-    const candidates = getSearchCandidates(clean);
+      const candidates = getSearchCandidates(clean);
 
-    // 1. Check offline dictionary
-    for (const candidate of candidates) {
-      const found = SIMPLE_DICTIONARY[candidate as keyof typeof SIMPLE_DICTIONARY];
-      if (found && found.length > 0) {
+      // 1. Check offline dictionary
+      for (const candidate of candidates) {
+        const found =
+          SIMPLE_DICTIONARY[candidate as keyof typeof SIMPLE_DICTIONARY];
+        if (found && found.length > 0) {
+          setWord(clean);
+          setEntries(found);
+          setNotFound(false);
+          setOnlineEntry(null);
+          return;
+        }
+      }
+
+      // 2. Check glossary
+      const glossaryEntry = getGlossaryEntry(clean);
+      if (glossaryEntry) {
         setWord(clean);
-        setEntries(found);
+        setEntries([]);
         setNotFound(false);
-        setOnlineEntry(null);
+        setOnlineEntry({
+          meaning: glossaryEntry.meaning,
+          pos: glossaryEntry.pos,
+          source: "glossary",
+        });
         return;
       }
-    }
 
-    // 2. Check glossary
-    const glossaryEntry = getGlossaryEntry(clean);
-    if (glossaryEntry) {
+      // 3. Not found - show empty state ready for online fetch
       setWord(clean);
       setEntries([]);
-      setNotFound(false);
-      setOnlineEntry({
-        meaning: glossaryEntry.meaning,
-        pos: glossaryEntry.pos,
-        source: "glossary",
-      });
-      return;
-    }
-
-    // 3. Not found - show empty state ready for online fetch
-    setWord(clean);
-    setEntries([]);
-    setNotFound(true);
-    setOnlineEntry(null);
-  }, [getGlossaryEntry]);
+      setNotFound(true);
+      setOnlineEntry(null);
+    },
+    [getGlossaryEntry],
+  );
 
   /**
    * Fetch online definition and auto-save to glossary
