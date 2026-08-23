@@ -1,5 +1,5 @@
-import * as FileSystem from 'expo-file-system';
-import { useState, useCallback } from 'react';
+import * as FileSystem from "expo-file-system";
+import { useState, useCallback } from "react";
 
 const GLOSSARY_DIR = `${FileSystem.DocumentDirectory}.library`;
 const GLOSSARY_FILE = `${GLOSSARY_DIR}/user_glossary.json`;
@@ -9,7 +9,7 @@ export interface GlossaryEntry {
   word: string;
   meaning: string;
   pos: string; // part of speech: noun, verb, adjective, etc.
-  source: 'user_added' | 'online';
+  source: "user_added" | "online";
   added_at: number;
   tags?: string[]; // e.g., ['xianxia', 'cultivation']
   root_word?: string; // e.g., 'reflect' for 'reflected'
@@ -30,7 +30,7 @@ async function initializeGlossaryDirs() {
     await FileSystem.makeDirectoryAsync(GLOSSARY_DIR, { intermediates: true });
   } catch (error) {
     // Directory might already exist
-    console.log('Glossary directory initialized');
+    console.log("Glossary directory initialized");
   }
 }
 
@@ -53,9 +53,9 @@ async function readGlossaryFile(): Promise<Record<string, GlossaryEntry>> {
 async function writeGlossaryFile(glossary: Record<string, GlossaryEntry>) {
   await FileSystem.writeAsStringAsync(
     GLOSSARY_FILE,
-    JSON.stringify(glossary, null, 2)
+    JSON.stringify(glossary, null, 2),
   );
-  
+
   // Update metadata
   await updateMetadata(glossary);
 }
@@ -64,20 +64,20 @@ async function writeGlossaryFile(glossary: Record<string, GlossaryEntry>) {
  * Update glossary metadata
  */
 async function updateMetadata(glossary: Record<string, GlossaryEntry>) {
-  const xianxiaCount = Object.values(glossary).filter(e =>
-    e.tags?.includes('xianxia')
+  const xianxiaCount = Object.values(glossary).filter((e) =>
+    e.tags?.includes("xianxia"),
   ).length;
-  
+
   const metadata: GlossaryMetadata = {
     total_entries: Object.keys(glossary).length,
     xianxia_terms: xianxiaCount,
     last_updated: Date.now(),
     version: 1,
   };
-  
+
   await FileSystem.writeAsStringAsync(
     GLOSSARY_METADATA,
-    JSON.stringify(metadata, null, 2)
+    JSON.stringify(metadata, null, 2),
   );
 }
 
@@ -110,7 +110,7 @@ export function useGlossary() {
       setGlossary(data);
       setMetadata(meta);
     } catch (error) {
-      console.error('Error loading glossary:', error);
+      console.error("Error loading glossary:", error);
     } finally {
       setLoading(false);
     }
@@ -127,14 +127,14 @@ export function useGlossary() {
           ...entry,
           added_at: entry.added_at || Date.now(),
         };
-        
+
         setGlossary(updated);
         await writeGlossaryFile(updated);
       } catch (error) {
-        console.error('Error adding to glossary:', error);
+        console.error("Error adding to glossary:", error);
       }
     },
-    [glossary]
+    [glossary],
   );
 
   /**
@@ -145,14 +145,14 @@ export function useGlossary() {
       try {
         const updated = { ...glossary };
         delete updated[word.toLowerCase()];
-        
+
         setGlossary(updated);
         await writeGlossaryFile(updated);
       } catch (error) {
-        console.error('Error removing from glossary:', error);
+        console.error("Error removing from glossary:", error);
       }
     },
-    [glossary]
+    [glossary],
   );
 
   /**
@@ -162,7 +162,7 @@ export function useGlossary() {
     (word: string) => {
       return glossary[word.toLowerCase()];
     },
-    [glossary]
+    [glossary],
   );
 
   /**
@@ -172,18 +172,15 @@ export function useGlossary() {
     (word: string) => {
       return word.toLowerCase() in glossary;
     },
-    [glossary]
+    [glossary],
   );
 
   /**
    * Get all entries (for browsing)
    */
-  const getAllEntries = useCallback(
-    () => {
-      return Object.values(glossary);
-    },
-    [glossary]
-  );
+  const getAllEntries = useCallback(() => {
+    return Object.values(glossary);
+  }, [glossary]);
 
   /**
    * Clear entire glossary (with confirmation)
@@ -194,7 +191,7 @@ export function useGlossary() {
       await FileSystem.deleteAsync(GLOSSARY_FILE, { idempotent: true });
       await FileSystem.deleteAsync(GLOSSARY_METADATA, { idempotent: true });
     } catch (error) {
-      console.error('Error clearing glossary:', error);
+      console.error("Error clearing glossary:", error);
     }
   }, []);
 
@@ -204,16 +201,16 @@ export function useGlossary() {
   const exportGlossary = useCallback(async () => {
     try {
       const content = JSON.stringify(glossary, null, 2);
-      const timestamp = new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toISOString().split("T")[0];
       const filename = `user_glossary_${timestamp}.json`;
-      
+
       // Save to Downloads or share
       const exportPath = `${FileSystem.DocumentDirectory}${filename}`;
       await FileSystem.writeAsStringAsync(exportPath, content);
-      
+
       return exportPath;
     } catch (error) {
-      console.error('Error exporting glossary:', error);
+      console.error("Error exporting glossary:", error);
       return null;
     }
   }, [glossary]);
