@@ -23,6 +23,7 @@ interface DefinitionModalProps {
   isConnected: boolean | null;
   onFetch: () => Promise<void>;
   onDismiss: () => void;
+  onOpenGlossary: () => void;
 }
 
 export const DefinitionModal = React.memo(
@@ -36,6 +37,7 @@ export const DefinitionModal = React.memo(
     isConnected,
     onFetch,
     onDismiss,
+    onOpenGlossary,
   }: DefinitionModalProps) => {
     const insets = useSafeAreaInsets();
     const [showLoading, setShowLoading] = useState(false);
@@ -224,36 +226,58 @@ export const DefinitionModal = React.memo(
                     backgroundColor: "#f9f9f9",
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 8,
+                    justifyContent: "space-between",
                   }}
                 >
-                  <Text
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "500",
+                        color: "#1a1a1a",
+                      }}
+                    >
+                      {word}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: "#fff8e1",
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 3,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: "#a67c00",
+                        }}
+                      >
+                        Offline
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={onOpenGlossary}
                     style={{
-                      fontSize: 18,
-                      fontWeight: "500",
-                      color: "#1a1a1a",
-                    }}
-                  >
-                    {word}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor: "#fff8e1",
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 3,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderWidth: 1,
+                      borderColor: "#667eea",
+                      borderRadius: 6,
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: "600",
-                        color: "#a67c00",
+                        color: "#667eea",
                       }}
                     >
-                      Offline
+                      Glossary
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Definitions from Offline Dictionary */}
@@ -340,36 +364,58 @@ export const DefinitionModal = React.memo(
                     backgroundColor: "#f9f9f9",
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 8,
+                    justifyContent: "space-between",
                   }}
                 >
-                  <Text
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "500",
+                        color: "#1a1a1a",
+                      }}
+                    >
+                      {word}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: "#e3f2fd",
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 3,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: "#0d47a1",
+                        }}
+                      >
+                        Online
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={onOpenGlossary}
                     style={{
-                      fontSize: 18,
-                      fontWeight: "500",
-                      color: "#1a1a1a",
-                    }}
-                  >
-                    {word}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor: "#e3f2fd",
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 3,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderWidth: 1,
+                      borderColor: "#667eea",
+                      borderRadius: 6,
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: "600",
-                        color: "#0d47a1",
+                        color: "#667eea",
                       }}
                     >
-                      Online
+                      Glossary
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Definition Content */}
