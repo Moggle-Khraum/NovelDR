@@ -59,7 +59,7 @@ import { useTTS } from "@/hooks/reader/useTTS";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
-import { useGlossary } from "@/hooks/reader/useGlossary";
+import { useGlossary, GlossaryEntry } from "@/hooks/reader/useGlossary";
 import { DefinitionModal } from "@/components/reader/DefinitionModal";
 import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
 
@@ -2645,7 +2645,7 @@ export default function ReaderScreen() {
         <GlossaryListModal
           visible={showGlossaryListModal}
           entries={glossary.getAllEntries()}
-          onEntryPress={(entry) => {
+          onEntryPress={(entry: GlossaryEntry) => {
             // Close glossary list and show definition in the dictionary modal
             setShowGlossaryListModal(false);
             handleWordDoubleTap(entry.word);
