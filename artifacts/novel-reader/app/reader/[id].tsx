@@ -59,6 +59,8 @@ import { useTTS } from "@/hooks/reader/useTTS";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
+import { useGlossary } from "@/hooks/reader/useGlossary";
+import { DefinitionModal } from "@/components/reader/DefinitionModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -353,9 +355,21 @@ export default function ReaderScreen() {
     entries: dictEntries,
     notFound: dictNotFound,
     isOpen: showDictModal,
+    onlineEntry: dictOnlineEntry,
+    fetching: dictFetching,
+    isConnected: dictIsConnected,
     lookup: handleWordDoubleTap,
+    fetchOnline: handleFetchOnline,
     clear: dismissDictModal,
   } = useDictionary();
+
+  // ── Glossary (persistent user dictionary) ──
+  const glossary = useGlossary();
+
+  // Load glossary on mount
+  useEffect(() => {
+    glossary.loadGlossary();
+  }, []);
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
   const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
@@ -2607,92 +2621,17 @@ export default function ReaderScreen() {
         </Modal>
 
         {/* ─── DICTIONARY LOOKUP MODAL ─── */}
-        <Modal
+        <DefinitionModal
           visible={showDictModal}
-          animationType="fade"
-          transparent
-          onRequestClose={dismissDictModal}
-        >
-          <Pressable style={styles.ttsModalOverlay} onPress={dismissDictModal}>
-            <Pressable
-              style={[
-                styles.ttsHelpModal,
-                { backgroundColor: adaptiveColors.surface },
-              ]}
-              onPress={() => {}}
-            >
-              <View
-                style={[
-                  styles.ttsModalHandle,
-                  { backgroundColor: adaptiveColors.border },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.ttsModalTitle,
-                  { color: adaptiveColors.text, textAlign: "center" },
-                ]}
-              >
-                {dictWord}
-              </Text>
-              {dictNotFound ? (
-                <Text
-                  style={{
-                    color: adaptiveColors.text,
-                    fontSize: 14,
-                    lineHeight: 20,
-                    textAlign: "center",
-                    marginBottom: 20,
-                  }}
-                >
-                  No definition found for this word yet.
-                </Text>
-              ) : (
-                <View style={{ marginBottom: 20 }}>
-                  {dictEntries.map((entry, idx) => (
-                    <View
-                      key={idx}
-                      style={{
-                        marginBottom: idx < dictEntries.length - 1 ? 12 : 0,
-                      }}
-                    >
-                      {entry.pos && (
-                        <Text
-                          style={{
-                            color: adaptiveColors.textSecondary,
-                            fontSize: 12,
-                            fontStyle: "italic",
-                            marginBottom: 4,
-                          }}
-                        >
-                          ({entry.pos})
-                        </Text>
-                      )}
-                      <Text
-                        style={{
-                          color: adaptiveColors.text,
-                          fontSize: 14,
-                          lineHeight: 20,
-                        }}
-                      >
-                        {entry.meaning}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-              <Pressable
-                style={[
-                  styles.closeSearchBtn,
-                  { backgroundColor: adaptiveColors.card },
-                ]}
-                onPress={dismissDictModal}
-              >
-                <Text style={{ color: adaptiveColors.text }}>Dismiss</Text>
-              </Pressable>
-            </Pressable>
-          </Pressable>
-        </Modal>
+          word={dictWord}
+          entries={dictEntries}
+          notFound={dictNotFound}
+          onlineEntry={dictOnlineEntry}
+          fetching={dictFetching}
+          isConnected={dictIsConnected}
+          onFetch={handleFetchOnline}
+          onDismiss={dismissDictModal}
+        />
       </View>
     </ContentWrapper>
   );
