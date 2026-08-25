@@ -22,6 +22,7 @@ interface DefinitionModalProps {
   onFetch: () => Promise<void>;
   onDismiss: () => void;
   onOpenGlossary: () => void;
+  onSaveOfflineEntry?: (word: string, entry: DictionaryEntry) => Promise<void>;
 }
 
 export const DefinitionModal = React.memo(
@@ -36,8 +37,10 @@ export const DefinitionModal = React.memo(
     onFetch,
     onDismiss,
     onOpenGlossary,
+    onSaveOfflineEntry,
   }: DefinitionModalProps) => {
     const [showLoading, setShowLoading] = useState(false);
+    const [savedWord, setSavedWord] = useState<string | null>(null);
 
     useEffect(() => {
       if (fetching) {
@@ -226,14 +229,7 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      flex: 1,
-                    }}
-                  >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                     <Text
                       style={{
                         fontSize: 18,
@@ -329,6 +325,48 @@ export const DefinitionModal = React.memo(
                   ))}
                 </View>
 
+                {/* Save to Glossary Button */}
+                {savedWord !== word && (
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        if (word && entries.length > 0 && onSaveOfflineEntry) {
+                          await onSaveOfflineEntry(word, entries[0]);
+                          setSavedWord(word);
+                        }
+                      }}
+                      style={{
+                        backgroundColor: "#667eea",
+                        paddingVertical: 12,
+                        borderRadius: 8,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: "white", fontSize: 14, fontWeight: "600" }}>
+                        Save to Glossary
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Saved Confirmation */}
+                {savedWord === word && (
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: "#f0f0f0",
+                      marginTop: 12,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: "#4caf50", fontWeight: "600" }}>
+                      ✓ Saved to glossary
+                    </Text>
+                  </View>
+                )}
+
                 {/* Footer */}
                 <View
                   style={{
@@ -371,14 +409,7 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      flex: 1,
-                    }}
-                  >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                     <Text
                       style={{
                         fontSize: 18,
@@ -471,26 +502,52 @@ export const DefinitionModal = React.memo(
                   </Text>
                 </View>
 
-                {/* Footer Note */}
-                <View
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingTop: 12,
-                    paddingBottom: 12,
-                    borderTopWidth: 1,
-                    borderTopColor: "#f0f0f0",
-                    marginTop: 12,
-                  }}
-                >
-                  <Text
+                {/* Footer Note - Only show for fetched online entries */}
+                {onlineEntry?.source === "online" && (
+                  <View
                     style={{
-                      fontSize: 12,
-                      color: "#999",
+                      paddingHorizontal: 16,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: "#f0f0f0",
+                      marginTop: 12,
                     }}
                   >
-                    ✓ Saved to glossary • Press outside to dismiss
-                  </Text>
-                </View>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#4caf50",
+                        fontWeight: "600",
+                      }}
+                    >
+                      ✓ Saved to glossary • Press outside to dismiss
+                    </Text>
+                  </View>
+                )}
+
+                {/* For glossary entries, no save message needed */}
+                {onlineEntry?.source === "glossary" && (
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: "#f0f0f0",
+                      marginTop: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#999",
+                      }}
+                    >
+                      From your glossary • Press outside to dismiss
+                    </Text>
+                  </View>
+                )}
               </ScrollView>
             )}
           </Pressable>
