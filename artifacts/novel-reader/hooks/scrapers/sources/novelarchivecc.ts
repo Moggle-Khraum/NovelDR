@@ -37,7 +37,9 @@ const extractNovelIdFromApiUrl = (url: string): string | null => {
 /** Strip any HTML tags API fields may contain and collapse blank lines. */
 const cleanContent = (text: string): string => {
   if (!text) return "";
-  return decodeEntities(stripTags(text)).replace(/\n\s*\n/g, "\n").trim();
+  return decodeEntities(stripTags(text))
+    .replace(/\n\s*\n/g, "\n")
+    .trim();
 };
 
 export const novelArchiveCcScraper: SourceScraper = {
