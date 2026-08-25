@@ -52,4 +52,39 @@ export const fetchHtmlWithFallback = async (
   }
 };
 
+const JSON_HEADERS = {
+  ...DEFAULT_HEADERS,
+  Accept: "application/json",
+};
+
+/**
+ * Fetch and parse a JSON endpoint, trying direct first then falling back
+ * to a proxy (or vice versa if proxyFirst is set). Throws if both
+ * attempts fail. Sibling to fetchHtmlWithFallback for API-based sources
+ * (e.g. novelarchivecc.ts) rather than HTML-scraped ones.
+ */
+export const fetchJsonWithFallback = async <T = unknown>(
+  url: string,
+  options: FetchOptions = {},
+): Promise<T> => {
+  const buildProxyUrl = options.buildProxyUrl ?? defaultBuildProxyUrl;
+
+  const tryDirect = () =>
+    httpClient.get(url, { headers: JSON_HEADERS }).then((res) => res.data);
+  const tryProxy = () =>
+    httpClient
+      .get(buildProxyUrl(url), { headers: JSON_HEADERS })
+      .then((res) => res.data);
+
+  const [first, second] = options.proxyFirst
+    ? [tryProxy, tryDirect]
+    : [tryDirect, tryProxy];
+
+  try {
+    return await first();
+  } catch (firstError) {
+    return await second();
+  }
+};
+
 export { httpClient };
