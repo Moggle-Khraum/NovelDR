@@ -377,7 +377,7 @@ export default function ReaderScreen() {
       await glossary.addEntry({
         word,
         meaning: entry.meaning,
-        pos: entry.pos,
+        pos: entry.pos || "unknown",
         source: "user_added",
         added_at: Date.now(),
         tags: [],
@@ -397,7 +397,7 @@ export default function ReaderScreen() {
     if (showGlossaryListModal) {
       glossary.loadGlossary();
     }
-  }, [showGlossaryListModal]);
+  }, [showGlossaryListModal, glossary]);
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
   const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
@@ -2669,7 +2669,7 @@ export default function ReaderScreen() {
         {/* ─── GLOSSARY LIST MODAL ─── */}
         <GlossaryListModal
           visible={showGlossaryListModal}
-          entries={glossary.getAllEntries()}
+          entries={glossary.getAllEntries() || []}
           onEntryPress={(entry: GlossaryEntry) => {
             // Close glossary list and show definition in the dictionary modal
             setShowGlossaryListModal(false);
