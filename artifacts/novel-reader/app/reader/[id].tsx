@@ -59,6 +59,7 @@ import { useTTS } from "@/hooks/reader/useTTS";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
+import { DictionaryEntry } from "@/constants/dictionary";
 import { useGlossary, GlossaryEntry } from "@/hooks/reader/useGlossary";
 import { DefinitionModal } from "@/components/reader/DefinitionModal";
 import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
@@ -370,10 +371,33 @@ export default function ReaderScreen() {
   // ── Glossary (persistent user dictionary) ──
   const glossary = useGlossary();
 
+  // Handler for saving offline dictionary entries
+  const handleSaveOfflineEntryToGlossary = useCallback(
+    async (word: string, entry: DictionaryEntry) => {
+      await glossary.addEntry({
+        word,
+        meaning: entry.meaning,
+        pos: entry.pos,
+        source: "user_added",
+        added_at: Date.now(),
+        tags: [],
+      });
+      console.log(`✓ Saved offline entry to glossary: ${word}`);
+    },
+    [glossary],
+  );
+
   // Load glossary on mount
   useEffect(() => {
     glossary.loadGlossary();
   }, []);
+
+  // Reload glossary when opening glossary list modal
+  useEffect(() => {
+    if (showGlossaryListModal) {
+      glossary.loadGlossary();
+    }
+  }, [showGlossaryListModal]);
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
   const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
@@ -2636,9 +2660,10 @@ export default function ReaderScreen() {
           onFetch={handleFetchOnline}
           onDismiss={dismissDictModal}
           onOpenGlossary={() => {
-            dismissDictModal();
+            // Open glossary list WITHOUT closing the definition modal
             setShowGlossaryListModal(true);
           }}
+          onSaveOfflineEntry={handleSaveOfflineEntryToGlossary}
         />
 
         {/* ─── GLOSSARY LIST MODAL ─── */}
