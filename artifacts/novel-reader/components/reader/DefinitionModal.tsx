@@ -229,7 +229,14 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                    }}
+                  >
                     <Text
                       style={{
                         fontSize: 18,
@@ -327,7 +334,13 @@ export const DefinitionModal = React.memo(
 
                 {/* Save to Glossary Button */}
                 {savedWord !== word && (
-                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                  >
                     <TouchableOpacity
                       onPress={async () => {
                         if (word && entries.length > 0 && onSaveOfflineEntry) {
@@ -342,7 +355,13 @@ export const DefinitionModal = React.memo(
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: "white", fontSize: 14, fontWeight: "600" }}>
+                      <Text
+                        style={{
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: "600",
+                        }}
+                      >
                         Save to Glossary
                       </Text>
                     </TouchableOpacity>
@@ -361,7 +380,13 @@ export const DefinitionModal = React.memo(
                       marginTop: 12,
                     }}
                   >
-                    <Text style={{ fontSize: 12, color: "#4caf50", fontWeight: "600" }}>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#4caf50",
+                        fontWeight: "600",
+                      }}
+                    >
                       ✓ Saved to glossary
                     </Text>
                   </View>
@@ -409,7 +434,14 @@ export const DefinitionModal = React.memo(
                     justifyContent: "space-between",
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                    }}
+                  >
                     <Text
                       style={{
                         fontSize: 18,
