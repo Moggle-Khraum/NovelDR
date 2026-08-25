@@ -29,6 +29,7 @@ export const SUPPORTED_SITES = [
   { name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
   { name: "Novel-Bin", baseUrl: "https://novel-bin.com/" },
   { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
+  { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/" },
 ];
 
 export type SiteStatus = "idle" | "checking" | "online" | "offline";
