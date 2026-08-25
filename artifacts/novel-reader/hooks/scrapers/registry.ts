@@ -17,6 +17,7 @@ import { allNovelScraper } from "./sources/allnovel";
 import { novgoScraper } from "./sources/novgo";
 import { freeWebNovelScraper } from "./sources/freewebnovel";
 import { wuxiaworldScraper } from "./sources/wuxiaworld";
+import { novelArchiveCcScraper } from "./sources/novelarchivecc";
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
@@ -31,6 +32,7 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   novgoScraper,
   freeWebNovelScraper,
   wuxiaworldScraper,
+  novelArchiveCcScraper,
 ];
 
 export const findExternalScraper = (url: string): SourceScraper | null => {
