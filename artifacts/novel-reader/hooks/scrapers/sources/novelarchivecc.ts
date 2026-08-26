@@ -38,7 +38,7 @@ const extractNovelIdFromApiUrl = (url: string): string | null => {
 const cleanContent = (text: string, isDescription: boolean = false): string => {
   if (!text) return "";
   let cleaned = decodeEntities(stripTags(text));
-  
+
   // For descriptions/synopsis: preserve newlines, only collapse excessive whitespace
   if (isDescription) {
     cleaned = cleaned
@@ -47,11 +47,9 @@ const cleanContent = (text: string, isDescription: boolean = false): string => {
       .trim();
   } else {
     // For chapter content: collapse blank lines
-    cleaned = cleaned
-      .replace(/\n\s*\n/g, "\n")
-      .trim();
+    cleaned = cleaned.replace(/\n\s*\n/g, "\n").trim();
   }
-  
+
   return cleaned;
 };
 
@@ -90,13 +88,14 @@ export const novelArchiveCcScraper: SourceScraper = {
     const title = novel.title || "Unknown Title";
     const author = novel.author || "Unknown Author";
     const synopsis = cleanContent(novel.description || "", true);
-    
+
     // Make cover URL absolute if it's relative
-    let coverUrl = novel.cover_url || novel.novel_image || novel.image_url || "";
+    let coverUrl =
+      novel.cover_url || novel.novel_image || novel.image_url || "";
     if (coverUrl && !coverUrl.startsWith("http")) {
       coverUrl = `${BASE_URL}${coverUrl.startsWith("/") ? "" : "/"}${coverUrl}`;
     }
-    
+
     const totalChapters = parseInt(novel.total_chapters, 10) || 0;
 
     // The API is chapter-number-indexed rather than link-based, so the
@@ -160,4 +159,3 @@ export const novelArchiveCcScraper: SourceScraper = {
     };
   },
 };
-    
