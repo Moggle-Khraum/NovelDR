@@ -58,6 +58,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novelarrow.com": "NovelArrow",
       "novel-bin.com": "Novel-Bin",
       "novelbin.cc": "NovelBinCC",
+      "novelarchive.cc": "NovelArchiveCC",
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
