@@ -34,12 +34,25 @@ const extractNovelIdFromApiUrl = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
-/** Strip any HTML tags API fields may contain and collapse blank lines. */
-const cleanContent = (text: string): string => {
+/** Strip any HTML tags API fields may contain but preserve formatting for synopsis. */
+const cleanContent = (text: string, isDescription: boolean = false): string => {
   if (!text) return "";
-  return decodeEntities(stripTags(text))
-    .replace(/\n\s*\n/g, "\n")
-    .trim();
+  let cleaned = decodeEntities(stripTags(text));
+  
+  // For descriptions/synopsis: preserve newlines, only collapse excessive whitespace
+  if (isDescription) {
+    cleaned = cleaned
+      .replace(/\n\s*\n\s*\n/g, "\n\n") // Preserve double newlines
+      .replace(/\s+/g, " ") // Collapse runs of spaces but keep single spaces
+      .trim();
+  } else {
+    // For chapter content: collapse blank lines
+    cleaned = cleaned
+      .replace(/\n\s*\n/g, "\n")
+      .trim();
+  }
+  
+  return cleaned;
 };
 
 export const novelArchiveCcScraper: SourceScraper = {
@@ -76,9 +89,14 @@ export const novelArchiveCcScraper: SourceScraper = {
 
     const title = novel.title || "Unknown Title";
     const author = novel.author || "Unknown Author";
-    const synopsis = cleanContent(novel.description || "");
-    const coverUrl =
-      novel.cover_url || novel.novel_image || novel.image_url || "";
+    const synopsis = cleanContent(novel.description || "", true);
+    
+    // Make cover URL absolute if it's relative
+    let coverUrl = novel.cover_url || novel.novel_image || novel.image_url || "";
+    if (coverUrl && !coverUrl.startsWith("http")) {
+      coverUrl = `${BASE_URL}${coverUrl.startsWith("/") ? "" : "/"}${coverUrl}`;
+    }
+    
     const totalChapters = parseInt(novel.total_chapters, 10) || 0;
 
     // The API is chapter-number-indexed rather than link-based, so the
@@ -142,3 +160,4 @@ export const novelArchiveCcScraper: SourceScraper = {
     };
   },
 };
+    
