@@ -54,6 +54,12 @@ export const DefinitionModal = React.memo(
       return null;
     }
 
+    // Keep modal open even if notFound, because we might be fetching online
+    // Only close if: word is null (user dismissed) and no online entry
+    if (!word && !onlineEntry) {
+      return null;
+    }
+
     const handleFetch = async () => {
       await onFetch();
     };
