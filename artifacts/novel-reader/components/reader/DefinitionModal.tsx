@@ -344,7 +344,7 @@ export const DefinitionModal = React.memo(
                       style={{
                         backgroundColor:
                           onlineEntry.source === "saved"
-                            ? "#e8f5e9"  // greenish for saved
+                            ? "#e8f5e9" // greenish for saved
                             : "#e3f2fd", // blueish for online (fallback)
                         paddingHorizontal: 8,
                         paddingVertical: 3,
@@ -355,7 +355,10 @@ export const DefinitionModal = React.memo(
                         style={{
                           fontSize: 10,
                           fontWeight: "600",
-                          color: onlineEntry.source === "saved" ? "#2e7d32" : "#0d47a1",
+                          color:
+                            onlineEntry.source === "saved"
+                              ? "#2e7d32"
+                              : "#0d47a1",
                         }}
                       >
                         {onlineEntry.source === "saved" ? "Saved" : "Online"}
