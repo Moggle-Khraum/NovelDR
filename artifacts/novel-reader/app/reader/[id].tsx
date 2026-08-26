@@ -60,9 +60,7 @@ import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
 import { DictionaryEntry } from "@/constants/dictionary";
-import { useGlossary, GlossaryEntry } from "@/hooks/reader/useGlossary";
 import { DefinitionModal } from "@/components/reader/DefinitionModal";
-import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -351,9 +349,6 @@ export default function ReaderScreen() {
   const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
 
-  // ── Glossary list modal (view all saved words) ──
-  const [showGlossaryListModal, setShowGlossaryListModal] = useState(false);
-
   // ── Dictionary lookup (double-tap a word) ──
   const {
     word: dictWord,
@@ -367,37 +362,6 @@ export default function ReaderScreen() {
     fetchOnline: handleFetchOnline,
     clear: dismissDictModal,
   } = useDictionary();
-
-  // ── Glossary (persistent user dictionary) ──
-  const glossary = useGlossary();
-
-  // Handler for saving offline dictionary entries
-  const handleSaveOfflineEntryToGlossary = useCallback(
-    async (word: string, entry: DictionaryEntry) => {
-      await glossary.addEntry({
-        word,
-        meaning: entry.meaning,
-        pos: entry.pos || "unknown",
-        source: "user_added",
-        added_at: Date.now(),
-        tags: [],
-      });
-      console.log(`✓ Saved offline entry to glossary: ${word}`);
-    },
-    [glossary],
-  );
-
-  // Load glossary on mount
-  useEffect(() => {
-    glossary.loadGlossary();
-  }, []);
-
-  // Reload glossary when opening glossary list modal
-  useEffect(() => {
-    if (showGlossaryListModal) {
-      glossary.loadGlossary();
-    }
-  }, [showGlossaryListModal, glossary]);
 
   // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
   const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
@@ -2659,24 +2623,6 @@ export default function ReaderScreen() {
           isConnected={dictIsConnected}
           onFetch={handleFetchOnline}
           onDismiss={dismissDictModal}
-          onOpenGlossary={() => {
-            // Open glossary list WITHOUT closing the definition modal
-            setShowGlossaryListModal(true);
-          }}
-          onSaveOfflineEntry={handleSaveOfflineEntryToGlossary}
-        />
-
-        {/* ─── GLOSSARY LIST MODAL ─── */}
-        <GlossaryListModal
-          visible={showGlossaryListModal}
-          entries={glossary.getAllEntries() || []}
-          onEntryPress={(entry: GlossaryEntry) => {
-            // Close glossary list and show definition in the dictionary modal
-            setShowGlossaryListModal(false);
-            handleWordDoubleTap(entry.word);
-          }}
-          onDismiss={() => setShowGlossaryListModal(false)}
-          onRemoveEntry={glossary.removeEntry}
         />
       </View>
     </ContentWrapper>
