@@ -7,9 +7,7 @@ import {
   Text,
   Pressable,
   FlatList,
-  SafeAreaView,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlossaryEntry } from "@/hooks/reader/useGlossary";
 
 interface GlossaryListModalProps {
@@ -28,7 +26,6 @@ export const GlossaryListModal = React.memo(
     onDismiss,
     onRemoveEntry,
   }: GlossaryListModalProps) => {
-    const insets = useSafeAreaInsets();
     const [selectedWord, setSelectedWord] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<"recent" | "alpha">("recent");
 
@@ -156,15 +153,30 @@ export const GlossaryListModal = React.memo(
       <Modal
         visible={visible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={onDismiss}
       >
-        <SafeAreaView
+        <Pressable
           style={{
             flex: 1,
-            backgroundColor: "white",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 16,
           }}
+          onPress={onDismiss}
         >
+          <Pressable
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              maxHeight: "80%",
+              width: "90%",
+              maxWidth: 500,
+              overflow: "hidden",
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
           {/* Header */}
           <View
             style={{
@@ -295,7 +307,8 @@ export const GlossaryListModal = React.memo(
               </Text>
             </View>
           )}
-        </SafeAreaView>
+          </Pressable>
+        </Pressable>
       </Modal>
     );
   },

@@ -332,42 +332,6 @@ export const DefinitionModal = React.memo(
                   ))}
                 </View>
 
-                {/* Save to Glossary Button */}
-                {savedWord !== word && (
-                  <View
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                  >
-                    <TouchableOpacity
-                      onPress={async () => {
-                        if (word && entries.length > 0 && onSaveOfflineEntry) {
-                          await onSaveOfflineEntry(word, entries[0]);
-                          setSavedWord(word);
-                        }
-                      }}
-                      style={{
-                        backgroundColor: "#667eea",
-                        paddingVertical: 12,
-                        borderRadius: 8,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "white",
-                          fontSize: 14,
-                          fontWeight: "600",
-                        }}
-                      >
-                        Save to Glossary
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 {/* Saved Confirmation */}
                 {savedWord === word && (
                   <View
