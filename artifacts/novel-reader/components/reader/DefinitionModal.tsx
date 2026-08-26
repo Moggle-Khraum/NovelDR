@@ -21,8 +21,6 @@ interface DefinitionModalProps {
   isConnected: boolean | null;
   onFetch: () => Promise<void>;
   onDismiss: () => void;
-  onOpenGlossary: () => void;
-  onSaveOfflineEntry?: (word: string, entry: DictionaryEntry) => Promise<void>;
 }
 
 export const DefinitionModal = React.memo(
@@ -36,11 +34,8 @@ export const DefinitionModal = React.memo(
     isConnected,
     onFetch,
     onDismiss,
-    onOpenGlossary,
-    onSaveOfflineEntry,
   }: DefinitionModalProps) => {
     const [showLoading, setShowLoading] = useState(false);
-    const [savedWord, setSavedWord] = useState<string | null>(null);
 
     useEffect(() => {
       if (fetching) {
@@ -54,8 +49,6 @@ export const DefinitionModal = React.memo(
       return null;
     }
 
-    // Keep modal open even if notFound, because we might be fetching online
-    // Only close if: word is null (user dismissed) and no online entry
     if (!word && !onlineEntry) {
       return null;
     }
@@ -122,12 +115,9 @@ export const DefinitionModal = React.memo(
                   Not in offline dictionary
                 </Text>
 
-                {/* Two-Column Button Grid */}
+                {/* Single Button: Fetch Meaning */}
                 <View
                   style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    gap: 12,
                     width: "100%",
                     marginBottom: 24,
                   }}
@@ -136,7 +126,6 @@ export const DefinitionModal = React.memo(
                     onPress={handleFetch}
                     disabled={!isConnected}
                     style={{
-                      flex: 1,
                       paddingVertical: 12,
                       backgroundColor: isConnected ? "#667eea" : "#ccc",
                       borderRadius: 8,
@@ -152,33 +141,6 @@ export const DefinitionModal = React.memo(
                       }}
                     >
                       {isConnected ? "Fetch Meaning" : "No Internet"}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      // TODO: Navigate to glossary view
-                      onDismiss();
-                    }}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      backgroundColor: "white",
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: "#667eea",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight: "500",
-                        fontSize: 14,
-                        color: "#667eea",
-                      }}
-                    >
-                      Show Glossary
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -216,7 +178,7 @@ export const DefinitionModal = React.memo(
               </View>
             )}
 
-            {/* OFFLINE DICTIONARY: Show offline entry */}
+            {/* OFFLINE DICTIONARY: Show offline entry (built‑in) */}
             {entries.length > 0 && (
               <ScrollView
                 style={{ maxHeight: "100%" }}
@@ -271,26 +233,7 @@ export const DefinitionModal = React.memo(
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    onPress={onOpenGlossary}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderWidth: 1,
-                      borderColor: "#667eea",
-                      borderRadius: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: "#667eea",
-                      }}
-                    >
-                      Glossary
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Glossary button removed */}
                 </View>
 
                 {/* Definitions from Offline Dictionary */}
@@ -338,30 +281,6 @@ export const DefinitionModal = React.memo(
                   ))}
                 </View>
 
-                {/* Saved Confirmation */}
-                {savedWord === word && (
-                  <View
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                      borderTopWidth: 1,
-                      borderTopColor: "#f0f0f0",
-                      marginTop: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: "#4caf50",
-                        fontWeight: "600",
-                      }}
-                    >
-                      ✓ Saved to glossary
-                    </Text>
-                  </View>
-                )}
-
                 {/* Footer */}
                 <View
                   style={{
@@ -385,7 +304,7 @@ export const DefinitionModal = React.memo(
               </ScrollView>
             )}
 
-            {/* ONLINE DEFINITION: Show fetched entry */}
+            {/* SAVED / FETCHED DEFINITION: Show online entry (now persisted) */}
             {onlineEntry && (
               <ScrollView
                 style={{ maxHeight: "100%" }}
@@ -423,7 +342,10 @@ export const DefinitionModal = React.memo(
                     </Text>
                     <View
                       style={{
-                        backgroundColor: "#e3f2fd",
+                        backgroundColor:
+                          onlineEntry.source === "saved"
+                            ? "#e8f5e9"  // greenish for saved
+                            : "#e3f2fd", // blueish for online (fallback)
                         paddingHorizontal: 8,
                         paddingVertical: 3,
                         borderRadius: 3,
@@ -433,33 +355,14 @@ export const DefinitionModal = React.memo(
                         style={{
                           fontSize: 10,
                           fontWeight: "600",
-                          color: "#0d47a1",
+                          color: onlineEntry.source === "saved" ? "#2e7d32" : "#0d47a1",
                         }}
                       >
-                        Online
+                        {onlineEntry.source === "saved" ? "Saved" : "Online"}
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    onPress={onOpenGlossary}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderWidth: 1,
-                      borderColor: "#667eea",
-                      borderRadius: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: "#667eea",
-                      }}
-                    >
-                      Glossary
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Glossary button removed */}
                 </View>
 
                 {/* Definition Content */}
@@ -504,8 +407,8 @@ export const DefinitionModal = React.memo(
                   </Text>
                 </View>
 
-                {/* Footer Note - Only show for fetched online entries */}
-                {onlineEntry?.source === "online" && (
+                {/* Footer – show "Saved" message only for persistent entries */}
+                {onlineEntry.source === "saved" && (
                   <View
                     style={{
                       paddingHorizontal: 16,
@@ -523,13 +426,11 @@ export const DefinitionModal = React.memo(
                         fontWeight: "600",
                       }}
                     >
-                      ✓ Saved to glossary • Press outside to dismiss
+                      ✓ Saved to dictionary • Press outside to dismiss
                     </Text>
                   </View>
                 )}
-
-                {/* For glossary entries, no save message needed */}
-                {onlineEntry?.source === "glossary" && (
+                {onlineEntry.source === "online" && (
                   <View
                     style={{
                       paddingHorizontal: 16,
@@ -546,7 +447,7 @@ export const DefinitionModal = React.memo(
                         color: "#999",
                       }}
                     >
-                      From your glossary • Press outside to dismiss
+                      Press outside to dismiss
                     </Text>
                   </View>
                 )}
