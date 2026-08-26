@@ -177,136 +177,137 @@ export const GlossaryListModal = React.memo(
             }}
             onPress={(e) => e.stopPropagation()}
           >
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: "#f0f0f0",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#1a1a1a",
-              }}
-            >
-              Glossary
-            </Text>
-            <TouchableOpacity onPress={onDismiss}>
-              <Text
-                style={{
-                  fontSize: 24,
-                  color: "#999",
-                }}
-              >
-                ×
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sort Controls */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 8,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: "#f0f0f0",
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setSortBy("recent")}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 16,
-                backgroundColor: sortBy === "recent" ? "#667eea" : "#f0f0f0",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "600",
-                  color: sortBy === "recent" ? "white" : "#666",
-                }}
-              >
-                Recent
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setSortBy("alpha")}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 16,
-                backgroundColor: sortBy === "alpha" ? "#667eea" : "#f0f0f0",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "600",
-                  color: sortBy === "alpha" ? "white" : "#666",
-                }}
-              >
-                A–Z
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Entry Count */}
-          <View
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              backgroundColor: "#f9f9f9",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 12,
-                color: "#999",
-              }}
-            >
-              {sortedEntries.length} word{sortedEntries.length !== 1 ? "s" : ""}
-              {sortedEntries.length === 0 &&
-                " — Start saving to build your glossary"}
-            </Text>
-          </View>
-
-          {/* Glossary List */}
-          {sortedEntries.length > 0 ? (
-            <FlatList
-              data={sortedEntries}
-              keyExtractor={(item) => item.word}
-              renderItem={renderEntry}
-              scrollEnabled
-            />
-          ) : (
+            {/* Header */}
             <View
               style={{
-                flex: 1,
-                justifyContent: "center",
+                flexDirection: "row",
+                justifyContent: "space-between",
                 alignItems: "center",
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: "#f0f0f0",
               }}
             >
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: "#1a1a1a",
+                }}
+              >
+                Glossary
+              </Text>
+              <TouchableOpacity onPress={onDismiss}>
+                <Text
+                  style={{
+                    fontSize: 24,
+                    color: "#999",
+                  }}
+                >
+                  ×
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Sort Controls */}
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: "#f0f0f0",
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => setSortBy("recent")}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor: sortBy === "recent" ? "#667eea" : "#f0f0f0",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: sortBy === "recent" ? "white" : "#666",
+                  }}
+                >
+                  Recent
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSortBy("alpha")}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor: sortBy === "alpha" ? "#667eea" : "#f0f0f0",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: sortBy === "alpha" ? "white" : "#666",
+                  }}
+                >
+                  A–Z
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Entry Count */}
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                backgroundColor: "#f9f9f9",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
                   color: "#999",
                 }}
               >
-                No saved words yet
+                {sortedEntries.length} word
+                {sortedEntries.length !== 1 ? "s" : ""}
+                {sortedEntries.length === 0 &&
+                  " — Start saving to build your glossary"}
               </Text>
             </View>
-          )}
+
+            {/* Glossary List */}
+            {sortedEntries.length > 0 ? (
+              <FlatList
+                data={sortedEntries}
+                keyExtractor={(item) => item.word}
+                renderItem={renderEntry}
+                scrollEnabled
+              />
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: "#999",
+                  }}
+                >
+                  No saved words yet
+                </Text>
+              </View>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
