@@ -72,7 +72,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active |
 | [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active |
 | [NovelPhoenix](https://novelphoenix.com/)       | ✅ Site Active | [Novel-bin](https://novel-bin.com/)         | ✅ Site Active |
-|                                                 |                |                                             |                |                                        |                |
+| [NovelArchive.cc](https://novelarchive.cc/)     | ✅ Site Active  |                                             |                |                                       |                |
 |                                                 |                |                                             |                |                                        |                |
 
 <a id="dead-sources"></a>
