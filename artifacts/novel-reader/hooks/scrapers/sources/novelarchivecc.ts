@@ -39,11 +39,15 @@ const cleanContent = (text: string, isDescription: boolean = false): string => {
   if (!text) return "";
   let cleaned = decodeEntities(stripTags(text));
 
-  // For descriptions/synopsis: preserve newlines, only collapse excessive whitespace
+  // For descriptions/synopsis: preserve newlines and paragraph breaks
   if (isDescription) {
     cleaned = cleaned
-      .replace(/\n\s*\n\s*\n/g, "\n\n") // Preserve double newlines
-      .replace(/\s+/g, " ") // Collapse runs of spaces but keep single spaces
+      .replace(/\r\n/g, "\n") // Normalize line endings
+      .replace(/\n\s*\n\s*\n+/g, "\n\n") // Collapse 3+ newlines to double newline (paragraph break)
+      .split("\n") // Split into lines
+      .map((line) => line.replace(/[ \t]+/g, " ").trim()) // Collapse spaces/tabs within each line only
+      .filter((line) => line.length > 0) // Remove empty lines
+      .join("\n")
       .trim();
   } else {
     // For chapter content: collapse blank lines
