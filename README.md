@@ -120,8 +120,14 @@ That's it — once submitted, it'll be picked up and worked on.
 If this project helps you somehow, please dont forget to Star the Repo~!
 
 <a id="source-scraper"></a>
-## 📖 Source Scraper Acknowledgements
+## 📖 Source Scraper Authors
 
+| Author | Repository | Credited For |
+|-------------|-----------|--------------|
+| [@TUVIMEN](https://github.com/TUVIMEN) | [lightnovelworld](https://github.com/TUVIMEN/lightnovelworld) | Forked LightNovelWorld Scraper into the App. |
+| [@lncrawl](https://github.com/lncrawl) | [lightnovel-crawler](https://github.com/lncrawl/lightnovel-crawler/tree/dev) | Adapted and ported 3 novel scraper sources into the App. |
+| [@Rudransh-Susarla-1802](https://github.com/Rudransh-Susarla-1802) | [Novel_Project](https://github.com/Rudransh-Susarla-1802/Novel_Project) | Adapted and ported NovelArrow scraper to the App. |
+| [@5ghzx](https://github.com/5ghzx) | [novelarchive-lnreader](https://github.com/5ghzx/novelarchive-lnreader) | Adapted and ported the NovelArchive Extension into a Source Scraper. |
 
 
 <a id="license"></a>
