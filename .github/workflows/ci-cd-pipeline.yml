@@ -5,10 +5,12 @@ on:
   push:
     branches:
       - Dev1
+      - dev3
       
   pull_request:
     branches:
       - Dev1
+      - dev3
 
 concurrency:
   group: ci-${{ github.ref }}
