@@ -93,9 +93,10 @@ export function useDictionary(glossaryHook?: ReturnType<typeof useGlossary>) {
   const [onlineEntry, setOnlineEntry] = useState<OnlineDefinition | null>(null);
   const [fetching, setFetching] = useState(false);
   const isConnected = useNetInfo().isConnected;
-  
+
   // Use provided glossary hook or create our own as fallback
-  const { getEntry: getGlossaryEntry, addEntry: addToGlossary } = glossaryHook || useGlossary();
+  const { getEntry: getGlossaryEntry, addEntry: addToGlossary } =
+    glossaryHook || useGlossary();
 
   const lookup = useCallback(
     (raw: string) => {
