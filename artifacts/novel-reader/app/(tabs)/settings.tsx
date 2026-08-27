@@ -3291,6 +3291,58 @@ export default function SettingsScreen() {
                 >
                   Adapted and ported NovelArrow scraper to the App.
                 </Text>
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      "https://github.com/5ghzx/novelarchive-lnreader",
+                    )
+                  }
+                >
+                  <Text
+                    style={[styles.creditsItemLink, { color: colors.accent }]}
+                  >
+                    @5ghzx/novelarchive-lnreader
+                  </Text>
+                </Pressable>
+                <Text
+                  style={[
+                    styles.creditsItemDesc,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Adapted and ported the NovelArchive Extension into a Source
+                  Scraper.
+                </Text>
+
+                {/* ═══════════════════════════════════════════════════════════════
+                    TEMPLATE: Add more WebNovel Source Scrapers here
+                    ═══════════════════════════════════════════════════════════════
+                    To add another contributor, copy and paste the block below,
+                    then replace USERNAME, GITHUB_URL, and DESCRIPTION:
+
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(
+                          "https://github.com/USERNAME/REPO_NAME",
+                        )
+                      }
+                    >
+                      <Text
+                        style={[styles.creditsItemLink, { color: colors.accent }]}
+                      >
+                        @USERNAME/REPO_NAME
+                      </Text>
+                    </Pressable>
+                    <Text
+                      style={[
+                        styles.creditsItemDesc,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      DESCRIPTION of their contribution.
+                    </Text>
+
+                    ═══════════════════════════════════════════════════════════════ */}
               </View>
 
               <Text
