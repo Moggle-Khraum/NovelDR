@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { SIMPLE_DICTIONARY, DictionaryEntry } from "@/constants/dictionary";
 import { getSearchCandidates, trimRootWord } from "@/lib/trimRootWord";
+import { useGlossary } from "./useGlossary";
 import { useNetInfo } from "@react-native-community/netinfo";
-import { useSavedDictionary, SavedDictionaryEntry } from "./useSavedDictionary";
 
 const WIKTIONARY_API = "https://en.wiktionary.org/api/rest_v1/page/definition";
 const FREE_DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en";
 const FETCH_TIMEOUT = 5000;
 
-// Strips punctuation clinging to a tapped word (quotes, commas, em‑dashes).
+// Strips punctuation clinging to a tapped word (quotes, commas, em-dashes).
 function cleanWord(raw: string): string {
   return raw
     .toLowerCase()
@@ -17,10 +17,9 @@ function cleanWord(raw: string): string {
 }
 
 export interface OnlineDefinition {
-  word?: string;
   meaning: string;
-  pos?: string;
-  source: "online" | "saved"; // "online" for temporary, "saved" for persistent
+  pos: string;
+  source: "online" | "glossary";
 }
 
 async function fetchWiktionaryDefinition(
@@ -87,20 +86,16 @@ async function fetchFreeDefinition(
   }
 }
 
-export function useDictionary() {
+export function useDictionary(glossaryHook?: ReturnType<typeof useGlossary>) {
   const [word, setWord] = useState<string | null>(null);
   const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [notFound, setNotFound] = useState(false);
   const [onlineEntry, setOnlineEntry] = useState<OnlineDefinition | null>(null);
   const [fetching, setFetching] = useState(false);
   const isConnected = useNetInfo().isConnected;
-
-  const savedDict = useSavedDictionary();
-
-  // Load saved dictionary on mount
-  useEffect(() => {
-    savedDict.loadSavedDictionary();
-  }, []);
+  
+  // Use provided glossary hook or create our own as fallback
+  const { getEntry: getGlossaryEntry, addEntry: addToGlossary } = glossaryHook || useGlossary();
 
   const lookup = useCallback(
     (raw: string) => {
@@ -109,7 +104,7 @@ export function useDictionary() {
 
       const candidates = getSearchCandidates(clean);
 
-      // 1. Check offline dictionary (built‑in)
+      // 1. Check offline dictionary
       for (const candidate of candidates) {
         const found =
           SIMPLE_DICTIONARY[candidate as keyof typeof SIMPLE_DICTIONARY];
@@ -122,32 +117,31 @@ export function useDictionary() {
         }
       }
 
-      // 2. Check saved dictionary (persistent JSON)
-      const savedEntry = savedDict.search(clean);
-      if (savedEntry) {
+      // 2. Check glossary
+      const glossaryEntry = getGlossaryEntry(clean);
+      if (glossaryEntry) {
         setWord(clean);
         setEntries([]);
         setNotFound(false);
         setOnlineEntry({
-          word: savedEntry.word,
-          meaning: savedEntry.meaning,
-          pos: savedEntry.pos,
-          source: "saved",
+          meaning: glossaryEntry.meaning,
+          pos: glossaryEntry.pos,
+          source: "glossary",
         });
         return;
       }
 
-      // 3. Not found – show empty state ready for online fetch
+      // 3. Not found - show empty state ready for online fetch
       setWord(clean);
       setEntries([]);
       setNotFound(true);
       setOnlineEntry(null);
     },
-    [savedDict],
+    [getGlossaryEntry],
   );
 
   /**
-   * Fetch online definition and auto‑save to saved dictionary
+   * Fetch online definition and auto-save to glossary
    */
   const fetchOnline = useCallback(async () => {
     if (!word || !isConnected) return;
@@ -173,22 +167,18 @@ export function useDictionary() {
       }
 
       if (result) {
-        // Save to saved dictionary
-        const savedEntry: SavedDictionaryEntry = {
-          word: word,
+        // Auto-save to glossary
+        await addToGlossary({
+          word,
           meaning: result.meaning,
           pos: result.pos,
-          source: "saved",
+          source: "online",
           added_at: Date.now(),
-        };
-        await savedDict.addEntry(savedEntry);
-
-        // Set online entry with source "saved"
-        setOnlineEntry({
-          meaning: result.meaning,
-          pos: result.pos,
-          source: "saved",
+          root_word: trimRootWord(word),
+          tags: [], // Can be enhanced later
         });
+
+        setOnlineEntry(result);
         setNotFound(false);
       } else {
         setNotFound(true);
@@ -199,7 +189,7 @@ export function useDictionary() {
     } finally {
       setFetching(false);
     }
-  }, [word, isConnected, savedDict]);
+  }, [word, isConnected, addToGlossary]);
 
   const clear = useCallback(() => {
     setWord(null);
