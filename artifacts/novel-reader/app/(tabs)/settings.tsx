@@ -3430,7 +3430,7 @@ export default function SettingsScreen() {
                   ]}
                 >
                   - yuukiw (Request)
-                
+                </Text>
               </View>
               <Text style={[styles.creditsFooter, { color: colors.textMuted }]}>
                 Thank you to the sponsors, scraper authors, and AI that makes
