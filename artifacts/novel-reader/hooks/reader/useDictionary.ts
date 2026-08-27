@@ -86,14 +86,16 @@ async function fetchFreeDefinition(
   }
 }
 
-export function useDictionary() {
+export function useDictionary(glossaryHook?: ReturnType<typeof useGlossary>) {
   const [word, setWord] = useState<string | null>(null);
   const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [notFound, setNotFound] = useState(false);
   const [onlineEntry, setOnlineEntry] = useState<OnlineDefinition | null>(null);
   const [fetching, setFetching] = useState(false);
   const isConnected = useNetInfo().isConnected;
-  const { getEntry: getGlossaryEntry, addEntry: addToGlossary } = useGlossary();
+  
+  // Use provided glossary hook or create our own as fallback
+  const { getEntry: getGlossaryEntry, addEntry: addToGlossary } = glossaryHook || useGlossary();
 
   const lookup = useCallback(
     (raw: string) => {
