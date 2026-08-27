@@ -17,8 +17,9 @@ function cleanWord(raw: string): string {
 }
 
 export interface OnlineDefinition {
+  word?: string;
   meaning: string;
-  pos: string;
+  pos?: string;
   source: "online" | "saved"; // "online" for temporary, "saved" for persistent
 }
 
@@ -130,7 +131,7 @@ export function useDictionary() {
         setOnlineEntry({
           word: savedEntry.word,
           meaning: savedEntry.meaning,
-          pos: savedEntry.pos || undefined,
+          pos: savedEntry.pos,
           source: "saved",
         });
         return;
