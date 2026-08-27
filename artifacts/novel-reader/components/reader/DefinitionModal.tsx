@@ -150,10 +150,7 @@ export const DefinitionModal = React.memo(
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => {
-                      // TODO: Navigate to glossary view
-                      onDismiss();
-                    }}
+                    onPress={onOpenGlossary}
                     style={{
                       flex: 1,
                       paddingVertical: 12,
