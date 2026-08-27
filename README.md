@@ -17,6 +17,7 @@
 - [💀 Deprecated Sources](#dead-sources)
 - [📚 Add Source or Request Source](#wiki-add-or-requestsource)
 - [🌟 Appreciation](#appreciation)
+- [📖 Source Scraper Acknowledgements](#source-scraper)
 - [📜 License](#license)
 - [⚠️ Disclaimer](#disclaimer)
 
@@ -117,6 +118,11 @@ That's it — once submitted, it'll be picked up and worked on.
 ## 🌟 Appreciation
 
 If this project helps you somehow, please dont forget to Star the Repo~!
+
+<a id="source-scraper"></a>
+## 📖 Source Scraper Acknowledgements
+
+
 
 <a id="license"></a>
 
