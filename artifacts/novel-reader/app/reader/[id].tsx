@@ -355,6 +355,9 @@ export default function ReaderScreen() {
   const [showGlossaryListModal, setShowGlossaryListModal] = useState(false);
 
   // ── Dictionary lookup (double-tap a word) ──
+  // ── Glossary (persistent user dictionary) ──
+  const glossary = useGlossary();
+
   const {
     word: dictWord,
     entries: dictEntries,
@@ -366,10 +369,7 @@ export default function ReaderScreen() {
     lookup: handleWordDoubleTap,
     fetchOnline: handleFetchOnline,
     clear: dismissDictModal,
-  } = useDictionary();
-
-  // ── Glossary (persistent user dictionary) ──
-  const glossary = useGlossary();
+  } = useDictionary(glossary);
 
   // Handler for saving offline dictionary entries
   const handleSaveOfflineEntryToGlossary = useCallback(
