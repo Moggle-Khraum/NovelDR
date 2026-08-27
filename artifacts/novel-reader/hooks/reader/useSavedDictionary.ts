@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system";
 import { DictionaryEntry } from "@/constants/dictionary";
 
 export interface SavedDictionaryEntry extends DictionaryEntry {
+  word: string;
   source: "saved";
   added_at: number;
 }
@@ -10,9 +11,7 @@ export interface SavedDictionaryEntry extends DictionaryEntry {
 const SAVED_DICT_PATH = `${FileSystem.documentDirectory}noveldr_saved_dictionary.json`;
 
 export function useSavedDictionary() {
-  const [entries, setEntries] = useState<Record<string, SavedDictionaryEntry>>(
-    {},
-  );
+  const [entries, setEntries] = useState<Record<string, SavedDictionaryEntry>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const loadPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -35,9 +34,7 @@ export function useSavedDictionary() {
             SavedDictionaryEntry
           >;
           setEntries(parsed);
-          console.log(
-            `✓ Loaded ${Object.keys(parsed).length} saved dictionary entries`,
-          );
+          console.log(`✓ Loaded ${Object.keys(parsed).length} saved dictionary entries`);
         } else {
           console.log("ℹ️  No saved dictionary file found, starting fresh");
           setEntries({});
@@ -57,21 +54,15 @@ export function useSavedDictionary() {
   /**
    * Save dictionary to JSON file
    */
-  const saveToDisk = useCallback(
-    async (data: Record<string, SavedDictionaryEntry>) => {
-      try {
-        await FileSystem.writeAsStringAsync(
-          SAVED_DICT_PATH,
-          JSON.stringify(data, null, 2),
-        );
-        console.log("✓ Saved dictionary persisted to JSON");
-      } catch (error) {
-        console.error("Error saving dictionary to disk:", error);
-        throw error;
-      }
-    },
-    [],
-  );
+  const saveToDisk = useCallback(async (data: Record<string, SavedDictionaryEntry>) => {
+    try {
+      await FileSystem.writeAsStringAsync(SAVED_DICT_PATH, JSON.stringify(data, null, 2));
+      console.log("✓ Saved dictionary persisted to JSON");
+    } catch (error) {
+      console.error("Error saving dictionary to disk:", error);
+      throw error;
+    }
+  }, []);
 
   /**
    * Add or update a dictionary entry
@@ -94,7 +85,7 @@ export function useSavedDictionary() {
       await saveToDisk(updated);
       console.log(`✓ Added/updated dictionary entry: ${normalized}`);
     },
-    [entries, saveToDisk],
+    [entries, saveToDisk]
   );
 
   /**
@@ -105,7 +96,7 @@ export function useSavedDictionary() {
       const normalized = query.toLowerCase().trim();
       return entries[normalized] || null;
     },
-    [entries],
+    [entries]
   );
 
   /**
@@ -128,7 +119,7 @@ export function useSavedDictionary() {
       await saveToDisk(updated);
       console.log(`✓ Removed dictionary entry: ${normalized}`);
     },
-    [entries, saveToDisk],
+    [entries, saveToDisk]
   );
 
   /**
@@ -148,11 +139,9 @@ export function useSavedDictionary() {
       const merged = { ...entries, ...newEntries };
       setEntries(merged);
       await saveToDisk(merged);
-      console.log(
-        `✓ Merged ${Object.keys(newEntries).length} entries into dictionary`,
-      );
+      console.log(`✓ Merged ${Object.keys(newEntries).length} entries into dictionary`);
     },
-    [entries, saveToDisk],
+    [entries, saveToDisk]
   );
 
   /**

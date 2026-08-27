@@ -128,8 +128,9 @@ export function useDictionary() {
         setEntries([]);
         setNotFound(false);
         setOnlineEntry({
+          word: savedEntry.word,
           meaning: savedEntry.meaning,
-          pos: savedEntry.pos,
+          pos: savedEntry.pos || undefined,
           source: "saved",
         });
         return;
