@@ -21,11 +21,15 @@
 - [📜 License](#license)
 - [⚠️ Disclaimer](#disclaimer)
 
+---
+
 <a id="about"></a>
 
 ## 📖 About
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
+
+---
 
 <a id="download-counts"></a>
 
@@ -42,6 +46,8 @@ NovelDR is a free, open-source Android application that lets you download webnov
 🌐 [Website](https://moggle.is-a-good.dev/) · 📦 [Download APK](https://github.com/Moggle-Khraum/noveldr-site/releases) <!--· ☕ [Leave a Tip](https://wise.com/pay/me/davea261)-->
 
 </div>
+
+---
 
 <a id="app-screenshots"></a>
 
@@ -61,6 +67,8 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ##
 
+---
+
 <a id="supported-sources"></a>
 
 ## 🌐 Supported Sources
@@ -74,6 +82,8 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active |
 | [NovelPhoenix](https://novelphoenix.com/)       | ✅ Site Active | [Novel-bin](https://novel-bin.com/)         | ✅ Site Active |
 
+---
+
 <a id="dead-sources"></a>
 
 ## 💀 Deprecated Sources
@@ -83,13 +93,14 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
 |                                     |              |                                       |              |
 
+---
+
 <a id="wiki-add-or-requestsource"></a>
 
 ## 📚 Wiki: Adding a Source or Requesting One
 
 Got a webnovel site you want NovelDR to support? There are two paths, depending on whether you want to build it yourself or have someone else add it.
 
----
 
 ### 🛠️ I want to add it myself!
 
@@ -113,11 +124,15 @@ If you'd rather not build the scraper yourself, open a request on the project's 
 
 That's it — once submitted, it'll be picked up and worked on.
 
+---
+
 <a id="appreciation"></a>
 
 ## 🌟 Appreciation
 
 If this project helps you somehow, please dont forget to Star the Repo~!
+
+---
 
 <a id="source-scraper"></a>
 ## 📖 Source Scraper Authors
@@ -129,12 +144,15 @@ If this project helps you somehow, please dont forget to Star the Repo~!
 | [@Rudransh-Susarla-1802](https://github.com/Rudransh-Susarla-1802) | [Novel_Project](https://github.com/Rudransh-Susarla-1802/Novel_Project) | Adapted and ported NovelArrow scraper to the App. |
 | [@5ghzx](https://github.com/5ghzx) | [novelarchive-lnreader](https://github.com/5ghzx/novelarchive-lnreader) | Adapted and ported the NovelArchive Extension into a Source Scraper. |
 
+---
 
 <a id="license"></a>
 
 ## 📜 License
 
 This project is licensed under the MIT License
+
+---
 
 <a id="disclaimer"></a>
 
