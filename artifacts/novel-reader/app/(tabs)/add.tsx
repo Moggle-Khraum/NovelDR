@@ -97,8 +97,7 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
   const getStatusDot = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance")
-      return { color: Colors.amber, symbol: "⛔" };
+    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
     if (status === "gateway_timeout")
       return { color: Colors.amber, symbol: "🟠" };
     if (status === "offline") return { color: Colors.error, symbol: "🔴" };
@@ -159,8 +158,7 @@ function SourceListModalCell({
   const getStatusIndicator = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance")
-      return { color: Colors.amber, symbol: "⛔" };
+    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
     if (status === "gateway_timeout")
       return { color: Colors.amber, symbol: "🟠" };
     if (status === "offline") return { color: Colors.error, symbol: "🔴" };

@@ -98,10 +98,7 @@ const fetchWithBoundedTimeout = (
 //                   being fully unreachable
 // - "offline"     - every tier failed outright, or a non-503/504 5xx/error
 export type SiteHealthState =
-  | "online"
-  | "maintenance"
-  | "gateway_timeout"
-  | "offline";
+  "online" | "maintenance" | "gateway_timeout" | "offline";
 
 const classifyStatus = (status: number): SiteHealthState => {
   if (status === 503) return "maintenance";
