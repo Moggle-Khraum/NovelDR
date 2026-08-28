@@ -97,12 +97,21 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
   const getStatusDot = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
+    if (status === "maintenance")
+      return { color: Colors.amber, symbol: "⛔" };
+    if (status === "gateway_timeout")
+      return { color: Colors.amber, symbol: "🟠" };
     if (status === "offline") return { color: Colors.error, symbol: "🔴" };
     return { color: colors.textMuted, symbol: "?" };
   };
 
   const statusInfo = getStatusDot();
-  const isOffline = status === "offline";
+  // Maintenance/gateway-timeout still mean "don't pick this source right
+  // now", same as offline, so the cell dims/outlines the same way.
+  const isOffline =
+    status === "offline" ||
+    status === "maintenance" ||
+    status === "gateway_timeout";
 
   return (
     <Pressable
@@ -142,12 +151,19 @@ function SourceListModalCell({
   status: SiteStatus;
 }) {
   const { colors } = useTheme();
-  const isOffline = status === "offline";
+  const isOffline =
+    status === "offline" ||
+    status === "maintenance" ||
+    status === "gateway_timeout";
 
   const getStatusIndicator = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "offline") return { color: Colors.error, symbol: "⛔" };
+    if (status === "maintenance")
+      return { color: Colors.amber, symbol: "⛔" };
+    if (status === "gateway_timeout")
+      return { color: Colors.amber, symbol: "🟠" };
+    if (status === "offline") return { color: Colors.error, symbol: "🔴" };
     return { color: colors.textMuted, symbol: "?" };
   };
 
@@ -196,6 +212,7 @@ function SourceListModal({
   siteStatuses,
 }: SourceListModalProps) {
   const { colors } = useTheme();
+  const { isChecking, recheck } = useSiteHealth();
 
   return (
     <Modal
@@ -215,9 +232,39 @@ function SourceListModal({
           ]}
           onPress={() => {}}
         >
-          <Text style={[styles.modalTitle, { color: colors.text }]}>
-            Source List
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Source List
+            </Text>
+            <Pressable
+              onPress={() => recheck()}
+              disabled={isChecking}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: isChecking ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "⏳" : "🔄"}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "Checking…" : "Recheck"}
+              </Text>
+            </Pressable>
+          </View>
 
           <View
             style={[styles.modalSeparator, { backgroundColor: colors.border }]}
