@@ -88,21 +88,67 @@ const fetchWithBoundedTimeout = (
  * Every attempt is bounded by a hard timeout (see withHardTimeout above) so
  * a single unresponsive host can never stall the health-check loop forever.
  */
-export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
+// Health-check outcome classification, beyond a flat up/down:
+// - "online"      - reachable and serving normally
+// - "maintenance" - server responded 503 (the standard "temporarily
+//                   unavailable, come back later" status) - the site is
+//                   there, just intentionally not serving right now
+// - "gateway_timeout" - 504 specifically - an upstream/proxy in front of
+//                   the site timed out, distinct from the site itself
+//                   being fully unreachable
+// - "offline"     - every tier failed outright, or a non-503/504 5xx/error
+export type SiteHealthState =
+  | "online"
+  | "maintenance"
+  | "gateway_timeout"
+  | "offline";
+
+const classifyStatus = (status: number): SiteHealthState => {
+  if (status === 503) return "maintenance";
+  if (status === 504) return "gateway_timeout";
+  if (status < 500) return "online";
+  return "offline";
+};
+
+/**
+ * Check if a site is healthy, escalating through progressively heavier
+ * tiers (HEAD -> GET -> alternate paths -> CORS proxy -> WebView bridge)
+ * until one succeeds or all are exhausted. Returns not just up/down but
+ * the status code, response time, which tier answered, and a classified
+ * state so "down", "under maintenance" (503), and "gateway timeout" (504)
+ * can be told apart in the UI instead of all collapsing into one dot.
+ */
+export const checkSiteHealthDetailed = async (
+  baseUrl: string,
+): Promise<{
+  isUp: boolean;
+  state: SiteHealthState;
+  statusCode?: number;
+  responseTime?: number;
+  tier?: string;
+  error?: string;
+}> => {
+  const startTime = Date.now();
+  const elapsed = () => Date.now() - startTime;
+  const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
+
+  const baseHeaders = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    Connection: "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+  };
+
+  // A 503/504 is meaningful even mid-escalation - if a site tells us
+  // outright "I'm in maintenance" or "gateway timed out", that's more
+  // useful information than continuing to hammer it with GET/proxy/WebView
+  // tiers meant for sites that don't respond at all. Stop and report it.
+  const isDefinitive = (status: number) => status === 503 || status === 504;
+
   try {
-    // Clean up the URL
-    const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
-
-    const baseHeaders = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept-Encoding": "gzip, deflate, br",
-      Connection: "keep-alive",
-      "Upgrade-Insecure-Requests": "1",
-    };
-
     // Try HEAD request first (faster, less data transfer)
     try {
       const response = await fetchWithBoundedTimeout(
@@ -113,14 +159,16 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
         `HEAD ${cleanUrl}`,
       );
 
-      // Any status code < 500 means the server is reachable
-      // (200, 301, 302, 403, 404, 429, etc. all mean the server is up)
-      if (response.status < 500) {
-        return true;
+      if (response.status < 500 || isDefinitive(response.status)) {
+        return {
+          isUp: response.status < 500,
+          state: classifyStatus(response.status),
+          statusCode: response.status,
+          responseTime: elapsed(),
+          tier: "HEAD",
+        };
       }
-
-      // If we got a 500+ status, the server is up but having issues
-      // Try a GET request as fallback
+      // Other 5xx - server up but having issues; try a GET as fallback.
     } catch (error) {
       // HEAD failed or hard-timed-out, try GET
     }
@@ -139,9 +187,14 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
         `GET ${cleanUrl}`,
       );
 
-      // Any status code < 500 means the server is reachable
-      if (response.status < 500) {
-        return true;
+      if (response.status < 500 || isDefinitive(response.status)) {
+        return {
+          isUp: response.status < 500,
+          state: classifyStatus(response.status),
+          statusCode: response.status,
+          responseTime: elapsed(),
+          tier: "GET",
+        };
       }
     } catch (error) {
       // GET also failed, fall through to path variants below
@@ -160,8 +213,14 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
           `GET ${cleanUrl}${path}`,
         );
 
-        if (response.status < 500) {
-          return true;
+        if (response.status < 500 || isDefinitive(response.status)) {
+          return {
+            isUp: response.status < 500,
+            state: classifyStatus(response.status),
+            statusCode: response.status,
+            responseTime: elapsed(),
+            tier: `GET ${path}`,
+          };
         }
       } catch (e) {
         // Continue to next path
@@ -183,8 +242,14 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
         `PROXY GET ${cleanUrl}`,
       );
 
-      if (response.status < 500) {
-        return true;
+      if (response.status < 500 || isDefinitive(response.status)) {
+        return {
+          isUp: response.status < 500,
+          state: classifyStatus(response.status),
+          statusCode: response.status,
+          responseTime: elapsed(),
+          tier: "PROXY",
+        };
       }
       proxyFailed = true;
     } catch (error) {
@@ -204,69 +269,39 @@ export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
         // that never cleared would still resolve (the bridge always sends
         // something after its own poll timeout), so check for substance
         // rather than just "did it resolve".
-        return typeof html === "string" && html.length > 500;
-      } catch (error) {
-        return false;
+        const isUp = typeof html === "string" && html.length > 500;
+        return {
+          isUp,
+          state: isUp ? "online" : "offline",
+          responseTime: elapsed(),
+          tier: "WEBVIEW",
+        };
+      } catch (error: any) {
+        return {
+          isUp: false,
+          state: "offline",
+          responseTime: elapsed(),
+          tier: "WEBVIEW",
+          error: error?.message || "WebView check failed",
+        };
       }
     }
 
-    return false;
-  } catch (error) {
+    return { isUp: false, state: "offline", responseTime: elapsed() };
+  } catch (error: any) {
     console.warn(`Health check failed for ${baseUrl}:`, error);
-    return false;
+    return {
+      isUp: false,
+      state: "offline",
+      responseTime: elapsed(),
+      error: error?.message || "Unknown error",
+    };
   }
 };
 
-/**
- * Alternative: Check if a site is healthy by testing multiple endpoints
- * This is more thorough but slower
- */
-export const checkSiteHealthDetailed = async (
-  baseUrl: string,
-): Promise<{
-  isUp: boolean;
-  statusCode?: number;
-  responseTime?: number;
-  error?: string;
-}> => {
-  const startTime = Date.now();
-
-  try {
-    const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    const response = await fetch(cleanUrl, {
-      method: "GET",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        Connection: "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-      },
-      // @ts-ignore
-      redirect: "follow",
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-    const responseTime = Date.now() - startTime;
-
-    return {
-      isUp: response.status < 500,
-      statusCode: response.status,
-      responseTime,
-    };
-  } catch (error: any) {
-    const responseTime = Date.now() - startTime;
-    return {
-      isUp: false,
-      responseTime,
-      error: error.message || "Unknown error",
-    };
-  }
+// Thin boolean wrapper kept for any other callers that only care about
+// up/down and don't need the state classification or diagnostics.
+export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
+  const result = await checkSiteHealthDetailed(baseUrl);
+  return result.isUp;
 };
