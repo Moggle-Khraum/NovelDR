@@ -97,7 +97,8 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
   const getStatusDot = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
+    if (status === "maintenance")
+      return { color: Colors.amber, symbol: "⛔" };
     if (status === "gateway_timeout")
       return { color: Colors.amber, symbol: "🟠" };
     if (status === "offline") return { color: Colors.error, symbol: "🔴" };
@@ -158,7 +159,8 @@ function SourceListModalCell({
   const getStatusIndicator = () => {
     if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
     if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
+    if (status === "maintenance")
+      return { color: Colors.amber, symbol: "⛔" };
     if (status === "gateway_timeout")
       return { color: Colors.amber, symbol: "🟠" };
     if (status === "offline") return { color: Colors.error, symbol: "🔴" };
@@ -1198,6 +1200,28 @@ export default function AddNovelScreen() {
                 DOWN
               </Text>
             </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.amber }}>⛔</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                MAINT.
+              </Text>
+            </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.amber }}>🟠</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                504
+              </Text>
+            </View>
           </View>
 
           {/* Subtitle */}
@@ -1500,6 +1524,7 @@ const styles = StyleSheet.create({
   legendContainer: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 4,
   },
