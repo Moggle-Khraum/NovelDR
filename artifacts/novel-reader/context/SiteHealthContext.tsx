@@ -106,8 +106,8 @@ export function SiteHealthProvider({
   const [statuses, setStatuses] = useState<Record<string, SiteStatus>>({});
   const [details, setDetails] = useState<Record<string, SiteStatusDetail>>({});
   const [isChecking, setIsChecking] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const checkingRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Sites queued for a manual recheck while a check is already in
   // progress - drained once the current run finishes.
   const pendingRecheckRef = useRef<Set<string> | null>(null);
@@ -241,9 +241,10 @@ export function SiteHealthProvider({
     //   ("initializing") -> show whatever's cached, however old, and don't
     //   attempt a check at all. A check with no confirmed internet can
     //   only produce false "offline" readings for every site - better to
-    //   stay true to the last real result until connectivity resolves (see
-    //   the online-transition effect below, which also fires on
-    //   initializing -> online).
+    //   stay true to the last real result. Unlike before, there's no
+    //   separate reconnect-trigger effect - the next legitimate check is
+    //   the next stale (12h) auto-check or an explicit tap of Recheck, not
+    //   the moment connectivity happens to come back.
     const init = async () => {
       const saved = await loadSavedSiteStatus();
 
@@ -268,20 +269,19 @@ export function SiteHealthProvider({
           await runHealthChecks(missing, saved.statuses);
         }
       } else if (connectivityRef.current === "online") {
-        // No cache at all - first run, and connectivity is confirmed. If
-        // we're offline (or still initializing) on a genuine first run,
-        // there's nothing useful to do yet; the online-transition effect
-        // will pick it up once connectivity resolves.
+        // No cache at all - first run, and connectivity is confirmed.
         await runHealthChecks(SUPPORTED_SITES, {});
       }
     };
 
     init();
 
-    // Keep checking periodically for as long as the app stays open/backgrounded
+    // Keep checking every 12h for as long as the app stays open/backgrounded
     // without being fully closed. Guarded the same way inside
     // runHealthChecks - this just skips the wasted call when we already
-    // know we're offline or haven't resolved connectivity yet.
+    // know we're offline or haven't resolved connectivity yet. This is the
+    // only automatic recheck path now - there's no separate trigger tied
+    // to connectivity changing.
     intervalRef.current = setInterval(() => {
       if (connectivityRef.current !== "online") return;
       runHealthChecks(SUPPORTED_SITES, {});
@@ -292,22 +292,6 @@ export function SiteHealthProvider({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Reconnect trigger: the moment connectivity resolves to a confirmed
-  // "online" - whether we were previously offline, or just hadn't heard
-  // from NetInfo yet ("initializing", which init() also deferred on) - is
-  // a much more meaningful signal than "12 hours elapsed". Treat it as an
-  // implicit cache-invalidation and refresh once.
-  const prevConnectivityRef = useRef(connectivity.status);
-  useEffect(() => {
-    const was = prevConnectivityRef.current;
-    prevConnectivityRef.current = connectivity.status;
-
-    if (was !== "online" && connectivity.status === "online") {
-      runHealthChecks(SUPPORTED_SITES, statuses);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectivity.status]);
 
   return (
     <SiteHealthContext.Provider
