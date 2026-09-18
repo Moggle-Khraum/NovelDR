@@ -455,7 +455,9 @@ export default function ReaderScreen() {
   const updateReadingProgress = useCallback(() => {
     if (contentHeightRef.current > scrollViewHeightRef.current) {
       const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
-      setReadingProgress(Math.min(100, Math.max(0, (scrollYRef.current / maxScroll) * 100)));
+      setReadingProgress(
+        Math.min(100, Math.max(0, (scrollYRef.current / maxScroll) * 100)),
+      );
     } else {
       setReadingProgress(0);
     }
@@ -473,8 +475,14 @@ export default function ReaderScreen() {
   const handleContentSizeChange = (_width: number, height: number) => {
     contentHeightRef.current = height;
     updateReadingProgress();
-    if (!hasRestoredScrollRef.current && restoredChapterRef.current !== chapterIndex) {
-      const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
+    if (
+      !hasRestoredScrollRef.current &&
+      restoredChapterRef.current !== chapterIndex
+    ) {
+      const savedOffset =
+        novel?.lastRead?.chapterIndex === chapterIndex
+          ? novel.lastRead.scrollOffset
+          : 0;
       if (savedOffset > 0 && height > 0) {
         setTimeout(() => {
           scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
@@ -505,7 +513,10 @@ export default function ReaderScreen() {
     intervalRef.current = setInterval(() => {
       if (!scrollRef.current) return;
       const currentY = scrollYRef.current;
-      const maxY = Math.max(0, contentHeightRef.current - scrollViewHeightRef.current);
+      const maxY = Math.max(
+        0,
+        contentHeightRef.current - scrollViewHeightRef.current,
+      );
       if (currentY >= maxY) {
         stopAutoScroll();
         return;
