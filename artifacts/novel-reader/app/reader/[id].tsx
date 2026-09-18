@@ -514,6 +514,17 @@ export default function ReaderScreen() {
     novel,
     chapterIndex,
     goToNextChapter,
+    getStartIndex: () => {
+      if (contentHeightRef.current <= 0) return 0;
+      const scrollRatio = scrollYRef.current / contentHeightRef.current;
+      return Math.max(
+        0,
+        Math.min(
+          Math.floor(scrollRatio * ttsSentences.length),
+          ttsSentences.length - 1
+        )
+      );
+    },
   });
 
   // ── Navigation ──
