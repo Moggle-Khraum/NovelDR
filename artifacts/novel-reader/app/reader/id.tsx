@@ -1055,7 +1055,10 @@ export default function ReaderScreen() {
   // from its first sentence. Falls back to 0 if paragraphs haven't laid
   // out yet (e.g. TTS pressed the instant a chapter opens).
   getStartIndexRef.current = useCallback(() => {
-    if (paraYPositionsRef.current.size === 0 || paraFirstTtsIndex.length === 0) {
+    if (
+      paraYPositionsRef.current.size === 0 ||
+      paraFirstTtsIndex.length === 0
+    ) {
       return 0;
     }
     let bestParaIdx = 0;
