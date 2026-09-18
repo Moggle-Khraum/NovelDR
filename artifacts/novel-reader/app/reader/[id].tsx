@@ -521,8 +521,8 @@ export default function ReaderScreen() {
         0,
         Math.min(
           Math.floor(scrollRatio * ttsSentences.length),
-          ttsSentences.length - 1
-        )
+          ttsSentences.length - 1,
+        ),
       );
     },
   });
