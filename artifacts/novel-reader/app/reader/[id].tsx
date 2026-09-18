@@ -418,6 +418,7 @@ export default function ReaderScreen() {
   // ── Auto‑scroll state ──
   const [autoScrollActive, setAutoScrollActive] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
   const scrollYRef = useRef(0);
   const contentHeightRef = useRef(0);
   const scrollViewHeightRef = useRef(0);
@@ -462,7 +463,9 @@ export default function ReaderScreen() {
   }, []);
 
   const handleScroll = (event: any) => {
-    scrollYRef.current = event.nativeEvent.contentOffset.y;
+    const newY = event.nativeEvent.contentOffset.y;
+    scrollYRef.current = newY;
+    setScrollY(newY);
     updateReadingProgress();
   };
 
@@ -479,6 +482,7 @@ export default function ReaderScreen() {
         setTimeout(() => {
           scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
           scrollYRef.current = savedOffset;
+          setScrollY(savedOffset);
           hasRestoredScrollRef.current = true;
           restoredChapterRef.current = chapterIndex;
           updateReadingProgress();
@@ -585,7 +589,7 @@ export default function ReaderScreen() {
     stopAutoScroll,
     stopTTS,
     cancelAutoNext,
-    scrollYRef.current,
+    scrollY,
   });
 
   // ── Rapid‑tap guard ──
@@ -634,7 +638,7 @@ export default function ReaderScreen() {
         saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollYRef.current);
       }
     };
-  }, [novel, chapter, chapterIndex, saveReadingProgress]);
+  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
 
   // ── Scan custom_fonts/ and register each with expo-font ──
   // Runs at mount (below) and again after import/delete so the picker and
