@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import * as KeepAwake from "expo-keep-awake";
-import { AccessibilityInfo, InteractionManager } from "react-native";
+import { AccessibilityInfo, AppState, InteractionManager } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as FileSystem from "expo-file-system";
 import { TTS_SETTINGS_FILE } from "@/constants/readerSettings";
@@ -19,6 +19,12 @@ type UseTTSProps = {
   novel: any;
   chapterIndex: number;
   goToNextChapter: () => void;
+  // Returns the sentence index to start a *fresh* TTS session from, based
+  // on wherever the reader currently is on screen (not tied to TTS's own
+  // last-spoken position, which stopTTS() always resets to -1). Optional
+  // so callers that don't track scroll/paragraph position can omit it -
+  // playback just starts at 0, same as before.
+  getStartIndex?: () => number;
 };
 
 export function useTTS({
@@ -26,6 +32,7 @@ export function useTTS({
   novel,
   chapterIndex,
   goToNextChapter,
+  getStartIndex,
 }: UseTTSProps) {
   const [ttsActive, setTtsActive] = useState(false);
   const [ttsIndex, setTtsIndex] = useState(-1);
@@ -284,6 +291,47 @@ export function useTTS({
     [stopTTS, clearWatchdogTimer, novel, chapterIndex, goToNextChapter],
   );
 
+  // While backgrounded/screen-locked, JS timers (including the watchdog)
+  // can be suspended for an arbitrary length of time. On resume, the
+  // native TTS bridge may deliver several queued onDone events in one
+  // burst - React collapses those into a single render, so the highlight
+  // can appear to vanish and then "jump" several sentences ahead with
+  // nothing shown in between, even though the underlying index itself
+  // isn't wrong. Re-running speakSentence at the (now-settled) current
+  // index gives React a clean, dedicated render of it and restarts the
+  // watchdog against a fresh, trustworthy timer - reusing the normal
+  // single-sentence path rather than duplicating its setup here.
+  const wasBackgroundedRef = useRef(false);
+  useEffect(() => {
+    const appStateRef = { current: AppState.currentState };
+    const subscription = AppState.addEventListener("change", (next) => {
+      const goingBackground =
+        appStateRef.current === "active" && next.match(/inactive|background/);
+      const returningForeground =
+        appStateRef.current.match(/inactive|background/) && next === "active";
+
+      if (goingBackground && ttsActiveRef.current) {
+        wasBackgroundedRef.current = true;
+        clearWatchdogTimer();
+      }
+
+      if (returningForeground && wasBackgroundedRef.current) {
+        wasBackgroundedRef.current = false;
+        if (ttsActiveRef.current && ttsSentences.length > 0) {
+          ttsStallRetryCountRef.current = 0;
+          const resumeIdx = Math.min(
+            Math.max(ttsIndexRef.current, 0),
+            ttsSentences.length - 1,
+          );
+          speakSentence(ttsSentences, resumeIdx);
+        }
+      }
+
+      appStateRef.current = next;
+    });
+    return () => subscription.remove();
+  }, [ttsSentences, speakSentence, clearWatchdogTimer]);
+
   const toggleTTS = useCallback(() => {
     if (ttsActiveRef.current) {
       stopTTS();
@@ -295,6 +343,7 @@ export function useTTS({
       ttsStallRetryCountRef.current = 0;
       ttsActiveRef.current = true;
       setTtsActive(true);
+      KeepAwake.activateKeepAwakeAsync().catch(() => {});
       clearWatchdogTimer();
       if (ttsIndexRef.current < ttsSentences.length) {
         speakSentence(ttsSentences, ttsIndexRef.current);
@@ -311,10 +360,19 @@ export function useTTS({
       if (ttsActiveRef.current) return;
       ttsActiveRef.current = true;
       setTtsActive(true);
+      KeepAwake.activateKeepAwakeAsync().catch(() => {});
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      speakSentence(ttsSentences, 0);
+      // Start wherever the reader currently is, not always the top of the
+      // chapter - getStartIndex reads the on-screen scroll/paragraph
+      // position. Clamp defensively in case the mapping falls outside the
+      // sentence array (e.g. stale ref during a chapter transition).
+      const rawStart = getStartIndex ? getStartIndex() : 0;
+      const startIdx = Number.isFinite(rawStart)
+        ? Math.min(Math.max(rawStart, 0), ttsSentences.length - 1)
+        : 0;
+      speakSentence(ttsSentences, startIdx);
     }, 100);
-  }, [ttsSentences, speakSentence, stopTTS, clearWatchdogTimer]);
+  }, [ttsSentences, speakSentence, stopTTS, clearWatchdogTimer, getStartIndex]);
 
   const previewTts = useCallback(() => {
     if (ttsActiveRef.current) stopTTS();
