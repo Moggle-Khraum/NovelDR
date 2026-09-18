@@ -417,10 +417,17 @@ export default function ReaderScreen() {
 
   // ── Auto‑scroll state ──
   const [autoScrollActive, setAutoScrollActive] = useState(false);
+  const [readingProgress, setReadingProgress] = useState(0);
+  const scrollYRef = useRef(0);
+  const contentHeightRef = useRef(0);
+  const scrollViewHeightRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasRestoredScrollRef = useRef(false);
+  const restoredChapterRef = useRef<number>(-1);
 
   // ── Chapter index ──
   const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
+  const scrollRef = useRef<ScrollView>(null);
 
   // ── Novel and chapter ──
   const novel = getNovel(id);
@@ -435,21 +442,7 @@ export default function ReaderScreen() {
       saveChapterContent,
     });
 
-  const {
-    scrollRef,
-    scrollY,
-    readingProgress,
-    contentHeight,
-    scrollViewHeight,
-    handleScroll,
-    handleScrollBeginDrag,
-    handleScrollEndDrag,
-    handleScrollViewLayout,
-    handleContentSizeChange,
-    isUserScrollingRef,
-  } = useScrollTracking({ novel, chapterIndex });
-
-  // ── Auto‑scroll methods (must be defined before useReaderNavigation) ──
+  // ── Auto‑scroll methods (must be defined before other handlers) ──
   const stopAutoScroll = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -458,29 +451,71 @@ export default function ReaderScreen() {
     setAutoScrollActive(false);
   }, []);
 
+  // ── Reading progress and scroll handlers ──
+  const updateReadingProgress = useCallback(() => {
+    if (contentHeightRef.current > scrollViewHeightRef.current) {
+      const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
+      setReadingProgress(Math.min(100, Math.max(0, (scrollYRef.current / maxScroll) * 100)));
+    } else {
+      setReadingProgress(0);
+    }
+  }, []);
+
+  const handleScroll = (event: any) => {
+    scrollYRef.current = event.nativeEvent.contentOffset.y;
+    updateReadingProgress();
+  };
+
+  const handleScrollBeginDrag = () => {
+    if (autoScrollActive) stopAutoScroll();
+  };
+
+  const handleContentSizeChange = (_width: number, height: number) => {
+    contentHeightRef.current = height;
+    updateReadingProgress();
+    if (!hasRestoredScrollRef.current && restoredChapterRef.current !== chapterIndex) {
+      const savedOffset = novel?.lastRead?.chapterIndex === chapterIndex ? novel.lastRead.scrollOffset : 0;
+      if (savedOffset > 0 && height > 0) {
+        setTimeout(() => {
+          scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
+          scrollYRef.current = savedOffset;
+          hasRestoredScrollRef.current = true;
+          restoredChapterRef.current = chapterIndex;
+          updateReadingProgress();
+        }, 80);
+      } else {
+        hasRestoredScrollRef.current = true;
+        restoredChapterRef.current = chapterIndex;
+      }
+    }
+  };
+
+  const handleScrollViewLayout = (event: any) => {
+    scrollViewHeightRef.current = event.nativeEvent.layout.height;
+    updateReadingProgress();
+  };
+
+  const handleScrollEndDrag = () => {
+    // No-op for now
+  };
+
   const startAutoScroll = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     const speed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
     intervalRef.current = setInterval(() => {
       if (!scrollRef.current) return;
-      const currentY = scrollY;
-      const maxY = Math.max(0, contentHeight - scrollViewHeight);
+      const currentY = scrollYRef.current;
+      const maxY = Math.max(0, contentHeightRef.current - scrollViewHeightRef.current);
       if (currentY >= maxY) {
         stopAutoScroll();
         return;
       }
       const newY = Math.min(maxY, currentY + (30 * speed) / 20);
       scrollRef.current.scrollTo({ y: newY, animated: false });
+      scrollYRef.current = newY;
     }, 50);
     setAutoScrollActive(true);
-  }, [
-    autoScrollSpeedIdx,
-    stopAutoScroll,
-    scrollY,
-    contentHeight,
-    scrollViewHeight,
-    scrollRef,
-  ]);
+  }, [autoScrollSpeedIdx, stopAutoScroll]);
 
   // ── TTS ──
   const goToNextChapter = useCallback(() => {
