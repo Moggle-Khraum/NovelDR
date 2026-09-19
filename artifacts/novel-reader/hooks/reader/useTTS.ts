@@ -7,12 +7,17 @@ import { AccessibilityInfo, AppState, InteractionManager } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as FileSystem from "expo-file-system";
 import { TTS_SETTINGS_FILE } from "@/constants/readerSettings";
+import { TTS_PAUSE_MARKER } from "@/hooks/reader/useChapterPersistence";
 import {
   updateMediaSession,
   clearMediaSession,
   setupMediaSession,
   setRemoteHandlers,
 } from "@/lib/TTSMediaSession";
+
+// How long to hold silence at each bracket, per TTS_PAUSE_MARKER in the
+// sentence text (see normalizeForSpeech in useChapterPersistence.ts).
+const TTS_PAUSE_MS = 1000;
 
 type UseTTSProps = {
   ttsSentences: string[];
@@ -158,6 +163,66 @@ export function useTTS({
     } catch {}
   }, [clearWatchdogTimer]);
 
+  // Speaks a sentence that's been split on TTS_PAUSE_MARKER (i.e. it had
+  // one or more brackets in it), one chunk at a time, with a real
+  // TTS_PAUSE_MS silence between chunks. Only used when a sentence
+  // actually contains the marker - ordinary sentences never go through
+  // this and are spoken exactly as before, in one Speech.speak() call.
+  const speakChunks = useCallback(
+    (
+      chunks: string[],
+      chunkIdx: number,
+      onAllDone: () => void,
+      onChunkError: () => void,
+    ) => {
+      if (!isMountedRef.current || !ttsActiveRef.current) return;
+      if (chunkIdx >= chunks.length) {
+        onAllDone();
+        return;
+      }
+      const chunk = chunks[chunkIdx].trim();
+      const isLast = chunkIdx === chunks.length - 1;
+      const advance = () => {
+        if (!isMountedRef.current || !ttsActiveRef.current) return;
+        if (isLast) {
+          onAllDone();
+        } else {
+          setTimeout(() => {
+            if (!isMountedRef.current || !ttsActiveRef.current) return;
+            speakChunks(chunks, chunkIdx + 1, onAllDone, onChunkError);
+          }, TTS_PAUSE_MS);
+        }
+      };
+      if (!chunk) {
+        // Nothing but the bracket marker on this side (e.g. the sentence
+        // starts or ends right at "[") - still honor the pause, just
+        // don't call Speech.speak on empty text.
+        advance();
+        return;
+      }
+      try {
+        try {
+          Speech.stop();
+        } catch {}
+        Speech.speak(chunk, {
+          language: "en",
+          pitch: 1.0,
+          rate: ttsRateRef.current,
+          voice: ttsVoiceIdRef.current,
+          onDone: advance,
+          onError: (err) => {
+            console.warn("[TTS] Error speaking chunk:", err);
+            onChunkError();
+          },
+        });
+      } catch (err) {
+        console.error("[TTS] Unexpected error speaking chunk:", err);
+        onChunkError();
+      }
+    },
+    [],
+  );
+
   const speakSentence = useCallback(
     (sentences: string[], index: number) => {
       if (!isMountedRef.current) return;
@@ -221,11 +286,16 @@ export function useTTS({
 
       clearWatchdogTimer();
 
-      const wordCount = sentences[index].split(/\s+/).length;
-      const estimatedDuration = Math.max(
-        5,
-        (wordCount / 3) * (1 / ttsRateRef.current) * 2.5,
-      );
+      const rawText = sentences[index];
+      const pauseCount = rawText.split(TTS_PAUSE_MARKER).length - 1;
+      const wordCount = rawText
+        .split(TTS_PAUSE_MARKER)
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean).length;
+      const estimatedDuration =
+        Math.max(5, (wordCount / 3) * (1 / ttsRateRef.current) * 2.5) +
+        pauseCount * (TTS_PAUSE_MS / 1000);
 
       watchdogTimerRef.current = setTimeout(() => {
         if (!ttsActiveRef.current || ttsIndexRef.current !== index) {
@@ -250,37 +320,56 @@ export function useTTS({
       }, estimatedDuration * 1000);
 
       AccessibilityInfo.announceForAccessibility(
-        `Reading: ${sentences[index].substring(0, 100)}`,
+        `Reading: ${rawText.split(TTS_PAUSE_MARKER).join("").substring(0, 100)}`,
       );
+
+      const onSentenceDone = () => {
+        if (!isMountedRef.current) return;
+        if (!ttsActiveRef.current) return;
+        clearWatchdogTimer();
+        ttsStallRetryCountRef.current = 0;
+        ttsErrorCountRef.current = 0;
+        speakSentence(sentences, index + 1);
+      };
+
+      const onSentenceError = () => {
+        if (!isMountedRef.current) return;
+        if (!ttsActiveRef.current) return;
+        clearWatchdogTimer();
+        ttsErrorCountRef.current += 1;
+        if (ttsErrorCountRef.current > 3) {
+          stopTTS();
+          return;
+        }
+        speakSentence(sentences, index + 1);
+      };
+
+      if (pauseCount > 0) {
+        // This sentence has one or more brackets in it - speak it in
+        // pieces with a real pause where each one was, instead of one
+        // continuous Speech.speak() call.
+        speakChunks(
+          rawText.split(TTS_PAUSE_MARKER),
+          0,
+          onSentenceDone,
+          onSentenceError,
+        );
+        return;
+      }
 
       try {
         try {
           Speech.stop();
         } catch {}
-        Speech.speak(sentences[index], {
+        Speech.speak(rawText, {
           language: "en",
           pitch: 1.0,
           rate: ttsRateRef.current,
           voice: ttsVoiceIdRef.current,
-          onDone: () => {
-            if (!isMountedRef.current) return;
-            if (!ttsActiveRef.current) return;
-            clearWatchdogTimer();
-            ttsStallRetryCountRef.current = 0;
-            ttsErrorCountRef.current = 0;
-            speakSentence(sentences, index + 1);
-          },
+          onDone: onSentenceDone,
           onError: (err) => {
             console.warn("[TTS] Error speaking sentence:", err);
-            if (!isMountedRef.current) return;
-            if (!ttsActiveRef.current) return;
-            clearWatchdogTimer();
-            ttsErrorCountRef.current += 1;
-            if (ttsErrorCountRef.current > 3) {
-              stopTTS();
-              return;
-            }
-            speakSentence(sentences, index + 1);
+            onSentenceError();
           },
         });
       } catch (err) {
@@ -288,7 +377,7 @@ export function useTTS({
         stopTTS();
       }
     },
-    [stopTTS, clearWatchdogTimer, novel, chapterIndex, goToNextChapter],
+    [stopTTS, clearWatchdogTimer, novel, chapterIndex, goToNextChapter, speakChunks],
   );
 
   // While backgrounded/screen-locked, JS timers (including the watchdog)

@@ -145,11 +145,25 @@ function removeDuplicateSpacing(text: string): string {
     .trim();
 }
 
+// A control character used purely as an internal marker - it never
+// reaches the screen (only ttsSentences goes through normalizeForSpeech,
+// display text is untouched) and never appears in real chapter text, so
+// it's safe to search/split on later without colliding with anything.
+export const TTS_PAUSE_MARKER = "\u0001";
+
 function normalizeForSpeech(text: string): string {
   let clean = text.replace(/[""'']/g, '"');
   clean = clean.replace(/→|->|=>/g, " to ");
   clean = clean.replace(/←|<-|<=/g, " from ");
   clean = clean.replace(/↔|<->/g, " between ");
+  // Brackets read as punctuation - a brief beat where they sit - rather
+  // than being spoken aloud as "open bracket"/"close bracket" or silently
+  // skipped. Mark each one here; useTTS turns the marker into a real
+  // pause when it actually speaks the sentence.
+  clean = clean.replace(/[[\]]/g, TTS_PAUSE_MARKER);
+  // Removing the brackets can leave doubled-up spacing where they had
+  // padding around them (e.g. "said [ TL note ] to her").
+  clean = clean.replace(/[ \t]{2,}/g, " ");
   return clean.trim();
 }
 
