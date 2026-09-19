@@ -417,18 +417,10 @@ export default function ReaderScreen() {
 
   // ── Auto‑scroll state ──
   const [autoScrollActive, setAutoScrollActive] = useState(false);
-  const [readingProgress, setReadingProgress] = useState(0);
-  const [scrollY, setScrollY] = useState(0);
-  const scrollYRef = useRef(0);
-  const contentHeightRef = useRef(0);
-  const scrollViewHeightRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const hasRestoredScrollRef = useRef(false);
-  const restoredChapterRef = useRef<number>(-1);
 
   // ── Chapter index ──
   const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
-  const scrollRef = useRef<ScrollView>(null);
 
   // ── Novel and chapter ──
   const novel = getNovel(id);
@@ -443,7 +435,21 @@ export default function ReaderScreen() {
       saveChapterContent,
     });
 
-  // ── Auto‑scroll methods (must be defined before other handlers) ──
+  const {
+    scrollRef,
+    scrollY,
+    readingProgress,
+    contentHeight,
+    scrollViewHeight,
+    handleScroll,
+    handleScrollBeginDrag,
+    handleScrollEndDrag,
+    handleScrollViewLayout,
+    handleContentSizeChange,
+    isUserScrollingRef,
+  } = useScrollTracking({ novel, chapterIndex });
+
+  // ── Auto‑scroll methods (must be defined before useReaderNavigation) ──
   const stopAutoScroll = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -452,91 +458,43 @@ export default function ReaderScreen() {
     setAutoScrollActive(false);
   }, []);
 
-  // ── Reading progress and scroll handlers ──
-  const updateReadingProgress = useCallback(() => {
-    if (contentHeightRef.current > scrollViewHeightRef.current) {
-      const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
-      setReadingProgress(
-        Math.min(100, Math.max(0, (scrollYRef.current / maxScroll) * 100)),
-      );
-    } else {
-      setReadingProgress(0);
-    }
-  }, []);
-
-  const handleScroll = (event: any) => {
-    const newY = event.nativeEvent.contentOffset.y;
-    scrollYRef.current = newY;
-    setScrollY(newY);
-    updateReadingProgress();
-  };
-
-  const handleScrollBeginDrag = () => {
-    if (autoScrollActive) stopAutoScroll();
-  };
-
-  const handleContentSizeChange = (_width: number, height: number) => {
-    contentHeightRef.current = height;
-    updateReadingProgress();
-    if (
-      !hasRestoredScrollRef.current &&
-      restoredChapterRef.current !== chapterIndex
-    ) {
-      const savedOffset =
-        novel?.lastRead?.chapterIndex === chapterIndex
-          ? novel.lastRead.scrollOffset
-          : 0;
-      if (savedOffset > 0 && height > 0) {
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: savedOffset, animated: false });
-          scrollYRef.current = savedOffset;
-          setScrollY(savedOffset);
-          hasRestoredScrollRef.current = true;
-          restoredChapterRef.current = chapterIndex;
-          updateReadingProgress();
-        }, 80);
-      } else {
-        hasRestoredScrollRef.current = true;
-        restoredChapterRef.current = chapterIndex;
-      }
-    }
-  };
-
-  const handleScrollViewLayout = (event: any) => {
-    scrollViewHeightRef.current = event.nativeEvent.layout.height;
-    updateReadingProgress();
-  };
-
-  const handleScrollEndDrag = () => {
-    // No-op for now
-  };
-
   const startAutoScroll = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     const speed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
     intervalRef.current = setInterval(() => {
       if (!scrollRef.current) return;
-      const currentY = scrollYRef.current;
-      const maxY = Math.max(
-        0,
-        contentHeightRef.current - scrollViewHeightRef.current,
-      );
+      const currentY = scrollY;
+      const maxY = Math.max(0, contentHeight - scrollViewHeight);
       if (currentY >= maxY) {
         stopAutoScroll();
         return;
       }
       const newY = Math.min(maxY, currentY + (30 * speed) / 20);
       scrollRef.current.scrollTo({ y: newY, animated: false });
-      scrollYRef.current = newY;
     }, 50);
     setAutoScrollActive(true);
-  }, [autoScrollSpeedIdx, stopAutoScroll]);
+  }, [
+    autoScrollSpeedIdx,
+    stopAutoScroll,
+    scrollY,
+    contentHeight,
+    scrollViewHeight,
+    scrollRef,
+  ]);
 
   // ── TTS ──
   const goToNextChapter = useCallback(() => {
     goChapter(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // useTTS is set up here, but the scroll/paragraph data it needs to pick
+  // a starting sentence isn't computed until later in this component (it
+  // depends on paraYPositionsRef, which only exists once paragraphs have
+  // laid out). Passing a stable wrapper that reads from a ref sidesteps
+  // reordering all of that - the ref's target gets assigned further down,
+  // once the real data is available.
+  const getStartIndexRef = useRef<() => number>(() => 0);
 
   const {
     ttsActive,
@@ -564,17 +522,7 @@ export default function ReaderScreen() {
     novel,
     chapterIndex,
     goToNextChapter,
-    getStartIndex: () => {
-      if (contentHeightRef.current <= 0) return 0;
-      const scrollRatio = scrollYRef.current / contentHeightRef.current;
-      return Math.max(
-        0,
-        Math.min(
-          Math.floor(scrollRatio * ttsSentences.length),
-          ttsSentences.length - 1,
-        ),
-      );
-    },
+    getStartIndex: () => getStartIndexRef.current(),
   });
 
   // ── Navigation ──
@@ -634,12 +582,7 @@ export default function ReaderScreen() {
         nextAppState === "background"
       ) {
         if (novel && chapter) {
-          saveReadingProgress(
-            novel.id,
-            chapterIndex,
-            chapter.title,
-            scrollYRef.current,
-          );
+          saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
         }
       }
       appStateRef.current = nextAppState;
@@ -651,12 +594,7 @@ export default function ReaderScreen() {
     return () => {
       subscription.remove();
       if (novel && chapter) {
-        saveReadingProgress(
-          novel.id,
-          chapterIndex,
-          chapter.title,
-          scrollYRef.current,
-        );
+        saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
       }
     };
   }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
@@ -1097,6 +1035,39 @@ export default function ReaderScreen() {
     }
     return map;
   }, [paragraphSentences]);
+
+  // Reverse of the above: paragraph index -> the flat ttsIndex of its
+  // first sentence, so a scroll position can be converted into a TTS
+  // starting point.
+  const paraFirstTtsIndex = useMemo(() => {
+    const starts: number[] = [];
+    let i = 0;
+    for (let paraIdx = 0; paraIdx < paragraphSentences.length; paraIdx++) {
+      starts.push(i);
+      i += paragraphSentences[paraIdx].length;
+    }
+    return starts;
+  }, [paragraphSentences]);
+
+  // Fresh TTS starts here, not always sentence 0: find whichever paragraph
+  // is currently at/near the top of the viewport (the topmost one whose
+  // recorded layout Y is at or above the current scroll offset) and start
+  // from its first sentence. Falls back to 0 if paragraphs haven't laid
+  // out yet (e.g. TTS pressed the instant a chapter opens).
+  getStartIndexRef.current = useCallback(() => {
+    if (paraYPositionsRef.current.size === 0 || paraFirstTtsIndex.length === 0) {
+      return 0;
+    }
+    let bestParaIdx = 0;
+    let bestY = -Infinity;
+    for (const [idx, y] of paraYPositionsRef.current.entries()) {
+      if (y <= scrollY && y > bestY) {
+        bestY = y;
+        bestParaIdx = idx;
+      }
+    }
+    return paraFirstTtsIndex[bestParaIdx] ?? 0;
+  }, [scrollY, paraFirstTtsIndex]);
 
   const currentHighlightKey =
     ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
