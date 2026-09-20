@@ -58,6 +58,7 @@ import { useScrollTracking } from "@/hooks/reader/useScrollTracking";
 import { useTTS } from "@/hooks/reader/useTTS";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
+import { usePullToNextChapter } from "@/hooks/reader/usePullToNextChapter";
 import { useDictionary } from "@/hooks/reader/useDictionary";
 import { DictionaryEntry } from "@/constants/dictionary";
 import { useGlossary, GlossaryEntry } from "@/hooks/reader/useGlossary";
@@ -550,6 +551,20 @@ export default function ReaderScreen() {
     cancelAutoNext,
     scrollY,
   });
+
+  // ── Pull-to-next-chapter gesture ──
+  const isAtBottom = useCallback(
+    () => scrollY >= contentHeight - scrollViewHeight - 4,
+    [scrollY, contentHeight, scrollViewHeight],
+  );
+
+  const hasNextChapter = chapterIndex < (novel?.chapters.length ?? 0) - 1;
+
+  const { pullPanHandlers, pullProgress, pullStageText } = usePullToNextChapter(
+    isAtBottom,
+    goToNextChapter,
+    fullscreenMode && hasNextChapter,
+  );
 
   // ── Rapid‑tap guard ──
   const handleRapidTapTripped = useCallback(() => {
@@ -1360,6 +1375,7 @@ export default function ReaderScreen() {
             onLayout={handleScrollViewLayout}
             scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
+            {...pullPanHandlers}
           >
             <Text
               style={[
@@ -1532,6 +1548,54 @@ export default function ReaderScreen() {
                 Narration stalled — tap to resume
               </Text>
             </Pressable>
+          )}
+
+          {/* Pull-to-next-chapter indicator */}
+          {fullscreenMode && hasNextChapter && pullProgress > 0 && (
+            <View
+              style={[
+                styles.pullIndicatorContainer,
+                {
+                  backgroundColor: adaptiveColors.surface,
+                  borderColor: adaptiveColors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.pullIndicatorRing,
+                  {
+                    borderColor: adaptiveColors.accent,
+                    transform: [
+                      { scale: 0.7 + pullProgress * 0.3 },
+                      {
+                        rotate: `${pullProgress * 360}deg`,
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: adaptiveColors.accent,
+                    opacity: pullProgress,
+                  }}
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: adaptiveColors.text,
+                  fontWeight: "500",
+                  marginTop: 6,
+                }}
+              >
+                {pullStageText}
+              </Text>
+            </View>
           )}
 
           {/* ─── RIGHT COLUMN (fullscreen pill + quick actions cluster) ─── */}
@@ -3078,4 +3142,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   ttsBackgroundSetupBtnText: { fontSize: 12, fontWeight: "600" },
+
+  // ─── Pull-to-next-chapter indicator ───
+  pullIndicatorContainer: {
+    position: "absolute",
+    bottom: 20,
+    left: "50%",
+    transform: [{ translateX: -40 }],
+    width: 80,
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pullIndicatorRing: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
