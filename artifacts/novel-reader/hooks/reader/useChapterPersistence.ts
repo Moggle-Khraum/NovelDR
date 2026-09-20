@@ -8,6 +8,7 @@ import { decodeHTML } from "entities";
 export interface CachedChapter {
   content: string;
   paragraphs: string[];
+  paragraphSentences: string[][];
   sentences: string[];
   processedAt: number;
   wordCount: number;
@@ -180,6 +181,7 @@ export async function processChapterContent(
     return {
       content: "",
       paragraphs: [],
+      paragraphSentences: [],
       sentences: [],
       processedAt: Date.now(),
       wordCount: 0,
@@ -187,13 +189,18 @@ export async function processChapterContent(
   }
 
   const paragraphs = detectParagraphs(content);
-  const sentences = paragraphs.flatMap((p) =>
+  // Per-paragraph sentence groups — this is what the reader screen renders
+  // (each ParagraphBlock needs its own sentences: string[]), kept alongside
+  // the flat `sentences` list below, which TTS reads through sequentially.
+  const paragraphSentences = paragraphs.map((p) =>
     splitSentencesWithLineBreaks(p).map(normalizeForSpeech),
   );
+  const sentences = paragraphSentences.flat();
   const wordCount = content.split(/\s+/).length;
   return {
     content,
     paragraphs,
+    paragraphSentences,
     sentences,
     processedAt: Date.now(),
     wordCount,
@@ -223,6 +230,8 @@ export function useChapterPersistence({
 }: UseChapterPersistenceProps) {
   const [chapterContent, setChapterContent] = useState<string>("");
   const [processedParagraphs, setProcessedParagraphs] = useState<string[]>([]);
+  const [processedParagraphSentences, setProcessedParagraphSentences] =
+    useState<string[][]>([]);
   const [ttsSentences, setTtsSentences] = useState<string[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
 
@@ -263,6 +272,7 @@ export function useChapterPersistence({
     if (!novel || !chapterRef.current) {
       setChapterContent("");
       setProcessedParagraphs([]);
+      setProcessedParagraphSentences([]);
       setTtsSentences([]);
       setContentLoading(false);
       return;
@@ -270,6 +280,7 @@ export function useChapterPersistence({
 
     setChapterContent("");
     setProcessedParagraphs([]);
+    setProcessedParagraphSentences([]);
     setTtsSentences([]);
     setContentLoading(true);
 
@@ -289,11 +300,13 @@ export function useChapterPersistence({
 
         setChapterContent(processed.content);
         setProcessedParagraphs(processed.paragraphs);
+        setProcessedParagraphSentences(processed.paragraphSentences);
         setTtsSentences(processed.sentences);
       } catch {
         if (!signal.aborted && currentLoadId === loadIdRef.current) {
           setChapterContent("Error loading chapter content. Please try again.");
           setProcessedParagraphs([]);
+          setProcessedParagraphSentences([]);
         }
       } finally {
         if (!signal.aborted && currentLoadId === loadIdRef.current) {
@@ -400,6 +413,7 @@ export function useChapterPersistence({
   return {
     chapterContent,
     processedParagraphs,
+    processedParagraphSentences,
     ttsSentences,
     contentLoading,
     persistChapterContent,
