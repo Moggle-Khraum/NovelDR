@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PanResponder } from "react-native";
 
-const PULL_THRESHOLD = 90; // px of upward drag needed to trigger
+const PULL_THRESHOLD = 60; // px of upward drag needed to trigger
 
 export type PullStage = "idle" | "keep-pulling" | "almost-there" | "release";
 
