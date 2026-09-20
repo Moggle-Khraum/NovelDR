@@ -47,7 +47,11 @@ import ReaderSettingsPanel from "@/components/reader/ReaderSettingsPanel";
 import { DefinitionModal } from "@/components/reader/DefinitionModal";
 import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
 
-import { FONT_PRESETS, MARGIN_PRESETS } from "@/constants/readerSettings";
+import {
+  AUTO_SCROLL_SPEEDS,
+  FONT_PRESETS,
+  MARGIN_PRESETS,
+} from "@/constants/readerSettings";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -433,6 +437,40 @@ export default function ReaderScreen() {
       }
     : FONT_PRESETS.find((p) => p.id === fontPresetId) || FONT_PRESETS[0];
 
+  // ─── ReaderSettingsPanel glue ────────────────────────────────────────
+  // Selecting a built-in preset must also clear any active custom font,
+  // per the ownership note on ReaderSettingsPanelProps.
+  const selectBuiltinFontPreset = useCallback(
+    (id: string) => {
+      setFontPresetId(id);
+      setActiveFontFilename(null);
+    },
+    [setFontPresetId, setActiveFontFilename],
+  );
+
+  const onSelectCustomFont = useCallback(
+    (font: { filename: string }) => {
+      setActiveFontFilename(font.filename);
+    },
+    [setActiveFontFilename],
+  );
+
+  const onDeleteCustomFont = useCallback(
+    (font: { filename: string }) => {
+      deleteFont(font.filename);
+    },
+    [deleteFont],
+  );
+
+  const currentSpeed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
+
+  // saveReaderSettings reads current idx/ref state internally rather than
+  // taking args, so the panel's (fontSize, lineSpacing, margin, scroll)
+  // signature is accepted but unused here.
+  const saveAllSettings = useCallback(async () => {
+    await saveReaderSettings();
+  }, [saveReaderSettings]);
+
   const paragraphSentences = useMemo(() => {
     return (processedParagraphs || []).map((p: any) => p.sentences || []);
   }, [processedParagraphs]);
@@ -655,25 +693,52 @@ export default function ReaderScreen() {
           </ScrollView>
         </View>
 
-        {/* ─── READER SETTINGS MODAL ─── */}
-        <Modal
-          visible={showSettingsSheet}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowSettingsSheet(false)}
-        >
-          <ReaderSettingsPanel
-            fontSizeIdx={fontSizeIdx}
-            setFontSizeIdx={setFontSizeIdx}
-            lineSpacingIdx={lineSpacingIdx}
-            setLineSpacingIdx={setLineSpacingIdx}
-            marginPresetIdx={marginPresetIdx}
-            setMarginPresetIdx={setMarginPresetIdx}
-            autoScrollSpeedIdx={autoScrollSpeedIdx}
-            setAutoScrollSpeedIdx={setAutoScrollSpeedIdx}
-            onClose={() => setShowSettingsSheet(false)}
-          />
-        </Modal>
+        {/* ─── READER SETTINGS PANEL ───────────────────────────────────────
+            ReaderSettingsPanel owns its own <Modal visible={showSettingsSheet}>
+            internally — do not wrap it in another Modal here, that produced
+            a nested-Modal with an undefined `visible` on the inner one. */}
+        <ReaderSettingsPanel
+          adaptiveColors={adaptiveColors}
+          bottomPad={bottomPad}
+          showSettingsSheet={showSettingsSheet}
+          setShowSettingsSheet={setShowSettingsSheet}
+          activeFontPreset={activeFontPresetValue}
+          fontPresetId={fontPresetId}
+          selectBuiltinFontPreset={selectBuiltinFontPreset}
+          showFontModal={showFontModal}
+          setShowFontModal={setShowFontModal}
+          customFonts={customFonts}
+          activeFontFilename={activeFontFilename}
+          onSelectCustomFont={onSelectCustomFont}
+          onDeleteCustomFont={onDeleteCustomFont}
+          onImportFont={importFont}
+          importingFont={importingFont}
+          fontSize={fontSize}
+          fontSizeIdx={fontSizeIdx}
+          setFontSizeIdx={setFontSizeIdx}
+          lineSpacing={lineSpacing}
+          lineSpacingIdx={lineSpacingIdx}
+          setLineSpacingIdx={setLineSpacingIdx}
+          autoScrollActive={autoScrollActive}
+          startAutoScroll={startAutoScroll}
+          stopAutoScroll={stopAutoScroll}
+          currentSpeed={currentSpeed}
+          autoScrollSpeedIdx={autoScrollSpeedIdx}
+          setAutoScrollSpeedIdx={setAutoScrollSpeedIdx}
+          ttsActive={ttsActive}
+          ttsAutoNext={ttsAutoNext}
+          toggleTtsAutoNext={toggleTtsAutoNext}
+          marginPresetIdx={marginPresetIdx}
+          setMarginPresetIdx={setMarginPresetIdx}
+          bgPresetId={bgPresetId}
+          bgCustomUri={bgCustomUri}
+          bgSolidColor={bgSolidColor}
+          pickCustomImage={pickCustomImage}
+          selectPreset={selectPreset}
+          showBgModal={showBgModal}
+          setShowBgModal={setShowBgModal}
+          saveAllSettings={saveAllSettings}
+        />
 
         {/* ─── DICTIONARY MODAL ─── */}
         {showDictModal && (
