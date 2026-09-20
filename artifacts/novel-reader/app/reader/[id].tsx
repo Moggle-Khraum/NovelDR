@@ -1551,7 +1551,7 @@ export default function ReaderScreen() {
           )}
 
           {/* Pull-to-next-chapter indicator */}
-          {fullscreenMode && hasNextChapter && pullProgress > 0 && (
+          {fullscreenMode && hasNextChapter && readingProgress >= 100 && pullProgress >= 1 && (
             <View
               style={[
                 styles.pullIndicatorContainer,
