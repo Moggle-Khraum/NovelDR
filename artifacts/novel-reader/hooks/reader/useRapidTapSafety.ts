@@ -9,9 +9,7 @@ import {
  * Detects rapid consecutive taps (likely accidental spam or gesture issues)
  * and triggers a safety response (stop TTS, stop auto-scroll, show warning).
  */
-export function useRapidTapSafety(
-  onTripped: () => void = () => {},
-) {
+export function useRapidTapSafety(onTripped: () => void = () => {}) {
   const tapTimestampsRef = useRef<number[]>([]);
   const trippedRef = useRef(false);
 

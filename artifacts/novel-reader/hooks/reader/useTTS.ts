@@ -407,7 +407,14 @@ export function useTTS({
         stopTTS();
       }
     },
-    [stopTTS, clearWatchdogTimer, novel, chapterIndex, goToNextChapter, speakChunks],
+    [
+      stopTTS,
+      clearWatchdogTimer,
+      novel,
+      chapterIndex,
+      goToNextChapter,
+      speakChunks,
+    ],
   );
 
   // While backgrounded/screen-locked, JS timers (including the watchdog)

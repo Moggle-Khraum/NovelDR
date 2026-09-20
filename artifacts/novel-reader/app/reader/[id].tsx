@@ -1,7 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -261,17 +267,13 @@ export default function ReaderScreen() {
   const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
   const chapter = novel?.chapters[chapterIndex];
 
-  const {
-    chapterContent,
-    processedParagraphs,
-    ttsSentences,
-    contentLoading,
-  } = useChapterPersistence({
-    novel,
-    chapterIndex,
-    loadChapterContent,
-    saveChapterContent,
-  });
+  const { chapterContent, processedParagraphs, ttsSentences, contentLoading } =
+    useChapterPersistence({
+      novel,
+      chapterIndex,
+      loadChapterContent,
+      saveChapterContent,
+    });
 
   const {
     scrollRef,
@@ -573,10 +575,7 @@ export default function ReaderScreen() {
               >
                 <Ionicons name="close" size={22} color={adaptiveColors.text} />
               </Pressable>
-              <Pressable
-                style={{ flex: 1 }}
-                onPress={() => toggleFullscreen()}
-              >
+              <Pressable style={{ flex: 1 }} onPress={() => toggleFullscreen()}>
                 <Text
                   style={[styles.chapterTitle, { color: adaptiveColors.text }]}
                   numberOfLines={1}
@@ -659,35 +658,34 @@ export default function ReaderScreen() {
             </Text>
             {contentLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator
-                  size="small"
-                  color={adaptiveColors.accent}
-                />
+                <ActivityIndicator size="small" color={adaptiveColors.accent} />
               </View>
             ) : (
               <View>
-                {paragraphSentences.map((sentences: string[], paraIdx: number) => {
-                  const isLastParagraph =
-                    paraIdx === paragraphSentences.length - 1;
+                {paragraphSentences.map(
+                  (sentences: string[], paraIdx: number) => {
+                    const isLastParagraph =
+                      paraIdx === paragraphSentences.length - 1;
 
-                  return (
-                    <ParagraphBlock
-                      key={paraIdx}
-                      sentences={sentences}
-                      paraIdx={paraIdx}
-                      highlightedSentIdx={-1}
-                      isLastParagraph={isLastParagraph}
-                      fontSize={fontSize}
-                      lineSpacing={lineSpacing}
-                      accentColor={adaptiveColors.accent}
-                      textColor={adaptiveColors.text}
-                      regularFamily={activeFontPresetValue.regularFamily}
-                      boldFamily={activeFontPresetValue.boldFamily}
-                      highlightedWord={null}
-                      onWordDoubleTap={handleWordDoubleTap}
-                    />
-                  );
-                })}
+                    return (
+                      <ParagraphBlock
+                        key={paraIdx}
+                        sentences={sentences}
+                        paraIdx={paraIdx}
+                        highlightedSentIdx={-1}
+                        isLastParagraph={isLastParagraph}
+                        fontSize={fontSize}
+                        lineSpacing={lineSpacing}
+                        accentColor={adaptiveColors.accent}
+                        textColor={adaptiveColors.text}
+                        regularFamily={activeFontPresetValue.regularFamily}
+                        boldFamily={activeFontPresetValue.boldFamily}
+                        highlightedWord={null}
+                        onWordDoubleTap={handleWordDoubleTap}
+                      />
+                    );
+                  },
+                )}
               </View>
             )}
           </ScrollView>
@@ -783,12 +781,7 @@ export default function ReaderScreen() {
                 { backgroundColor: adaptiveColors.surface },
               ]}
             >
-              <Text
-                style={[
-                  styles.alertTitle,
-                  { color: adaptiveColors.text },
-                ]}
-              >
+              <Text style={[styles.alertTitle, { color: adaptiveColors.text }]}>
                 Too Many Taps
               </Text>
               <Text
