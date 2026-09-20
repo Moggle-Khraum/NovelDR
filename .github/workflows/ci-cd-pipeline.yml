@@ -6,11 +6,13 @@ on:
     branches:
       - Dev1
       - dev3
+      - dev4
       
   pull_request:
     branches:
       - Dev1
       - dev3
+      - dev4
 
 concurrency:
   group: ci-${{ github.ref }}
