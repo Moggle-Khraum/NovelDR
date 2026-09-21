@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 // Update this to your deployed server URL
-const API_URL = "https://your-deployed-server.com";
+const API_URL = "https://262e5a3b-3a35-4fca-bec3-4785f8fb1300-00-1lx4cgng71mch.pike.replit.dev/api/";
 
 export const useDiscordStatus = () => {
   const sessionIdRef = useRef<string | null>(null);
