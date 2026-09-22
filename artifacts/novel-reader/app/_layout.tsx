@@ -42,6 +42,7 @@ import { SiteHealthProvider } from "@/context/SiteHealthContext";
 import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { useDiscordStatus } from "@/hooks/useDiscordStatus";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
 
@@ -359,6 +360,8 @@ export default Sentry.wrap(function RootLayout() {
   useCrashLogger();
 
   const connectivity = useConnectivity();
+  useDiscordStatus();
+
   const [bannerState, setBannerState] = useState<{
     visible: boolean;
     type: "offline" | "online";
