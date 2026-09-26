@@ -323,6 +323,14 @@ function RootLayoutNav() {
         name="reader/[id]"
         options={{ headerShown: false, presentation: "fullScreenModal" }}
       />
+      <Stack.Screen
+        name="announcements"
+        component={AnnouncementsScreen}
+        options={{
+          headerShown: true,
+          title: "Announcements",
+        }}
+      />
     </Stack>
   );
 }
