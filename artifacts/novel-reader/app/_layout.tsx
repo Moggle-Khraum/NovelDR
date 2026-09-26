@@ -45,6 +45,10 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
 
+import { AnnouncementBadge } from "@/components/AnnouncementBadge";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { AnnouncementsScreen } from "@/components/AnnouncementsScreen";
+
 SplashScreen.preventAutoHideAsync();
 
 // Sentry init (unchanged)
