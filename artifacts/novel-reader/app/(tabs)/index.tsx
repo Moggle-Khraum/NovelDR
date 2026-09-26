@@ -37,6 +37,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLibrary, Novel, NovelStatus } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 
+import { AnnouncementBadge } from "@/components/AnnouncementBadge";
+
 // ── Helper: Extract readable source name from URL ───────────────────────────
 const getSourceDisplayName = (sourceUrl: string): string => {
   try {
@@ -712,6 +714,10 @@ export default function LibraryScreen() {
         </Text>
       </View>
       <View style={styles.headerButtons}>
+        <AnnouncementBadge
+          onPress={() => router.push("announcements")}
+          size={24}
+        />
         <Pressable onPress={toggleSearch} style={styles.iconButton}>
           <Ionicons
             name={showSearch ? "close" : "search"}
