@@ -117,10 +117,13 @@ const makeAbsoluteUrl = (relativeUrl: string, baseUrl: string): string => {
 const delayMs = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+// Random jitter between 1-3 seconds
+const jitterMs = () => Math.random() * 2000 + 1000;
+
 // ─── Shared HTTP client ────────────────────────────────────────────────────────
 
 const httpClient = axios.create({
-  timeout: 50000,
+  timeout: 60000,
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -167,7 +170,7 @@ const fetchAsianovel = async (url: string): Promise<string> => {
     return response.data;
   } catch (error: any) {
     console.warn("[Scraper] Asianovel direct fetch failed:", error.message);
-    await delayMs(2000);
+    await delayMs(10000 + jitterMs());
     try {
       console.log("[Scraper] Retrying Asianovel with native fetch...");
       const response = await fetch(url, {
@@ -183,7 +186,7 @@ const fetchAsianovel = async (url: string): Promise<string> => {
       return await response.text();
     } catch (fetchError: any) {
       console.warn("[Scraper] Asianovel fetch API failed:", fetchError.message);
-      await delayMs(2000);
+      await delayMs(10000 + jitterMs());
       console.log("[Scraper] Retrying Asianovel with proxy...");
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
       const proxyResponse = await asianovelHttpClient.get(proxyUrl);
@@ -210,7 +213,7 @@ const fetchWithFallback = async (
       "[Scraper] Direct fetch failed, waiting before retry:",
       directError.message,
     );
-    await delayMs(2000);
+    await delayMs(3000 + jitterMs());
     console.log("[Scraper] Retrying with proxy...");
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const proxyResponse = await httpClient.get(proxyUrl);
@@ -1256,7 +1259,7 @@ export async function downloadNovelByCrawling(
     content: string,
   ) => Promise<void>,
   onProgress?: (chapterNumber: number, title: string) => void,
-  delayMs: number = 500,
+  delayMs: number = 3000,
 ): Promise<void> {
   let currentUrl: string | null = startUrl;
   let chapterNumber = 1;
@@ -1278,7 +1281,7 @@ export async function downloadNovelByCrawling(
       chapterNumber++;
 
       if (delayMs > 0 && currentUrl) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs + jitterMs()));
       }
     } catch (error: any) {
       console.error(
