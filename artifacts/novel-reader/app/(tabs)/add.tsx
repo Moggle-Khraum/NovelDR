@@ -31,7 +31,14 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
+import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/deprecatedSites";
 import Colors from "@/constants/colors";
+
+const DEPRECATED_SITES = [
+  { domain: "novelbin.me", reason: "SHUTDOWN" },
+  { domain: "novelbin.com", reason: "SHUTDOWN" },
+  { domain: "novelarrow", reason: "CHANGED DOMAIN" },
+];
 
 // Fallback used when Max Chapters is left blank (mirrors Start Chapter's
 // fallback to 1).
@@ -201,6 +208,7 @@ interface SourceListModalProps {
   onClose: () => void;
   sites: typeof SUPPORTED_SITES;
   siteStatuses: Record<string, SiteStatus>;
+  deprecatedSites?: Array<{ domain: string; reason: string }>;
 }
 
 function SourceListModal({
@@ -208,6 +216,7 @@ function SourceListModal({
   onClose,
   sites,
   siteStatuses,
+  deprecatedSites,
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck } = useSiteHealth();
@@ -272,13 +281,74 @@ function SourceListModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.modalGrid}
           >
-            {sites.map((site) => (
-              <SourceListModalCell
-                key={site.name}
-                name={site.name}
-                status={siteStatuses[site.name] || "idle"}
-              />
-            ))}
+            {/* LIVE SITES SECTION */}
+            <View style={styles.sectionContainer}>
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  { color: colors.text, marginBottom: 12 },
+                ]}
+              >
+                ✅ ACTIVE SITES
+              </Text>
+              <View style={styles.sitesList}>
+                {sites.map((site) => (
+                  <SourceListModalCell
+                    key={site.name}
+                    name={site.name}
+                    status={siteStatuses[site.name] || "idle"}
+                  />
+                ))}
+              </View>
+            </View>
+
+            {/* DEPRECATED SITES SECTION */}
+            {deprecatedSites && deprecatedSites.length > 0 && (
+              <View
+                style={[
+                  styles.sectionContainer,
+                  styles.deprecatedSection,
+                  { backgroundColor: colors.surface, opacity: 0.6 },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sectionLabel,
+                    { color: colors.textSecondary, marginBottom: 12 },
+                  ]}
+                >
+                  ⚠️ DEPRECATED SITES
+                </Text>
+                <View style={styles.deprecatedList}>
+                  {deprecatedSites.map((site) => (
+                    <View
+                      key={site.domain}
+                      style={[
+                        styles.deprecatedItem,
+                        { borderColor: colors.textSecondary },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.deprecatedItemName,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {site.domain}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.deprecatedItemReason,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {site.reason}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -499,6 +569,18 @@ export default function AddNovelScreen() {
       );
       return;
     }
+
+    // ===== NEW: Check for deprecated sites =====
+    const deprecatedCheck = checkDeprecatedSite(trimmedUrl);
+    if (deprecatedCheck) {
+      const message = getDeprecatedSiteMessage(
+        deprecatedCheck.siteName,
+        deprecatedCheck.reason
+      );
+      addLog(message, "error");
+      return;
+    }
+    // ===== END: Deprecated sites check =====
 
     if (chapterLimiter.dangerModalVisible) {
       addLog(
@@ -1260,6 +1342,88 @@ export default function AddNovelScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* DEPRECATED SITES SECTION */}
+          {DEPRECATED_SITES && DEPRECATED_SITES.length > 0 && (
+            <View>
+              <Text
+                style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}
+              >
+                ⚠️ DEPRECATED SITES
+              </Text>
+              <View
+                style={[
+                  styles.sitesGrid,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    opacity: 0.6,
+                  },
+                ]}
+              >
+                {DEPRECATED_SITES.slice(0, 8).map((site) => (
+                  <View
+                    key={site.domain}
+                    style={[
+                      styles.siteCell,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: "#FF6B6B",
+                        marginBottom: 8,
+                      }}
+                    />
+                    <Text
+                      style={[styles.siteName, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                    >
+                      {site.domain}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        color: colors.textMuted,
+                        marginTop: 2,
+                      }}
+                    >
+                      {site.reason}
+                    </Text>
+                  </View>
+                ))}
+                {DEPRECATED_SITES.length > 8 && (
+                  <Pressable
+                    style={[
+                      styles.siteCell,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    onPress={() => setSourceListModalVisible(true)}
+                  >
+                    <Text
+                      style={[styles.siteName, { color: colors.text }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                    >
+                      +{DEPRECATED_SITES.length - 8} more
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Form Section */}
@@ -1474,6 +1638,7 @@ export default function AddNovelScreen() {
         onClose={() => setSourceListModalVisible(false)}
         sites={SUPPORTED_SITES}
         siteStatuses={siteStatuses}
+        deprecatedSites={DEPRECATED_SITES}
       />
 
       {/* Chapter Limiter Danger Modal */}
@@ -1714,5 +1879,44 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "flex-start",
     paddingBottom: 10,
+  },
+  sectionContainer: {
+    width: "100%",
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  sectionLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  sitesList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  deprecatedSection: {
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FFB74D",
+  },
+  deprecatedList: {
+    gap: 8,
+  },
+  deprecatedItem: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    width: "100%",
+  },
+  deprecatedItemName: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+  },
+  deprecatedItemReason: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 4,
   },
 });
