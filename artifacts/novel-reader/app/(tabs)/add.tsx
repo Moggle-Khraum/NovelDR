@@ -293,33 +293,6 @@ function SourceListModal({
                 ))}
               </View>
             </View>
-
-            {/* DEPRECATED SITES - COMPACT 2-COLUMN */}
-            {deprecatedSites && deprecatedSites.length > 0 && (
-              <View style={[styles.sectionContainer, { marginTop: 12 }]}>
-                <Text
-                  style={[
-                    styles.deprecatedSectionLabel,
-                    { color: Colors.amber },
-                  ]}
-                >
-                  ⚠️ Deprecated
-                </Text>
-                <View style={styles.compactDeprecatedGrid}>
-                  {deprecatedSites.map((site) => (
-                    <Text
-                      key={site.domain}
-                      style={[
-                        styles.compactDeprecatedItem,
-                        { color: colors.textMuted },
-                      ]}
-                    >
-                      {site.domain} ({site.reason})
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -1889,22 +1862,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     marginTop: 4,
-  },
-  deprecatedSectionLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  compactDeprecatedGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  compactDeprecatedItem: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    paddingVertical: 4,
-    flex: 1,
-    minWidth: "48%",
   },
 });
