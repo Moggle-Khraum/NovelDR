@@ -220,7 +220,6 @@ function SourceListModal({
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck } = useSiteHealth();
-  const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
   return (
     <Modal
@@ -278,99 +277,45 @@ function SourceListModal({
             style={[styles.modalSeparator, { backgroundColor: colors.border }]}
           />
 
-          {/* TAB NAVIGATION */}
-          <View style={styles.tabNavigation}>
-            <Pressable
-              onPress={() => setActiveTab("active")}
-              style={[
-                styles.tabButton,
-                activeTab === "active" && styles.tabButtonActive,
-                { borderBottomColor: activeTab === "active" ? colors.accent : colors.border },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabLabel,
-                  {
-                    color: activeTab === "active" ? colors.accent : colors.textMuted,
-                  },
-                ]}
-              >
-                ✅ Active Sites
-              </Text>
-            </Pressable>
-
-            {deprecatedSites && deprecatedSites.length > 0 && (
-              <Pressable
-                onPress={() => setActiveTab("deprecated")}
-                style={[
-                  styles.tabButton,
-                  activeTab === "deprecated" && styles.tabButtonActive,
-                  { borderBottomColor: activeTab === "deprecated" ? Colors.amber : colors.border },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: activeTab === "deprecated" ? Colors.amber : colors.textMuted,
-                    },
-                  ]}
-                >
-                  ⚠️ Deprecated
-                </Text>
-              </Pressable>
-            )}
-          </View>
-
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.modalGrid}
           >
-            {/* ACTIVE SITES TAB */}
-            {activeTab === "active" && (
-              <View style={styles.sectionContainer}>
-                <View style={styles.sitesList}>
-                  {sites.map((site) => (
-                    <SourceListModalCell
-                      key={site.name}
-                      name={site.name}
-                      status={siteStatuses[site.name] || "idle"}
-                    />
-                  ))}
-                </View>
+            {/* ACTIVE SITES */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sitesList}>
+                {sites.map((site) => (
+                  <SourceListModalCell
+                    key={site.name}
+                    name={site.name}
+                    status={siteStatuses[site.name] || "idle"}
+                  />
+                ))}
               </View>
-            )}
+            </View>
 
-            {/* DEPRECATED SITES TAB */}
-            {activeTab === "deprecated" && deprecatedSites && deprecatedSites.length > 0 && (
-              <View style={styles.sectionContainer}>
-                <View style={styles.deprecatedList}>
+            {/* DEPRECATED SITES - COMPACT 2-COLUMN */}
+            {deprecatedSites && deprecatedSites.length > 0 && (
+              <View style={[styles.sectionContainer, { marginTop: 12 }]}>
+                <Text
+                  style={[
+                    styles.deprecatedSectionLabel,
+                    { color: Colors.amber },
+                  ]}
+                >
+                  ⚠️ Deprecated
+                </Text>
+                <View style={styles.compactDeprecatedGrid}>
                   {deprecatedSites.map((site) => (
-                    <View
+                    <Text
                       key={site.domain}
                       style={[
-                        styles.deprecatedItem,
-                        { borderColor: colors.textSecondary },
+                        styles.compactDeprecatedItem,
+                        { color: colors.textMuted },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.deprecatedItemName,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {site.domain}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.deprecatedItemReason,
-                          { color: colors.textMuted },
-                        ]}
-                      >
-                        {site.reason}
-                      </Text>
-                    </View>
+                      {site.domain} ({site.reason})
+                    </Text>
                   ))}
                 </View>
               </View>
@@ -1945,24 +1890,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
   },
-  tabNavigation: {
-    flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-    alignItems: "center",
-  },
-  tabButtonActive: {
-    borderBottomWidth: 2,
-  },
-  tabLabel: {
+  deprecatedSectionLabel: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 12,
+    marginBottom: 8,
+  },
+  compactDeprecatedGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  compactDeprecatedItem: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    paddingVertical: 4,
+    flex: 1,
+    minWidth: "48%",
   },
 });
