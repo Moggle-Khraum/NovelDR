@@ -9,17 +9,17 @@ export interface DeprecatedSite {
 const DEPRECATED_SITES: DeprecatedSite[] = [
   {
     domain: "novelbin.me",
-    reason: "SHUTDOWN",
+    reason: "Site Shutdown",
     aliases: [],
   },
   {
     domain: "novelbin.com",
-    reason: "SHUTDOWN",
+    reason: "Site Shutdown",
     aliases: [],
   },
   {
     domain: "novelarrow",
-    reason: "CHANGED DOMAIN",
+    reason: "Changed domain",
     aliases: ["novelarrow.net", "novelarrow.com"],
   },
 ];
