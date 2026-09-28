@@ -6,7 +6,7 @@
 // artifacts/novel-reader/hooks/scrapers/registry.ts
 import type { SourceScraper } from "./types";
 import { novelPhoenixScraper } from "./sources/novelphoenix";
-import { novelArrowScraper } from "./sources/novelarrow";
+//import { novelArrowScraper } from "./sources/novelarrow";
 import { novelBinScraper } from "./sources/novel-bin";
 import { novelBinCcScraper } from "./sources/novelbincc";
 import { royalRoadScraper } from "./sources/royalroad";
@@ -21,7 +21,7 @@ import { novelArchiveCcScraper } from "./sources/novelarchivecc";
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
-  novelArrowScraper,
+  //novelArrowScraper,
   novelBinScraper,
   novelBinCcScraper,
   royalRoadScraper,
