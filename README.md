@@ -76,7 +76,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | Source Domain                                   | Status         | Source Domain                               | Status         | Source Domain                          | Status         |
 | ----------------------------------------------- | -------------- | ------------------------------------------- | -------------- | -------------------------------------- | -------------- |
 | [ReadNovelFull](https://readnovelfull.com/)     | ✅ Site Active | [NovelFull.com](https://novelfull.com/)     | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
-| [NovelFull.net](https://novelfull.net/)         | ✅ Site Active | [AllNovel](https://allnovel.org/)           | ✅ Site Active | [NovelArrow](https://novelarrow.com/)  | ✅ Site Active |
+| [NovelFull.net](https://novelfull.net/)         | ✅ Site Active | [AllNovel](https://allnovel.org/)           | ✅ Site Active |  | ✅ Site Active |
 | [FreeWebNovel](https://freewebnovel.com/)       | ✅ Site Active | [NovGo](https://novgo.net/)                 | ✅ Site Active | [NovelArchive.cc](https://novelarchive.cc/)     | ✅ Site Active  |
 | [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active |
 | [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active |
@@ -91,7 +91,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | Source Domain                       | Status       | Source Domain                         | Status       |
 | ----------------------------------- | ------------ | ------------------------------------- | ------------ |
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
-|                                     |              |                                       |              |
+| [NovelArrow](https://novelarrow.com/)   | ❌ Changed Domain |                              |              |
 
 ---
 
