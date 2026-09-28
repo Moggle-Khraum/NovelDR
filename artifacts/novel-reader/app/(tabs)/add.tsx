@@ -220,6 +220,7 @@ function SourceListModal({
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck } = useSiteHealth();
+  const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
   return (
     <Modal
@@ -277,48 +278,73 @@ function SourceListModal({
             style={[styles.modalSeparator, { backgroundColor: colors.border }]}
           />
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalGrid}
-          >
-            {/* LIVE SITES SECTION */}
-            <View style={styles.sectionContainer}>
+          {/* TAB NAVIGATION */}
+          <View style={styles.tabNavigation}>
+            <Pressable
+              onPress={() => setActiveTab("active")}
+              style={[
+                styles.tabButton,
+                activeTab === "active" && styles.tabButtonActive,
+                { borderBottomColor: activeTab === "active" ? colors.accent : colors.border },
+              ]}
+            >
               <Text
                 style={[
-                  styles.sectionLabel,
-                  { color: colors.text, marginBottom: 12 },
+                  styles.tabLabel,
+                  {
+                    color: activeTab === "active" ? colors.accent : colors.textMuted,
+                  },
                 ]}
               >
-                ✅ ACTIVE SITES
+                ✅ Active Sites
               </Text>
-              <View style={styles.sitesList}>
-                {sites.map((site) => (
-                  <SourceListModalCell
-                    key={site.name}
-                    name={site.name}
-                    status={siteStatuses[site.name] || "idle"}
-                  />
-                ))}
-              </View>
-            </View>
+            </Pressable>
 
-            {/* DEPRECATED SITES SECTION */}
             {deprecatedSites && deprecatedSites.length > 0 && (
-              <View
+              <Pressable
+                onPress={() => setActiveTab("deprecated")}
                 style={[
-                  styles.sectionContainer,
-                  styles.deprecatedSection,
-                  { backgroundColor: colors.surface, opacity: 0.6 },
+                  styles.tabButton,
+                  activeTab === "deprecated" && styles.tabButtonActive,
+                  { borderBottomColor: activeTab === "deprecated" ? Colors.amber : colors.border },
                 ]}
               >
                 <Text
                   style={[
-                    styles.sectionLabel,
-                    { color: colors.textSecondary, marginBottom: 12 },
+                    styles.tabLabel,
+                    {
+                      color: activeTab === "deprecated" ? Colors.amber : colors.textMuted,
+                    },
                   ]}
                 >
-                  ⚠️ DEPRECATED SITES
+                  ⚠️ Deprecated
                 </Text>
+              </Pressable>
+            )}
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalGrid}
+          >
+            {/* ACTIVE SITES TAB */}
+            {activeTab === "active" && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sitesList}>
+                  {sites.map((site) => (
+                    <SourceListModalCell
+                      key={site.name}
+                      name={site.name}
+                      status={siteStatuses[site.name] || "idle"}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* DEPRECATED SITES TAB */}
+            {activeTab === "deprecated" && deprecatedSites && deprecatedSites.length > 0 && (
+              <View style={styles.sectionContainer}>
                 <View style={styles.deprecatedList}>
                   {deprecatedSites.map((site) => (
                     <View
@@ -1918,5 +1944,25 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     marginTop: 4,
+  },
+  tabNavigation: {
+    flexDirection: "row",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+    alignItems: "center",
+  },
+  tabButtonActive: {
+    borderBottomWidth: 2,
+  },
+  tabLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
   },
 });
