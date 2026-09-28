@@ -1281,7 +1281,9 @@ export async function downloadNovelByCrawling(
       chapterNumber++;
 
       if (delayMs > 0 && currentUrl) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs + jitterMs()));
+        await new Promise((resolve) =>
+          setTimeout(resolve, delayMs + jitterMs()),
+        );
       }
     } catch (error: any) {
       console.error(

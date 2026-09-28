@@ -31,7 +31,10 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
-import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/deprecatedSites";
+import {
+  checkDeprecatedSite,
+  getDeprecatedSiteMessage,
+} from "@/hooks/scrapers/deprecatedSites";
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
@@ -519,7 +522,7 @@ export default function AddNovelScreen() {
     if (deprecatedCheck) {
       const message = getDeprecatedSiteMessage(
         deprecatedCheck.siteName,
-        deprecatedCheck.reason
+        deprecatedCheck.reason,
       );
       addLog(message, "error");
       return;
@@ -1291,7 +1294,10 @@ export default function AddNovelScreen() {
           {DEPRECATED_SITES && DEPRECATED_SITES.length > 0 && (
             <View>
               <Text
-                style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}
+                style={[
+                  styles.sitesHeaderLabel,
+                  { color: colors.textSecondary },
+                ]}
               >
                 ⚠️ DEPRECATED SITES
               </Text>

@@ -30,7 +30,7 @@ const DEPRECATED_SITES: DeprecatedSite[] = [
  * @returns Object with isDeprecated flag and reason, or null if not deprecated
  */
 export const checkDeprecatedSite = (
-  url: string
+  url: string,
 ): { isDeprecated: true; reason: string; siteName: string } | null => {
   try {
     const urlObj = new URL(url);
@@ -72,7 +72,7 @@ export const checkDeprecatedSite = (
  */
 export const getDeprecatedSiteMessage = (
   siteName: string,
-  reason: string
+  reason: string,
 ): string => {
   return `⚠️ YOU HAVE ENTERED A LINK FROM A DEPRECATED / DEAD SITE\n\n📍 Site: ${siteName}\n❌ Status: ${reason}\n\nThis site is no longer supported. Please try another source.`;
 };
