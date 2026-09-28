@@ -31,10 +31,7 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
-import {
-  checkDeprecatedSite,
-  getDeprecatedSiteMessage,
-} from "@/hooks/scrapers/deprecatedSites";
+import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/deprecatedSites";
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
@@ -223,6 +220,7 @@ function SourceListModal({
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck } = useSiteHealth();
+  const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
   return (
     <Modal
@@ -280,22 +278,108 @@ function SourceListModal({
             style={[styles.modalSeparator, { backgroundColor: colors.border }]}
           />
 
+          {/* TAB NAVIGATION */}
+          <View style={styles.tabNavigation}>
+            <Pressable
+              onPress={() => setActiveTab("active")}
+              style={[
+                styles.tabButton,
+                activeTab === "active" && styles.tabButtonActive,
+                { borderBottomColor: activeTab === "active" ? colors.accent : colors.border },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: activeTab === "active" ? colors.accent : colors.textMuted,
+                  },
+                ]}
+              >
+                ✅ Active Sites
+              </Text>
+            </Pressable>
+
+            {deprecatedSites && deprecatedSites.length > 0 && (
+              <Pressable
+                onPress={() => setActiveTab("deprecated")}
+                style={[
+                  styles.tabButton,
+                  activeTab === "deprecated" && styles.tabButtonActive,
+                  { borderBottomColor: activeTab === "deprecated" ? Colors.amber : colors.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color: activeTab === "deprecated" ? Colors.amber : colors.textMuted,
+                    },
+                  ]}
+                >
+                  ⚠️ Deprecated Sites
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.modalGrid}
           >
-            {/* ACTIVE SITES */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sitesList}>
-                {sites.map((site) => (
-                  <SourceListModalCell
-                    key={site.name}
-                    name={site.name}
-                    status={siteStatuses[site.name] || "idle"}
-                  />
-                ))}
+            {/* ACTIVE SITES TAB */}
+            {activeTab === "active" && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sitesList}>
+                  {sites.map((site) => (
+                    <SourceListModalCell
+                      key={site.name}
+                      name={site.name}
+                      status={siteStatuses[site.name] || "idle"}
+                    />
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
+
+            {/* DEPRECATED SITES TAB */}
+            {activeTab === "deprecated" && deprecatedSites && deprecatedSites.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text
+                  style={[
+                    styles.deprecatedTitle,
+                    { color: colors.text },
+                  ]}
+                >
+                  Deprecated Sites
+                </Text>
+                <View style={styles.deprecatedPillGrid}>
+                  {deprecatedSites.map((site) => (
+                    <View
+                      key={site.domain}
+                      style={styles.deprecatedPillContainer}
+                    >
+                      <Text
+                        style={[
+                          styles.deprecatedPillDomain,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {site.domain}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.deprecatedPillSubtitle,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {site.reason}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -522,7 +606,7 @@ export default function AddNovelScreen() {
     if (deprecatedCheck) {
       const message = getDeprecatedSiteMessage(
         deprecatedCheck.siteName,
-        deprecatedCheck.reason,
+        deprecatedCheck.reason
       );
       addLog(message, "error");
       return;
@@ -1294,10 +1378,7 @@ export default function AddNovelScreen() {
           {DEPRECATED_SITES && DEPRECATED_SITES.length > 0 && (
             <View>
               <Text
-                style={[
-                  styles.sitesHeaderLabel,
-                  { color: colors.textSecondary },
-                ]}
+                style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}
               >
                 ⚠️ DEPRECATED SITES
               </Text>
@@ -1868,5 +1949,49 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     marginTop: 4,
+  },
+  tabNavigation: {
+    flexDirection: "row",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+    alignItems: "center",
+  },
+  tabButtonActive: {
+    borderBottomWidth: 2,
+  },
+  tabLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+  },
+  deprecatedTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  deprecatedPillGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-start",
+  },
+  deprecatedPillContainer: {
+    flex: 1,
+    minWidth: "48%",
+  },
+  deprecatedPillDomain: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  deprecatedPillSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
   },
 });
