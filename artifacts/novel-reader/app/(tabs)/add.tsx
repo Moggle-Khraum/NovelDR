@@ -35,9 +35,9 @@ import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
-  { domain: "novelbin.me", reason: "SHUTDOWN" },
-  { domain: "novelbin.com", reason: "SHUTDOWN" },
-  { domain: "novelarrow", reason: "CHANGED DOMAIN" },
+  { domain: "novelbin.me", reason: "Site Shutdown" },
+  { domain: "novelbin.com", reason: "Site Shutdown" },
+  { domain: "novelarrow", reason: "Changed Domain" },
 ];
 
 // Fallback used when Max Chapters is left blank (mirrors Start Chapter's
