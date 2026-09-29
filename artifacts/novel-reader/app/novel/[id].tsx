@@ -1,1496 +1,3077 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import * as Font from "expo-font";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  FlatList,
+  ActivityIndicator,
+  Alert,
+  AppState,
+  AppStateStatus,
+  Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
-  Modal,
-  Alert,
-  ActivityIndicator,
+  Dimensions,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import notifee, { AuthorizationStatus } from "@notifee/react-native";
+import { ScrollView } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const BULK_DELETE_LOADING_THRESHOLD = 1;
+// --- Extracted modules ---
+import ContentWrapper from "@/components/reader/ContentWrapper";
+import ReaderSettingsPanel from "@/components/reader/ReaderSettingsPanel";
+import {
+  FONT_SIZES,
+  LINE_SPACINGS,
+  AUTO_SCROLL_SPEEDS,
+  TTS_MIN_CHARS,
+  RAPID_TAP_THRESHOLD,
+  RAPID_TAP_WINDOW_MS,
+  READER_SETTINGS_FILE,
+  TTS_SETTINGS_FILE,
+  BG_SETTINGS_FILE,
+  BG_PRESETS,
+  FONT_PRESETS,
+  isLightColor,
+} from "@/constants/readerSettings";
+import { useChapterPersistence } from "@/hooks/reader/useChapterPersistence";
+import { useScrollTracking } from "@/hooks/reader/useScrollTracking";
+import { useTTS } from "@/hooks/reader/useTTS";
+import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
+import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
+import { useDictionary } from "@/hooks/reader/useDictionary";
+import { DictionaryEntry } from "@/constants/dictionary";
+import { useGlossary, GlossaryEntry } from "@/hooks/reader/useGlossary";
+import { DefinitionModal } from "@/components/reader/DefinitionModal";
+import { GlossaryListModal } from "@/components/reader/GlossaryListModal";
 
-// Export format types
-type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
+const { width: SCREEN_W } = Dimensions.get("window");
 
-// Export options configuration
-const EXPORT_OPTIONS: {
-  format: ExportFormat;
-  label: string;
-  icon: string;
-  color: string;
-}[] = [
-  {
-    format: "txt",
-    label: "Plain Text (.txt)",
-    icon: "document-text-outline",
-    color: "#4A90E2",
-  },
-  {
-    format: "epub",
-    label: "EPUB (.epub)",
-    icon: "book-outline",
-    color: "#27AE60",
-  },
-  {
-    format: "pdf",
-    label: "PDF Letter (.pdf)",
-    icon: "document-outline",
-    color: "#FF4444",
-  },
-  {
-    format: "docx",
-    label: "Word Document (.docx)",
-    icon: "document-outline",
-    color: "#2B579A",
-  },
-  {
-    format: "rtf",
-    label: "Rich Text (.rtf)",
-    icon: "text-outline",
-    color: "#E67E22",
-  },
-  {
-    format: "mobi",
-    label: "Kindle (.mobi)",
-    icon: "tablet-portrait-outline",
-    color: "#8E44AD",
-  },
-];
-
-// ── Export Functions ────────────────────────────────────────────────────────
-
-async function loadFullNovelContent(
-  novelId: string,
-  chapters: { title: string; url: string; content?: string }[],
-): Promise<{ title: string; content: string }[]> {
-  const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novelId}/`;
-
-  // ── Helper: Check if content has enough words to be real ─────────
-  const hasRealContent = (text: string | null | undefined): boolean => {
-    if (!text || !text.trim()) return false;
-    const wordCount = text.trim().split(/\s+/).length;
-    return wordCount >= 100; // At least 100 words to be considered real content
-  };
-
-  // ── DEDUPLICATE: Keep only one entry per chapter number, prefer ones with real content ─
-  const seenNumbers = new Map<
-    number,
-    { title: string; url: string; content?: string }
-  >();
-
-  for (const ch of chapters) {
-    const num = extractChapterNumber(ch.title, ch.url);
-    const existing = seenNumbers.get(num);
-
-    if (
-      !existing ||
-      (hasRealContent(ch.content) && !hasRealContent(existing.content))
-    ) {
-      seenNumbers.set(num, { ...ch });
-    }
-  }
-
-  // Sort by chapter number
-  const sortedChapters = Array.from(seenNumbers.values()).sort((a, b) => {
-    const numA = extractChapterNumber(a.title, a.url);
-    const numB = extractChapterNumber(b.title, b.url);
-    return numA - numB;
-  });
-
-  const result: { title: string; content: string }[] = [];
-
-  // Pre-load AsyncStorage data once
-  let legacyNovel: any = null;
-  try {
-    const libraryData = await AsyncStorage.getItem("novel_library_v1");
-    if (libraryData) {
-      const novels = JSON.parse(libraryData);
-      legacyNovel = novels.find((n: any) => n.id === novelId);
-    }
-  } catch {}
-
-  for (let i = 0; i < sortedChapters.length; i++) {
-    const ch = sortedChapters[i];
-    let title = ch.title || `Chapter ${i + 1}`;
-    let content: string | null = null;
-
-    // Check file system
-    try {
-      const chapterPath = `${chaptersDir}chapter_${i}.json`;
-      const fileInfo = await FileSystem.getInfoAsync(chapterPath);
-      if (fileInfo.exists) {
-        const raw = await FileSystem.readAsStringAsync(chapterPath);
-        const chapterData = JSON.parse(raw);
-        if (hasRealContent(chapterData.content)) {
-          content = chapterData.content;
-          if (chapterData.title) title = chapterData.title;
-        }
-      }
-    } catch {}
-
-    // Fallback to AsyncStorage (only if real content exists)
-    if (!content && legacyNovel?.chapters) {
-      const urlMatch = legacyNovel.chapters.find(
-        (lc: any) => lc.url === ch.url && hasRealContent(lc.content),
-      );
-      if (urlMatch) {
-        content = urlMatch.content;
-        if (urlMatch.title) title = urlMatch.title;
-      }
-    }
-
-    // Fallback to in-memory
-    if (!content && hasRealContent(ch.content)) {
-      content = ch.content ?? null;
-    }
-
-    result.push({
-      title,
-      content:
-        content ||
-        `[Content not available for this chapter. Open it in the reader first to migrate the data.]`,
-    });
-  }
-
-  return result;
-}
-
-// Helper to extract chapter number
-function extractChapterNumber(title: string, url: string): number {
-  const titleMatch = (title || "").match(/chapter\s*(\d+)/i);
-  if (titleMatch) return parseInt(titleMatch[1]);
-  const urlMatch = (url || "").match(/chapter[-/](\d+)/i);
-  if (urlMatch) return parseInt(urlMatch[1]);
-  return 9999;
-}
-
-function generateTXT(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  let txt = `${novelTitle}\n`;
-  txt += `by ${author}\n`;
-  txt += `${"=".repeat(50)}\n\n`;
-
-  for (const ch of chapters) {
-    txt += `${ch.title}\n`;
-    txt += `${"-".repeat(30)}\n\n`;
-    txt += `${ch.content}\n\n\n`;
-  }
-
-  return txt;
-}
-
-function generateEPUB(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  let epub = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  epub += `<!DOCTYPE html>\n`;
-  epub += `<html xmlns="http://www.w3.org/1999/xhtml">\n`;
-  epub += `<head><title>${escapeXML(novelTitle)}</title>\n`;
-  epub += `<style>body { font-family: serif; line-height: 1.6; } p { margin: 0 0 0.5em 0; }</style></head>\n`;
-  epub += `<body>\n`;
-  epub += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  epub += `<p><em>by ${escapeXML(author)}</em></p>\n`;
-  epub += `<hr/>\n`;
-
-  for (const ch of chapters) {
-    epub += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split(/\n\n+/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim()) {
-        const formatted = paragraph.trim().replace(/\n/g, "<br/>\n");
-        epub += `<p>${escapeXMLContent(formatted)}</p>\n`;
-      }
-    }
-    epub += `<hr/>\n`;
-  }
-
-  epub += `</body></html>`;
-  return epub;
-}
-
-async function generatePDF(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): Promise<string> {
-  let html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { size: letter; margin: 1in; }
-    body {
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 12pt;
-      line-height: 1.5;
-      color: #000;
-    }
-    .title-page {
-      text-align: center;
-      padding-top: 3in;
-      page-break-after: always;
-    }
-    .title-page h1 { font-size: 24pt; margin-bottom: 12pt; }
-    .title-page p { font-size: 14pt; color: #555; }
-    .chapter-title {
-      font-size: 16pt;
-      font-weight: bold;
-      margin-top: 24pt;
-      margin-bottom: 12pt;
-      page-break-before: always;
-      text-align: center;
-    }
-    .chapter-content {
-      text-align: justify;
-      white-space: pre-wrap;
-    }
-    .footer {
-      text-align: center;
-      font-size: 9pt;
-      color: #999;
-      margin-top: 24pt;
-    }
-  </style>
-</head>
-<body>
-  <div class="title-page">
-    <h1>${escapeXML(novelTitle)}</h1>
-    <p>by ${escapeXML(author)}</p>
-    <p style="margin-top: 2in; font-size: 10pt; color: #999;">Generated by Novel DR</p>
-  </div>
-`;
-
-  for (const ch of chapters) {
-    html += `  <div class="chapter-title">${escapeXML(ch.title)}</div>
-  <div class="chapter-content">${escapeXML(ch.content)}</div>
-`;
-  }
-
-  html += `  <div class="footer">
-    <p>End of ${escapeXML(novelTitle)}</p>
-  </div>
-</body>
-</html>`;
-
-  const { uri } = await Print.printToFileAsync({
-    html,
-    width: 612,
-    height: 792,
-    margins: { left: 72, right: 72, top: 72, bottom: 72 },
-  });
-
-  return uri;
-}
-
-function generateDOCX(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  let docx = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">\n`;
-  docx += `<head><meta charset="UTF-8"/><title>${escapeXML(novelTitle)}</title>\n`;
-  docx += `<style>body { font-family: 'Times New Roman', serif; line-height: 1.5; } p { margin: 0 0 6pt 0; }</style></head>\n`;
-  docx += `<body>\n`;
-  docx += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  docx += `<p><strong>by ${escapeXML(author)}</strong></p>\n`;
-  docx += `<hr/>\n`;
-
-  for (const ch of chapters) {
-    docx += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split(/\n\n+/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim()) {
-        const formatted = paragraph.trim().replace(/\n/g, "<br/>\n");
-        docx += `<p>${escapeXMLContent(formatted)}</p>\n`;
-      }
-    }
-    docx += `<br/>\n`;
-  }
-
-  docx += `</body></html>`;
-  return docx;
-}
-
-function generateRTF(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  let rtf = `{\\rtf1\\ansi\\deff0\n`;
-  rtf += `{\\fonttbl{\\f0 Times New Roman;}}\n`;
-  rtf += `\\f0\\fs24\n`;
-  rtf += `{\\b ${escapeRTF(novelTitle)}}\\par\n`;
-  rtf += `${escapeRTF(author)}\\par\\par\n`;
-
-  for (const ch of chapters) {
-    rtf += `{\\b ${escapeRTF(ch.title)}}\\par\n`;
-    rtf += `${escapeRTF(ch.content).replace(/\n/g, "\\par ")}`;
-    rtf += `\\par\\par\n`;
-  }
-
-  rtf += `}`;
-  return rtf;
-}
-
-function generateMOBI(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  return generateEPUB(novelTitle, author, chapters);
-}
-
-function escapeXML(str: string): string {
-  if (!str) return "";
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;")
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-}
-
-function escapeXMLContent(str: string): string {
-  const brPlaceholder = "___BR_PLACEHOLDER___";
-  const withProtected = str.replace(/<br\/>/g, brPlaceholder);
-  const escaped = escapeXML(withProtected);
-  return escaped.replace(new RegExp(brPlaceholder, "g"), "<br/>");
-}
-
-function escapeRTF(str: string): string {
-  if (!str) return "";
-  return str
-    .replace(/\\/g, "\\\\")
-    .replace(/{/g, "\\{")
-    .replace(/}/g, "\\}")
-    .replace(/\n/g, "\\par ");
-}
-
-const generators: Record<
-  ExportFormat,
-  (
-    title: string,
-    author: string,
-    chapters: { title: string; content: string }[],
-  ) => string | Promise<string>
-> = {
-  txt: generateTXT,
-  epub: generateEPUB,
-  pdf: generatePDF,
-  docx: generateDOCX,
-  rtf: generateRTF,
-  mobi: generateMOBI,
+// ─── ParagraphBlock (memoized) ───────────────────────────────────────────
+type ParagraphBlockProps = {
+  sentences: string[];
+  paraIdx: number;
+  highlightedSentIdx: number;
+  isLastParagraph: boolean;
+  fontSize: number;
+  lineSpacing: number;
+  accentColor: string;
+  textColor: string;
+  contentStyle: any;
+  regularFamily: string;
+  boldFamily: string;
+  highlightedWord: string | null;
+  onParaLayout: (paraIdx: number, y: number, height: number) => void;
+  onHighlightedSentenceLayout: (relY: number) => void;
+  onWordDoubleTap: (word: string) => void;
 };
 
-const extensions: Record<ExportFormat, string> = {
-  txt: ".txt",
-  epub: ".epub",
-  pdf: ".pdf",
-  docx: ".doc",
-  rtf: ".rtf",
-  mobi: ".mobi",
-};
+// 280ms window to distinguish a double-tap from two separate single taps.
+// Tracked per-render via a module-level ref map keyed by paraIdx-sentIdx-word
+// would be overkill; a single mutable ref shared across all words in the
+// reader is enough since only one word can be "the last tapped word" at a time.
+const lastWordTapRef = { word: "", time: 0 };
 
-const mimeTypes: Record<ExportFormat, string> = {
-  txt: "text/plain",
-  epub: "application/epub+zip",
-  pdf: "application/pdf",
-  docx: "application/msword",
-  rtf: "application/rtf",
-  mobi: "application/x-mobipocket-ebook",
-};
-
-// ── Main Component ──────────────────────────────────────────────────────────
-
-export default function NovelDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const {
-    getNovel,
-    sortOrder,
-    toggleSortOrder,
-    getSortedChapters,
-    deleteChapters,
-  } = useLibrary();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [synopsisExpanded, setSynopsisExpanded] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState("");
-  const [chapterSelectionMode, setChapterSelectionMode] = useState(false);
-  const [selectedChapterUrls, setSelectedChapterUrls] = useState<string[]>([]);
-  const [confirmDeleteChaptersVisible, setConfirmDeleteChaptersVisible] =
-    useState(false);
-  const [chapterListRefreshKey, setChapterListRefreshKey] = useState(0);
-  const [deletingChapters, setDeletingChapters] = useState(false);
-  const [deleteProgress, setDeleteProgress] = useState({ done: 0, total: 0 });
-
-  const novel = getNovel(id);
-
-  // ── Hooks below must run unconditionally on every render, so they're
-  // declared before the early "novel not found" return. They no-op via
-  // optional chaining when `novel` is undefined; in that case the FlatList
-  // that would use them is never rendered anyway (see early return below).
-  const renderChapterItem = useCallback(
-    ({
-      item: ch,
-      index: i,
-    }: {
-      item: NonNullable<typeof novel>["chapters"][number];
-      index: number;
-    }) => {
-      const originalIndex =
-        novel?.chapters.findIndex((c) => c.url === ch.url) ?? -1;
-      const isCurrent = novel?.lastRead?.chapterIndex === originalIndex;
-      const isSelected = selectedChapterUrls.includes(ch.url);
-      return (
-        <Pressable
-          style={[
-            styles.chapterRow,
-            chapterSelectionMode
-              ? {
-                  backgroundColor: isSelected
-                    ? colors.accent + "20"
-                    : colors.card,
-                  borderColor: isSelected ? colors.accent : colors.border,
-                }
-              : {
-                  backgroundColor: isCurrent
-                    ? colors.accent + "18"
-                    : colors.card,
-                  borderColor: isCurrent ? colors.accent : colors.border,
-                },
-          ]}
-          onPress={() => {
-            if (chapterSelectionMode) {
-              toggleChapterSelection(ch.url);
-              return;
-            }
-            Haptics.selectionAsync();
-            router.push({
-              pathname: "/reader/[id]",
-              params: { id: novel?.id, chapterIndex: originalIndex.toString() },
-            });
-          }}
-          onLongPress={() => {
-            if (chapterSelectionMode) {
-              toggleChapterSelection(ch.url);
-            } else {
-              enterChapterSelectionMode(ch.url);
-            }
-          }}
-        >
-          <Text
-            style={[
-              styles.chapterTitle,
-              {
-                color:
-                  isCurrent && !chapterSelectionMode
-                    ? colors.accent
-                    : colors.text,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {isCurrent && !chapterSelectionMode ? "► " : ""}
-            {ch.title}
-          </Text>
-          {!chapterSelectionMode && (
-            <Ionicons
-              name="chevron-forward"
-              size={14}
-              color={colors.textMuted}
-            />
-          )}
-        </Pressable>
-      );
-    },
-    [
-      novel?.chapters,
-      novel?.lastRead?.chapterIndex,
-      novel?.id,
-      colors.accent,
-      colors.text,
-      colors.card,
-      colors.border,
-      colors.textMuted,
-      chapterSelectionMode,
-      selectedChapterUrls,
-    ],
-  );
-
-  const keyExtractor = useCallback(
-    (item: NonNullable<typeof novel>["chapters"][number], index: number) => {
-      return `${item.url}-${index}`;
-    },
-    [],
-  );
-
-  const getItemLayout = useCallback(
-    (_data: any, index: number) => ({
-      length: 48,
-      offset: 48 * index,
-      index,
-    }),
-    [],
-  );
-
-  if (!novel) {
+const ParagraphBlock = React.memo(
+  function ParagraphBlock({
+    sentences,
+    paraIdx,
+    highlightedSentIdx,
+    isLastParagraph,
+    fontSize,
+    lineSpacing,
+    accentColor,
+    textColor,
+    contentStyle,
+    regularFamily,
+    boldFamily,
+    highlightedWord,
+    onParaLayout,
+    onHighlightedSentenceLayout,
+    onWordDoubleTap,
+  }: ParagraphBlockProps) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text }}>Novel not found</Text>
+      <View
+        style={{ marginBottom: isLastParagraph ? 0 : fontSize * 1.5 }}
+        onLayout={(e) =>
+          onParaLayout(
+            paraIdx,
+            e.nativeEvent.layout.y,
+            e.nativeEvent.layout.height,
+          )
+        }
+      >
+        {sentences.map((sentence, sentIdx) => {
+          const trimmed = sentence.trim();
+          const endsWithPeriod = /[.!?]$/.test(trimmed);
+          const isExclamation = /[!?]$/.test(trimmed);
+          const isQuestion = /\?$/.test(trimmed);
+          let marginBottom = fontSize * 0.3;
+          if (isQuestion) marginBottom = fontSize * 0.7;
+          else if (isExclamation) marginBottom = fontSize * 0.8;
+          else if (endsWithPeriod) marginBottom = fontSize * 0.5;
+          const hasDialogue = /^["'""'']/.test(trimmed);
+          if (hasDialogue && sentIdx > 0) marginBottom += fontSize * 0.2;
+
+          const isHighlighted = sentIdx === highlightedSentIdx;
+          // Bold weight for dialogue (and for the TTS-highlighted sentence,
+          // same as before). Custom/bundled fonts generally don't support
+          // fontWeight synthesis reliably in React Native, so bold has to
+          // be a genuinely separate font family rather than a style flag.
+          const useBold = isHighlighted || hasDialogue;
+
+          return (
+            <Text
+              key={sentIdx}
+              onLayout={
+                isHighlighted
+                  ? (e) => onHighlightedSentenceLayout(e.nativeEvent.layout.y)
+                  : undefined
+              }
+              style={[
+                contentStyle,
+                {
+                  color: isHighlighted ? accentColor : textColor,
+                  backgroundColor: isHighlighted
+                    ? `${accentColor}20`
+                    : "transparent",
+                  fontFamily: useBold ? boldFamily : regularFamily,
+                  fontSize,
+                  lineHeight: fontSize * lineSpacing,
+                  marginBottom,
+                  paddingVertical: 2,
+                  paddingHorizontal: 6,
+                  borderRadius: 6,
+                  letterSpacing: 0.2,
+                },
+              ]}
+            >
+              {trimmed.split(/(\s+)/).map((segment, wIdx) => {
+                if (!segment.trim()) return segment;
+
+                // Check if this word matches the highlighted word
+                const cleanSegment = segment
+                  .toLowerCase()
+                  .replace(/^[^a-z']+|[^a-z']+$/g, "");
+                const isWordHighlighted =
+                  highlightedWord &&
+                  cleanSegment ===
+                    highlightedWord
+                      .toLowerCase()
+                      .replace(/^[^a-z']+|[^a-z']+$/g, "");
+
+                return (
+                  <Text
+                    key={wIdx}
+                    onPress={() => {
+                      const now = Date.now();
+                      const clean = segment.toLowerCase();
+                      if (
+                        lastWordTapRef.word === clean &&
+                        now - lastWordTapRef.time < 280
+                      ) {
+                        lastWordTapRef.word = "";
+                        onWordDoubleTap(segment);
+                      } else {
+                        lastWordTapRef.word = clean;
+                        lastWordTapRef.time = now;
+                      }
+                    }}
+                    style={
+                      isWordHighlighted
+                        ? {
+                            backgroundColor: `${accentColor}40`,
+                            borderRadius: 4,
+                            paddingHorizontal: 3,
+                          }
+                        : {}
+                    }
+                  >
+                    {segment}
+                  </Text>
+                );
+              })}
+            </Text>
+          );
+        })}
       </View>
     );
+  },
+  (prev, next) =>
+    prev.sentences === next.sentences &&
+    prev.highlightedSentIdx === next.highlightedSentIdx &&
+    prev.isLastParagraph === next.isLastParagraph &&
+    prev.fontSize === next.fontSize &&
+    prev.lineSpacing === next.lineSpacing &&
+    prev.accentColor === next.accentColor &&
+    prev.textColor === next.textColor &&
+    prev.regularFamily === next.regularFamily &&
+    prev.boldFamily === next.boldFamily &&
+    prev.highlightedWord === next.highlightedWord,
+);
+
+// ─── Rapid‑tap guard ──────────────────────────────────────────────────────
+function useRapidTapGuard(onTripped: () => void) {
+  const tapTimestampsRef = useRef<number[]>([]);
+  const trippedRef = useRef(false);
+
+  const registerTap = useCallback(() => {
+    const now = Date.now();
+    const recent = tapTimestampsRef.current.filter(
+      (t) => now - t < RAPID_TAP_WINDOW_MS,
+    );
+    recent.push(now);
+    tapTimestampsRef.current = recent;
+
+    if (recent.length >= RAPID_TAP_THRESHOLD && !trippedRef.current) {
+      trippedRef.current = true;
+      onTripped();
+    }
+  }, [onTripped]);
+
+  const reset = useCallback(() => {
+    tapTimestampsRef.current = [];
+    trippedRef.current = false;
+  }, []);
+
+  return { registerTap, reset };
+}
+
+// ─── Custom fonts (user-imported .ttf/.otf) ──────────────────────────────
+// Not in constants/readerSettings.ts on purpose - unlike FONT_PRESETS these
+// aren't known at build time, they're discovered by scanning disk at
+// startup, so there's nothing static to declare there.
+type CustomFont = {
+  filename: string; // name on disk inside CUSTOM_FONTS_DIR - the persisted identity
+  label: string; // display name, derived from filename
+  familyName: string; // family name registered with Font.loadAsync, re-derived from filename each scan
+};
+
+const CUSTOM_FONTS_DIR = `${FileSystem.documentDirectory}NovelDR/custom_fonts/`;
+const FONT_FILE_EXT_RE = /\.(ttf|otf)$/i;
+
+// Small deterministic string hash (not cryptographic - just needs to be
+// stable across app restarts and cheap). Folded into the family name so
+// two different filenames that sanitize to the same base string (e.g.
+// "My-Font.ttf" and "My_Font.ttf") still register as distinct families.
+function hashString(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
   }
+  return Math.abs(hash).toString(36);
+}
 
-  const sortedChapters = getSortedChapters(novel.chapters);
+function familyNameForFilename(filename: string): string {
+  const base = filename
+    .replace(FONT_FILE_EXT_RE, "")
+    .replace(/[^a-zA-Z0-9]/g, "_");
+  return `CustomFont_${base}_${hashString(filename)}`;
+}
 
-  const progress = novel.lastRead
-    ? `${novel.lastRead.chapterIndex + 1} / ${novel.chapters.length}`
-    : `0 / ${novel.chapters.length}`;
-  const progressPct = novel.lastRead
-    ? (novel.lastRead.chapterIndex + 1) / Math.max(novel.chapters.length, 1)
-    : 0;
+// ─── Main Screen ──────────────────────────────────────────────────────────
+export default function ReaderScreen() {
+  const { id, chapterIndex: indexParam } = useLocalSearchParams<{
+    id: string;
+    chapterIndex: string;
+  }>();
+  const {
+    getNovel,
+    saveReadingProgress,
+    loadChapterContent,
+    saveChapterContent,
+  } = useLibrary();
+  const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const firstParagraph =
-    novel.synopsis.split("\n\n")[0] || novel.synopsis.slice(0, 200);
+  // ── Reader settings state ──
+  const [fontSizeIdx, setFontSizeIdx] = useState(3);
+  const [lineSpacingIdx, setLineSpacingIdx] = useState(2);
+  const fontSize = FONT_SIZES[fontSizeIdx];
+  const lineSpacing = LINE_SPACINGS[lineSpacingIdx];
+  const [marginPresetIdx, setMarginPresetIdx] = useState(1);
+  const [autoScrollSpeedIdx, setAutoScrollSpeedIdx] = useState(1);
+  const [fontPresetId, setFontPresetId] = useState<string>("default");
+  // saveAllSettings reads this ref rather than the fontPresetId state
+  // directly, since it can be called synchronously right after
+  // setFontPresetId - before the state update has actually committed -
+  // the same way the other controls pass their "new" value explicitly
+  // instead of trusting stale state.
+  const fontPresetIdRef = useRef(fontPresetId);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  // ── Custom (user-imported) fonts ──
+  const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
+  const [activeFontFilename, setActiveFontFilename] = useState<string | null>(
+    null,
+  );
+  // Same "read the ref, not the state" reasoning as fontPresetIdRef above -
+  // saveAllSettings can run synchronously right after setActiveFontFilename.
+  const activeFontFilenameRef = useRef<string | null>(activeFontFilename);
+  const [importingFont, setImportingFont] = useState(false);
 
-  // ── Export Handler ──────────────────────────────────────────────────────
-  const handleExport = async (format: ExportFormat) => {
-    setShowExportModal(false);
-    setShowMenu(false);
-    setExporting(true);
-    setExportProgress("Loading chapters...");
+  const activeCustomFont = activeFontFilename
+    ? customFonts.find((f) => f.filename === activeFontFilename)
+    : undefined;
+  // When a custom font is active it wins over the built-in preset. Custom
+  // fonts are a single imported file with no separate bold weight, so bold
+  // text falls back to rendering in the same (non-bold) family - graceful
+  // rather than crashing or silently reverting to the default font.
+  const activeFontPreset = activeCustomFont
+    ? {
+        id: `custom:${activeCustomFont.filename}`,
+        label: activeCustomFont.label,
+        regularFamily: activeCustomFont.familyName,
+        boldFamily: activeCustomFont.familyName,
+      }
+    : (FONT_PRESETS.find((p) => p.id === fontPresetId) ?? FONT_PRESETS[0]);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
+  const [showBgModal, setShowBgModal] = useState(false);
+  const [showFontModal, setShowFontModal] = useState(false);
+  const [showRapidTapWarning, setShowRapidTapWarning] = useState(false);
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(true);
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // ── Glossary list modal (view all saved words) ──
+  const [showGlossaryListModal, setShowGlossaryListModal] = useState(false);
 
+  // ── Dictionary lookup (double-tap a word) ──
+  // ── Glossary (persistent user dictionary) ──
+  const glossary = useGlossary();
+
+  const {
+    word: dictWord,
+    entries: dictEntries,
+    notFound: dictNotFound,
+    isOpen: showDictModal,
+    onlineEntry: dictOnlineEntry,
+    fetching: dictFetching,
+    isConnected: dictIsConnected,
+    lookup: handleWordDoubleTap,
+    fetchOnline: handleFetchOnline,
+    clear: dismissDictModal,
+  } = useDictionary(glossary);
+
+  // Handler for saving offline dictionary entries
+  const handleSaveOfflineEntryToGlossary = useCallback(
+    async (word: string, entry: DictionaryEntry) => {
+      await glossary.addEntry({
+        word,
+        meaning: entry.meaning,
+        pos: entry.pos || "unknown",
+        source: "user_added",
+        added_at: Date.now(),
+        tags: [],
+      });
+      console.log(`✓ Saved offline entry to glossary: ${word}`);
+    },
+    [glossary],
+  );
+
+  // Load glossary on mount
+  useEffect(() => {
+    glossary.loadGlossary();
+  }, [glossary]);
+
+  // Reload glossary when opening glossary list modal
+  useEffect(() => {
+    if (showGlossaryListModal) {
+      glossary.loadGlossary();
+    }
+  }, [showGlossaryListModal, glossary]);
+
+  // ── Fullscreen mode (toggle button + double-tap gesture + fade) ──
+  const { fullscreenMode, barsMounted, toggleFullscreen, uiAnimatedStyle } =
+    useFullscreenMode();
+
+  // ── Background state ──
+  const [bgPresetId, setBgPresetId] = useState<string>("none");
+  const [bgCustomUri, setBgCustomUri] = useState<string | null>(null);
+  const [adaptiveColors, setAdaptiveColors] = useState({
+    text: themeColors.text,
+    textSecondary: themeColors.textSecondary,
+    accent: themeColors.accent,
+    surface: themeColors.surface,
+    card: themeColors.card,
+    border: themeColors.border,
+  });
+
+  // ── Auto‑scroll state ──
+  const [autoScrollActive, setAutoScrollActive] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Chapter index ──
+  const [chapterIndex, setChapterIndex] = useState(parseInt(indexParam) || 0);
+
+  // ── Novel and chapter ──
+  const novel = getNovel(id);
+  const chapter = novel?.chapters[chapterIndex];
+
+  // ── Hooks ──
+  const { chapterContent, processedParagraphs, ttsSentences, contentLoading } =
+    useChapterPersistence({
+      novel,
+      chapterIndex,
+      loadChapterContent,
+      saveChapterContent,
+    });
+
+  const {
+    scrollRef,
+    scrollY,
+    readingProgress,
+    contentHeight,
+    scrollViewHeight,
+    handleScroll,
+    handleScrollBeginDrag,
+    handleScrollEndDrag,
+    handleScrollViewLayout,
+    handleContentSizeChange,
+    isUserScrollingRef,
+  } = useScrollTracking({ novel, chapterIndex });
+
+  // ── Auto‑scroll methods (must be defined before useReaderNavigation) ──
+  const stopAutoScroll = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setAutoScrollActive(false);
+  }, []);
+
+  const startAutoScroll = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    const speed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
+    intervalRef.current = setInterval(() => {
+      if (!scrollRef.current) return;
+      const currentY = scrollY;
+      const maxY = Math.max(0, contentHeight - scrollViewHeight);
+      if (currentY >= maxY) {
+        stopAutoScroll();
+        return;
+      }
+      const newY = Math.min(maxY, currentY + (30 * speed) / 20);
+      scrollRef.current.scrollTo({ y: newY, animated: false });
+    }, 50);
+    setAutoScrollActive(true);
+  }, [
+    autoScrollSpeedIdx,
+    stopAutoScroll,
+    scrollY,
+    contentHeight,
+    scrollViewHeight,
+    scrollRef,
+  ]);
+
+  // ── TTS ──
+  const goToNextChapter = useCallback(() => {
+    goChapter(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // useTTS is set up here, but the scroll/paragraph data it needs to pick
+  // a starting sentence isn't computed until later in this component (it
+  // depends on paraYPositionsRef, which only exists once paragraphs have
+  // laid out). Passing a stable wrapper that reads from a ref sidesteps
+  // reordering all of that - the ref's target gets assigned further down,
+  // once the real data is available.
+  const getStartIndexRef = useRef<() => number>(() => 0);
+
+  const {
+    ttsActive,
+    ttsStalled,
+    autoNextCountdownActive,
+    ttsIndex,
+    toggleTTS,
+    stopTTS,
+    previewTts,
+    ttsAutoNext,
+    toggleTtsAutoNext,
+    ttsRate,
+    setTtsRate,
+    ttsVoiceId,
+    setTtsVoiceId,
+    ttsVoices,
+    reloadVoices,
+    showTTSSettings,
+    setShowTTSSettings,
+    showTTSHelp,
+    setShowTTSHelp,
+    cancelAutoNext,
+  } = useTTS({
+    ttsSentences,
+    novel,
+    chapterIndex,
+    goToNextChapter,
+    getStartIndex: () => getStartIndexRef.current(),
+  });
+
+  // ── Navigation ──
+  const {
+    goChapter,
+    handleChapterSelect,
+    continueReading,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    setSearchResults,
+    searchChapters,
+    jumpToSearchResult,
+    showTOC,
+    setShowTOC,
+    showSearch,
+    setShowSearch,
+  } = useReaderNavigation({
+    novel,
+    chapterIndex,
+    setChapterIndex,
+    saveReadingProgress,
+    stopAutoScroll,
+    stopTTS,
+    cancelAutoNext,
+    scrollY,
+  });
+
+  // ── Rapid‑tap guard ──
+  const handleRapidTapTripped = useCallback(() => {
+    stopTTS();
+    stopAutoScroll();
+    setShowRapidTapWarning(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+      () => {},
+    );
+  }, [stopTTS, stopAutoScroll]);
+
+  const { registerTap: registerRapidTap, reset: resetRapidTapGuard } =
+    useRapidTapGuard(handleRapidTapTripped);
+
+  // ── Re‑arm auto‑scroll when speed changes ──
+  useEffect(() => {
+    if (autoScrollActive) {
+      startAutoScroll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScrollSpeedIdx]);
+
+  // ── Persist reading progress on background / unmount ──
+  useEffect(() => {
+    const appStateRef = { current: AppState.currentState };
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (
+        (appStateRef.current === "active" &&
+          nextAppState.match(/inactive|background/)) ||
+        nextAppState === "background"
+      ) {
+        if (novel && chapter) {
+          saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
+        }
+      }
+      appStateRef.current = nextAppState;
+    };
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
+    return () => {
+      subscription.remove();
+      if (novel && chapter) {
+        saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
+      }
+    };
+  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
+
+  // ── Scan custom_fonts/ and register each with expo-font ──
+  // Runs at mount (below) and again after import/delete so the picker and
+  // the actual registered font families never drift out of sync.
+  const scanCustomFonts = useCallback(async () => {
     try {
-      const chapters = await loadFullNovelContent(novel.id, novel.chapters);
-
-      setExportProgress("Generating file...");
-
-      const generator = generators[format];
-      const content = await generator(novel.title, novel.author, chapters);
-
-      const exportDir = `${FileSystem.documentDirectory}exports/`;
-      const dirInfo = await FileSystem.getInfoAsync(exportDir);
+      const dirInfo = await FileSystem.getInfoAsync(CUSTOM_FONTS_DIR);
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
+        setCustomFonts([]);
+        return;
+      }
+      const filenames = await FileSystem.readDirectoryAsync(CUSTOM_FONTS_DIR);
+      const loaded: CustomFont[] = [];
+      for (const filename of filenames) {
+        if (!FONT_FILE_EXT_RE.test(filename)) continue;
+        const familyName = familyNameForFilename(filename);
+        try {
+          await Font.loadAsync({
+            [familyName]: `${CUSTOM_FONTS_DIR}${filename}`,
+          });
+          loaded.push({
+            filename,
+            label: filename.replace(FONT_FILE_EXT_RE, ""),
+            familyName,
+          });
+        } catch (err) {
+          // Missing/corrupt font file - skip it rather than crashing the
+          // reader. It's left on disk; the user can re-import instead.
+          console.warn(`Failed to load custom font "${filename}":`, err);
+        }
+      }
+      setCustomFonts(loaded);
+      // If the font that was active last session failed to load this time
+      // (deleted from disk outside the app, or corrupted), fall back to
+      // the default preset instead of rendering with an unregistered family.
+      if (
+        activeFontFilenameRef.current &&
+        !loaded.some((f) => f.filename === activeFontFilenameRef.current)
+      ) {
+        activeFontFilenameRef.current = null;
+        setActiveFontFilename(null);
+      }
+    } catch (error) {
+      console.error("Failed to scan custom fonts:", error);
+    }
+  }, []);
+
+  // ── Load settings ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(READER_SETTINGS_FILE);
+        if (fileInfo.exists) {
+          const content =
+            await FileSystem.readAsStringAsync(READER_SETTINGS_FILE);
+          const settings = JSON.parse(content);
+          if (settings.fontSizeIdx !== undefined)
+            setFontSizeIdx(settings.fontSizeIdx);
+          if (settings.lineSpacingIdx !== undefined)
+            setLineSpacingIdx(settings.lineSpacingIdx);
+          if (settings.marginPresetIdx !== undefined)
+            setMarginPresetIdx(settings.marginPresetIdx);
+          if (settings.autoScrollSpeedIdx !== undefined)
+            setAutoScrollSpeedIdx(settings.autoScrollSpeedIdx);
+          if (settings.fontPresetId !== undefined) {
+            setFontPresetId(settings.fontPresetId);
+            fontPresetIdRef.current = settings.fontPresetId;
+          }
+          if (settings.activeFontFilename !== undefined) {
+            setActiveFontFilename(settings.activeFontFilename);
+            activeFontFilenameRef.current = settings.activeFontFilename;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load reader settings:", error);
       }
 
-      const safeTitle = novel.title
-        .replace(/[^a-zA-Z0-9\s]/g, "")
-        .replace(/\s+/g, "_")
-        .substring(0, 50);
-      const filename = `${safeTitle}${extensions[format]}`;
-      const filePath = `${exportDir}${filename}`;
-
-      if (format === "pdf") {
-        await FileSystem.copyAsync({ from: content as string, to: filePath });
-      } else {
-        await FileSystem.writeAsStringAsync(filePath, content as string, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
+      try {
+        const bgInfo = await FileSystem.getInfoAsync(BG_SETTINGS_FILE);
+        if (bgInfo.exists) {
+          const bgContent =
+            await FileSystem.readAsStringAsync(BG_SETTINGS_FILE);
+          const bgSettings = JSON.parse(bgContent);
+          if (bgSettings.presetId) setBgPresetId(bgSettings.presetId);
+          if (bgSettings.customUri) setBgCustomUri(bgSettings.customUri);
+        }
+      } catch (e) {
+        console.warn("Failed to load bg settings:", e);
       }
 
-      setExportProgress("Opening share dialog...");
+      await scanCustomFonts();
 
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(filePath, {
-          mimeType: mimeTypes[format],
-          dialogTitle: `Export ${novel.title}`,
-        });
-      } else {
-        Alert.alert("Export Complete", `File saved to:\n${filename}`);
-      }
+      setSettingsLoaded(true);
+    })();
+  }, []);
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      Alert.alert(
-        "Export Failed",
-        error.message || "An error occurred during export.",
+  // ── Background colors ──
+  const activePreset = BG_PRESETS.find((p) => p.id === bgPresetId);
+  const bgImageUri = bgCustomUri ?? null;
+  const bgSolidColor =
+    !bgCustomUri && activePreset && activePreset.id !== "none"
+      ? activePreset.color
+      : null;
+  const isNoneBackground = !bgCustomUri && activePreset?.id === "none";
+  const effectiveBgColor = isNoneBackground
+    ? themeColors.background
+    : "transparent";
+
+  const updateAdaptiveColors = useCallback(async () => {
+    if (bgCustomUri) {
+      setAdaptiveColors({
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
+      });
+    } else if (activePreset && activePreset.id !== "none") {
+      setAdaptiveColors({
+        text: activePreset.textColor,
+        textSecondary: activePreset.textColorSecondary,
+        accent: activePreset.accentColor || themeColors.accent,
+        surface: isLightColor(activePreset.color)
+          ? "rgba(255, 255, 255, 0.9)"
+          : "rgba(0, 0, 0, 0.7)",
+        card: isLightColor(activePreset.color)
+          ? "rgba(255, 255, 255, 0.85)"
+          : "rgba(0, 0, 0, 0.6)",
+        border: isLightColor(activePreset.color)
+          ? "rgba(0, 0, 0, 0.1)"
+          : "rgba(255, 255, 255, 0.1)",
+      });
+    } else {
+      setAdaptiveColors({
+        text: themeColors.text,
+        textSecondary: themeColors.textSecondary,
+        accent: themeColors.accent,
+        surface: themeColors.surface,
+        card: themeColors.card,
+        border: themeColors.border,
+      });
+    }
+  }, [bgCustomUri, activePreset, themeColors]);
+
+  useEffect(() => {
+    updateAdaptiveColors();
+  }, [bgPresetId, bgCustomUri, updateAdaptiveColors]);
+
+  const saveBgSettings = async (presetId: string, customUri: string | null) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const di = await FileSystem.getInfoAsync(dir);
+      if (!di.exists)
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(
+        BG_SETTINGS_FILE,
+        JSON.stringify({ presetId, customUri }),
       );
-    } finally {
-      setExporting(false);
-      setExportProgress("");
+    } catch (e) {
+      console.warn("Failed to save bg settings:", e);
     }
   };
 
-  // ── Chapter selection / delete ─────────────────────────────────────────
-  const enterChapterSelectionMode = (firstUrl?: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setChapterSelectionMode(true);
-    setSelectedChapterUrls(firstUrl ? [firstUrl] : []);
+  const pickCustomImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setBgCustomUri(uri);
+      setBgPresetId("none");
+      setShowBgModal(false);
+      saveBgSettings("none", uri);
+      setAdaptiveColors({
+        text: "#F0F0F0",
+        textSecondary: "#B0B0B0",
+        accent: "#58A6FF",
+        surface: "rgba(30, 30, 40, 0.85)",
+        card: "rgba(20, 20, 30, 0.85)",
+        border: "rgba(100, 100, 120, 0.5)",
+      });
+    }
   };
 
-  const exitChapterSelectionMode = () => {
-    setChapterSelectionMode(false);
-    setSelectedChapterUrls([]);
+  const selectPreset = (preset: (typeof BG_PRESETS)[0]) => {
+    setBgPresetId(preset.id);
+    setBgCustomUri(null);
+    setShowBgModal(false);
+    saveBgSettings(preset.id, null);
   };
 
-  const toggleChapterSelection = (url: string) => {
-    Haptics.selectionAsync();
-    setSelectedChapterUrls((prev) =>
-      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url],
+  const saveTtsSettings = async (voiceId: string | undefined, rate: number) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const dirInfo = await FileSystem.getInfoAsync(dir);
+      if (!dirInfo.exists)
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(
+        TTS_SETTINGS_FILE,
+        JSON.stringify({ voiceId, rate, autoNext: ttsAutoNext }),
+      );
+    } catch (e) {
+      console.warn("[TTS] Failed to save settings:", e);
+    }
+  };
+
+  const saveAllSettings = async (
+    fontSize: number,
+    lineSpacing: number,
+    margin: number,
+    scroll: number,
+  ) => {
+    try {
+      const dir = `${FileSystem.documentDirectory}NovelDR/`;
+      const dirInfo = await FileSystem.getInfoAsync(dir);
+      if (!dirInfo.exists)
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(
+        READER_SETTINGS_FILE,
+        JSON.stringify({
+          fontSizeIdx: fontSize,
+          lineSpacingIdx: lineSpacing,
+          marginPresetIdx: margin,
+          autoScrollSpeedIdx: scroll,
+          fontPresetId: fontPresetIdRef.current,
+          activeFontFilename: activeFontFilenameRef.current,
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+    }
+  };
+
+  // ── Font selection ──
+  const selectBuiltinFontPreset = (id: string) => {
+    activeFontFilenameRef.current = null;
+    setActiveFontFilename(null);
+    fontPresetIdRef.current = id;
+    setFontPresetId(id);
+    saveAllSettings(
+      fontSizeIdx,
+      lineSpacingIdx,
+      marginPresetIdx,
+      autoScrollSpeedIdx,
     );
+    setShowFontModal(false);
   };
 
-  const showFirstDeleteConfirmation = () => {
-    if (selectedChapterUrls.length === 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const selectCustomFont = (font: CustomFont) => {
+    activeFontFilenameRef.current = font.filename;
+    setActiveFontFilename(font.filename);
+    saveAllSettings(
+      fontSizeIdx,
+      lineSpacingIdx,
+      marginPresetIdx,
+      autoScrollSpeedIdx,
+    );
+    setShowFontModal(false);
+  };
+
+  // Type filter is deliberately loose ("*/*" rather than a font MIME type):
+  // Android's SAF picker is inconsistent about reporting font MIME types
+  // (often just "application/octet-stream"), so the extension check below
+  // is the reliable gate, same reasoning as the .txt check in Settings.
+  const handleImportFont = async () => {
+    if (importingFont) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      const ext = file.name.match(FONT_FILE_EXT_RE)?.[0]?.toLowerCase();
+      if (!ext) {
+        Alert.alert(
+          "Unsupported File",
+          "Please choose a .ttf or .otf font file.",
+        );
+        return;
+      }
+
+      setImportingFont(true);
+
+      const dirInfo = await FileSystem.getInfoAsync(CUSTOM_FONTS_DIR);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(CUSTOM_FONTS_DIR, {
+          intermediates: true,
+        });
+      }
+
+      // Avoid clobbering an existing font that shares the same filename by
+      // suffixing until a free name is found.
+      const baseName = file.name
+        .replace(FONT_FILE_EXT_RE, "")
+        .replace(/[^a-zA-Z0-9 _-]/g, "")
+        .trim();
+      const safeBase = baseName || "Custom_Font";
+      let targetName = `${safeBase}${ext}`;
+      let counter = 2;
+      while (
+        (await FileSystem.getInfoAsync(`${CUSTOM_FONTS_DIR}${targetName}`))
+          .exists
+      ) {
+        targetName = `${safeBase}_${counter}${ext}`;
+        counter++;
+      }
+
+      const destUri = `${CUSTOM_FONTS_DIR}${targetName}`;
+      await FileSystem.copyAsync({ from: file.uri, to: destUri });
+
+      // Validate it actually registers as a font before keeping it - if
+      // this throws, the file is not a valid/readable font.
+      const familyName = familyNameForFilename(targetName);
+      try {
+        await Font.loadAsync({ [familyName]: destUri });
+      } catch (err) {
+        await FileSystem.deleteAsync(destUri, { idempotent: true });
+        Alert.alert(
+          "Import Failed",
+          "That file doesn't look like a valid font.",
+        );
+        return;
+      }
+
+      setCustomFonts((prev) => [
+        ...prev,
+        { filename: targetName, label: safeBase, familyName },
+      ]);
+    } catch (error) {
+      console.error("Failed to import custom font:", error);
+      Alert.alert("Import Failed", "Something went wrong importing that font.");
+    } finally {
+      setImportingFont(false);
+    }
+  };
+
+  const handleDeleteCustomFont = (font: CustomFont) => {
     Alert.alert(
-      "Confirm Deletion",
-      `Delete ${selectedChapterUrls.length} chapter${selectedChapterUrls.length !== 1 ? "s" : ""}?`,
+      "Delete Font",
+      `Remove "${font.label}" from your fonts? This can't be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => setConfirmDeleteChaptersVisible(true),
+          onPress: async () => {
+            try {
+              await FileSystem.deleteAsync(
+                `${CUSTOM_FONTS_DIR}${font.filename}`,
+                { idempotent: true },
+              );
+            } catch (error) {
+              console.error("Failed to delete custom font file:", error);
+            }
+            setCustomFonts((prev) =>
+              prev.filter((f) => f.filename !== font.filename),
+            );
+            if (activeFontFilenameRef.current === font.filename) {
+              activeFontFilenameRef.current = null;
+              setActiveFontFilename(null);
+              fontPresetIdRef.current = "default";
+              setFontPresetId("default");
+              saveAllSettings(
+                fontSizeIdx,
+                lineSpacingIdx,
+                marginPresetIdx,
+                autoScrollSpeedIdx,
+              );
+            }
+          },
         },
       ],
     );
   };
 
-  const performChapterDelete = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    setConfirmDeleteChaptersVisible(false);
-
-    const showLoadingModal =
-      selectedChapterUrls.length > BULK_DELETE_LOADING_THRESHOLD;
-    const survivorCount = novel.chapters.length - selectedChapterUrls.length;
-    if (showLoadingModal) {
-      setDeleteProgress({ done: 0, total: survivorCount });
-      setDeletingChapters(true);
+  const getMargins = () => {
+    switch (marginPresetIdx) {
+      case 0:
+        return { horizontal: 12, vertical: 16 };
+      case 1:
+        return { horizontal: 22, vertical: 20 };
+      case 2:
+        return { horizontal: 32, vertical: 28 };
+      default:
+        return { horizontal: 22, vertical: 20 };
     }
+  };
+  const margins = getMargins();
 
-    try {
-      await deleteChapters(novel.id, selectedChapterUrls, (done, total) => {
-        setDeleteProgress({ done, total });
-      });
-      setChapterSelectionMode(false);
-      setSelectedChapterUrls([]);
-      // Force a full remount of the chapter FlatList — getNovel(id) already
-      // returns the updated chapters array on the next render, but the list
-      // doesn't always visually reflect it until something else (like
-      // navigating away and back) triggers a fresh mount. Bumping the `key`
-      // prop below guarantees the list actually redraws immediately.
-      setChapterListRefreshKey((k) => k + 1);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } finally {
-      if (showLoadingModal) setDeletingChapters(false);
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const currentSpeed = AUTO_SCROLL_SPEEDS[autoScrollSpeedIdx];
+
+  // ── Paragraph layout tracking ──
+  const paraYPositionsRef = useRef<Map<number, number>>(new Map());
+  const paraHeightsRef = useRef<Map<number, number>>(new Map());
+  const highlightedSentenceRelYRef = useRef<number | null>(null);
+  const [highlightLayoutVersion, setHighlightLayoutVersion] = useState(0);
+
+  const handleParaLayout = useCallback(
+    (idx: number, y: number, height: number) => {
+      paraYPositionsRef.current.set(idx, y);
+      paraHeightsRef.current.set(idx, height);
+    },
+    [],
+  );
+
+  const handleHighlightedSentenceLayout = useCallback((relY: number) => {
+    highlightedSentenceRelYRef.current = relY;
+    setHighlightLayoutVersion((v) => v + 1);
+  }, []);
+
+  const paragraphSentences = useMemo(
+    () =>
+      processedParagraphs.map((p) =>
+        p.split(/(?<=[.!?])\s+(?=[A-Z0-9""'‘({[<])/),
+      ),
+    [processedParagraphs],
+  );
+
+  const ttsToRenderKeyMap = useMemo(() => {
+    const map = new Map<number, string>();
+    let i = 0;
+    for (let paraIdx = 0; paraIdx < paragraphSentences.length; paraIdx++) {
+      const sentences = paragraphSentences[paraIdx];
+      for (let sentIdx = 0; sentIdx < sentences.length; sentIdx++) {
+        map.set(i, `${paraIdx}-${sentIdx}`);
+        i++;
+      }
+    }
+    return map;
+  }, [paragraphSentences]);
+
+  // Reverse of the above: paragraph index -> the flat ttsIndex of its
+  // first sentence, so a scroll position can be converted into a TTS
+  // starting point.
+  const paraFirstTtsIndex = useMemo(() => {
+    const starts: number[] = [];
+    let i = 0;
+    for (let paraIdx = 0; paraIdx < paragraphSentences.length; paraIdx++) {
+      starts.push(i);
+      i += paragraphSentences[paraIdx].length;
+    }
+    return starts;
+  }, [paragraphSentences]);
+
+  // Fresh TTS starts here, not always sentence 0: find whichever paragraph
+  // is currently at/near the top of the viewport (the topmost one whose
+  // recorded layout Y is at or above the current scroll offset) and start
+  // from its first sentence. Falls back to 0 if paragraphs haven't laid
+  // out yet (e.g. TTS pressed the instant a chapter opens).
+  getStartIndexRef.current = useCallback(() => {
+    if (paraYPositionsRef.current.size === 0 || paraFirstTtsIndex.length === 0) {
+      return 0;
+    }
+    let bestParaIdx = 0;
+    let bestY = -Infinity;
+    for (const [idx, y] of paraYPositionsRef.current.entries()) {
+      if (y <= scrollY && y > bestY) {
+        bestY = y;
+        bestParaIdx = idx;
+      }
+    }
+    return paraFirstTtsIndex[bestParaIdx] ?? 0;
+  }, [scrollY, paraFirstTtsIndex]);
+
+  const currentHighlightKey =
+    ttsIndex >= 0 ? ttsToRenderKeyMap.get(ttsIndex) : undefined;
+  const currentParaIdx = currentHighlightKey
+    ? parseInt(currentHighlightKey.split("-")[0], 10)
+    : -1;
+
+  // TTS follow‑scroll effect
+  useEffect(() => {
+    if (!ttsActive || currentParaIdx < 0 || !currentHighlightKey) return;
+    if (isUserScrollingRef.current) return;
+    const paraY = paraYPositionsRef.current.get(currentParaIdx);
+    if (paraY === undefined) return;
+    const sentenceRelY = highlightedSentenceRelYRef.current;
+    const targetCenter = paraY + (sentenceRelY ?? 0);
+    const blockHeightEstimate = fontSize * lineSpacing * 1.8;
+    const centerOffset = blockHeightEstimate * 2;
+    const targetY = Math.max(
+      0,
+      targetCenter - scrollViewHeight / 2 + centerOffset,
+    );
+    scrollRef.current?.scrollTo({ y: targetY, animated: true });
+  }, [
+    currentHighlightKey,
+    currentParaIdx,
+    ttsIndex,
+    ttsSentences,
+    ttsActive,
+    fontSize,
+    lineSpacing,
+    highlightLayoutVersion,
+    scrollViewHeight,
+    isUserScrollingRef,
+    scrollRef,
+  ]);
+
+  const jumpToPercentage = (percentage: number) => {
+    if (contentHeight > scrollViewHeight) {
+      const maxScroll = contentHeight - scrollViewHeight;
+      const targetY = (percentage / 100) * maxScroll;
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
     }
   };
 
+  // ── Background setup modal state ──
+  const [showBackgroundSetup, setShowBackgroundSetup] = useState(false);
+  const [notifPermGranted, setNotifPermGranted] = useState<boolean | null>(
+    null,
+  );
+  const [batteryOptExempt, setBatteryOptExempt] = useState<boolean | null>(
+    null,
+  );
+  const [powerManagerAvailable, setPowerManagerAvailable] = useState(false);
+
+  const refreshBackgroundSetupStatus = useCallback(async () => {
+    if (Platform.OS !== "android") return;
+    try {
+      const settings = await notifee.getNotificationSettings();
+      setNotifPermGranted(
+        settings.authorizationStatus === AuthorizationStatus.AUTHORIZED,
+      );
+    } catch {
+      setNotifPermGranted(null);
+    }
+    try {
+      const exempt = await notifee.isBatteryOptimizationEnabled();
+      setBatteryOptExempt(!exempt);
+    } catch {
+      setBatteryOptExempt(null);
+    }
+    try {
+      const info = await notifee.getPowerManagerInfo();
+      setPowerManagerAvailable(!!info?.activity);
+    } catch {
+      setPowerManagerAvailable(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showBackgroundSetup) refreshBackgroundSetupStatus();
+  }, [showBackgroundSetup, refreshBackgroundSetupStatus]);
+
+  const handleRequestNotificationPerm = useCallback(async () => {
+    try {
+      await notifee.requestPermission();
+    } catch (e) {
+      console.warn(
+        "[BackgroundSetup] Notification permission request failed:",
+        e,
+      );
+    }
+    await refreshBackgroundSetupStatus();
+  }, [refreshBackgroundSetupStatus]);
+
+  const handleOpenBatteryOptimizationSettings = useCallback(async () => {
+    try {
+      await notifee.openBatteryOptimizationSettings();
+    } catch (e) {
+      console.warn(
+        "[BackgroundSetup] Could not open battery optimization settings:",
+        e,
+      );
+    }
+  }, []);
+
+  const handleOpenPowerManagerSettings = useCallback(async () => {
+    try {
+      await notifee.openPowerManagerSettings();
+    } catch (e) {
+      console.warn(
+        "[BackgroundSetup] Could not open power manager settings:",
+        e,
+      );
+    }
+  }, []);
+
+  // ── Loading state ──
+  if (!novel || !chapter || !settingsLoaded) {
+    return (
+      <View
+        style={[styles.center, { backgroundColor: themeColors.background }]}
+      >
+        <ActivityIndicator size="large" color={themeColors.accent} />
+      </View>
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ─── RENDER ──────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {chapterSelectionMode ? (
-        <View
-          style={[
-            styles.navBar,
-            { paddingTop: topPad + 4, borderBottomColor: colors.border },
-          ]}
-        >
-          <Pressable style={styles.backBtn} onPress={exitChapterSelectionMode}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </Pressable>
-          <Text
-            style={[styles.navTitle, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            Selected: {selectedChapterUrls.length}
-          </Text>
-          {selectedChapterUrls.length > 0 ? (
-            <Pressable
-              style={styles.menuBtn}
-              onPress={showFirstDeleteConfirmation}
-            >
-              <Ionicons name="trash-outline" size={22} color={colors.text} />
-            </Pressable>
-          ) : (
-            <View style={styles.menuBtn} />
-          )}
-        </View>
-      ) : (
-        <View
-          style={[
-            styles.navBar,
-            { paddingTop: topPad + 4, borderBottomColor: colors.border },
-          ]}
-        >
-          <Pressable
-            style={styles.backBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.back();
-            }}
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.accent} />
-            <Text style={[styles.backLabel, { color: colors.accent }]}>
-              Library
-            </Text>
-          </Pressable>
-          <Text
-            style={[styles.navTitle, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {novel.title}
-          </Text>
-          <Pressable
-            style={styles.menuBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowMenu(true);
-            }}
-          >
-            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
-          </Pressable>
-        </View>
-      )}
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPad + 20 }}
-        nestedScrollEnabled={true}
-      >
-        <View style={styles.hero}>
-          <View style={styles.coverWrap}>
-            {novel.coverUrl ? (
-              <Image
-                source={{ uri: novel.coverUrl }}
-                style={styles.cover}
-                contentFit="cover"
-              />
-            ) : (
-              <View
-                style={[
-                  styles.coverPlaceholder,
-                  { backgroundColor: colors.card },
-                ]}
-              >
-                <Ionicons name="book" size={48} color={colors.accent} />
-              </View>
-            )}
-          </View>
-          <View style={styles.heroInfo}>
-            <Text style={[styles.heroTitle, { color: colors.text }]}>
-              {novel.title}
-            </Text>
-            <Text style={[styles.heroAuthor, { color: colors.textSecondary }]}>
-              {novel.author}
-            </Text>
-
-            <View style={styles.heroButtons}>
-              <Pressable
-                style={[styles.readBtn, { backgroundColor: colors.accent }]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  const startIndex = novel.lastRead?.chapterIndex ?? 0;
-                  router.push({
-                    pathname: "/reader/[id]",
-                    params: {
-                      id: novel.id,
-                      chapterIndex: startIndex.toString(),
-                    },
-                  });
-                }}
-              >
-                <Ionicons
-                  name={novel.lastRead ? "play" : "book-outline"}
-                  size={16}
-                  color="#fff"
-                />
-                <Text style={styles.readBtnText}>
-                  {novel.lastRead ? "Continue" : "Start Reading"}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.content}>
-          {novel.lastRead && (
-            <View
-              style={[
-                styles.progressCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <View style={styles.progressTop}>
-                <Text style={[styles.progressLabel, { color: colors.text }]}>
-                  Reading Progress
-                </Text>
-                <Text style={[styles.progressCount, { color: colors.accent }]}>
-                  {progress}
-                </Text>
-              </View>
-              <View
-                style={[styles.progressBar, { backgroundColor: colors.border }]}
-              >
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: colors.accent,
-                      width: `${progressPct * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text
-                style={[styles.lastReadLabel, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                Last: {novel.lastRead.chapterTitle}
-              </Text>
-            </View>
-          )}
-
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Synopsis
-          </Text>
-          <Pressable
-            style={[
-              styles.synopsisCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            onPress={() => setSynopsisExpanded((e) => !e)}
-          >
-            <Text
-              style={[styles.synopsisText, { color: colors.textSecondary }]}
-            >
-              {synopsisExpanded ? novel.synopsis : firstParagraph}
-              {!synopsisExpanded &&
-              novel.synopsis.length > firstParagraph.length
-                ? "..."
-                : ""}
-            </Text>
-            <View style={styles.seeMoreRow}>
-              <Text style={[styles.seeMore, { color: colors.accent }]}>
-                {synopsisExpanded ? "See Less" : "See More"}
-              </Text>
-              <Ionicons
-                name={synopsisExpanded ? "chevron-up" : "chevron-down"}
-                size={14}
-                color={colors.accent}
-              />
-            </View>
-          </Pressable>
-
-          <View style={styles.chapterHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Chapters ({novel.chapters.length})
-            </Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable
-                onPress={toggleSortOrder}
-                style={[styles.sortBtn, { borderColor: colors.border }]}
-              >
-                <Ionicons
-                  name={sortOrder === "ascending" ? "arrow-up" : "arrow-down"}
-                  size={16}
-                  color={colors.accent}
-                />
-                <Text style={[styles.sortBtnText, { color: colors.accent }]}>
-                  {sortOrder === "ascending" ? "Asc" : "Desc"}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => enterChapterSelectionMode()}
-                style={[
-                  styles.sortBtn,
-                  styles.deleteChaptersBtn,
-                  { borderColor: colors.border },
-                ]}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={styles.chapterListContainer}>
-            <FlatList
-              key={chapterListRefreshKey}
-              data={sortedChapters}
-              extraData={[chapterSelectionMode, selectedChapterUrls]}
-              keyExtractor={keyExtractor}
-              renderItem={renderChapterItem}
-              getItemLayout={getItemLayout}
-              scrollEnabled={false}
-              nestedScrollEnabled={true}
-              initialNumToRender={20}
-              maxToRenderPerBatch={30}
-              windowSize={10}
-              removeClippedSubviews={true}
-              ListEmptyComponent={
-                <View style={styles.emptyChapters}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={32}
-                    color={colors.textSecondary}
-                    style={styles.emptyChaptersIcon}
-                  />
-                  <Text style={[styles.emptyText, { color: colors.text }]}>
-                    No chapters yet
-                  </Text>
-                  <Text
-                    style={[
-                      styles.emptyTextSub,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    This novel hasn&apos;t downloaded any chapters. Check the
-                    Updates tab to fetch the latest ones.
-                  </Text>
-                  <Pressable
-                    style={[
-                      styles.emptyChaptersBtn,
-                      { backgroundColor: colors.accent },
-                    ]}
-                    onPress={() => router.push("/(tabs)/updates")}
-                  >
-                    <Ionicons name="refresh" size={16} color="#fff" />
-                    <Text style={styles.emptyChaptersBtnText}>
-                      Go to Updates
-                    </Text>
-                  </Pressable>
-                </View>
-              }
-            />
-          </View>
-        </View>
-      </ScrollView>
-
-      <Modal
-        visible={showMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMenu(false)}
-      >
-        <Pressable
-          style={styles.menuOverlay}
-          onPress={() => setShowMenu(false)}
-        >
+    <ContentWrapper
+      bgImageUri={bgImageUri}
+      bgSolidColor={bgSolidColor}
+      defaultBgColor={themeColors.background}
+    >
+      <View style={[styles.container, { backgroundColor: effectiveBgColor }]}>
+        {/* ─── FULLSCREEN MINIMAL TOP BAR (shown once normal bars finish fading out) ─── */}
+        {fullscreenMode && !barsMounted && (
           <View
             style={[
-              styles.menuContainer,
+              styles.minimalistTopBar,
               {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                paddingBottom: bottomPad + 20,
+                backgroundColor: adaptiveColors.surface,
+                borderBottomColor: adaptiveColors.border,
               },
             ]}
           >
-            <Text
-              style={[styles.menuTitle, { color: colors.text }]}
-              numberOfLines={1}
-            >
-              {novel.title}
-            </Text>
-            <Pressable
-              style={[styles.menuItem, { borderColor: colors.border }]}
-              onPress={() => {
-                setShowMenu(false);
-                setShowExportModal(true);
-              }}
-            >
-              <Ionicons
-                name="download-outline"
-                size={20}
-                color={colors.accent}
-              />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Export Novel
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.menuItem, { borderColor: colors.border }]}
-              onPress={() => setShowMenu(false)}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={20}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Novel Info
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.menuCancelBtn, { borderColor: colors.border }]}
-              onPress={() => setShowMenu(false)}
-            >
-              <Text
-                style={[styles.menuCancelText, { color: colors.textSecondary }]}
-              >
-                Cancel
-              </Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
-      <Modal
-        visible={showExportModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowExportModal(false)}
-      >
-        <Pressable
-          style={[styles.menuOverlay, styles.centerOverlay]}
-          onPress={() => setShowExportModal(false)}
-        >
-          <View
-            style={[
-              styles.exportModalContainer,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Text style={[styles.menuTitle, { color: colors.text }]}>
-              Export as...
-            </Text>
-            {EXPORT_OPTIONS.map((option) => (
+            <View style={{ height: topPad }} />
+            <View style={styles.minimalistTopBarRow}>
               <Pressable
-                key={option.format}
-                style={[styles.exportItem, { borderColor: colors.border }]}
-                onPress={() => handleExport(option.format)}
+                onPress={() =>
+                  router.replace({
+                    pathname: "/novel/[id]",
+                    params: { id },
+                  })
+                }
+                accessibilityLabel="Close reader"
+              >
+                <Ionicons name="close" size={18} color={adaptiveColors.text} />
+              </Pressable>
+
+              <Text
+                style={{
+                  color: adaptiveColors.text,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  flex: 1,
+                  textAlign: "center",
+                  marginHorizontal: 8,
+                }}
+                numberOfLines={1}
+              >
+                {chapter.title}
+              </Text>
+
+              <Pressable
+                onPress={() => setShowSettingsSheet(true)}
+                accessibilityLabel="Reader settings"
               >
                 <Ionicons
-                  name={option.icon as any}
-                  size={20}
-                  color={option.color}
+                  name="settings-outline"
+                  size={16}
+                  color={adaptiveColors.text}
                 />
-                <Text style={[styles.menuItemText, { color: colors.text }]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable
-              style={[styles.menuCancelBtn, { borderColor: colors.border }]}
-              onPress={() => setShowExportModal(false)}
-            >
-              <Text
-                style={[styles.menuCancelText, { color: colors.textSecondary }]}
-              >
-                Cancel
-              </Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
-      <Modal visible={exporting} transparent animationType="fade">
-        <View style={styles.menuOverlay}>
-          <View
-            style={[styles.progressModal, { backgroundColor: colors.card }]}
-          >
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.progressText, { color: colors.text }]}>
-              {exportProgress}
-            </Text>
-            <Text
-              style={[styles.progressSubText, { color: colors.textSecondary }]}
-            >
-              This may take a moment for large novels...
-            </Text>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={confirmDeleteChaptersVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmDeleteChaptersVisible(false)}
-      >
-        <View style={styles.confirmModalOverlay}>
-          <View
-            style={[
-              styles.confirmModalContent,
-              { backgroundColor: colors.card },
-            ]}
-          >
-            <Ionicons
-              name="alert-circle"
-              size={48}
-              color={colors.text}
-              style={styles.confirmModalIcon}
-            />
-            <Text style={[styles.confirmModalTitle, { color: colors.text }]}>
-              Confirm Deletion
-            </Text>
-            <Text
-              style={[
-                styles.confirmModalMessage,
-                { color: colors.textSecondary },
-              ]}
-            >
-              This will permanently delete {selectedChapterUrls.length} chapter
-              {selectedChapterUrls.length !== 1 ? "s" : ""}.{"\n\n"}
-              Are you sure about this? {"\n\n"}
-              If YES, click the &apos;DELETE&apos; button.
-            </Text>
-
-            <View style={styles.confirmModalButtons}>
-              <Pressable
-                style={[
-                  styles.confirmModalButton,
-                  styles.confirmModalCancelButton,
-                  { borderColor: colors.border },
-                ]}
-                onPress={() => setConfirmDeleteChaptersVisible(false)}
-              >
-                <Text
-                  style={[
-                    styles.confirmModalButtonText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Cancel
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.confirmModalButton,
-                  styles.confirmModalDeleteButton,
-                ]}
-                onPress={performChapterDelete}
-              >
-                <Text
-                  style={[styles.confirmModalButtonText, { color: "#fff" }]}
-                >
-                  DELETE
-                </Text>
               </Pressable>
             </View>
           </View>
-        </View>
-      </Modal>
+        )}
 
-      <Modal visible={deletingChapters} transparent animationType="fade">
-        <View style={styles.menuOverlay}>
-          <View
-            style={[styles.progressModal, { backgroundColor: colors.card }]}
+        {/* ─── TOP BAR (fades out, then unmounts to reclaim layout space) ─── */}
+        {barsMounted && (
+          <Animated.View
+            pointerEvents={fullscreenMode ? "none" : "auto"}
+            style={[
+              styles.topBar,
+              {
+                backgroundColor: adaptiveColors.surface,
+                borderBottomColor: adaptiveColors.border,
+              },
+              uiAnimatedStyle,
+            ]}
           >
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.progressText, { color: colors.text }]}>
-              Please Wait
-            </Text>
+            <View style={{ height: topPad }} />
+            <View style={styles.topBarRow}>
+              <Pressable
+                style={styles.navBtn}
+                onPress={() =>
+                  router.replace({
+                    pathname: "/novel/[id]",
+                    params: { id },
+                  })
+                }
+                accessibilityLabel="Close reader"
+              >
+                <Ionicons name="close" size={22} color={adaptiveColors.text} />
+              </Pressable>
+              <Pressable
+                style={{ flex: 1 }}
+                onPress={() => setShowSettingsSheet(false)}
+              >
+                <Text
+                  style={[styles.chapterTitle, { color: adaptiveColors.text }]}
+                  numberOfLines={1}
+                >
+                  {chapter.title}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.navBtn}
+                onPress={() => setShowSettingsSheet(true)}
+                accessibilityLabel="Reader settings"
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={20}
+                  color={adaptiveColors.text}
+                />
+              </Pressable>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ─── PROGRESS BAR (always visible) ─── */}
+        <Pressable
+          style={[
+            styles.progressBarContainer,
+            { backgroundColor: adaptiveColors.border },
+          ]}
+          onPress={(e) => {
+            registerRapidTap();
+            const { locationX } = e.nativeEvent;
+            const percentage = (locationX / SCREEN_W) * 100;
+            jumpToPercentage(percentage);
+          }}
+          accessibilityLabel={`Reading progress ${Math.round(readingProgress)} percent`}
+        >
+          <View
+            style={[
+              styles.progressBar,
+              {
+                backgroundColor: adaptiveColors.accent,
+                width: `${readingProgress}%`,
+              },
+            ]}
+          />
+        </Pressable>
+
+        {/* Content area */}
+        <View style={{ flex: 1, position: "relative" }}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scrollArea}
+            contentContainerStyle={[
+              styles.textContainer,
+              {
+                paddingHorizontal: margins.horizontal,
+                paddingTop: margins.vertical,
+                paddingBottom: bottomPad + 120,
+              },
+            ]}
+            onScroll={handleScroll}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleScrollEndDrag}
+            onContentSizeChange={handleContentSizeChange}
+            onLayout={handleScrollViewLayout}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
             <Text
-              style={[styles.progressSubText, { color: colors.textSecondary }]}
+              style={[
+                styles.chapterHeader,
+                {
+                  color: adaptiveColors.accent,
+                  marginBottom: fontSize * 1.5,
+                  fontSize: fontSize + 4,
+                  fontWeight: "bold",
+                },
+              ]}
             >
-              {deleteProgress.total > 0
-                ? `${deleteProgress.done} / ${deleteProgress.total}`
-                : ""}
+              {chapter.title}
             </Text>
-          </View>
+            {contentLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={adaptiveColors.accent} />
+              </View>
+            ) : (
+              <View>
+                {paragraphSentences.map((sentences, paraIdx) => {
+                  const isLastParagraph =
+                    paraIdx === paragraphSentences.length - 1;
+
+                  let highlightedSentIdx = -1;
+                  if (currentHighlightKey) {
+                    const [hPara, hSent] = currentHighlightKey.split("-");
+                    if (parseInt(hPara, 10) === paraIdx) {
+                      highlightedSentIdx = parseInt(hSent, 10);
+                    }
+                  }
+
+                  return (
+                    <ParagraphBlock
+                      key={paraIdx}
+                      sentences={sentences}
+                      paraIdx={paraIdx}
+                      highlightedSentIdx={highlightedSentIdx}
+                      isLastParagraph={isLastParagraph}
+                      fontSize={fontSize}
+                      lineSpacing={lineSpacing}
+                      accentColor={adaptiveColors.accent}
+                      textColor={adaptiveColors.text}
+                      contentStyle={styles.content}
+                      regularFamily={activeFontPreset.regularFamily}
+                      boldFamily={activeFontPreset.boldFamily}
+                      highlightedWord={dictWord}
+                      onParaLayout={handleParaLayout}
+                      onHighlightedSentenceLayout={
+                        handleHighlightedSentenceLayout
+                      }
+                      onWordDoubleTap={handleWordDoubleTap}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+
+          {/* TTS status overlay */}
+          {ttsActive && ttsIndex >= 0 && ttsIndex < ttsSentences.length && (
+            <View
+              style={[
+                styles.ttsSentenceBox,
+                {
+                  backgroundColor: adaptiveColors.accent + "12",
+                  borderColor: adaptiveColors.accent + "40",
+                },
+              ]}
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={14}
+                color={adaptiveColors.accent}
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.ttsSentenceLabel,
+                    { color: adaptiveColors.accent },
+                  ]}
+                >
+                  Now reading
+                </Text>
+                <Text
+                  style={[
+                    styles.ttsSentenceText,
+                    { color: adaptiveColors.text },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {ttsSentences[ttsIndex].length > 100
+                    ? ttsSentences[ttsIndex].substring(0, 100) + "..."
+                    : ttsSentences[ttsIndex]}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Auto Next countdown */}
+          {autoNextCountdownActive && (
+            <Pressable
+              onPress={cancelAutoNext}
+              style={[
+                styles.ttsSentenceBox,
+                {
+                  backgroundColor: adaptiveColors.accent + "12",
+                  borderColor: adaptiveColors.accent + "40",
+                },
+              ]}
+            >
+              <Ionicons
+                name="play-skip-forward-outline"
+                size={14}
+                color={adaptiveColors.accent}
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.ttsSentenceLabel,
+                    { color: adaptiveColors.accent },
+                  ]}
+                >
+                  Chapter finished
+                </Text>
+                <Text
+                  style={[
+                    styles.ttsSentenceText,
+                    { color: adaptiveColors.text },
+                  ]}
+                >
+                  Moving to next chapter in 3s — tap to cancel
+                </Text>
+              </View>
+            </Pressable>
+          )}
+
+          {/* Stall banner */}
+          {ttsStalled && (
+            <Pressable
+              style={[
+                styles.ttsStalledBanner,
+                {
+                  backgroundColor: adaptiveColors.accent + "20",
+                  borderColor: adaptiveColors.accent,
+                },
+              ]}
+              onPress={() => {
+                if (ttsIndex >= 0 && ttsIndex < ttsSentences.length) {
+                  toggleTTS();
+                } else {
+                  stopTTS();
+                }
+              }}
+            >
+              <Ionicons
+                name="alert-circle-outline"
+                size={14}
+                color={adaptiveColors.accent}
+              />
+              <Text
+                style={{
+                  color: adaptiveColors.text,
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
+              >
+                Narration stalled — tap to resume
+              </Text>
+            </Pressable>
+          )}
+
+          {/* ─── RIGHT COLUMN (fullscreen pill + quick actions cluster) ─── */}
+          {chapterContent.length >= TTS_MIN_CHARS && (
+            <View style={styles.rightColumn}>
+              {/* Fullscreen pill - separate button above cluster */}
+              <Pressable
+                style={[
+                  styles.fullscreenPill,
+                  {
+                    backgroundColor: fullscreenMode
+                      ? adaptiveColors.accent
+                      : adaptiveColors.card,
+                    borderColor: fullscreenMode
+                      ? adaptiveColors.accent
+                      : adaptiveColors.border,
+                  },
+                ]}
+                onPress={toggleFullscreen}
+                accessibilityLabel={
+                  fullscreenMode ? "Exit fullscreen" : "Enter fullscreen"
+                }
+              >
+                <Ionicons
+                  name={fullscreenMode ? "contract" : "expand"}
+                  size={18}
+                  color={fullscreenMode ? "#fff" : adaptiveColors.text}
+                />
+              </Pressable>
+
+              {/* Quick actions cluster - chevron + expandable actions */}
+              <View
+                style={[
+                  styles.quickActionsCluster,
+                  {
+                    backgroundColor: adaptiveColors.card,
+                    borderColor: adaptiveColors.border,
+                  },
+                ]}
+              >
+                {/* Chevron toggle */}
+                <Pressable
+                  style={styles.quickActionsToggle}
+                  onPress={() => setQuickActionsExpanded((v) => !v)}
+                  accessibilityLabel={
+                    quickActionsExpanded
+                      ? "Hide quick actions"
+                      : "Show quick actions"
+                  }
+                >
+                  <Ionicons
+                    name={quickActionsExpanded ? "chevron-down" : "chevron-up"}
+                    size={16}
+                    color={adaptiveColors.text}
+                  />
+                </Pressable>
+
+                {/* Expanded actions — chevron alone controls visibility, in both modes */}
+                {quickActionsExpanded && (
+                  <>
+                    <Pressable
+                      style={styles.quickActionBtn}
+                      onPress={() => setShowBackgroundSetup(true)}
+                      accessibilityLabel="Background playback setup"
+                    >
+                      <Ionicons
+                        name="shield-checkmark-outline"
+                        size={16}
+                        color={adaptiveColors.text}
+                      />
+                    </Pressable>
+
+                    <Pressable
+                      style={styles.quickActionBtn}
+                      onPress={() => setShowTTSHelp(true)}
+                      accessibilityLabel="TTS guidebook"
+                    >
+                      <Ionicons
+                        name="book-outline"
+                        size={16}
+                        color={adaptiveColors.text}
+                      />
+                    </Pressable>
+
+                    <Pressable
+                      style={[
+                        styles.quickActionBtn,
+                        styles.ttsPlayBtnInner,
+                        { backgroundColor: adaptiveColors.accent },
+                      ]}
+                      onPress={() => {
+                        registerRapidTap();
+                        toggleTTS();
+                      }}
+                      onLongPress={() => {
+                        Haptics.impactAsync(
+                          Haptics.ImpactFeedbackStyle.Medium,
+                        ).catch(() => {});
+                        setShowTTSSettings(true);
+                      }}
+                      delayLongPress={400}
+                      accessibilityLabel={
+                        ttsActive ? "Pause narration" : "Start narration"
+                      }
+                    >
+                      <Ionicons
+                        name={ttsActive ? "pause" : "volume-high"}
+                        size={18}
+                        color="#fff"
+                      />
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
         </View>
-      </Modal>
-    </View>
+
+        {/* ─── BOTTOM NAV (fades out, then unmounts to reclaim layout space) ─── */}
+        {barsMounted && (
+          <Animated.View
+            pointerEvents={fullscreenMode ? "none" : "auto"}
+            style={[
+              styles.bottomNav,
+              {
+                backgroundColor: adaptiveColors.surface,
+                borderTopColor: adaptiveColors.border,
+                paddingBottom: bottomPad + 8,
+              },
+              uiAnimatedStyle,
+            ]}
+          >
+            <Pressable
+              style={[
+                styles.navChBtn,
+                {
+                  backgroundColor:
+                    chapterIndex === 0
+                      ? adaptiveColors.border
+                      : adaptiveColors.card,
+                  borderColor: adaptiveColors.border,
+                },
+              ]}
+              onPress={() => {
+                registerRapidTap();
+                goChapter(-1);
+              }}
+              disabled={chapterIndex === 0}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={18}
+                color={
+                  chapterIndex === 0
+                    ? adaptiveColors.textSecondary
+                    : adaptiveColors.text
+                }
+              />
+              <Text
+                style={[
+                  styles.navChText,
+                  {
+                    color:
+                      chapterIndex === 0
+                        ? adaptiveColors.textSecondary
+                        : adaptiveColors.text,
+                  },
+                ]}
+              >
+                Prev
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tocButton, { borderColor: adaptiveColors.border }]}
+              onPress={() => setShowTOC(true)}
+            >
+              <Text
+                style={[styles.tocButtonText, { color: adaptiveColors.text }]}
+              >
+                {chapterIndex + 1} / {novel.chapters.length}
+              </Text>
+              <Text
+                style={[
+                  styles.readingPercent,
+                  { color: adaptiveColors.textSecondary },
+                ]}
+              >
+                {Math.round(readingProgress)}%
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.navChBtn,
+                {
+                  backgroundColor:
+                    chapterIndex === novel.chapters.length - 1
+                      ? adaptiveColors.border
+                      : adaptiveColors.accent,
+                  borderColor:
+                    chapterIndex === novel.chapters.length - 1
+                      ? adaptiveColors.border
+                      : adaptiveColors.accent,
+                },
+              ]}
+              onPress={() => {
+                registerRapidTap();
+                goChapter(1);
+              }}
+              disabled={chapterIndex === novel.chapters.length - 1}
+            >
+              <Text
+                style={[
+                  styles.navChText,
+                  {
+                    color:
+                      chapterIndex === novel.chapters.length - 1
+                        ? adaptiveColors.textSecondary
+                        : "#fff",
+                  },
+                ]}
+              >
+                Next
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={
+                  chapterIndex === novel.chapters.length - 1
+                    ? adaptiveColors.textSecondary
+                    : "#fff"
+                }
+              />
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* ─── FULLSCREEN MINIMAL BAR (shown once normal bars finish fading out) ─── */}
+        {fullscreenMode && !barsMounted && (
+          <View
+            style={[
+              styles.minimalistBottomBar,
+              {
+                backgroundColor: adaptiveColors.surface,
+                borderTopColor: adaptiveColors.border,
+                paddingBottom: bottomPad + 4,
+              },
+            ]}
+          >
+            <Pressable
+              onPress={() => goChapter(-1)}
+              disabled={chapterIndex === 0}
+              accessibilityLabel="Previous chapter"
+            >
+              <Ionicons
+                name="chevron-back"
+                size={20}
+                color={
+                  chapterIndex === 0
+                    ? adaptiveColors.textSecondary
+                    : adaptiveColors.text
+                }
+              />
+            </Pressable>
+
+            <Text
+              style={{
+                color: adaptiveColors.text,
+                fontSize: 12,
+                fontWeight: "600",
+              }}
+            >
+              {chapterIndex + 1} / {novel.chapters.length}
+            </Text>
+
+            <Pressable
+              onPress={() => goChapter(1)}
+              disabled={chapterIndex === novel.chapters.length - 1}
+              accessibilityLabel="Next chapter"
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={
+                  chapterIndex === novel.chapters.length - 1
+                    ? adaptiveColors.textSecondary
+                    : adaptiveColors.accent
+                }
+              />
+            </Pressable>
+          </View>
+        )}
+
+        {/* ─── READER SETTINGS PANEL (settings sheet, font picker, background presets) ─── */}
+        <ReaderSettingsPanel
+          adaptiveColors={adaptiveColors}
+          bottomPad={bottomPad}
+          showSettingsSheet={showSettingsSheet}
+          setShowSettingsSheet={setShowSettingsSheet}
+          activeFontPreset={activeFontPreset}
+          fontPresetId={fontPresetId}
+          selectBuiltinFontPreset={selectBuiltinFontPreset}
+          showFontModal={showFontModal}
+          setShowFontModal={setShowFontModal}
+          customFonts={customFonts}
+          activeFontFilename={activeFontFilename}
+          onSelectCustomFont={selectCustomFont}
+          onDeleteCustomFont={handleDeleteCustomFont}
+          onImportFont={handleImportFont}
+          importingFont={importingFont}
+          fontSize={fontSize}
+          fontSizeIdx={fontSizeIdx}
+          setFontSizeIdx={setFontSizeIdx}
+          lineSpacing={lineSpacing}
+          lineSpacingIdx={lineSpacingIdx}
+          setLineSpacingIdx={setLineSpacingIdx}
+          autoScrollActive={autoScrollActive}
+          startAutoScroll={startAutoScroll}
+          stopAutoScroll={stopAutoScroll}
+          currentSpeed={currentSpeed}
+          autoScrollSpeedIdx={autoScrollSpeedIdx}
+          setAutoScrollSpeedIdx={setAutoScrollSpeedIdx}
+          ttsActive={ttsActive}
+          ttsAutoNext={ttsAutoNext}
+          toggleTtsAutoNext={toggleTtsAutoNext}
+          marginPresetIdx={marginPresetIdx}
+          setMarginPresetIdx={setMarginPresetIdx}
+          bgPresetId={bgPresetId}
+          bgCustomUri={bgCustomUri}
+          bgSolidColor={bgSolidColor}
+          pickCustomImage={pickCustomImage}
+          selectPreset={selectPreset}
+          showBgModal={showBgModal}
+          setShowBgModal={setShowBgModal}
+          saveAllSettings={saveAllSettings}
+        />
+
+        {/* ─── TTS HELP MODAL ─── */}
+        <Modal
+          visible={showTTSHelp}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowTTSHelp(false)}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={() => setShowTTSHelp(false)}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Text
+                style={[styles.ttsModalTitle, { color: adaptiveColors.text }]}
+              >
+                How to Use Text-to-Speech
+              </Text>
+              {[
+                {
+                  icon: "volume-high",
+                  title: "Start / Pause Reading",
+                  desc: "Tap the speaker button to start TTS. Tap again to pause.",
+                },
+                {
+                  icon: "settings-outline",
+                  title: "Open TTS Settings",
+                  desc: "Long-press the speaker button (hold ~0.4s) to open the settings panel.",
+                },
+                {
+                  icon: "refresh",
+                  title: "Load More Voices",
+                  desc: "Inside settings, if no voices appear, tap Reload Engines to fetch available voices.",
+                },
+                {
+                  icon: "musical-note",
+                  title: "Change Voice & Speed",
+                  desc: "Select a voice chip and a speed (0.5x–2.5x), then tap Preview Voice to test it.",
+                },
+                {
+                  icon: "close-circle-outline",
+                  title: "Close Settings",
+                  desc: "Tap Save Values or tap anywhere outside the panel to dismiss settings.",
+                },
+              ].map(({ icon, title, desc }) => (
+                <View key={title} style={styles.ttsHelpItem}>
+                  <View
+                    style={[
+                      styles.ttsHelpIconWrap,
+                      { backgroundColor: adaptiveColors.accent + "20" },
+                    ]}
+                  >
+                    <Ionicons
+                      name={icon as any}
+                      size={18}
+                      color={adaptiveColors.accent}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.ttsHelpTitle,
+                        { color: adaptiveColors.text },
+                      ]}
+                    >
+                      {title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.ttsHelpDesc,
+                        { color: adaptiveColors.textSecondary },
+                      ]}
+                    >
+                      {desc}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ─── BACKGROUND PLAYBACK SETUP MODAL ─── */}
+        <Modal
+          visible={showBackgroundSetup}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowBackgroundSetup(false)}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={() => setShowBackgroundSetup(false)}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Text
+                style={[styles.ttsModalTitle, { color: adaptiveColors.text }]}
+              >
+                Background Playback Setup
+              </Text>
+              <Text
+                style={[
+                  styles.ttsHelpDesc,
+                  { color: adaptiveColors.textSecondary, marginBottom: 12 },
+                ]}
+              >
+                Optional. Some phones stop narration when you lock the screen.
+                These settings fix that.
+              </Text>
+              <View style={styles.ttsHelpItem}>
+                <View
+                  style={[
+                    styles.ttsHelpIconWrap,
+                    {
+                      backgroundColor:
+                        notifPermGranted === true
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      notifPermGranted === true
+                        ? "checkmark-circle"
+                        : "notifications-outline"
+                    }
+                    size={18}
+                    color={
+                      notifPermGranted === true
+                        ? "#22C55E"
+                        : adaptiveColors.accent
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.ttsHelpTitle,
+                      { color: adaptiveColors.text },
+                    ]}
+                  >
+                    Allow Notifications
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ttsHelpDesc,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Required so Android knows narration is active.
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.ttsBackgroundSetupBtn,
+                      { borderColor: adaptiveColors.border },
+                    ]}
+                    onPress={
+                      notifPermGranted === false
+                        ? () => Linking.openSettings()
+                        : handleRequestNotificationPerm
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.ttsBackgroundSetupBtnText,
+                        { color: adaptiveColors.accent },
+                      ]}
+                    >
+                      {notifPermGranted === true
+                        ? "Granted"
+                        : notifPermGranted === false
+                          ? "Open App Settings"
+                          : "Allow Notifications"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.ttsHelpItem}>
+                <View
+                  style={[
+                    styles.ttsHelpIconWrap,
+                    {
+                      backgroundColor:
+                        batteryOptExempt === true
+                          ? "#22C55E20"
+                          : adaptiveColors.accent + "20",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      batteryOptExempt === true
+                        ? "checkmark-circle"
+                        : "battery-charging-outline"
+                    }
+                    size={18}
+                    color={
+                      batteryOptExempt === true
+                        ? "#22C55E"
+                        : adaptiveColors.accent
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.ttsHelpTitle,
+                      { color: adaptiveColors.text },
+                    ]}
+                  >
+                    Disable Battery Optimization
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ttsHelpDesc,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Prevents Android from restricting background activity.
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.ttsBackgroundSetupBtn,
+                      { borderColor: adaptiveColors.border },
+                    ]}
+                    onPress={handleOpenBatteryOptimizationSettings}
+                  >
+                    <Text
+                      style={[
+                        styles.ttsBackgroundSetupBtnText,
+                        { color: adaptiveColors.accent },
+                      ]}
+                    >
+                      {batteryOptExempt === true
+                        ? "Exempt — Open Anyway"
+                        : "Open Battery Settings"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+              {powerManagerAvailable && (
+                <View style={styles.ttsHelpItem}>
+                  <View
+                    style={[
+                      styles.ttsHelpIconWrap,
+                      { backgroundColor: adaptiveColors.accent + "20" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="phone-portrait-outline"
+                      size={18}
+                      color={adaptiveColors.accent}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.ttsHelpTitle,
+                        { color: adaptiveColors.text },
+                      ]}
+                    >
+                      Enable Autostart
+                    </Text>
+                    <Text
+                      style={[
+                        styles.ttsHelpDesc,
+                        { color: adaptiveColors.textSecondary },
+                      ]}
+                    >
+                      Manufacturer-specific restriction on some devices.
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.ttsBackgroundSetupBtn,
+                        { borderColor: adaptiveColors.border },
+                      ]}
+                      onPress={handleOpenPowerManagerSettings}
+                    >
+                      <Text
+                        style={[
+                          styles.ttsBackgroundSetupBtnText,
+                          { color: adaptiveColors.accent },
+                        ]}
+                      >
+                        Open Autostart Settings
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ─── TTS SETTINGS MODAL ─── */}
+        <Modal
+          visible={showTTSSettings}
+          animationType="slide"
+          transparent
+          statusBarTranslucent
+          onRequestClose={() => setShowTTSSettings(false)}
+        >
+          <View style={styles.ttsModalOverlay}>
+            <Pressable
+              style={styles.ttsModalDismiss}
+              onPress={() => setShowTTSSettings(false)}
+            />
+            <View
+              style={[
+                styles.ttsModalSheet,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              {ttsVoices.length === 0 ? (
+                <>
+                  <Text
+                    style={[
+                      styles.ttsModalTitle,
+                      { color: adaptiveColors.text, textAlign: "center" },
+                    ]}
+                  >
+                    No Engines Found
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.ttsReloadBtn,
+                      { backgroundColor: adaptiveColors.accent },
+                    ]}
+                    onPress={reloadVoices}
+                  >
+                    <Ionicons name="refresh" size={20} color="#fff" />
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "600",
+                        marginLeft: 8,
+                      }}
+                    >
+                      Reload Engines
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Text
+                    style={[
+                      styles.ttsModalSubtitle,
+                      { color: adaptiveColors.text },
+                    ]}
+                  >
+                    Voice Speed
+                  </Text>
+                  <View style={styles.speedButtonsRow}>
+                    {[1.0, 1.3, 1.5, 2.0, 2.5].map((rate) => (
+                      <Pressable
+                        key={rate}
+                        style={[
+                          styles.speedButton,
+                          {
+                            backgroundColor:
+                              Math.abs(ttsRate - rate) < 0.01
+                                ? adaptiveColors.accent
+                                : adaptiveColors.card,
+                            borderColor: adaptiveColors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          setTtsRate(rate);
+                          saveTtsSettings(ttsVoiceId, rate);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.speedButtonText,
+                            {
+                              color:
+                                Math.abs(ttsRate - rate) < 0.01
+                                  ? "#fff"
+                                  : adaptiveColors.text,
+                            },
+                          ]}
+                        >
+                          {rate}x
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text
+                    style={[
+                      styles.ttsModalSubtitle,
+                      { color: adaptiveColors.text, marginTop: 16 },
+                    ]}
+                  >
+                    Voices
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
+                  >
+                    {ttsVoices.map((voice) => {
+                      const isSelected = ttsVoiceId === voice.identifier;
+                      return (
+                        <Pressable
+                          key={voice.identifier}
+                          style={[
+                            styles.ttsVoiceChip,
+                            {
+                              backgroundColor: isSelected
+                                ? adaptiveColors.accent
+                                : adaptiveColors.card,
+                              borderColor: isSelected
+                                ? adaptiveColors.accent
+                                : adaptiveColors.border,
+                            },
+                          ]}
+                          onPress={() => {
+                            setTtsVoiceId(voice.identifier);
+                            saveTtsSettings(voice.identifier, ttsRate);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.ttsVoiceChipText,
+                              {
+                                color: isSelected
+                                  ? "#fff"
+                                  : adaptiveColors.text,
+                              },
+                            ]}
+                          >
+                            {voice.name ?? voice.identifier}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.ttsVoiceChipLang,
+                              {
+                                color: isSelected
+                                  ? "rgba(255,255,255,0.7)"
+                                  : adaptiveColors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {voice.language}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <View style={styles.ttsButtonsRow}>
+                    <Pressable
+                      style={[
+                        styles.ttsPreviewBtn,
+                        { borderColor: adaptiveColors.accent },
+                      ]}
+                      onPress={previewTts}
+                    >
+                      <Ionicons
+                        name="play-circle-outline"
+                        size={20}
+                        color={adaptiveColors.accent}
+                      />
+                      <Text
+                        style={{ color: adaptiveColors.accent, marginLeft: 6 }}
+                      >
+                        Preview Voice
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.ttsSaveBtn,
+                        { backgroundColor: adaptiveColors.accent },
+                      ]}
+                      onPress={() => setShowTTSSettings(false)}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "600" }}>
+                        Save Values
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── TABLE OF CONTENTS MODAL ─── */}
+        <Modal
+          visible={showTOC}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowTOC(false)}
+        >
+          <View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text
+                  style={[styles.modalTitle, { color: adaptiveColors.text }]}
+                >
+                  Table of Contents
+                </Text>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable
+                    onPress={() => setShowSearch(true)}
+                    style={styles.modalCloseBtn}
+                  >
+                    <Ionicons
+                      name="search"
+                      size={24}
+                      color={adaptiveColors.text}
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setShowTOC(false)}
+                    style={styles.modalCloseBtn}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color={adaptiveColors.text}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+              {novel.lastRead && novel.lastRead.chapterIndex !== undefined && (
+                <Pressable
+                  style={[
+                    styles.continueReadingBtn,
+                    {
+                      backgroundColor: adaptiveColors.accent + "20",
+                      borderColor: adaptiveColors.accent,
+                    },
+                  ]}
+                  onPress={() => {
+                    continueReading();
+                    setShowTOC(false);
+                  }}
+                >
+                  <Ionicons
+                    name="play-circle"
+                    size={20}
+                    color={adaptiveColors.accent}
+                  />
+                  <Text
+                    style={[
+                      styles.continueReadingText,
+                      { color: adaptiveColors.accent },
+                    ]}
+                  >
+                    Continue Reading
+                  </Text>
+                </Pressable>
+              )}
+              <ScrollView style={styles.modalScrollView}>
+                {novel.chapters.map((ch: any, idx: number) => (
+                  <Pressable
+                    key={idx}
+                    style={[
+                      styles.tocItem,
+                      idx === chapterIndex && [
+                        styles.tocItemActive,
+                        { backgroundColor: adaptiveColors.accent + "20" },
+                      ],
+                    ]}
+                    onPress={() => handleChapterSelect(idx)}
+                  >
+                    <View style={styles.tocItemContent}>
+                      <Text
+                        style={[
+                          styles.tocChapterNum,
+                          {
+                            color:
+                              idx === chapterIndex
+                                ? adaptiveColors.accent
+                                : adaptiveColors.textSecondary,
+                          },
+                        ]}
+                      >
+                        Chapter {idx + 1}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tocChapterTitle,
+                          {
+                            color:
+                              idx === chapterIndex
+                                ? adaptiveColors.accent
+                                : adaptiveColors.text,
+                          },
+                        ]}
+                      >
+                        {ch.title}
+                      </Text>
+                    </View>
+                    {idx === chapterIndex && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color={adaptiveColors.accent}
+                      />
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── SEARCH MODAL ─── */}
+        <Modal
+          visible={showSearch}
+          animationType="fade"
+          transparent
+          onRequestClose={() => {
+            setShowSearch(false);
+            setSearchQuery("");
+            setSearchResults([]);
+          }}
+        >
+          <View style={styles.searchModalOverlay}>
+            <View
+              style={[
+                styles.searchModalContent,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+            >
+              <TextInput
+                style={[
+                  styles.searchInput,
+                  {
+                    color: adaptiveColors.text,
+                    borderColor: adaptiveColors.border,
+                    backgroundColor: themeColors.background,
+                  },
+                ]}
+                placeholder="Search chapters..."
+                placeholderTextColor={adaptiveColors.textSecondary}
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  searchChapters(text);
+                }}
+                autoFocus
+              />
+              {searchResults.length > 0 && (
+                <>
+                  <Text
+                    style={[
+                      styles.searchResultCount,
+                      { color: adaptiveColors.textSecondary },
+                    ]}
+                  >
+                    Found {searchResults.length} chapters
+                  </Text>
+                  <ScrollView style={{ maxHeight: 300 }}>
+                    {searchResults.map((idx) => (
+                      <Pressable
+                        key={idx}
+                        style={[
+                          styles.searchResultItem,
+                          { borderBottomColor: adaptiveColors.border },
+                        ]}
+                        onPress={() =>
+                          jumpToSearchResult(searchResults.indexOf(idx))
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.searchResultTitle,
+                            { color: adaptiveColors.text },
+                          ]}
+                        >
+                          {novel?.chapters[idx].title}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.searchResultChapter,
+                            { color: adaptiveColors.textSecondary },
+                          ]}
+                        >
+                          Chapter {idx + 1}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+              {searchQuery.length > 0 && searchResults.length === 0 && (
+                <Text
+                  style={[
+                    styles.noResults,
+                    { color: adaptiveColors.textSecondary },
+                  ]}
+                >
+                  No chapters found
+                </Text>
+              )}
+              <Pressable
+                style={[
+                  styles.closeSearchBtn,
+                  { backgroundColor: adaptiveColors.card },
+                ]}
+                onPress={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+              >
+                <Text style={{ color: adaptiveColors.text }}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── RAPID‑TAP WARNING MODAL ─── */}
+        <Modal
+          visible={showRapidTapWarning}
+          animationType="fade"
+          transparent
+          onRequestClose={() => {
+            setShowRapidTapWarning(false);
+            resetRapidTapGuard();
+          }}
+        >
+          <Pressable
+            style={styles.ttsModalOverlay}
+            onPress={() => {
+              setShowRapidTapWarning(false);
+              resetRapidTapGuard();
+            }}
+          >
+            <Pressable
+              style={[
+                styles.ttsHelpModal,
+                { backgroundColor: adaptiveColors.surface },
+              ]}
+              onPress={() => {}}
+            >
+              <View
+                style={[
+                  styles.ttsModalHandle,
+                  { backgroundColor: adaptiveColors.border },
+                ]}
+              />
+              <Ionicons
+                name="warning-outline"
+                size={28}
+                color={adaptiveColors.accent}
+                style={{ alignSelf: "center", marginBottom: 8 }}
+              />
+              <Text
+                style={[
+                  styles.ttsModalTitle,
+                  { color: adaptiveColors.text, textAlign: "center" },
+                ]}
+              >
+                You&apos;re tapping a bit fast
+              </Text>
+              <Text
+                style={{
+                  color: adaptiveColors.textSecondary,
+                  fontSize: 13,
+                  textAlign: "center",
+                  marginBottom: 20,
+                  lineHeight: 18,
+                }}
+              >
+                TTS and auto-scroll have been paused to keep things stable. Give
+                it a second, then continue reading.
+              </Text>
+              <Pressable
+                style={[
+                  styles.closeSearchBtn,
+                  { backgroundColor: adaptiveColors.card },
+                ]}
+                onPress={() => {
+                  setShowRapidTapWarning(false);
+                  resetRapidTapGuard();
+                }}
+              >
+                <Text style={{ color: adaptiveColors.text }}>Got it</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* ─── DICTIONARY LOOKUP MODAL ─── */}
+        <DefinitionModal
+          visible={showDictModal}
+          word={dictWord}
+          entries={dictEntries}
+          notFound={dictNotFound}
+          onlineEntry={dictOnlineEntry}
+          fetching={dictFetching}
+          isConnected={dictIsConnected}
+          onFetch={handleFetchOnline}
+          onDismiss={dismissDictModal}
+          onOpenGlossary={() => {
+            // Open glossary list WITHOUT closing the definition modal
+            setShowGlossaryListModal(true);
+          }}
+          onSaveOfflineEntry={handleSaveOfflineEntryToGlossary}
+        />
+
+        {/* ─── GLOSSARY LIST MODAL ─── */}
+        <GlossaryListModal
+          visible={showGlossaryListModal}
+          entries={glossary.getAllEntries() || []}
+          onEntryPress={(entry: GlossaryEntry) => {
+            // Close glossary list and show definition in the dictionary modal
+            setShowGlossaryListModal(false);
+            handleWordDoubleTap(entry.word);
+          }}
+          onDismiss={() => setShowGlossaryListModal(false)}
+          onRemoveEntry={glossary.removeEntry}
+        />
+      </View>
+    </ContentWrapper>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingBottom: 10,
+  topBar: {
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: {
+  topBarRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
     paddingHorizontal: 8,
-    minWidth: 70,
+    paddingVertical: 6,
+    gap: 4,
   },
-  backLabel: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  navTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
+  navBtn: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chapterTitle: { fontSize: 14, flex: 1, textAlign: "center" },
+  progressBarContainer: { height: 4, width: "100%", overflow: "hidden" },
+  progressBar: { height: "100%", width: "0%" },
+  scrollArea: { flex: 1 },
+  textContainer: { paddingTop: 20 },
+  chapterHeader: { lineHeight: 32, marginBottom: 24, fontWeight: "bold" },
+  content: {},
+  loadingContainer: {
     flex: 1,
-    textAlign: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
   },
-  menuBtn: {
+
+  // ─── Right column wrapper ───
+  rightColumn: {
+    position: "absolute",
+    bottom: 18,
+    right: 18,
+    alignItems: "center",
+    gap: 8,
+    zIndex: 17,
+  },
+
+  // ─── Fullscreen pill ───
+  fullscreenPill: {
     width: 44,
     height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+  },
+
+  // ─── Quick actions cluster ───
+  quickActionsCluster: {
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    gap: 6,
+    elevation: 4,
+  },
+  quickActionsToggle: {
+    width: 28,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  hero: {
-    flexDirection: "row",
-    padding: 20,
-    gap: 16,
-    alignItems: "flex-start",
-  },
-  coverWrap: {
-    width: 100,
-    height: 140,
-    borderRadius: 12,
-    overflow: "hidden",
-    flexShrink: 0,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  cover: { width: "100%", height: "100%" },
-  coverPlaceholder: {
-    width: "100%",
-    height: "100%",
+  quickActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  heroInfo: { flex: 1, gap: 6 },
-  heroTitle: { fontFamily: "Inter_700Bold", fontSize: 17, lineHeight: 24 },
-  heroAuthor: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  heroButtons: { marginTop: 10 },
-  readBtn: {
+  ttsPlayBtnInner: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
+
+  // ─── TTS overlays ───
+  ttsStalledBanner: {
+    position: "absolute",
+    bottom: 130,
+    right: 68,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 3,
   },
-  readBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
-  content: { paddingHorizontal: 16, gap: 12 },
-  progressCard: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 8,
-  },
-  progressTop: { flexDirection: "row", justifyContent: "space-between" },
-  progressLabel: { fontFamily: "Inter_500Medium", fontSize: 13 },
-  progressCount: { fontFamily: "Inter_700Bold", fontSize: 13 },
-  progressBar: { height: 4, borderRadius: 2, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 2 },
-  lastReadLabel: { fontFamily: "Inter_400Regular", fontSize: 12 },
-  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
-  synopsisCard: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 8,
-  },
-  synopsisText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  seeMoreRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeMore: { fontFamily: "Inter_500Medium", fontSize: 13 },
-  chapterHeader: {
+  ttsSentenceBox: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 8,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  sortBtn: {
+  ttsSentenceLabel: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  ttsSentenceText: { fontSize: 13, lineHeight: 19 },
+
+  // ─── Bottom nav ───
+  bottomNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  navChBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  sortBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
-  deleteChaptersBtn: { paddingHorizontal: 8 },
-  chapterListContainer: { minHeight: 200 },
-  chapterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 6,
-  },
-  chapterTitle: { fontFamily: "Inter_500Medium", fontSize: 14, flex: 1 },
-  emptyChapters: {
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyChaptersIcon: {
-    marginBottom: 10,
-    opacity: 0.7,
-  },
-  emptyText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  emptyTextSub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 14,
-    maxWidth: 260,
-  },
-  emptyChaptersBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 9,
+  navChText: { fontSize: 13 },
+  tocButton: {
     paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    minWidth: 85,
+    alignItems: "center",
   },
-  emptyChaptersBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: "#fff",
+  tocButtonText: { fontSize: 14 },
+  readingPercent: { fontSize: 10, marginTop: 2 },
+
+  // ─── Minimal fullscreen bars ───
+  minimalistTopBar: {
+    borderBottomWidth: 1,
   },
-  menuOverlay: {
+  minimalistTopBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  minimalistBottomBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+
+  // ─── Modals ───
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
+    minHeight: "50%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
+  },
+  modalTitle: { fontSize: 18, fontWeight: "bold" },
+  modalCloseBtn: { padding: 4 },
+  modalScrollView: { paddingHorizontal: 20, paddingVertical: 12 },
+  continueReadingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 20,
+    marginVertical: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  continueReadingText: { fontSize: 14 },
+  tocItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
+  },
+  tocItemActive: { borderRadius: 8 },
+  tocItemContent: { flex: 1 },
+  tocChapterNum: { fontSize: 12, marginBottom: 4 },
+  tocChapterTitle: { fontSize: 14 },
+  searchModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchModalContent: {
+    width: "90%",
+    maxHeight: "80%",
+    borderRadius: 12,
+    padding: 20,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  searchResultCount: { fontSize: 12, marginBottom: 12, textAlign: "center" },
+  searchResultItem: { paddingVertical: 12, borderBottomWidth: 1 },
+  searchResultTitle: { fontSize: 14, marginBottom: 4 },
+  searchResultChapter: { fontSize: 12 },
+  noResults: { textAlign: "center", paddingVertical: 20 },
+  closeSearchBtn: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  ttsModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
-  centerOverlay: { justifyContent: "center", alignItems: "center" },
-  menuContainer: {
+  ttsModalDismiss: { flex: 1 },
+  ttsModalSheet: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 20,
-    gap: 4,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    paddingTop: 12,
+    marginBottom: 11,
   },
-  menuTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 17,
-    marginBottom: 12,
-    textAlign: "center",
+  ttsModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
   },
-  menuItem: {
+  ttsModalTitle: { fontSize: 17, marginBottom: 20, fontWeight: "bold" },
+  ttsModalSubtitle: { fontSize: 14, marginBottom: 12, fontWeight: "600" },
+  speedButtonsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 8,
   },
-  menuItemText: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  menuCancelBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 12,
+  speedButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: "center",
   },
-  menuCancelText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
-  exportContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 20,
-    gap: 4,
-    maxHeight: "70%",
+  speedButtonText: { fontSize: 13, fontWeight: "500" },
+  ttsButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 24,
   },
-  exportModalContainer: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 20,
-    gap: 4,
-    width: "85%",
-    maxWidth: 380,
-    maxHeight: "80%",
-  },
-  exportItem: {
+  ttsPreviewBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  progressModal: {
-    marginHorizontal: 40,
-    borderRadius: 16,
-    padding: 30,
-    alignItems: "center",
-    gap: 12,
-    alignSelf: "center",
-    marginTop: "auto",
-    marginBottom: "auto",
-  },
-  progressText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    textAlign: "center",
-  },
-  progressSubText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    textAlign: "center",
-  },
-  confirmModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  confirmModalContent: {
-    borderRadius: 16,
-    padding: 24,
-    width: "100%",
-    maxWidth: 360,
-    alignItems: "center",
-    gap: 8,
-  },
-  confirmModalIcon: { marginBottom: 4 },
-  confirmModalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
-  confirmModalMessage: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  confirmModalButtons: { flexDirection: "row", gap: 10, width: "100%" },
-  confirmModalButton: {
-    flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: "center",
+    borderWidth: 1,
   },
-  confirmModalCancelButton: { borderWidth: 1 },
-  confirmModalDeleteButton: { backgroundColor: "#ff4444" },
-  confirmModalButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  ttsSaveBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  ttsReloadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    borderRadius: 10,
+  },
+  ttsVoiceChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    minWidth: 80,
+  },
+  ttsVoiceChipText: { fontSize: 12, fontWeight: "500" },
+  ttsVoiceChipLang: { fontSize: 10, marginTop: 2 },
+  ttsHelpModal: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    paddingTop: 12,
+    marginBottom: 11,
+  },
+  ttsHelpItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 16,
+  },
+  ttsHelpIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  ttsHelpTitle: { fontSize: 13, marginBottom: 3, fontWeight: "600" },
+  ttsHelpDesc: { fontSize: 12, lineHeight: 17 },
+  ttsBackgroundSetupBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  ttsBackgroundSetupBtnText: { fontSize: 12, fontWeight: "600" },
 });
