@@ -33,13 +33,7 @@ export const SUPPORTED_SITES = [
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
-export type SiteStatus =
-  | "idle"
-  | "checking"
-  | "online"
-  | "maintenance"
-  | "gateway_timeout"
-  | "offline";
+export type SiteStatus = "idle" | "checking" | "online" | "maintenance" | "gateway_timeout" | "offline";
 
 const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
 const CACHE_VALID_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -197,13 +191,13 @@ export function SiteHealthProvider({
       if (saved) {
         setStatuses(saved.statuses);
 
-        if (connectivityRef.current !== "online") return;
+        if (connectivity.status !== "online") return;
 
         const isStale = Date.now() - saved.timestamp >= CACHE_VALID_MS;
         if (isStale) {
           await runHealthChecks(SUPPORTED_SITES, saved.statuses);
         }
-      } else if (connectivityRef.current === "online") {
+      } else if (connectivity.status === "online") {
         // No cache at all - first run, and connectivity is confirmed.
         await runHealthChecks(SUPPORTED_SITES, {});
       }
@@ -218,7 +212,7 @@ export function SiteHealthProvider({
     // only automatic recheck path now - there's no separate trigger tied
     // to connectivity changing.
     intervalRef.current = setInterval(() => {
-      if (connectivityRef.current !== "online") return;
+      if (connectivity.status !== "online") return;
       runHealthChecks(SUPPORTED_SITES, {});
     }, CACHE_VALID_MS);
 
@@ -229,7 +223,9 @@ export function SiteHealthProvider({
   }, []);
 
   return (
-    <SiteHealthContext.Provider value={{ statuses, isChecking, recheck }}>
+    <SiteHealthContext.Provider
+      value={{ statuses, isChecking, recheck }}
+    >
       {children}
     </SiteHealthContext.Provider>
   );
