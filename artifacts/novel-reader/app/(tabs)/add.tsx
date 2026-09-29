@@ -38,9 +38,9 @@ import {
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
-  { domain: "novelbin.me"},
-  { domain: "novelbin.com"},
-  { domain: "novelarrow"},
+  { domain: "novelbin.me" },
+  { domain: "novelbin.com" },
+  { domain: "novelarrow" },
 ];
 
 // Fallback used when Max Chapters is left blank (mirrors Start Chapter's
