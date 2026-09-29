@@ -38,9 +38,9 @@ import {
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
-  { domain: "novelbin.me", reason: "Site Shutdown" },
-  { domain: "novelbin.com", reason: "Site Shutdown" },
-  { domain: "novelarrow", reason: "Changed Domain" },
+  { domain: "novelbin.me"},
+  { domain: "novelbin.com"},
+  { domain: "novelarrow"},
 ];
 
 // Fallback used when Max Chapters is left blank (mirrors Start Chapter's
@@ -378,14 +378,6 @@ function SourceListModal({
                           ]}
                         >
                           {site.domain}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.deprecatedPillSubtitle,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {site.reason}
                         </Text>
                       </View>
                     ))}
