@@ -6,28 +6,27 @@ on:
     branches:
       - dev5.5
       - dev3
-      - dev5
-      
   pull_request:
     branches:
       - dev5.5
       - dev3
-      - dev5
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # ------------------------------------------------------------
+  # PUSH / MANUAL: write jobs (trusted)
+  # ------------------------------------------------------------
   sync-lockfile:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    continue-on-error: false
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,12 +66,11 @@ jobs:
           git push
 
   format:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs: sync-lockfile
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    continue-on-error: false
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,15 +113,44 @@ jobs:
           git commit -m "style: auto-format code with Prettier"
           git push
 
-  lint:
+  # ------------------------------------------------------------
+  # PULL REQUEST: read-only checks (untrusted)
+  # ------------------------------------------------------------
+  lockfile-check:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    needs: format
-    continue-on-error: false
-
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Check lockfile is in sync
+        run: pnpm install --frozen-lockfile
+
+  format-check:
+    if: github.event_name == 'pull_request'
+    needs: lockfile-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -138,21 +165,57 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting with Prettier
+        working-directory: artifacts/novel-reader
+        run: |
+          pnpm run format
+          git diff --exit-code
+
+  # ------------------------------------------------------------
+  # Common read-only checks (run after whichever chain succeeded)
+  # ------------------------------------------------------------
+  lint:
+    needs: [format, format-check]
+    if: always() && (needs.format.result == 'success' || needs.format-check.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref_name }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
         working-directory: artifacts/novel-reader
         run: pnpm run lint
 
   typecheck:
+    needs: [format, format-check]
+    if: always() && (needs.format.result == 'success' || needs.format-check.result == 'success')
     runs-on: ubuntu-latest
-    needs: format
-    continue-on-error: false
-
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -167,21 +230,22 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run TypeScript check
         working-directory: artifacts/novel-reader
         run: pnpm run typecheck
 
   scraper-regression:
+    needs: [format, format-check]
+    if: always() && (needs.format.result == 'success' || needs.format-check.result == 'success')
     runs-on: ubuntu-latest
-    needs: format
-    continue-on-error: false
-
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -196,9 +260,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run scraper content-extraction regression tests
         working-directory: artifacts/novel-reader
         run: pnpm run test:scrapers
-        
