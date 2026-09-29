@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 
-import { checkSiteHealthDetailed, SiteHealthState } from "@/hooks/useApi";
+import { checkSiteHealth } from "@/hooks/useApi";
 import { useConnectivity } from "@/hooks/useConnectivity";
 
 // --- SUPPORTED SITES ---
@@ -27,40 +27,25 @@ export const SUPPORTED_SITES = [
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
   { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
-  //{ name: "NovelArrow", baseUrl: "https://novelarrow.com/" },
   { name: "Novel-Bin", baseUrl: "https://novel-bin.com/" },
   { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
   { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/" },
 ];
 
-// "idle"/"checking" are UI-only phases; the rest mirror SiteHealthState
-// from useApi so a 503 shows as "under maintenance" and a 504 shows as
-// "gateway timeout" instead of both just collapsing into "offline".
-export type SiteStatus = "idle" | "checking" | SiteHealthState;
-
-export type SiteStatusDetail = {
-  statusCode?: number;
-  responseTime?: number;
-  tier?: string;
-  error?: string;
-  checkedAt: number;
-};
+// Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
+export type SiteStatus = "idle" | "checking" | "online" | "maintenance" | "gateway_timeout" | "offline";
 
 const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
 const CACHE_VALID_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 type SiteHealthContextType = {
   statuses: Record<string, SiteStatus>;
-  details: Record<string, SiteStatusDetail>;
   isChecking: boolean;
-  // Force an immediate re-check, bypassing the 12h cache. Omit `siteName`
-  // to recheck every supported site.
   recheck: (siteName?: string) => void;
 };
 
 const SiteHealthContext = createContext<SiteHealthContextType>({
   statuses: {},
-  details: {},
   isChecking: false,
   recheck: () => {},
 });
@@ -104,46 +89,26 @@ export function SiteHealthProvider({
   children: React.ReactNode;
 }) {
   const [statuses, setStatuses] = useState<Record<string, SiteStatus>>({});
-  const [details, setDetails] = useState<Record<string, SiteStatusDetail>>({});
   const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Set when a recheck is requested while a check is already running -
-  // triggers one more full run right after the current one finishes,
-  // instead of tracking which specific sites were requested.
   const pendingRecheckRef = useRef(false);
 
   const connectivity = useConnectivity();
-  // Read inside async functions/timers without stale-closure issues -
-  // state from useConnectivity() would otherwise be frozen at whatever it
-  // was when the effect/closure was created.
-  const connectivityRef = useRef(connectivity.status);
-  connectivityRef.current = connectivity.status;
 
-  // Runs the check loop for a subset of sites and commits once at the end
-  // - no per-site state or disk writes while the loop is running.
-  //
-  // If the device itself has no internet, this is a no-op: a check run
-  // while offline can only ever come back "offline" for every site
-  // regardless of whether they're actually up, and that false reading
-  // would otherwise get written over the last real (permanent) result.
-  // Better to leave the saved JSON exactly as it was and just wait for
-  // connectivity to return.
+  // Runs the check loop for a subset of sites
   const runHealthChecks = async (
     sitesToCheck: typeof SUPPORTED_SITES,
     baseStatuses: Record<string, SiteStatus>,
   ) => {
     if (sitesToCheck.length === 0) return;
 
-    if (connectivityRef.current !== "online") {
+    // Simple switch: if device is offline, skip checks
+    if (connectivity.status !== "online") {
       return;
     }
 
     if (checkingRef.current) {
-      // Already checking (e.g. the periodic sweep) - flag for one more
-      // full run right after the current one finishes. The manual Recheck
-      // button covers the "I want this specific site now" case, so this
-      // doesn't need to track which sites were asked for.
       pendingRecheckRef.current = true;
       return;
     }
@@ -151,8 +116,7 @@ export function SiteHealthProvider({
     checkingRef.current = true;
     setIsChecking(true);
 
-    // Mark targets "checking" once, up front - a static indicator rather
-    // than live per-site updates as each one resolves.
+    // Mark targets "checking"
     setStatuses((prev) => {
       const next = { ...prev };
       sitesToCheck.forEach((site) => {
@@ -162,57 +126,19 @@ export function SiteHealthProvider({
     });
 
     const results: Record<string, SiteStatus> = {};
-    const newDetails: Record<string, SiteStatusDetail> = {};
-    let aborted = false;
 
     for (const site of sitesToCheck) {
-      // Connectivity can drop (or still not have resolved) mid-run - stop
-      // immediately and commit nothing from this run; sites left showing
-      // "checking" get reverted to their last saved state below, not left
-      // stuck and not marked "offline".
-      if (connectivityRef.current !== "online") {
-        aborted = true;
-        break;
-      }
-
       try {
-        const result = await checkSiteHealthDetailed(site.baseUrl);
-        results[site.name] = result.state;
-        newDetails[site.name] = {
-          statusCode: result.statusCode,
-          responseTime: result.responseTime,
-          tier: result.tier,
-          error: result.error,
-          checkedAt: Date.now(),
-        };
+        const status = await checkSiteHealth(site.baseUrl);
+        results[site.name] = status;
       } catch (error: any) {
         results[site.name] = "offline";
-        newDetails[site.name] = {
-          error: error?.message || "Unknown error",
-          checkedAt: Date.now(),
-        };
       }
     }
 
-    let finalStatuses = baseStatuses;
-
-    if (aborted) {
-      // Revert "checking" back to the last known saved state (or "idle"
-      // if this site has never completed a check before). Nothing is
-      // written to disk for an aborted run.
-      setStatuses((prev) => {
-        const reverted = { ...prev };
-        sitesToCheck.forEach((site) => {
-          reverted[site.name] = baseStatuses[site.name] ?? "idle";
-        });
-        return reverted;
-      });
-    } else {
-      finalStatuses = { ...baseStatuses, ...results };
-      setStatuses((prev) => ({ ...prev, ...results }));
-      setDetails((prev) => ({ ...prev, ...newDetails }));
-      await saveSiteStatus(finalStatuses);
-    }
+    const finalStatuses = { ...baseStatuses, ...results };
+    setStatuses((prev) => ({ ...prev, ...results }));
+    await saveSiteStatus(finalStatuses);
 
     checkingRef.current = false;
 
@@ -298,7 +224,7 @@ export function SiteHealthProvider({
 
   return (
     <SiteHealthContext.Provider
-      value={{ statuses, details, isChecking, recheck }}
+      value={{ statuses, isChecking, recheck }}
     >
       {children}
     </SiteHealthContext.Provider>
