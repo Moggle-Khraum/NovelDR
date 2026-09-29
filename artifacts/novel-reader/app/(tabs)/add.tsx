@@ -31,10 +31,7 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
-import {
-  checkDeprecatedSite,
-  getDeprecatedSiteMessage,
-} from "@/hooks/scrapers/deprecatedSites";
+import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/deprecatedSites";
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
@@ -288,18 +285,14 @@ function SourceListModal({
               style={[
                 styles.tabButton,
                 activeTab === "active" && styles.tabButtonActive,
-                {
-                  borderBottomColor:
-                    activeTab === "active" ? colors.accent : colors.border,
-                },
+                { borderBottomColor: activeTab === "active" ? colors.accent : colors.border },
               ]}
             >
               <Text
                 style={[
                   styles.tabLabel,
                   {
-                    color:
-                      activeTab === "active" ? colors.accent : colors.textMuted,
+                    color: activeTab === "active" ? colors.accent : colors.textMuted,
                   },
                 ]}
               >
@@ -313,20 +306,14 @@ function SourceListModal({
                 style={[
                   styles.tabButton,
                   activeTab === "deprecated" && styles.tabButtonActive,
-                  {
-                    borderBottomColor:
-                      activeTab === "deprecated" ? Colors.amber : colors.border,
-                  },
+                  { borderBottomColor: activeTab === "deprecated" ? Colors.amber : colors.border },
                 ]}
               >
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color:
-                        activeTab === "deprecated"
-                          ? Colors.amber
-                          : colors.textMuted,
+                      color: activeTab === "deprecated" ? Colors.amber : colors.textMuted,
                     },
                   ]}
                 >
@@ -356,34 +343,35 @@ function SourceListModal({
             )}
 
             {/* DEPRECATED SITES TAB */}
-            {activeTab === "deprecated" &&
-              deprecatedSites &&
-              deprecatedSites.length > 0 && (
-                <View style={styles.sectionContainer}>
-                  <Text
-                    style={[styles.deprecatedTitle, { color: colors.text }]}
-                  >
-                    Deprecated Sites
-                  </Text>
-                  <View style={styles.deprecatedPillGrid}>
-                    {deprecatedSites.map((site) => (
-                      <View
-                        key={site.domain}
-                        style={styles.deprecatedPillContainer}
+            {activeTab === "deprecated" && deprecatedSites && deprecatedSites.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text
+                  style={[
+                    styles.deprecatedTitle,
+                    { color: colors.text },
+                  ]}
+                >
+                  Deprecated Sites
+                </Text>
+                <View style={styles.deprecatedPillGrid}>
+                  {deprecatedSites.map((site) => (
+                    <View
+                      key={site.domain}
+                      style={styles.deprecatedPillContainer}
+                    >
+                      <Text
+                        style={[
+                          styles.deprecatedPillDomain,
+                          { color: colors.textMuted },
+                        ]}
                       >
-                        <Text
-                          style={[
-                            styles.deprecatedPillDomain,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          {site.domain}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+                        {site.domain}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              )}
+              </View>
+            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -610,7 +598,7 @@ export default function AddNovelScreen() {
     if (deprecatedCheck) {
       const message = getDeprecatedSiteMessage(
         deprecatedCheck.siteName,
-        deprecatedCheck.reason,
+        deprecatedCheck.reason
       );
       addLog(message, "error");
       return;
@@ -1377,6 +1365,79 @@ export default function AddNovelScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* DEPRECATED SITES SECTION */}
+          {DEPRECATED_SITES && DEPRECATED_SITES.length > 0 && (
+            <View>
+              <Text
+                style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}
+              >
+                ⚠️ DEPRECATED SITES
+              </Text>
+              <View
+                style={[
+                  styles.sitesGrid,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    opacity: 0.6,
+                  },
+                ]}
+              >
+                {DEPRECATED_SITES.slice(0, 8).map((site) => (
+                  <View
+                    key={site.domain}
+                    style={[
+                      styles.siteCell,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: "#FF6B6B",
+                        marginBottom: 8,
+                      }}
+                    />
+                    <Text
+                      style={[styles.siteName, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                    >
+                      {site.domain}
+                    </Text>
+                  </View>
+                ))}
+                {DEPRECATED_SITES.length > 8 && (
+                  <Pressable
+                    style={[
+                      styles.siteCell,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    onPress={() => setSourceListModalVisible(true)}
+                  >
+                    <Text
+                      style={[styles.siteName, { color: colors.text }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                    >
+                      +{DEPRECATED_SITES.length - 8} more
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Form Section */}
