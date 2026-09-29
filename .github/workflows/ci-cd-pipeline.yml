@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - Dev1
+      - dev5.5
       - dev3
       - dev5
       
   pull_request:
     branches:
-      - Dev1
+      - dev5.5
       - dev3
       - dev5
 
