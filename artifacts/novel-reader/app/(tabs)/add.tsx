@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,10 +31,7 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
-import {
-  checkDeprecatedSite,
-  getDeprecatedSiteMessage,
-} from "@/hooks/scrapers/deprecatedSites";
+import { checkDeprecatedSite, getDeprecatedSiteMessage } from "@/hooks/scrapers/deprecatedSites";
 import Colors from "@/constants/colors";
 
 const DEPRECATED_SITES = [
@@ -211,7 +208,7 @@ interface SourceListModalProps {
   onClose: () => void;
   sites: typeof SUPPORTED_SITES;
   siteStatuses: Record<string, SiteStatus>;
-  deprecatedSites?: Array<{ domain: string }>;
+  deprecatedSites?: { domain: string }[];
 }
 
 function SourceListModal({
@@ -288,18 +285,14 @@ function SourceListModal({
               style={[
                 styles.tabButton,
                 activeTab === "active" && styles.tabButtonActive,
-                {
-                  borderBottomColor:
-                    activeTab === "active" ? colors.accent : colors.border,
-                },
+                { borderBottomColor: activeTab === "active" ? colors.accent : colors.border },
               ]}
             >
               <Text
                 style={[
                   styles.tabLabel,
                   {
-                    color:
-                      activeTab === "active" ? colors.accent : colors.textMuted,
+                    color: activeTab === "active" ? colors.accent : colors.textMuted,
                   },
                 ]}
               >
@@ -313,20 +306,14 @@ function SourceListModal({
                 style={[
                   styles.tabButton,
                   activeTab === "deprecated" && styles.tabButtonActive,
-                  {
-                    borderBottomColor:
-                      activeTab === "deprecated" ? Colors.amber : colors.border,
-                  },
+                  { borderBottomColor: activeTab === "deprecated" ? Colors.amber : colors.border },
                 ]}
               >
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color:
-                        activeTab === "deprecated"
-                          ? Colors.amber
-                          : colors.textMuted,
+                      color: activeTab === "deprecated" ? Colors.amber : colors.textMuted,
                     },
                   ]}
                 >
@@ -356,34 +343,35 @@ function SourceListModal({
             )}
 
             {/* DEPRECATED SITES TAB */}
-            {activeTab === "deprecated" &&
-              deprecatedSites &&
-              deprecatedSites.length > 0 && (
-                <View style={styles.sectionContainer}>
-                  <Text
-                    style={[styles.deprecatedTitle, { color: colors.text }]}
-                  >
-                    Deprecated Sites
-                  </Text>
-                  <View style={styles.deprecatedPillGrid}>
-                    {deprecatedSites.map((site) => (
-                      <View
-                        key={site.domain}
-                        style={styles.deprecatedPillContainer}
+            {activeTab === "deprecated" && deprecatedSites && deprecatedSites.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text
+                  style={[
+                    styles.deprecatedTitle,
+                    { color: colors.text },
+                  ]}
+                >
+                  Deprecated Sites
+                </Text>
+                <View style={styles.deprecatedPillGrid}>
+                  {deprecatedSites.map((site) => (
+                    <View
+                      key={site.domain}
+                      style={styles.deprecatedPillContainer}
+                    >
+                      <Text
+                        style={[
+                          styles.deprecatedPillDomain,
+                          { color: colors.textMuted },
+                        ]}
                       >
-                        <Text
-                          style={[
-                            styles.deprecatedPillDomain,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          {site.domain}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+                        {site.domain}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              )}
+              </View>
+            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -610,7 +598,7 @@ export default function AddNovelScreen() {
     if (deprecatedCheck) {
       const message = getDeprecatedSiteMessage(
         deprecatedCheck.siteName,
-        deprecatedCheck.reason,
+        deprecatedCheck.reason
       );
       addLog(message, "error");
       return;
@@ -1382,10 +1370,7 @@ export default function AddNovelScreen() {
           {DEPRECATED_SITES && DEPRECATED_SITES.length > 0 && (
             <View>
               <Text
-                style={[
-                  styles.sitesHeaderLabel,
-                  { color: colors.textSecondary },
-                ]}
+                style={[styles.sitesHeaderLabel, { color: colors.textSecondary }]}
               >
                 ⚠️ DEPRECATED SITES
               </Text>
