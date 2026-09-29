@@ -33,13 +33,7 @@ export const SUPPORTED_SITES = [
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
-export type SiteStatus =
-  | "idle"
-  | "checking"
-  | "online"
-  | "maintenance"
-  | "gateway_timeout"
-  | "offline";
+export type SiteStatus = "idle" | "checking" | "online" | "maintenance" | "gateway_timeout" | "offline";
 
 const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
 const CACHE_VALID_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -135,8 +129,8 @@ export function SiteHealthProvider({
 
     for (const site of sitesToCheck) {
       try {
-        const status = await checkSiteHealth(site.baseUrl);
-        results[site.name] = status;
+        const isUp = await checkSiteHealth(site.baseUrl);
+        results[site.name] = isUp ? "online" : "offline";
       } catch (error: any) {
         results[site.name] = "offline";
       }
@@ -229,7 +223,9 @@ export function SiteHealthProvider({
   }, []);
 
   return (
-    <SiteHealthContext.Provider value={{ statuses, isChecking, recheck }}>
+    <SiteHealthContext.Provider
+      value={{ statuses, isChecking, recheck }}
+    >
       {children}
     </SiteHealthContext.Provider>
   );
