@@ -1377,6 +1377,7 @@ export default function AddNovelScreen() {
               </Text>
             </Pressable>
           </View>
+        </View>
 
         {/* Form Section */}
         <View style={styles.form}>
