@@ -31,6 +31,7 @@ export const SUPPORTED_SITES = [
   { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
   { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/" },
   { name: "NovelPing", baseUrl: "https://novelping.com/" },
+  { name: "FanMTL", baseUrl: "https://fanmtl.com/" },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
