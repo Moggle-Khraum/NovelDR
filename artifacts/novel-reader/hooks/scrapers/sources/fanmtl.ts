@@ -64,10 +64,8 @@ export const fanMtlScraper: SourceScraper = {
 
     // <h1 itemprop="name" class="novel-title text2row">Title</h1>
     const title = decodeEntities(
-      safeMatch(
-        html,
-        /<h1[^>]*itemprop="name"[^>]*>\s*([^<]+?)\s*<\/h1>/i,
-      ) ?? "Unknown Title",
+      safeMatch(html, /<h1[^>]*itemprop="name"[^>]*>\s*([^<]+?)\s*<\/h1>/i) ??
+        "Unknown Title",
     ).trim();
 
     // <span itemprop="author">Author</span>
