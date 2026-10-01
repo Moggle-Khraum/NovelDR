@@ -30,9 +30,25 @@ const extractParagraphs = (html: string): string => {
 };
 
 /**
+ * Chapter-body paragraphs. Confirmed against a real chapter page: each line
+ * is its own <p>, many with a trailing "\n" before </p>, plus empty <p></p>
+ * tags. Trim every paragraph and drop the empties so the "\n\n" join stays clean.
+ */
+const extractChapterParagraphs = (html: string): string => {
+  return [...html.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)]
+    .map((m) =>
+      decodeEntities(stripTags(m[1].replace(/<br\s*\/?>/gi, "\n")))
+        .replace(/\u00a0/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n\n");
+};
+
+/**
  * Fallback for the sibling-template's bare-<br> paragraph style, in case a
- * given page (chapter pages in particular — unconfirmed, see fetchChapter)
- * turns out to use it instead of real <p> tags like the synopsis does.
+ * chapter page ever turns out to use it instead of real <p> tags. The
+ * confirmed chapter template uses <p>, so this is just a safety net.
  */
 const extractBrSeparatedText = (html: string): string => {
   return html
@@ -112,42 +128,51 @@ export const novelPingScraper: SourceScraper = {
 
   fetchChapter: async (
     url: string,
-    _chapterNum: number,
+    chapterNum: number,
   ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // UNVERIFIED — no real /book/{slug}/chapter-N page dump seen yet.
-    // novel-bin.com and novelbin.cc (same template family) use
-    // <a class="chr-title" title="..."> for the chapter title,
-    // <div id="chr-content" class="chr-c"> for the body, and
-    // <a id="next_chap" href="..."> (gets disabled="" with no href change
-    // on the last chapter) for next-chapter navigation. Using those same
-    // selectors here on the strength of the shared CMS lineage confirmed
-    // on the novel page — but this has NOT been checked against a real
-    // chapter page, unlike every other line in this file. Flag to confirm
-    // with a chapter page dump; fix immediately if wrong.
+    // CONFIRMED against a real chapter page:
+    // <a class="chr-title" ... title="Chapter 1. ..."><span class="chr-text">
     const title = decodeEntities(
-      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? "",
-    );
+      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ??
+        safeMatch(
+          html,
+          /<span[^>]*class="chr-text"[^>]*>\s*([^<]+?)\s*<\/span>/i,
+        ) ??
+        `Chapter ${chapterNum}`,
+    ).trim();
 
-    const contentBlock = extractByDepth(html, 'id="chr-content"') ?? "";
-    const contentBlockNoHeading = contentBlock.replace(
-      /<h4[^>]*>[\s\S]*?<\/h4>/i,
-      "",
-    );
-    // Try real <p> tags first — confirmed as this site's actual style on
-    // the novel page's synopsis, unlike novel-bin.com/novelbin.cc's bare
-    // <br> text. Fall back to <br>-splitting only if no <p> tags are found,
-    // in case the chapter template differs from the novel-detail template.
+    // CONFIRMED: <div id="chr-content" class="chr-c"> holding one <p> per line,
+    // with js-ad-slot divs at the top and bottom. Strip scripts and ad slots
+    // first so nothing injected there leaks into the chapter text.
+    const contentBlock = (extractByDepth(html, 'id="chr-content"') ?? "")
+      .replace(/<(script|style|iframe)\b[\s\S]*?<\/\1>/gi, "")
+      .replace(/<div[^>]*js-ad-slot[^>]*>[\s\S]*?<\/div>/gi, "");
+
     const content =
-      extractParagraphs(contentBlockNoHeading) ||
-      extractBrSeparatedText(contentBlockNoHeading);
+      extractChapterParagraphs(contentBlock) ||
+      extractBrSeparatedText(contentBlock);
 
-    const nextTag = html.match(/<a[^>]*id="next_chap"[^>]*>/i)?.[0] ?? "";
-    const nextHref = safeMatch(nextTag, /href="([^"]+)"/i);
-    const isDisabled = /disabled=""/i.test(nextTag);
+    // Fail loudly instead of saving a blank chapter (selector miss,
+    // Cloudflare challenge page, etc).
+    if (!content) {
+      throw new Error(`novelping: empty chapter content for ${url}`);
+    }
+
+    // CONFIRMED on chapter 1: next button is
+    // <a class="... js-chapter-nav" data-chapter-nav="next" ... href="...">.
+    // The prev button on chapter 1 shows the disabled form: disabled="",
+    // empty data-chapter-url, href="javascript:void(0)". Assumed the next
+    // button looks the same on the last chapter (NOT yet seen).
+    const nextTag =
+      html.match(/<a\b[^>]*data-chapter-nav="next"[^>]*>/i)?.[0] ?? "";
+    const nextHref = safeMatch(nextTag, /\shref="([^"]*)"/i);
+    const isDisabled = /\sdisabled(?:=|\s|\/|>)/i.test(nextTag);
     const nextUrl =
-      nextHref && !isDisabled ? makeAbsoluteUrl(nextHref, url) : null;
+      nextHref && !isDisabled && !/^(javascript:|#)/i.test(nextHref)
+        ? makeAbsoluteUrl(decodeEntities(nextHref), url)
+        : null;
 
     return {
       url,
