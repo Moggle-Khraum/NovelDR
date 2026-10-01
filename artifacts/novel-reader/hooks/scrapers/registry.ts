@@ -9,6 +9,7 @@ import { novelPhoenixScraper } from "./sources/novelphoenix";
 //import { novelArrowScraper } from "./sources/novelarrow";
 import { novelBinScraper } from "./sources/novel-bin";
 import { novelBinCcScraper } from "./sources/novelbincc";
+import { novelPingScraper } from "./sources/novelping";
 import { royalRoadScraper } from "./sources/royalroad";
 import { readNovelFullScraper } from "./sources/readnovelfull";
 import { novelFullNetScraper } from "./sources/novelfullnet";
@@ -24,6 +25,7 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   //novelArrowScraper,
   novelBinScraper,
   novelBinCcScraper,
+  novelPingScraper,
   royalRoadScraper,
   readNovelFullScraper,
   novelFullNetScraper,
