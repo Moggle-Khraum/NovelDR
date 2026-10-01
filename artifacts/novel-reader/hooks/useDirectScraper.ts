@@ -1077,10 +1077,33 @@ export const directFetchChapter = async (
       }
 
       if (contentHtml) {
-        contentHtml = contentHtml
-          .replace(/<script[\s\S]*?<\/script>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/<nav[\s\S]*?<\/nav>/gi, "");
+        contentHtml = sanitizeHtml(contentHtml, {
+          allowedTags: [
+            "p",
+            "br",
+            "div",
+            "section",
+            "article",
+            "span",
+            "strong",
+            "em",
+            "b",
+            "i",
+            "u",
+            "blockquote",
+            "ul",
+            "ol",
+            "li",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+          ],
+          allowedAttributes: {},
+          disallowedTagsMode: "discard",
+        });
 
         const paragraphs = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
         if (paragraphs) {
