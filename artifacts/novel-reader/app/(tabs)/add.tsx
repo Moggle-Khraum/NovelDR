@@ -578,10 +578,29 @@ export default function AddNovelScreen() {
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(coverDir, { intermediates: true });
       }
+      // Some hosts (fanmtl.com) reject image requests without a browser UA
+      // and a same-site Referer. downloadAsync doesn't throw on 403/404 - it
+      // saves the error body as the .jpg - so check the status ourselves.
+      let referer = "";
+      try {
+        referer = `${new URL(coverUrl).origin}/`;
+      } catch {}
       const downloadResult = await FileSystem.downloadAsync(
         coverUrl,
         coverPath,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+            Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+            ...(referer ? { Referer: referer } : {}),
+          },
+        },
       );
+      if (downloadResult.status !== 200) {
+        await FileSystem.deleteAsync(coverPath, { idempotent: true });
+        throw new Error(`HTTP ${downloadResult.status}`);
+      }
       addLog(`Cover image saved locally`, "success");
       return downloadResult.uri;
     } catch (err) {
