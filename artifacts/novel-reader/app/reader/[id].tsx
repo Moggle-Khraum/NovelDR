@@ -395,7 +395,7 @@ export default function ReaderScreen() {
   // Load glossary on mount
   useEffect(() => {
     glossary.loadGlossary();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload glossary when opening glossary list modal
@@ -698,7 +698,7 @@ export default function ReaderScreen() {
 
       setSettingsLoaded(true);
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Background colors ──
@@ -925,7 +925,7 @@ export default function ReaderScreen() {
       const familyName = familyNameForFilename(targetName);
       try {
         await Font.loadAsync({ [familyName]: destUri });
-      // eslint-disable-next-line no-unused-vars
+        // eslint-disable-next-line no-unused-vars
       } catch (err) {
         await FileSystem.deleteAsync(destUri, { idempotent: true });
         Alert.alert(
