@@ -601,6 +601,22 @@ export default function AddNovelScreen() {
         await FileSystem.deleteAsync(coverPath, { idempotent: true });
         throw new Error(`HTTP ${downloadResult.status}`);
       }
+      // A 200 can still be an HTML block page or a hotlink placeholder.
+      const contentType = String(
+        downloadResult.headers?.["Content-Type"] ??
+          downloadResult.headers?.["content-type"] ??
+          "",
+      );
+      const fileInfo = await FileSystem.getInfoAsync(coverPath);
+      const fileSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
+      addLog(
+        `Cover response: ${contentType || "no content-type"}, ${fileSize} bytes`,
+        "info",
+      );
+      if (contentType && !/^image\//i.test(contentType)) {
+        await FileSystem.deleteAsync(coverPath, { idempotent: true });
+        throw new Error(`not an image (${contentType})`);
+      }
       addLog(`Cover image saved locally`, "success");
       return downloadResult.uri;
     } catch (err) {
