@@ -493,7 +493,11 @@ export default function NovelDetailScreen() {
             Haptics.selectionAsync();
             router.push({
               pathname: "/reader/[id]",
-              params: { id: novel?.id, chapterIndex: originalIndex.toString() },
+              params: {
+                id: novel?.id,
+                chapterIndex: originalIndex.toString(),
+                from: "novel",
+              },
             });
           }}
           onLongPress={() => {
@@ -819,6 +823,7 @@ export default function NovelDetailScreen() {
                     params: {
                       id: novel.id,
                       chapterIndex: startIndex.toString(),
+                      from: "novel",
                     },
                   });
                 }}
