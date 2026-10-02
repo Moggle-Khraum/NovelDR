@@ -80,11 +80,21 @@ export const fanMtlScraper: SourceScraper = {
     // <figure class="cover"><img class="" src="/d/file/kk101/xxxx.jpg" ...>
     // Exact class="cover" so the related-novel covers (class="novel-cover")
     // further down the page can't match.
-    const coverRaw = safeMatch(
-      html,
-      /<figure[^>]*class="cover"[^>]*>\s*<img[^>]*\ssrc="([^"]+)"/i,
-    );
-    const coverUrl = coverRaw ? makeAbsoluteUrl(coverRaw, url) : "";
+    // Lazy-loaded pages keep the real URL in data-src (or similar) and put
+    // a placeholder in src, so look at the lazy attributes first and ignore
+    // inline data: placeholders.
+    const coverImgTag =
+      html.match(/<figure[^>]*class="cover"[^>]*>\s*(<img[^>]*>)/i)?.[1] ?? "";
+    const coverRaw =
+      [
+        safeMatch(coverImgTag, /\sdata-src="([^"]+)"/i),
+        safeMatch(coverImgTag, /\sdata-original="([^"]+)"/i),
+        safeMatch(coverImgTag, /\sdata-lazy-src="([^"]+)"/i),
+        safeMatch(coverImgTag, /\ssrc="([^"]+)"/i),
+      ].find((v) => v && !/^data:/i.test(v)) ?? null;
+    const coverUrl = coverRaw
+      ? makeAbsoluteUrl(decodeEntities(coverRaw), url)
+      : "";
 
     // <div class="summary"><h4>Summary</h4><div class="content"><p>...</p></div></div>
     const summaryBlock = extractByDepth(html, 'class="summary"');
