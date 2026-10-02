@@ -40,6 +40,7 @@ export const DefinitionModal = React.memo(
     onSaveOfflineEntry,
   }: DefinitionModalProps) => {
     const [showLoading, setShowLoading] = useState(false);
+    // eslint-disable-next-line no-unused-vars
     const [savedWord, setSavedWord] = useState<string | null>(null);
 
     useEffect(() => {
