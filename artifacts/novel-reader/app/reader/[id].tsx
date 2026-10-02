@@ -42,7 +42,7 @@ import {
   FONT_SIZES,
   LINE_SPACINGS,
   AUTO_SCROLL_SPEEDS,
-  MARGIN_PRESETS,
+  // MARGIN_PRESETS,
   TTS_MIN_CHARS,
   RAPID_TAP_THRESHOLD,
   RAPID_TAP_WINDOW_MS,
@@ -390,6 +390,7 @@ export default function ReaderScreen() {
   // Load glossary on mount
   useEffect(() => {
     glossary.loadGlossary();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload glossary when opening glossary list modal
@@ -692,6 +693,7 @@ export default function ReaderScreen() {
 
       setSettingsLoaded(true);
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Background colors ──
@@ -918,6 +920,7 @@ export default function ReaderScreen() {
       const familyName = familyNameForFilename(targetName);
       try {
         await Font.loadAsync({ [familyName]: destUri });
+      // eslint-disable-next-line no-unused-vars
       } catch (err) {
         await FileSystem.deleteAsync(destUri, { idempotent: true });
         Alert.alert(
