@@ -37,7 +37,6 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   wuxiaworldScraper,
   novelArchiveCcScraper,
   fanMTLScraper,
-  
 ];
 
 export const findExternalScraper = (url: string): SourceScraper | null => {
