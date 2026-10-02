@@ -113,12 +113,7 @@ export const fanMtlScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: [
-        "fetched via external scraper: fanmtl",
-        // Temporary: shows what the cover <img> really looks like.
-        `cover tag: ${coverImgTag.slice(0, 300) || "(none found)"}`,
-        `cover url: ${coverUrl || "(empty)"}`,
-      ],
+      debugInfo: ["fetched via external scraper: fanmtl"],
     };
   },
 
