@@ -104,6 +104,16 @@ export function SiteHealthProvider({
 
   const connectivity = useConnectivity();
 
+  // Latest values for use inside async code. runHealthChecks/init capture
+  // the first render's `connectivity` (always "initializing"), which made
+  // them bail out before ever checking anything - sites with no cached
+  // status (new ones) then sat at "?" until Recheck was tapped.
+  const connectivityRef = useRef(connectivity.status);
+  connectivityRef.current = connectivity.status;
+  const statusesRef = useRef(statuses);
+  statusesRef.current = statuses;
+  const cacheLoadedRef = useRef(false);
+
   // Runs the check loop for a subset of sites
   const runHealthChecks = async (
     sitesToCheck: typeof SUPPORTED_SITES,
@@ -112,7 +122,7 @@ export function SiteHealthProvider({
     if (sitesToCheck.length === 0) return;
 
     // Simple switch: if device is offline, skip checks
-    if (connectivity.status !== "online") {
+    if (connectivityRef.current !== "online") {
       return;
     }
 
@@ -124,28 +134,23 @@ export function SiteHealthProvider({
     checkingRef.current = true;
     setIsChecking(true);
 
-    // Mark targets "checking"
-    setStatuses((prev) => {
-      const next = { ...prev };
-      sitesToCheck.forEach((site) => {
-        next[site.name] = "checking";
-      });
-      return next;
-    });
-
     const results: Record<string, SiteStatus> = {};
 
+    // Check each site on its own: only the site currently being checked
+    // shows "checking", and its result lands as soon as it finishes
+    // instead of every site waiting on the slowest one.
     for (const site of sitesToCheck) {
+      setStatuses((prev) => ({ ...prev, [site.name]: "checking" }));
       try {
         const isUp = await checkSiteHealth(site.baseUrl);
         results[site.name] = isUp ? "online" : "offline";
       } catch (error: any) {
         results[site.name] = "offline";
       }
+      setStatuses((prev) => ({ ...prev, [site.name]: results[site.name] }));
     }
 
     const finalStatuses = { ...baseStatuses, ...results };
-    setStatuses((prev) => ({ ...prev, ...results }));
     await saveSiteStatus(finalStatuses);
 
     checkingRef.current = false;
@@ -196,16 +201,27 @@ export function SiteHealthProvider({
     const init = async () => {
       const saved = await loadSavedSiteStatus();
 
+      cacheLoadedRef.current = true;
+
       if (saved) {
         setStatuses(saved.statuses);
 
-        if (connectivity.status !== "online") return;
+        if (connectivityRef.current !== "online") return;
 
         const isStale = Date.now() - saved.timestamp >= CACHE_VALID_MS;
         if (isStale) {
           await runHealthChecks(SUPPORTED_SITES, saved.statuses);
+        } else {
+          // Fresh cache, but sites added since it was written have no
+          // entry - check just those so they don't sit at "?".
+          const missing = SUPPORTED_SITES.filter(
+            (s) => !saved.statuses[s.name],
+          );
+          if (missing.length > 0) {
+            await runHealthChecks(missing, saved.statuses);
+          }
         }
-      } else if (connectivity.status === "online") {
+      } else if (connectivityRef.current === "online") {
         // No cache at all - first run, and connectivity is confirmed.
         await runHealthChecks(SUPPORTED_SITES, {});
       }
@@ -220,7 +236,7 @@ export function SiteHealthProvider({
     // only automatic recheck path now - there's no separate trigger tied
     // to connectivity changing.
     intervalRef.current = setInterval(() => {
-      if (connectivity.status !== "online") return;
+      if (connectivityRef.current !== "online") return;
       runHealthChecks(SUPPORTED_SITES, {});
     }, CACHE_VALID_MS);
 
@@ -229,6 +245,20 @@ export function SiteHealthProvider({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Connectivity usually resolves after the init above has already run (it
+  // starts as "initializing"). When it flips to online, check only the sites
+  // that still have no status - a stale-cache refresh stays on its 12h
+  // schedule, this just fills in "?" cells.
+  useEffect(() => {
+    if (connectivity.status !== "online") return;
+    if (!cacheLoadedRef.current || checkingRef.current) return;
+    const missing = SUPPORTED_SITES.filter((s) => !statusesRef.current[s.name]);
+    if (missing.length > 0) {
+      runHealthChecks(missing, statusesRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectivity.status]);
 
   return (
     <SiteHealthContext.Provider value={{ statuses, isChecking, recheck }}>
