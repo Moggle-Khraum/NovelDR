@@ -291,9 +291,14 @@ function familyNameForFilename(filename: string): string {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────
 export default function ReaderScreen() {
-  const { id, chapterIndex: indexParam } = useLocalSearchParams<{
+  const {
+    id,
+    chapterIndex: indexParam,
+    from,
+  } = useLocalSearchParams<{
     id: string;
     chapterIndex: string;
+    from?: string;
   }>();
   const {
     getNovel,
@@ -390,7 +395,7 @@ export default function ReaderScreen() {
   // Load glossary on mount
   useEffect(() => {
     glossary.loadGlossary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload glossary when opening glossary list modal
@@ -693,7 +698,7 @@ export default function ReaderScreen() {
 
       setSettingsLoaded(true);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Background colors ──
@@ -920,7 +925,7 @@ export default function ReaderScreen() {
       const familyName = familyNameForFilename(targetName);
       try {
         await Font.loadAsync({ [familyName]: destUri });
-        // eslint-disable-next-line no-unused-vars
+      // eslint-disable-next-line no-unused-vars
       } catch (err) {
         await FileSystem.deleteAsync(destUri, { idempotent: true });
         Alert.alert(
@@ -1226,10 +1231,14 @@ export default function ReaderScreen() {
             <View style={styles.minimalistTopBarRow}>
               <Pressable
                 onPress={() =>
-                  router.replace({
-                    pathname: "/novel/[id]",
-                    params: { id },
-                  })
+                  // Opened from the novel detail: go back to it instead of
+                  // stacking a second copy of it on top.
+                  from === "novel" && router.canGoBack()
+                    ? router.back()
+                    : router.replace({
+                        pathname: "/novel/[id]",
+                        params: { id },
+                      })
                 }
                 accessibilityLabel="Close reader"
               >
@@ -1282,10 +1291,14 @@ export default function ReaderScreen() {
               <Pressable
                 style={styles.navBtn}
                 onPress={() =>
-                  router.replace({
-                    pathname: "/novel/[id]",
-                    params: { id },
-                  })
+                  // Opened from the novel detail: go back to it instead of
+                  // stacking a second copy of it on top.
+                  from === "novel" && router.canGoBack()
+                    ? router.back()
+                    : router.replace({
+                        pathname: "/novel/[id]",
+                        params: { id },
+                      })
                 }
                 accessibilityLabel="Close reader"
               >
