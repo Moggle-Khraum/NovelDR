@@ -608,7 +608,8 @@ export default function AddNovelScreen() {
           "",
       );
       const fileInfo = await FileSystem.getInfoAsync(coverPath);
-      const fileSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
+      const fileSize =
+        fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
       addLog(
         `Cover response: ${contentType || "no content-type"}, ${fileSize} bytes`,
         "info",
