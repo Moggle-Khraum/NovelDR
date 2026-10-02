@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   Modal,
-  ScrollView,
+  // ScrollView,
   TouchableOpacity,
   View,
   Text,
