@@ -19,13 +19,23 @@ export function UpdateModal({ flow }: { flow: UpdateFlow }) {
   const { info, visible, phase, progress, close, download, apply, skip } = flow;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={close}
+    >
       <View style={s.overlay}>
         <View
-          style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[
+            s.card,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
         >
           <View style={s.header}>
-            <Text style={[s.title, { color: colors.text }]}>Update available</Text>
+            <Text style={[s.title, { color: colors.text }]}>
+              Update available
+            </Text>
             {phase === "idle" && (
               <Pressable onPress={close}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
@@ -63,14 +73,18 @@ export function UpdateModal({ flow }: { flow: UpdateFlow }) {
           )}
 
           {phase === "downloading" && (
-            <View style={[s.progressTrack, { backgroundColor: colors.surface }]}>
+            <View
+              style={[s.progressTrack, { backgroundColor: colors.surface }]}
+            >
               <View
                 style={[
                   s.progressFill,
                   { width: `${progress}%`, backgroundColor: colors.accent },
                 ]}
               />
-              <Text style={[s.progressLabel, { color: colors.text }]}>{progress}%</Text>
+              <Text style={[s.progressLabel, { color: colors.text }]}>
+                {progress}%
+              </Text>
             </View>
           )}
 
@@ -87,7 +101,11 @@ export function UpdateModal({ flow }: { flow: UpdateFlow }) {
             <View
               style={[
                 s.actionBtn,
-                { backgroundColor: colors.accent, flexDirection: "row", gap: 8 },
+                {
+                  backgroundColor: colors.accent,
+                  flexDirection: "row",
+                  gap: 8,
+                },
               ]}
             >
               <ActivityIndicator size="small" color="#fff" />
@@ -151,14 +169,24 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
+  actionBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#fff",
+  },
   progressTrack: {
     height: 40,
     borderRadius: 10,
     overflow: "hidden",
     justifyContent: "center",
   },
-  progressFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 10 },
+  progressFill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 10,
+  },
   progressLabel: {
     textAlign: "center",
     fontFamily: "Inter_600SemiBold",

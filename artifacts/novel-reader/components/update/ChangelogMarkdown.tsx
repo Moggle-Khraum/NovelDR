@@ -52,9 +52,12 @@ function parseInline(src: string): Inline[] {
       out.push({ t: "bolditalic", c: parseInline(m[4]) });
     else if (m[5] !== undefined) out.push({ t: "bold", c: parseInline(m[5]) });
     else if (m[6] !== undefined) out.push({ t: "bold", c: parseInline(m[6]) });
-    else if (m[7] !== undefined) out.push({ t: "strike", c: parseInline(m[7]) });
-    else if (m[8] !== undefined) out.push({ t: "italic", c: parseInline(m[8]) });
-    else if (m[9] !== undefined) out.push({ t: "italic", c: parseInline(m[9]) });
+    else if (m[7] !== undefined)
+      out.push({ t: "strike", c: parseInline(m[7]) });
+    else if (m[8] !== undefined)
+      out.push({ t: "italic", c: parseInline(m[8]) });
+    else if (m[9] !== undefined)
+      out.push({ t: "italic", c: parseInline(m[9]) });
     rest = rest.slice(m.index + m[0].length);
   }
   return out;
@@ -86,7 +89,8 @@ function parseBlocks(raw: string): Block[] {
     if (/^\s*```/.test(line)) {
       const buf: string[] = [];
       i++;
-      while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
+      while (i < lines.length && !/^\s*```/.test(lines[i]))
+        buf.push(lines[i++]);
       i++; // closing fence
       blocks.push({ t: "code", v: buf.join("\n") });
       continue;
@@ -123,7 +127,10 @@ function parseBlocks(raw: string): Block[] {
 
     const b = /^(\s*)([-*+])\s+(?:\[([ xX])\]\s+)?(.*)$/.exec(line);
     if (b) {
-      const indent = Math.min(Math.floor(b[1].replace(/\t/g, "  ").length / 2), 3);
+      const indent = Math.min(
+        Math.floor(b[1].replace(/\t/g, "  ").length / 2),
+        3,
+      );
       const marker = b[3] === undefined ? "•" : b[3] === " " ? "☐" : "☑";
       blocks.push({ t: "bullet", indent, marker, c: parseInline(b[4]) });
       i++;
@@ -132,8 +139,16 @@ function parseBlocks(raw: string): Block[] {
 
     const n = /^(\s*)(\d+)[.)]\s+(.*)$/.exec(line);
     if (n) {
-      const indent = Math.min(Math.floor(n[1].replace(/\t/g, "  ").length / 2), 3);
-      blocks.push({ t: "bullet", indent, marker: `${n[2]}.`, c: parseInline(n[3]) });
+      const indent = Math.min(
+        Math.floor(n[1].replace(/\t/g, "  ").length / 2),
+        3,
+      );
+      blocks.push({
+        t: "bullet",
+        indent,
+        marker: `${n[2]}.`,
+        c: parseInline(n[3]),
+      });
       i++;
       continue;
     }
@@ -188,7 +203,10 @@ export function ChangelogMarkdown({ source }: { source: string }) {
           return (
             <Text
               key={key}
-              style={[s.inlineCode, { backgroundColor: colors.card, color: colors.text }]}
+              style={[
+                s.inlineCode,
+                { backgroundColor: colors.card, color: colors.text },
+              ]}
             >
               {n.v}
             </Text>
@@ -218,7 +236,10 @@ export function ChangelogMarkdown({ source }: { source: string }) {
             return <View key={idx} style={s.gap} />;
           case "hr":
             return (
-              <View key={idx} style={[s.hr, { backgroundColor: colors.border }]} />
+              <View
+                key={idx}
+                style={[s.hr, { backgroundColor: colors.border }]}
+              />
             );
           case "heading":
             return (
@@ -244,13 +265,19 @@ export function ChangelogMarkdown({ source }: { source: string }) {
             );
           case "quote":
             return (
-              <View key={idx} style={[s.quote, { borderLeftColor: colors.accent }]}>
+              <View
+                key={idx}
+                style={[s.quote, { borderLeftColor: colors.accent }]}
+              >
                 <Text style={[base, s.italic]}>{renderInline(b.c)}</Text>
               </View>
             );
           case "code":
             return (
-              <View key={idx} style={[s.codeBlock, { backgroundColor: colors.card }]}>
+              <View
+                key={idx}
+                style={[s.codeBlock, { backgroundColor: colors.card }]}
+              >
                 <Text style={[s.codeText, { color: colors.text }]}>{b.v}</Text>
               </View>
             );
