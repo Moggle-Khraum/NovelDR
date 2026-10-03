@@ -2,10 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import Constants from "expo-constants";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -30,8 +28,8 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { downloadApk, installApk } from "@/hooks/useUpdateChecker";
-import { useUpdateContext } from "@/context/UpdateContext";
+import { useUpdateFlow } from "@/hooks/useUpdateFlow";
+import { UpdateModal } from "@/components/update/UpdateModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary, Novel, NovelStatus } from "@/context/LibraryContext";
@@ -450,57 +448,9 @@ export default function LibraryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const fabRotation = useSharedValue(0);
 
-  // ── Update checker (shared across Library + Settings via UpdateContext) ────
-  const { updateInfo, skipVersion: skipUpdateVersion } = useUpdateContext();
-  const [updateModalVisible, setUpdateModalVisible] = useState(false);
-  const [updatePhase, setUpdatePhase] = useState<
-    "idle" | "downloading" | "ready" | "installing"
-  >("idle");
-  const [updateProgress, setUpdateProgress] = useState(0);
-  const [localApkUri, setLocalApkUri] = useState<string | null>(null);
+  // ── Update flow (state + download/install lives in useUpdateFlow) ──────────
+  const update = useUpdateFlow();
 
-  const handleDownloadUpdate = async () => {
-    if (!updateInfo) return;
-    setUpdatePhase("downloading");
-    setUpdateProgress(0);
-    try {
-      const uri = await downloadApk(updateInfo, setUpdateProgress);
-      setLocalApkUri(uri);
-      setUpdatePhase("ready");
-    } catch {
-      setUpdatePhase("idle");
-      Alert.alert(
-        "Download failed",
-        "Could not download the update. Check your connection and try again.",
-      );
-    }
-  };
-
-  const handleApplyUpdate = async () => {
-    if (!localApkUri) return;
-    setUpdatePhase("installing");
-    try {
-      await installApk(localApkUri);
-      // Android takes over from here — the app backgrounds while the installer runs.
-      // If "Install unknown apps" isn't granted yet, Android shows its own system
-      // prompt at this point automatically, before the installer screen appears.
-    } catch {
-      setUpdatePhase("ready");
-      Alert.alert("Install failed", "Could not open the installer.");
-    }
-  };
-
-  const handleSkipVersion = async () => {
-    await skipUpdateVersion();
-    setUpdateModalVisible(false);
-    setUpdatePhase("idle");
-    setLocalApkUri(null);
-  };
-
-  const closeUpdateModal = () => {
-    // Session-only close — doesn't dismiss the tag, so it'll show again next cold start
-    setUpdateModalVisible(false);
-  };
   const fabSpinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${fabRotation.value}deg` }],
   }));
@@ -1007,7 +957,7 @@ export default function LibraryScreen() {
       {/* ── Floating Refresh Button (FAB) – REMOVED ── */}
 
       {/* ── Update Notification Bell — only shown when a newer release exists ── */}
-      {!selectionMode && updateInfo && (
+      {!selectionMode && update.info && (
         <Pressable
           style={[
             styles.fab,
@@ -1017,7 +967,7 @@ export default function LibraryScreen() {
               bottom: bottomPad + 90 + 44 + 12, // sits just above the reload FAB
             },
           ]}
-          onPress={() => setUpdateModalVisible(true)}
+          onPress={update.open}
         >
           <Ionicons name="notifications" size={20} color={colors.accent} />
           <View
@@ -1123,151 +1073,7 @@ export default function LibraryScreen() {
         <View style={{ flex: 1, backgroundColor: "transparent" }} />
       </Modal>
 
-      {/* Update Available Modal */}
-      <Modal
-        visible={updateModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeUpdateModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.updateModalCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.updateModalHeader}>
-              <Text style={[styles.updateModalTitle, { color: colors.text }]}>
-                Update available
-              </Text>
-              {updatePhase === "idle" && (
-                <Pressable onPress={closeUpdateModal}>
-                  <Ionicons
-                    name="close"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </Pressable>
-              )}
-            </View>
-
-            <Text
-              style={[styles.updateVersionRow, { color: colors.textMuted }]}
-            >
-              v{Constants.expoConfig?.version ?? "?"} → {updateInfo?.tag ?? ""}
-            </Text>
-
-            <ScrollView
-              style={[
-                styles.updateNotesBox,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text
-                style={[
-                  styles.updateNotesText,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {updateInfo?.notes?.trim() || "No release notes provided."}
-              </Text>
-            </ScrollView>
-
-            {updatePhase === "idle" && (
-              <Pressable
-                style={[
-                  styles.updateActionBtn,
-                  { backgroundColor: colors.accent },
-                ]}
-                onPress={handleDownloadUpdate}
-              >
-                <Text style={styles.updateActionBtnText}>Download update</Text>
-              </Pressable>
-            )}
-
-            {updatePhase === "downloading" && (
-              <View
-                style={[
-                  styles.updateProgressTrack,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.updateProgressFill,
-                    {
-                      width: `${updateProgress}%`,
-                      backgroundColor: colors.accent,
-                    },
-                  ]}
-                />
-                <Text
-                  style={[styles.updateProgressLabel, { color: colors.text }]}
-                >
-                  {updateProgress}%
-                </Text>
-              </View>
-            )}
-
-            {updatePhase === "ready" && (
-              <Pressable
-                style={[
-                  styles.updateActionBtn,
-                  { backgroundColor: colors.accent },
-                ]}
-                onPress={handleApplyUpdate}
-              >
-                <Text style={styles.updateActionBtnText}>Apply update</Text>
-              </Pressable>
-            )}
-
-            {updatePhase === "installing" && (
-              <View
-                style={[
-                  styles.updateActionBtn,
-                  {
-                    backgroundColor: colors.accent,
-                    flexDirection: "row",
-                    gap: 8,
-                  },
-                ]}
-              >
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.updateActionBtnText}>
-                  Opening installer...
-                </Text>
-              </View>
-            )}
-
-            {updatePhase === "idle" && (
-              <View style={styles.updateSecondaryRow}>
-                <Pressable onPress={closeUpdateModal}>
-                  <Text
-                    style={[
-                      styles.updateSecondaryText,
-                      { color: colors.textMuted },
-                    ]}
-                  >
-                    Remind me later
-                  </Text>
-                </Pressable>
-                <Pressable onPress={handleSkipVersion}>
-                  <Text
-                    style={[
-                      styles.updateSecondaryText,
-                      { color: colors.textMuted },
-                    ]}
-                  >
-                    Skip this version
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+      <UpdateModal flow={update} />
     </View>
   );
 }
@@ -1542,73 +1348,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
 
-  // ── Update modal ──
-  updateModalCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
-    gap: 4,
-    width: "88%",
-    maxWidth: 400,
-  },
-  updateModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  updateModalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
-  updateVersionRow: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  updateNotesBox: {
-    maxHeight: 160,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 12,
-    marginBottom: 14,
-  },
-  updateNotesText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    lineHeight: 19,
-  },
-  updateActionBtn: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updateActionBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: "#fff",
-  },
-  updateProgressTrack: {
-    height: 40,
-    borderRadius: 10,
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  updateProgressFill: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 10,
-  },
-  updateProgressLabel: {
-    textAlign: "center",
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-  },
-  updateSecondaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  updateSecondaryText: { fontFamily: "Inter_400Regular", fontSize: 12 },
   modalContent: {
     width: "80%",
     borderRadius: 16,
