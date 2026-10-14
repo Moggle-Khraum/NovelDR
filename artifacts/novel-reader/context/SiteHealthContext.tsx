@@ -33,6 +33,7 @@ export const SUPPORTED_SITES = [
   { name: "NovelPing", baseUrl: "https://novelping.com/" },
   { name: "FanMTL", baseUrl: "https://fanmtl.com/" },
   { name: "WuxiaBox", baseUrl: "https://www.wuxiabox.com/" },
+  { name: "WuxiaClick", baseUrl: "https://wuxia.click/" },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
