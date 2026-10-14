@@ -59,6 +59,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novelarchive.cc": "NovelArchiveCC",
       "novelping.com": "NovelPing",
       "fanmtl.com": "FanMTL",
+      "wuxiabox.com": "WuxiaBox",
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
