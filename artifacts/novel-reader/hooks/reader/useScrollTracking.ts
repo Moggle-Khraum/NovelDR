@@ -31,6 +31,16 @@ export function useScrollTracking({
   const lastRestoreHeightRef = useRef(0);
   const restoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // New chapter => the previous chapter's offset/height are meaningless.
+  // Reset during render so the `scrollY` snapshot returned below (used by the
+  // background/unmount save in reader/[id].tsx) is never the old chapter's.
+  const lastChapterRef = useRef(chapterIndex);
+  if (lastChapterRef.current !== chapterIndex) {
+    lastChapterRef.current = chapterIndex;
+    scrollYRef.current = 0;
+    contentHeightRef.current = 0;
+  }
+
   const updateReadingProgress = useCallback(() => {
     if (contentHeightRef.current > scrollViewHeightRef.current) {
       const maxScroll = contentHeightRef.current - scrollViewHeightRef.current;
@@ -93,6 +103,11 @@ export function useScrollTracking({
           : 0;
 
       if (savedOffset <= 0 || height <= 0) {
+        if (height > 0) {
+          scrollRef.current?.scrollTo({ y: 0, animated: false });
+          scrollYRef.current = 0;
+          updateReadingProgress();
+        }
         hasRestoredScrollRef.current = true;
         restoredChapterRef.current = chapterIndex;
         return;
@@ -144,6 +159,9 @@ export function useScrollTracking({
       clearTimeout(restoreTimeoutRef.current);
       restoreTimeoutRef.current = null;
     }
+    scrollYRef.current = 0;
+    setReadingProgress(0);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [chapterIndex]);
 
   return {
