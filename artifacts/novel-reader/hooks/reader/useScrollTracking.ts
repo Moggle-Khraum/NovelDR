@@ -164,9 +164,13 @@ export function useScrollTracking({
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [chapterIndex]);
 
+  // Live offset (not a render-time snapshot) for save-on-exit callers.
+  const getScrollY = useCallback(() => scrollYRef.current, []);
+
   return {
     scrollRef,
     scrollY: scrollYRef.current,
+    getScrollY,
     readingProgress,
     contentHeight: contentHeightRef.current,
     scrollViewHeight: scrollViewHeightRef.current,
