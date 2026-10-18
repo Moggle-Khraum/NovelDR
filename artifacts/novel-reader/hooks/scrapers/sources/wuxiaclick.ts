@@ -78,10 +78,7 @@ export const wuxiaClickScraper: SourceScraper = {
     // <p ...>by <span class="text-foreground">Name</span></p>
     const author = decodeEntities(
       novel?.author?.name ??
-        safeMatch(
-          html,
-          /<p[^>]*>\s*by\s*<span[^>]*>\s*([^<]+?)\s*<\/span>/i,
-        ) ??
+        safeMatch(html, /<p[^>]*>\s*by\s*<span[^>]*>\s*([^<]+?)\s*<\/span>/i) ??
         "Unknown Author",
     ).trim();
 
@@ -99,9 +96,10 @@ export const wuxiaClickScraper: SourceScraper = {
 
     // JSON description is plain text. Fallback: <div id="synopsis-text">
     // holding one <p> per paragraph.
-    let synopsis = typeof novel?.description === "string"
-      ? decodeEntities(novel.description).trim()
-      : "";
+    let synopsis =
+      typeof novel?.description === "string"
+        ? decodeEntities(novel.description).trim()
+        : "";
     if (!synopsis) {
       const block = extractByDepth(html, 'id="synopsis-text"') ?? "";
       synopsis = [...block.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)]

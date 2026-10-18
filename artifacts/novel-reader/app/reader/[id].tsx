@@ -589,8 +589,11 @@ export default function ReaderScreen() {
 
   useEffect(() => {
     const saveNow = () => {
-      const { novel: n, chapter: c, chapterIndex: idx } =
-        latestProgressRef.current;
+      const {
+        novel: n,
+        chapter: c,
+        chapterIndex: idx,
+      } = latestProgressRef.current;
       if (n && c) {
         saveReadingProgress(n.id, idx, c.title, getScrollY());
       }
