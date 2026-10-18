@@ -83,14 +83,11 @@ export function useReaderNavigation({
         );
         return;
       }
-      const currentChapter = currentNovel?.chapters[currentIndex];
-      if (currentNovel && currentChapter) {
-        saveReadingProgress(
-          currentNovel.id,
-          currentIndex,
-          currentChapter.title,
-          scrollYRef.current,
-        );
+      // Record the chapter we are moving TO (at the top) right away, so the
+      // novel details screen / Continue button never lag one chapter behind.
+      const nextChapter = currentNovel?.chapters[next];
+      if (currentNovel && nextChapter) {
+        saveReadingProgress(currentNovel.id, next, nextChapter.title, 0);
       }
 
       stopAutoScroll();
@@ -111,13 +108,12 @@ export function useReaderNavigation({
     (index: number) => {
       cancelAutoNext();
       const currentNovel = novelRef.current;
-      const currentIndex = chapterIndexRef.current;
-      if (currentNovel && currentNovel.chapters[currentIndex]) {
+      if (currentNovel && currentNovel.chapters[index]) {
         saveReadingProgress(
           currentNovel.id,
-          currentIndex,
-          currentNovel.chapters[currentIndex].title,
-          scrollYRef.current,
+          index,
+          currentNovel.chapters[index].title,
+          0,
         );
       }
       setChapterIndex(index);
