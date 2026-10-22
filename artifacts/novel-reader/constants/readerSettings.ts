@@ -1,5 +1,5 @@
 // constants/readerSettings.ts
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 export const FONT_SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26];
 export const LINE_SPACINGS = [1.2, 1.3, 1.5, 1.8, 2.0, 2.5];
