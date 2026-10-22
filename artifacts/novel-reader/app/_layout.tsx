@@ -5,19 +5,6 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import {
-  Gelasio_400Regular,
-  Gelasio_700Bold,
-} from "@expo-google-fonts/gelasio";
-import { Tinos_400Regular, Tinos_700Bold } from "@expo-google-fonts/tinos";
-import {
-  ComicNeue_400Regular,
-  ComicNeue_700Bold,
-} from "@expo-google-fonts/comic-neue";
-import {
-  OldStandardTT_400Regular,
-  OldStandardTT_700Bold,
-} from "@expo-google-fonts/old-standard-tt";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
@@ -30,6 +17,7 @@ import {
   StyleSheet,
   Animated,
   ActivityIndicator,
+  InteractionManager,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -44,6 +32,7 @@ import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
+import { loadReaderFonts } from "@/lib/readerFonts";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -331,26 +320,22 @@ export default Sentry.wrap(function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    Gelasio_400Regular,
-    Gelasio_700Bold,
-    Tinos_400Regular,
-    Tinos_700Bold,
-    ComicNeue_400Regular,
-    ComicNeue_700Bold,
-    OldStandardTT_400Regular,
-    OldStandardTT_700Bold,
-    // Not on Google Fonts, so this isn't an @expo-google-fonts package -
-    // loaded directly from the bundled .ttf files instead. Family names
-    // here (the object keys) are what every reader font style must match
-    // exactly - see constants/readerSettings.ts FONT_PRESETS.
-    OpenDyslexic_400Regular: require("../assets/fonts/OpenDyslexic-Regular.ttf"),
-    OpenDyslexic_700Bold: require("../assets/fonts/OpenDyslexic-Bold.ttf"),
   });
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
+  }, [fontsLoaded, fontError]);
+
+  // Reader-specific fonts load after startup interactions, so they don't hold
+  // the splash screen open. The reader waits for these fonts before showing text.
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      void loadReaderFonts();
+    });
+    return () => task.cancel();
   }, [fontsLoaded, fontError]);
 
   // Installs global JS-error and unhandled-rejection capture, chained
