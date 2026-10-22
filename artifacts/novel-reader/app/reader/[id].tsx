@@ -56,6 +56,7 @@ import {
 import { useChapterPersistence } from "@/hooks/reader/useChapterPersistence";
 import { useScrollTracking } from "@/hooks/reader/useScrollTracking";
 import { useTTS } from "@/hooks/reader/useTTS";
+import { useReaderFontsReady } from "@/lib/readerFonts";
 import { useReaderNavigation } from "@/hooks/reader/useReaderNavigation";
 import { useFullscreenMode } from "@/hooks/reader/useFullscreenMode";
 import { useDictionary } from "@/hooks/reader/useDictionary";
@@ -308,6 +309,7 @@ export default function ReaderScreen() {
   } = useLibrary();
   const { colors: themeColors } = useTheme();
   const insets = useSafeAreaInsets();
+  const readerFontsReady = useReaderFontsReady();
 
   // ── Reader settings state ──
   const [fontSizeIdx, setFontSizeIdx] = useState(3);
@@ -1210,7 +1212,7 @@ export default function ReaderScreen() {
   }, []);
 
   // ── Loading state ──
-  if (!novel || !chapter || !settingsLoaded) {
+  if (!novel || !chapter || !settingsLoaded || !readerFontsReady) {
     return (
       <View
         style={[styles.center, { backgroundColor: themeColors.background }]}
