@@ -1,9 +1,72 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import axios from "axios";
 import { parse } from "node-html-parser";
 import { URL } from "url";
 
 const router: IRouter = Router();
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT_PER_IP = 20;
+const MAX_CONCURRENT_SCRAPES = 8;
+
+const ipRequestWindows = new Map<string, { startedAt: number; count: number }>();
+let activeScrapes = 0;
+
+const scrapeRateLimit: RequestHandler = (req, res, next) => {
+  const now = Date.now();
+  const key = req.ip ?? req.socket.remoteAddress ?? "unknown";
+  let window = ipRequestWindows.get(key);
+
+  if (!window || now - window.startedAt >= RATE_WINDOW_MS) {
+    window = { startedAt: now, count: 0 };
+    ipRequestWindows.set(key, window);
+  }
+
+  window.count += 1;
+  const remaining = Math.max(0, RATE_LIMIT_PER_IP - window.count);
+  const resetSeconds = Math.max(
+    1,
+    Math.ceil((window.startedAt + RATE_WINDOW_MS - now) / 1000),
+  );
+  res.setHeader("RateLimit-Limit", String(RATE_LIMIT_PER_IP));
+  res.setHeader("RateLimit-Remaining", String(remaining));
+  res.setHeader("RateLimit-Reset", String(resetSeconds));
+
+  // Bound stale key accumulation if a server receives many distinct IPs.
+  if (ipRequestWindows.size > 5000) {
+    for (const [ip, entry] of ipRequestWindows) {
+      if (now - entry.startedAt >= RATE_WINDOW_MS) ipRequestWindows.delete(ip);
+    }
+  }
+
+  if (window.count > RATE_LIMIT_PER_IP) {
+    res.setHeader("Retry-After", String(resetSeconds));
+    res.status(429).json({ error: "Too many scrape requests; try again later" });
+    return;
+  }
+
+  next();
+};
+
+const scrapeConcurrencyLimit: RequestHandler = (_req, res, next) => {
+  if (activeScrapes >= MAX_CONCURRENT_SCRAPES) {
+    res.setHeader("Retry-After", "5");
+    res.status(503).json({ error: "Scrape capacity is busy; try again shortly" });
+    return;
+  }
+
+  activeScrapes += 1;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    activeScrapes = Math.max(0, activeScrapes - 1);
+  };
+
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+};
 
 const httpClient = axios.create({
   timeout: 15000,
@@ -276,7 +339,7 @@ function extractNovelMeta(
   return { coverUrl, author, synopsis };
 }
 
-router.post("/novel/scrape-chapter", async (req, res) => {
+router.post("/novel/scrape-chapter", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
   const { url } = req.body as { url: string };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
@@ -303,7 +366,7 @@ router.post("/novel/scrape-chapter", async (req, res) => {
   }
 });
 
-router.post("/novel/meta", async (req, res) => {
+router.post("/novel/meta", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
   const { url } = req.body as { url: string };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
@@ -366,7 +429,7 @@ router.post("/novel/meta", async (req, res) => {
   }
 });
 
-router.post("/novel/next-chapter", async (req, res) => {
+router.post("/novel/next-chapter", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
