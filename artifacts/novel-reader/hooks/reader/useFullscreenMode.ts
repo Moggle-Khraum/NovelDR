@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  cancelAnimation,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -15,38 +17,52 @@ export function useFullscreenMode() {
   // and the content area actually expands to fill the screen.
   const [barsMounted, setBarsMounted] = useState(true);
   const uiOpacity = useSharedValue(1);
-  const unmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fullscreenRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  // Called from the animation's completion callback, so the bars are only
+  // unmounted after Reanimated has finished writing to them. Unmounting on a
+  // timer that matched the fade duration could remove the views while the
+  // last opacity frame was still being applied, which crashed with
+  // "Unable to find viewState for tag".
+  const hideBars = useCallback(() => {
+    if (isMountedRef.current && fullscreenRef.current) {
+      setBarsMounted(false);
+    }
+  }, []);
 
   const toggleFullscreen = useCallback(() => {
-    setFullscreenMode((prev) => {
-      const newState = !prev;
+    const newState = !fullscreenRef.current;
+    fullscreenRef.current = newState;
+    setFullscreenMode(newState);
 
-      if (unmountTimerRef.current) {
-        clearTimeout(unmountTimerRef.current);
-        unmountTimerRef.current = null;
-      }
-
-      if (newState) {
-        // Entering fullscreen: fade out, then unmount after the animation.
-        uiOpacity.value = withTiming(0, { duration: FADE_DURATION_MS });
-        unmountTimerRef.current = setTimeout(() => {
-          setBarsMounted(false);
-        }, FADE_DURATION_MS);
-      } else {
-        // Exiting fullscreen: mount immediately, then fade in.
-        setBarsMounted(true);
-        uiOpacity.value = withTiming(1, { duration: FADE_DURATION_MS });
-      }
-
-      return newState;
-    });
-  }, [uiOpacity]);
+    if (newState) {
+      // Entering fullscreen: fade out, then unmount once the fade finishes.
+      // A cancelled fade (toggled back mid-way) reports finished=false and
+      // must not unmount the bars.
+      uiOpacity.value = withTiming(
+        0,
+        { duration: FADE_DURATION_MS },
+        (finished) => {
+          if (finished) runOnJS(hideBars)();
+        },
+      );
+    } else {
+      // Exiting fullscreen: mount immediately, then fade in.
+      setBarsMounted(true);
+      uiOpacity.value = withTiming(1, { duration: FADE_DURATION_MS });
+    }
+  }, [uiOpacity, hideBars]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      if (unmountTimerRef.current) clearTimeout(unmountTimerRef.current);
+      isMountedRef.current = false;
+      // Stop any running fade so nothing keeps updating views that are
+      // being removed along with the reader screen.
+      cancelAnimation(uiOpacity);
     };
-  }, []);
+  }, [uiOpacity]);
 
   const uiAnimatedStyle = useAnimatedStyle(() => ({
     opacity: uiOpacity.value,
