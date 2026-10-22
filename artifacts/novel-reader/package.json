@@ -1,6 +1,6 @@
 {
   "name": "@workspace/novel-reader",
-  "version": "4.8.2",
+  "version": "4.8.0",
   "private": true,
   "main": "index.js",
   "dependencies": {
@@ -21,8 +21,7 @@
     "react-native-gesture-handler": "~2.28.0",
     "react-native-webview": "^14.0.1",
     "react-native-zip-archive": "^9.0.2",
-    "sanitize-html": "^2.17.6",
-    "expo-glass-effect": "~0.1.8"
+    "sanitize-html": "^2.17.6"
   },
   "scripts": {
     "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
@@ -61,7 +60,7 @@
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
     "expo-font": "~14.0.10",
-    "expo-glass-effect": "~0.1.4",
+    "expo-glass-effect": "~0.1.8",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
     "expo-image-picker": "~17.0.9",
