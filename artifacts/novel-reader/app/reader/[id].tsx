@@ -446,6 +446,7 @@ export default function ReaderScreen() {
   const {
     scrollRef,
     scrollY,
+    getScrollY,
     readingProgress,
     contentHeight,
     scrollViewHeight,
@@ -581,17 +582,32 @@ export default function ReaderScreen() {
   }, [autoScrollSpeedIdx]);
 
   // ── Persist reading progress on background / unmount ──
+  // Reads the latest values from a ref and subscribes once. The previous
+  // version listed novel/chapter/scrollY as deps, so its cleanup ran on every
+  // chapter change and re-saved the OLD chapter right after navigation saved
+  // the new one (and re-subscribed on every scroll update).
+  const latestProgressRef = useRef({ novel, chapter, chapterIndex });
+  latestProgressRef.current = { novel, chapter, chapterIndex };
+
   useEffect(() => {
+    const saveNow = () => {
+      const {
+        novel: n,
+        chapter: c,
+        chapterIndex: idx,
+      } = latestProgressRef.current;
+      if (n && c) {
+        saveReadingProgress(n.id, idx, c.title, getScrollY());
+      }
+    };
     const appStateRef = { current: AppState.currentState };
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (
         (appStateRef.current === "active" &&
           nextAppState.match(/inactive|background/)) ||
         nextAppState === "background"
       ) {
-        if (novel && chapter) {
-          saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
-        }
+        saveNow();
       }
       appStateRef.current = nextAppState;
     };
@@ -601,11 +617,9 @@ export default function ReaderScreen() {
     );
     return () => {
       subscription.remove();
-      if (novel && chapter) {
-        saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
-      }
+      saveNow();
     };
-  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
+  }, [saveReadingProgress, getScrollY]);
 
   // ── Scan custom_fonts/ and register each with expo-font ──
   // Runs at mount (below) and again after import/delete so the picker and
