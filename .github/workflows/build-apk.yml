@@ -28,9 +28,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Install Expo packages
-        working-directory: artifacts/novel-reader
-        run: pnpm add expo-file-system expo-sharing @sentry/react-native && pnpm install --no-frozen-lockfile
 
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
