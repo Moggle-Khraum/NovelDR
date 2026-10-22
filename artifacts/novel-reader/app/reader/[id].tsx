@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as Font from "expo-font";
@@ -446,7 +446,6 @@ export default function ReaderScreen() {
   const {
     scrollRef,
     scrollY,
-    getScrollY,
     readingProgress,
     contentHeight,
     scrollViewHeight,
@@ -582,32 +581,17 @@ export default function ReaderScreen() {
   }, [autoScrollSpeedIdx]);
 
   // ── Persist reading progress on background / unmount ──
-  // Reads the latest values from a ref and subscribes once. The previous
-  // version listed novel/chapter/scrollY as deps, so its cleanup ran on every
-  // chapter change and re-saved the OLD chapter right after navigation saved
-  // the new one (and re-subscribed on every scroll update).
-  const latestProgressRef = useRef({ novel, chapter, chapterIndex });
-  latestProgressRef.current = { novel, chapter, chapterIndex };
-
   useEffect(() => {
-    const saveNow = () => {
-      const {
-        novel: n,
-        chapter: c,
-        chapterIndex: idx,
-      } = latestProgressRef.current;
-      if (n && c) {
-        saveReadingProgress(n.id, idx, c.title, getScrollY());
-      }
-    };
     const appStateRef = { current: AppState.currentState };
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (
         (appStateRef.current === "active" &&
           nextAppState.match(/inactive|background/)) ||
         nextAppState === "background"
       ) {
-        saveNow();
+        if (novel && chapter) {
+          saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
+        }
       }
       appStateRef.current = nextAppState;
     };
@@ -617,9 +601,11 @@ export default function ReaderScreen() {
     );
     return () => {
       subscription.remove();
-      saveNow();
+      if (novel && chapter) {
+        saveReadingProgress(novel.id, chapterIndex, chapter.title, scrollY);
+      }
     };
-  }, [saveReadingProgress, getScrollY]);
+  }, [novel, chapter, chapterIndex, scrollY, saveReadingProgress]);
 
   // ── Scan custom_fonts/ and register each with expo-font ──
   // Runs at mount (below) and again after import/delete so the picker and
