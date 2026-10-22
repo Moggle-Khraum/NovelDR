@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
 import Constants from "expo-constants";
@@ -1885,7 +1885,7 @@ export default function SettingsScreen() {
         return;
       }
 
-      const info = await FileSystem.getInfoAsync(file.uri, { size: true });
+      const info = await FileSystem.getInfoAsync(file.uri);
       const size = info.exists && "size" in info ? info.size : (file.size ?? 0);
 
       if (!size || size <= 0) {
@@ -1928,9 +1928,7 @@ export default function SettingsScreen() {
 
   const handleAttachCrashLog = async () => {
     try {
-      const info = await FileSystem.getInfoAsync(CRASH_LOG_FILE_PATH, {
-        size: true,
-      });
+      const info = await FileSystem.getInfoAsync(CRASH_LOG_FILE_PATH);
       if (!info.exists) {
         Alert.alert("No Crash Log Yet", "Nothing recorded on this device.");
         return;
