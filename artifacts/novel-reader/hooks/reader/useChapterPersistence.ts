@@ -1,7 +1,7 @@
 // hooks/reader/useChapterPersistence.ts
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppState, AppStateStatus, InteractionManager } from "react-native";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { decodeHTML } from "entities";
 
 // --- Types ---

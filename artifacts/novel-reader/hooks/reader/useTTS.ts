@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import * as KeepAwake from "expo-keep-awake";
 import { AccessibilityInfo, AppState, InteractionManager } from "react-native";
 import * as Notifications from "expo-notifications";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { TTS_SETTINGS_FILE } from "@/constants/readerSettings";
 import {
   updateMediaSession,

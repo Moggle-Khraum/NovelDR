@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { SIMPLE_DICTIONARY, DictionaryEntry } from "@/constants/dictionary";
+import { lookupWord, DictionaryEntry } from "@/constants/dictionary";
 import { getSearchCandidates, trimRootWord } from "@/lib/trimRootWord";
 import { useGlossary } from "./useGlossary";
 import { useNetInfo } from "@react-native-community/netinfo";
@@ -107,8 +107,7 @@ export function useDictionary(glossaryHook?: ReturnType<typeof useGlossary>) {
 
       // 1. Check offline dictionary
       for (const candidate of candidates) {
-        const found =
-          SIMPLE_DICTIONARY[candidate as keyof typeof SIMPLE_DICTIONARY];
+        const found = lookupWord(candidate);
         if (found && found.length > 0) {
           setWord(clean);
           setEntries(found);

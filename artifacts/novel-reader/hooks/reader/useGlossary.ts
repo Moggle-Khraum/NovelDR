@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { useState, useCallback } from "react";
 
 const GLOSSARY_DIR = `${FileSystem.documentDirectory}.library`;
