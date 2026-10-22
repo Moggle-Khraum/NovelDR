@@ -49,41 +49,36 @@ export type SortOrder = "ascending" | "descending";
 // CONCURRENCY POOL (copied from settings.tsx for self‑containment)
 // =============================================================================
 
-async function runConcurrent<T, R>(
+async async function runConcurrent<T, R>(
   items: T[],
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
-  const results: R[] = [];
-  const queue = [...items];
-  let active = 0;
-  let index = 0;
-  let reject: (reason?: any) => void;
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  let failed = false;
+  let firstError: unknown;
 
-  return new Promise((resolve, rejectFn) => {
-    reject = rejectFn;
-    const next = async () => {
-      if (queue.length === 0 && active === 0) {
-        resolve(results);
+  const worker = async () => {
+    while (!failed) {
+      const idx = nextIndex++;
+      if (idx >= items.length) return;
+      try {
+        results[idx] = await fn(items[idx], idx);
+      } catch (error) {
+        if (!failed) {
+          failed = true;
+          firstError = error;
+        }
         return;
       }
-      while (active < concurrency && queue.length > 0) {
-        const item = queue.shift()!;
-        const idx = index++;
-        active++;
-        fn(item, idx)
-          .then((res) => {
-            results[idx] = res;
-            active--;
-            next();
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      }
-    };
-    next();
-  });
+    }
+  };
+
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (failed) throw firstError;
+  return results;
 }
 
 // =============================================================================
@@ -191,19 +186,16 @@ const withFileLock = async <T,>(
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  fileWriteQueues.set(
-    filePath,
-    previous.then(() => gate),
-  );
+  const queued = previous.then(() => gate);
+  fileWriteQueues.set(filePath, queued);
 
   await previous;
   try {
     return await task();
   } finally {
     release!();
-    // Clean up the map entry if nothing else queued behind us, so it
-    // doesn't grow unbounded over a long session.
-    if (fileWriteQueues.get(filePath) === previous.then(() => gate)) {
+    // Remove the queue entry only if no later writer has queued behind us.
+    if (fileWriteQueues.get(filePath) === queued) {
       fileWriteQueues.delete(filePath);
     }
   }
@@ -1105,16 +1097,15 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         saveOffset = 0;
       }
 
-      // Write novel file (full metadata)
+      // Persist chapter content before publishing the updated metadata/index.
+      // If chapter persistence fails, the library index remains unchanged.
+      await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
+
+      // Write novel metadata, then update the index as the visible commit point.
       const novelToWrite = updatedNovels.find((n) => n.id === novel.id)!;
       await writeNovelFile(novelToWrite);
-
-      // Update index (add id to front)
       const currentIds = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: currentIds, sortOrder });
-
-      // Save chapters (content) separately
-      await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
@@ -1158,7 +1149,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const ids = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: ids, sortOrder: sortOrder });
       // Delete chapters
-      deleteNovelChapters(id);
+      await deleteNovelChapters(id);
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
@@ -1179,7 +1170,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const newIds = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
       // Delete chapters
-      ids.forEach((id) => deleteNovelChapters(id));
+      await Promise.all(ids.map((id) => deleteNovelChapters(id)));
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
