@@ -14,9 +14,6 @@ const DEFAULT_HEADERS = {
 
 const httpClient = axios.create({
   timeout: 50000,
-  maxRedirects: 5,
-  maxContentLength: 10 * 1024 * 1024,
-  maxBodyLength: 10 * 1024 * 1024,
   headers: DEFAULT_HEADERS,
 });
 
