@@ -941,8 +941,7 @@ export default function ReaderScreen() {
       const familyName = familyNameForFilename(targetName);
       try {
         await Font.loadAsync({ [familyName]: destUri });
-        // eslint-disable-next-line no-unused-vars
-      } catch (err) {
+      } catch {
         await FileSystem.deleteAsync(destUri, { idempotent: true });
         Alert.alert(
           "Import Failed",
