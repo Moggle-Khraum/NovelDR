@@ -7,6 +7,9 @@ const router: IRouter = Router();
 
 const httpClient = axios.create({
   timeout: 15000,
+  // Do not follow redirects automatically: a supported host could redirect
+  // the request to an internal or otherwise disallowed destination.
+  maxRedirects: 0,
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
@@ -273,7 +276,7 @@ function extractNovelMeta(
   return { coverUrl, author, synopsis };
 }
 
-router.post("/api/novel/scrape-chapter", async (req, res) => {
+router.post("/novel/scrape-chapter", async (req, res) => {
   const { url } = req.body as { url: string };
   if (!url) {
     res.status(400).json({ error: "URL is required" });
@@ -300,7 +303,7 @@ router.post("/api/novel/scrape-chapter", async (req, res) => {
   }
 });
 
-router.post("/api/novel/meta", async (req, res) => {
+router.post("/novel/meta", async (req, res) => {
   const { url } = req.body as { url: string };
   if (!url) {
     res.status(400).json({ error: "URL is required" });
@@ -363,7 +366,7 @@ router.post("/api/novel/meta", async (req, res) => {
   }
 });
 
-router.post("/api/novel/next-chapter", async (req, res) => {
+router.post("/novel/next-chapter", async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
   if (!url) {
     res.status(400).json({ error: "URL is required" });
