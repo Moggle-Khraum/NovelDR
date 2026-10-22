@@ -14,8 +14,30 @@ const DEFAULT_HEADERS = {
 
 const httpClient = axios.create({
   timeout: 50000,
+  maxRedirects: 5,
+  maxContentLength: 10 * 1024 * 1024,
+  maxBodyLength: 10 * 1024 * 1024,
   headers: DEFAULT_HEADERS,
 });
+
+function validateFetchUrl(rawUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error("Invalid scraper URL");
+  }
+
+  if (
+    (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new Error("Scraper URL must use HTTP(S) and must not contain credentials");
+  }
+
+  return parsed.toString();
+}
 
 export interface FetchOptions {
   /** Force proxy first instead of direct-first (useful for sites that block direct fetches) */
@@ -35,11 +57,12 @@ export const fetchHtmlWithFallback = async (
   url: string,
   options: FetchOptions = {},
 ): Promise<string> => {
+  const validatedUrl = validateFetchUrl(url);
   const buildProxyUrl = options.buildProxyUrl ?? defaultBuildProxyUrl;
 
-  const tryDirect = () => httpClient.get(url).then((res) => res.data);
+  const tryDirect = () => httpClient.get(validatedUrl).then((res) => res.data);
   const tryProxy = () =>
-    httpClient.get(buildProxyUrl(url)).then((res) => res.data);
+    httpClient.get(buildProxyUrl(validatedUrl)).then((res) => res.data);
 
   const [first, second] = options.proxyFirst
     ? [tryProxy, tryDirect]
@@ -47,7 +70,7 @@ export const fetchHtmlWithFallback = async (
 
   try {
     return await first();
-  } catch (firstError) {
+  } catch {
     return await second();
   }
 };
@@ -67,13 +90,16 @@ export const fetchJsonWithFallback = async <T = unknown>(
   url: string,
   options: FetchOptions = {},
 ): Promise<T> => {
+  const validatedUrl = validateFetchUrl(url);
   const buildProxyUrl = options.buildProxyUrl ?? defaultBuildProxyUrl;
 
   const tryDirect = () =>
-    httpClient.get(url, { headers: JSON_HEADERS }).then((res) => res.data);
+    httpClient
+      .get(validatedUrl, { headers: JSON_HEADERS })
+      .then((res) => res.data);
   const tryProxy = () =>
     httpClient
-      .get(buildProxyUrl(url), { headers: JSON_HEADERS })
+      .get(buildProxyUrl(validatedUrl), { headers: JSON_HEADERS })
       .then((res) => res.data);
 
   const [first, second] = options.proxyFirst
@@ -82,7 +108,7 @@ export const fetchJsonWithFallback = async <T = unknown>(
 
   try {
     return await first();
-  } catch (firstError) {
+  } catch {
     return await second();
   }
 };
