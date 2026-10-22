@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 // Local, on-device crash trail - independent of Sentry. This exists because
 // Dave works mobile-only with no CLI/adb access: if Sentry fails to upload

@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as IntentLauncher from "expo-intent-launcher";
 
-const RELEASE_REPO = "Moggle-Khraum/NovelDR-site"; // release repo, not this code repo
+const RELEASE_REPO = "Moggle-Khraum/noveldr-dev"; // release repo, not this code repo
 const LAST_CHECK_KEY = "update_last_check_v1";
 const REQUEST_LOG_KEY = "update_request_log_v1";
 const DISMISSED_KEY = "update_dismissed_version_v1";
