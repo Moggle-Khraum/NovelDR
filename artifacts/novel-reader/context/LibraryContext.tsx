@@ -201,28 +201,59 @@ const withFileLock = async <T,>(
   }
 };
 
-// Atomic write: write to a uniquely-named .tmp file then move it into place
-// (delete existing dest for Android). Serialized per destination path via
-// withFileLock so concurrent writers targeting the same novel/index file
-// can't race each other's tmp file or move.
+// Replace JSON files through a temporary file and backup. On platforms where
+// moveAsync cannot overwrite an existing destination, keep the old file until
+// the new file is safely in place so a failed write doesn't erase good data.
 const writeJsonFileAtomic = async (filePath: string, data: any) => {
   await withFileLock(filePath, async () => {
-    const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random()
-      .toString(36)
-      .slice(2)}`;
+    const uniqueSuffix = `${Date.now()}.${Math.random().toString(36).slice(2)}`;
+    const tempPath = `${filePath}.tmp.${uniqueSuffix}`;
+    const backupPath = `${filePath}.bak.${uniqueSuffix}`;
+    let backupCreated = false;
+
     try {
       await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
-      // Android's moveAsync fails if destination exists, so delete it first
       const destInfo = await FileSystem.getInfoAsync(filePath);
       if (destInfo.exists) {
-        await FileSystem.deleteAsync(filePath, { idempotent: true });
+        await FileSystem.moveAsync({ from: filePath, to: backupPath });
+        backupCreated = true;
       }
-      await FileSystem.moveAsync({ from: tempPath, to: filePath });
+
+      try {
+        await FileSystem.moveAsync({ from: tempPath, to: filePath });
+      } catch (error) {
+        // Restore the previous known-good file if installing the new file fails.
+        if (backupCreated) {
+          const currentInfo = await FileSystem.getInfoAsync(filePath);
+          if (!currentInfo.exists) {
+            await FileSystem.moveAsync({ from: backupPath, to: filePath });
+            backupCreated = false;
+          }
+        }
+        throw error;
+      }
+
+      if (backupCreated) {
+        await FileSystem.deleteAsync(backupPath, { idempotent: true });
+        backupCreated = false;
+      }
     } catch (error) {
-      // Best-effort cleanup of the tmp file if the write/move failed partway.
       await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(
         () => {},
       );
+      // If the primary operation failed after backing up, make one final
+      // best-effort attempt to restore the original file.
+      if (backupCreated) {
+        try {
+          const currentInfo = await FileSystem.getInfoAsync(filePath);
+          if (!currentInfo.exists) {
+            await FileSystem.moveAsync({ from: backupPath, to: filePath });
+            backupCreated = false;
+          }
+        } catch {
+          // Leave the backup in place for recovery rather than deleting it.
+        }
+      }
       throw error;
     }
   });
