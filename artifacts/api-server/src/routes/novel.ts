@@ -278,8 +278,8 @@ function extractNovelMeta(
 
 router.post("/novel/scrape-chapter", async (req, res) => {
   const { url } = req.body as { url: string };
-  if (!url) {
-    res.status(400).json({ error: "URL is required" });
+  if (typeof url !== "string" || !url.trim()) {
+    res.status(400).json({ error: "A valid URL is required" });
     return;
   }
   if (!isAllowedNovelUrl(url)) {
@@ -305,8 +305,8 @@ router.post("/novel/scrape-chapter", async (req, res) => {
 
 router.post("/novel/meta", async (req, res) => {
   const { url } = req.body as { url: string };
-  if (!url) {
-    res.status(400).json({ error: "URL is required" });
+  if (typeof url !== "string" || !url.trim()) {
+    res.status(400).json({ error: "A valid URL is required" });
     return;
   }
   if (!isAllowedNovelUrl(url)) {
@@ -368,8 +368,12 @@ router.post("/novel/meta", async (req, res) => {
 
 router.post("/novel/next-chapter", async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
-  if (!url) {
-    res.status(400).json({ error: "URL is required" });
+  if (typeof url !== "string" || !url.trim()) {
+    res.status(400).json({ error: "A valid URL is required" });
+    return;
+  }
+  if (!Number.isSafeInteger(chapterNum) || chapterNum < 1) {
+    res.status(400).json({ error: "chapterNum must be a positive integer" });
     return;
   }
   if (!isAllowedNovelUrl(url)) {
