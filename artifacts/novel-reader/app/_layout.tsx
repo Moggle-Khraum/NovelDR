@@ -328,12 +328,12 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Reader-specific fonts load after startup interactions, so they don't hold
-  // the splash screen open. The reader waits for these fonts before showing text.
+  // Reader fonts load in the background once the first screen is up, so they
+  // no longer hold the splash screen open (see lib/readerFonts.ts).
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
     const task = InteractionManager.runAfterInteractions(() => {
-      void loadReaderFonts();
+      loadReaderFonts();
     });
     return () => task.cancel();
   }, [fontsLoaded, fontError]);
