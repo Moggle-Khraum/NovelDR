@@ -154,9 +154,17 @@ export const wuxiaBoxScraper: SourceScraper = {
       );
     }
 
-    const content = extractParagraphs(
-      rawBlock.replace(/<(script|style|iframe)\b[\s\S]*?<\/\1>/gi, ""),
-    );
+    let sanitizedBlock = rawBlock;
+    let previousBlock: string;
+    do {
+      previousBlock = sanitizedBlock;
+      sanitizedBlock = sanitizedBlock.replace(
+        /<(script|style|iframe)\b[\s\S]*?<\/\1>/gi,
+        "",
+      );
+    } while (sanitizedBlock !== previousBlock);
+
+    const content = extractParagraphs(sanitizedBlock);
 
     // Fail loudly instead of saving a blank chapter.
     if (!content) {
