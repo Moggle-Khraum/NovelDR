@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Move this here
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,8 +26,7 @@ jobs:
           version: 10.26.1
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
+        run: pnpm install --frozen-lockfile
 
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
@@ -47,20 +46,19 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          # The EAS local build repackages the project into a fresh sandbox,
-          # so the sentry-cli we install earlier in this job never makes it
-          # there. Skip the build-time source map upload rather than chase
-          # that — native crash capture at runtime is unaffected, this only
-          # means JS stack traces in Sentry stay minified for now.
+          # Local EAS builds do not preserve the preinstalled sentry-cli
+          # in their fresh sandbox, so source-map upload is disabled here.
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
-        
+
       - name: Rename and Move APK
         working-directory: artifacts/novel-reader
         run: |
+          set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           REV=${{ github.run_number }}
           mkdir -p ../../dist
-          APK_FILE=$(find . -maxdepth 1 -name "*.apk" -type f | head -n 1)
+          APK_FILE=$(find . -maxdepth 1 -name "*.apk" -type f -print -quit)
+          test -n "$APK_FILE"
           cp "$APK_FILE" "../../dist/NovelDR v${VERSION}rev${REV}.apk"
           echo "Build Complete: NovelDR v${VERSION}rev${REV}.apk"
 
@@ -70,4 +68,3 @@ jobs:
           name: NovelDR-Build-${{ github.run_number }}
           path: dist/*.apk
           if-no-files-found: error
-          
