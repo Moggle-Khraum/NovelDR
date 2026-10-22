@@ -212,7 +212,16 @@ export function WebViewFetchBridge() {
       domStorageEnabled
       thirdPartyCookiesEnabled={true}
       cacheEnabled={false}
-      originWhitelist={["*"]}
+      // Only web URLs are needed for scraper pages; block file/data/javascript schemes.
+      originWhitelist={["https://*", "http://*"]}
+      onShouldStartLoadWithRequest={(request) => {
+        try {
+          const protocol = new URL(request.url).protocol;
+          return protocol === "https:" || protocol === "http:";
+        } catch {
+          return false;
+        }
+      }}
       userAgent={DESKTOP_USER_AGENT}
       injectedJavaScriptBeforeContentLoaded={CHALLENGE_POLL_JS}
     />
