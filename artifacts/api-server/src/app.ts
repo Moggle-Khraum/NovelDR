@@ -6,6 +6,10 @@ import { logger } from "./lib/logger.js";
 
 const app: Express = express();
 
+// Replit Autoscale routes public traffic through one ingress proxy hop.
+// Keep this numeric: trusting every forwarded hop would allow IP spoofing.
+app.set("trust proxy", 1);
+
 // Native clients do not send an Origin header. Browser clients must be
 // explicitly listed in CORS_ORIGINS as a comma-separated set of origins.
 const allowedOrigins = new Set(
