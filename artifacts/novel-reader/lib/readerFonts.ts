@@ -14,8 +14,10 @@ import {
   OldStandardTT_700Bold,
 } from "@expo-google-fonts/old-standard-tt";
 
-// Reader-only fonts load after the initial screen, so they don't block app startup.
-// Family names must match constants/readerSettings.ts FONT_PRESETS exactly.
+// Reader-only fonts. They used to block the splash screen at launch; now they
+// load in the background after the first screen is up and the reader waits for
+// them (usually already done) before it shows text. Family names (the object
+// keys) must match constants/readerSettings.ts FONT_PRESETS exactly.
 const READER_FONTS = {
   Gelasio_400Regular,
   Gelasio_700Bold,
@@ -25,6 +27,7 @@ const READER_FONTS = {
   ComicNeue_700Bold,
   OldStandardTT_400Regular,
   OldStandardTT_700Bold,
+  // Not on Google Fonts - loaded directly from the bundled .ttf files.
   OpenDyslexic_400Regular: require("../assets/fonts/OpenDyslexic-Regular.ttf"),
   OpenDyslexic_700Bold: require("../assets/fonts/OpenDyslexic-Bold.ttf"),
 };
@@ -32,8 +35,8 @@ const READER_FONTS = {
 let loaded = false;
 let loadPromise: Promise<void> | null = null;
 
-// Safe to call repeatedly. A font-loading failure falls back to system fonts,
-// and a later call can retry rather than leaving the reader permanently blocked.
+// Safe to call repeatedly. Never rejects: on failure the reader falls back to
+// the system font (same as the old fontError path) and a later call retries.
 export function loadReaderFonts(): Promise<void> {
   if (loaded) return Promise.resolve();
   if (!loadPromise) {
@@ -41,15 +44,15 @@ export function loadReaderFonts(): Promise<void> {
       .then(() => {
         loaded = true;
       })
-      .catch((error) => {
-        console.warn("[readerFonts] load failed:", error);
+      .catch((e) => {
+        console.log("[readerFonts] load failed:", e);
         loadPromise = null;
       });
   }
   return loadPromise;
 }
 
-// The reader can wait for the font load before rendering chapter text.
+// True once the reader fonts have loaded (or failed - never blocks forever).
 export function useReaderFontsReady(): boolean {
   const [ready, setReady] = useState(loaded);
 
