@@ -9,7 +9,10 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT_PER_IP = 20;
 const MAX_CONCURRENT_SCRAPES = 8;
 
-const ipRequestWindows = new Map<string, { startedAt: number; count: number }>();
+const ipRequestWindows = new Map<
+  string,
+  { startedAt: number; count: number }
+>();
 let activeScrapes = 0;
 
 const scrapeRateLimit: RequestHandler = (req, res, next) => {
@@ -339,7 +342,11 @@ function extractNovelMeta(
   return { coverUrl, author, synopsis };
 }
 
-router.post("/novel/scrape-chapter", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
+router.post(
+  "/novel/scrape-chapter",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
   const { url } = req.body as { url: string };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
@@ -364,9 +371,14 @@ router.post("/novel/scrape-chapter", scrapeRateLimit, scrapeConcurrencyLimit, as
     req.log.error({ err: e }, "Failed to scrape chapter");
     res.status(500).json({ error: e.message || "Failed to fetch chapter" });
   }
-});
+  },
+);
 
-router.post("/novel/meta", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
+router.post(
+  "/novel/meta",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
   const { url } = req.body as { url: string };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
@@ -427,9 +439,14 @@ router.post("/novel/meta", scrapeRateLimit, scrapeConcurrencyLimit, async (req, 
     req.log.error({ err: e }, "Failed to fetch novel meta");
     res.status(500).json({ error: e.message || "Failed to fetch metadata" });
   }
-});
+  },
+);
 
-router.post("/novel/next-chapter", scrapeRateLimit, scrapeConcurrencyLimit, async (req, res) => {
+router.post(
+  "/novel/next-chapter",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
   const { url, chapterNum } = req.body as { url: string; chapterNum: number };
   if (typeof url !== "string" || !url.trim()) {
     res.status(400).json({ error: "A valid URL is required" });
@@ -454,6 +471,7 @@ router.post("/novel/next-chapter", scrapeRateLimit, scrapeConcurrencyLimit, asyn
     req.log.error({ err: e }, "Failed to fetch next chapter");
     res.status(500).json({ error: e.message || "Failed to fetch chapter" });
   }
-});
+  },
+);
 
 export default router;
