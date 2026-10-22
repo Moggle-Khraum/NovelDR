@@ -6,10 +6,12 @@ on:
     branches:
       - dev5.5
       - dev3
+      - arch-review
   pull_request:
     branches:
       - dev5.5
       - dev3
+      - arch-review
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
