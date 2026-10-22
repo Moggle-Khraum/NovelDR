@@ -30,7 +30,9 @@ function validateFetchUrl(rawUrl: string): string {
     parsed.username ||
     parsed.password
   ) {
-    throw new Error("Scraper URL must use HTTP(S) and must not contain credentials");
+    throw new Error(
+      "Scraper URL must use HTTP(S) and must not contain credentials",
+    );
   }
 
   return parsed.toString();
