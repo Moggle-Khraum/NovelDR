@@ -175,9 +175,14 @@ export const wuxiaClickScraper: SourceScraper = {
     // house-ad <aside>s can carry their own <p> tags when server-rendered,
     // so strip them (and scripts/iframes) before reading any <p>.
     const rawBlock = extractByDepth(html, 'id="chapter-content"') ?? "";
-    const block = rawBlock
-      .replace(/<aside\b[\s\S]*?<\/aside>/gi, "")
-      .replace(/<(script|style|iframe|ins)\b[\s\S]*?<\/\1>/gi, "");
+    let block = rawBlock;
+    let prevBlock: string;
+    do {
+      prevBlock = block;
+      block = block
+        .replace(/<aside\b[\s\S]*?<\/aside>/gi, "")
+        .replace(/<(script|style|iframe|ins)\b[\s\S]*?<\/\1>/gi, "");
+    } while (block !== prevBlock);
 
     // Primary: only paragraphs tagged data-tts-paragraph (exactly the story
     // text). Fallback: every remaining <p> in the cleaned block.
