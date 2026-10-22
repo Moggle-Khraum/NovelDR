@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import React, {
   createContext,
@@ -49,36 +49,41 @@ export type SortOrder = "ascending" | "descending";
 // CONCURRENCY POOL (copied from settings.tsx for self‑containment)
 // =============================================================================
 
-async async function runConcurrent<T, R>(
+async function runConcurrent<T, R>(
   items: T[],
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let nextIndex = 0;
-  let failed = false;
-  let firstError: unknown;
+  const results: R[] = [];
+  const queue = [...items];
+  let active = 0;
+  let index = 0;
+  let reject: (reason?: any) => void;
 
-  const worker = async () => {
-    while (!failed) {
-      const idx = nextIndex++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = await fn(items[idx], idx);
-      } catch (error) {
-        if (!failed) {
-          failed = true;
-          firstError = error;
-        }
+  return new Promise((resolve, rejectFn) => {
+    reject = rejectFn;
+    const next = async () => {
+      if (queue.length === 0 && active === 0) {
+        resolve(results);
         return;
       }
-    }
-  };
-
-  const workerCount = Math.max(1, Math.min(concurrency, items.length));
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  if (failed) throw firstError;
-  return results;
+      while (active < concurrency && queue.length > 0) {
+        const item = queue.shift()!;
+        const idx = index++;
+        active++;
+        fn(item, idx)
+          .then((res) => {
+            results[idx] = res;
+            active--;
+            next();
+          })
+          .catch((err) => {
+            reject(err);
+          });
+      }
+    };
+    next();
+  });
 }
 
 // =============================================================================
@@ -186,74 +191,46 @@ const withFileLock = async <T,>(
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const queued = previous.then(() => gate);
-  fileWriteQueues.set(filePath, queued);
+  fileWriteQueues.set(
+    filePath,
+    previous.then(() => gate),
+  );
 
   await previous;
   try {
     return await task();
   } finally {
     release!();
-    // Remove the queue entry only if no later writer has queued behind us.
-    if (fileWriteQueues.get(filePath) === queued) {
+    // Clean up the map entry if nothing else queued behind us, so it
+    // doesn't grow unbounded over a long session.
+    if (fileWriteQueues.get(filePath) === previous.then(() => gate)) {
       fileWriteQueues.delete(filePath);
     }
   }
 };
 
-// Replace JSON files through a temporary file and backup. On platforms where
-// moveAsync cannot overwrite an existing destination, keep the old file until
-// the new file is safely in place so a failed write doesn't erase good data.
+// Atomic write: write to a uniquely-named .tmp file then move it into place
+// (delete existing dest for Android). Serialized per destination path via
+// withFileLock so concurrent writers targeting the same novel/index file
+// can't race each other's tmp file or move.
 const writeJsonFileAtomic = async (filePath: string, data: any) => {
   await withFileLock(filePath, async () => {
-    const uniqueSuffix = `${Date.now()}.${Math.random().toString(36).slice(2)}`;
-    const tempPath = `${filePath}.tmp.${uniqueSuffix}`;
-    const backupPath = `${filePath}.bak.${uniqueSuffix}`;
-    let backupCreated = false;
-
+    const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random()
+      .toString(36)
+      .slice(2)}`;
     try {
       await FileSystem.writeAsStringAsync(tempPath, JSON.stringify(data));
+      // Android's moveAsync fails if destination exists, so delete it first
       const destInfo = await FileSystem.getInfoAsync(filePath);
       if (destInfo.exists) {
-        await FileSystem.moveAsync({ from: filePath, to: backupPath });
-        backupCreated = true;
+        await FileSystem.deleteAsync(filePath, { idempotent: true });
       }
-
-      try {
-        await FileSystem.moveAsync({ from: tempPath, to: filePath });
-      } catch (error) {
-        // Restore the previous known-good file if installing the new file fails.
-        if (backupCreated) {
-          const currentInfo = await FileSystem.getInfoAsync(filePath);
-          if (!currentInfo.exists) {
-            await FileSystem.moveAsync({ from: backupPath, to: filePath });
-            backupCreated = false;
-          }
-        }
-        throw error;
-      }
-
-      if (backupCreated) {
-        await FileSystem.deleteAsync(backupPath, { idempotent: true });
-        backupCreated = false;
-      }
+      await FileSystem.moveAsync({ from: tempPath, to: filePath });
     } catch (error) {
+      // Best-effort cleanup of the tmp file if the write/move failed partway.
       await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(
         () => {},
       );
-      // If the primary operation failed after backing up, make one final
-      // best-effort attempt to restore the original file.
-      if (backupCreated) {
-        try {
-          const currentInfo = await FileSystem.getInfoAsync(filePath);
-          if (!currentInfo.exists) {
-            await FileSystem.moveAsync({ from: backupPath, to: filePath });
-            backupCreated = false;
-          }
-        } catch {
-          // Leave the backup in place for recovery rather than deleting it.
-        }
-      }
       throw error;
     }
   });
@@ -1128,15 +1105,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         saveOffset = 0;
       }
 
-      // Persist chapter content before publishing the updated metadata/index.
-      // If chapter persistence fails, the library index remains unchanged.
-      await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
-
-      // Write novel metadata, then update the index as the visible commit point.
+      // Write novel file (full metadata)
       const novelToWrite = updatedNovels.find((n) => n.id === novel.id)!;
       await writeNovelFile(novelToWrite);
+
+      // Update index (add id to front)
       const currentIds = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: currentIds, sortOrder });
+
+      // Save chapters (content) separately
+      await saveAllChaptersToFile(novel.id, newChaptersToSave, saveOffset);
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
@@ -1180,7 +1158,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const ids = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: ids, sortOrder: sortOrder });
       // Delete chapters
-      await deleteNovelChapters(id);
+      deleteNovelChapters(id);
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
@@ -1201,7 +1179,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const newIds = updatedNovels.map((n) => n.id);
       await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
       // Delete chapters
-      await Promise.all(ids.map((id) => deleteNovelChapters(id)));
+      ids.forEach((id) => deleteNovelChapters(id));
 
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
