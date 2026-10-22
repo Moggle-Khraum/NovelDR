@@ -347,30 +347,30 @@ router.post(
   scrapeRateLimit,
   scrapeConcurrencyLimit,
   async (req, res) => {
-  const { url } = req.body as { url: string };
-  if (typeof url !== "string" || !url.trim()) {
-    res.status(400).json({ error: "A valid URL is required" });
-    return;
-  }
-  if (!isAllowedNovelUrl(url)) {
-    res.status(400).json({ error: "URL is not from a supported source" });
-    return;
-  }
-  try {
-    const response = await httpClient.get(url);
-    const html = response.data as string;
-    const content = extractChapterContent(html);
-    const chapterNum = parseInt(
-      (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
-      10,
-    );
-    const title = extractChapterTitle(html, chapterNum);
-    const nextUrl = extractNextChapterUrl(html, url);
-    res.json({ title, content, nextUrl });
-  } catch (e: any) {
-    req.log.error({ err: e }, "Failed to scrape chapter");
-    res.status(500).json({ error: e.message || "Failed to fetch chapter" });
-  }
+    const { url } = req.body as { url: string };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
+    }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const response = await httpClient.get(url);
+      const html = response.data as string;
+      const content = extractChapterContent(html);
+      const chapterNum = parseInt(
+        (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
+        10,
+      );
+      const title = extractChapterTitle(html, chapterNum);
+      const nextUrl = extractNextChapterUrl(html, url);
+      res.json({ title, content, nextUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to scrape chapter");
+      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
+    }
   },
 );
 
@@ -379,66 +379,66 @@ router.post(
   scrapeRateLimit,
   scrapeConcurrencyLimit,
   async (req, res) => {
-  const { url } = req.body as { url: string };
-  if (typeof url !== "string" || !url.trim()) {
-    res.status(400).json({ error: "A valid URL is required" });
-    return;
-  }
-  if (!isAllowedNovelUrl(url)) {
-    res.status(400).json({ error: "URL is not from a supported source" });
-    return;
-  }
-  try {
-    const site = detectSite(url);
-    const title = extractTitleFromUrl(url);
-
-    let pageUrl = url;
-    let html: string;
-
-    const resp = await httpClient.get(url);
-    html = resp.data as string;
-
-    if (site.isChapterPage) {
-      const novelUrl = getNovelMainPageUrl(html, url);
-      if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
-        try {
-          const novelResp = await httpClient.get(novelUrl);
-          html = novelResp.data as string;
-          pageUrl = novelUrl;
-        } catch {}
-      }
+    const { url } = req.body as { url: string };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
     }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const site = detectSite(url);
+      const title = extractTitleFromUrl(url);
 
-    const { coverUrl, author, synopsis } = extractNovelMeta(
-      html,
-      pageUrl,
-      site,
-    );
+      let pageUrl = url;
+      let html: string;
 
-    let firstChapterUrl: string | null = null;
-    if (!site.isChapterPage) {
-      if (site.isFreeWebNovel) {
-        const root = parse(html);
-        const ul = root.querySelector("ul.ul-list5");
-        if (ul) {
-          const firstA = ul.querySelector("li a");
-          if (firstA) {
-            const href = firstA.getAttribute("href");
-            if (href) firstChapterUrl = ensureAbsoluteUrl(href, url);
+      const resp = await httpClient.get(url);
+      html = resp.data as string;
+
+      if (site.isChapterPage) {
+        const novelUrl = getNovelMainPageUrl(html, url);
+        if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
+          try {
+            const novelResp = await httpClient.get(novelUrl);
+            html = novelResp.data as string;
+            pageUrl = novelUrl;
+          } catch {}
+        }
+      }
+
+      const { coverUrl, author, synopsis } = extractNovelMeta(
+        html,
+        pageUrl,
+        site,
+      );
+
+      let firstChapterUrl: string | null = null;
+      if (!site.isChapterPage) {
+        if (site.isFreeWebNovel) {
+          const root = parse(html);
+          const ul = root.querySelector("ul.ul-list5");
+          if (ul) {
+            const firstA = ul.querySelector("li a");
+            if (firstA) {
+              const href = firstA.getAttribute("href");
+              if (href) firstChapterUrl = ensureAbsoluteUrl(href, url);
+            }
           }
+        } else {
+          firstChapterUrl = getFirstChapterUrl(html, url);
         }
       } else {
-        firstChapterUrl = getFirstChapterUrl(html, url);
+        firstChapterUrl = url;
       }
-    } else {
-      firstChapterUrl = url;
-    }
 
-    res.json({ title, author, synopsis, coverUrl, firstChapterUrl });
-  } catch (e: any) {
-    req.log.error({ err: e }, "Failed to fetch novel meta");
-    res.status(500).json({ error: e.message || "Failed to fetch metadata" });
-  }
+      res.json({ title, author, synopsis, coverUrl, firstChapterUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to fetch novel meta");
+      res.status(500).json({ error: e.message || "Failed to fetch metadata" });
+    }
   },
 );
 
@@ -447,30 +447,30 @@ router.post(
   scrapeRateLimit,
   scrapeConcurrencyLimit,
   async (req, res) => {
-  const { url, chapterNum } = req.body as { url: string; chapterNum: number };
-  if (typeof url !== "string" || !url.trim()) {
-    res.status(400).json({ error: "A valid URL is required" });
-    return;
-  }
-  if (!Number.isSafeInteger(chapterNum) || chapterNum < 1) {
-    res.status(400).json({ error: "chapterNum must be a positive integer" });
-    return;
-  }
-  if (!isAllowedNovelUrl(url)) {
-    res.status(400).json({ error: "URL is not from a supported source" });
-    return;
-  }
-  try {
-    const response = await httpClient.get(url);
-    const html = response.data as string;
-    const content = extractChapterContent(html);
-    const title = extractChapterTitle(html, chapterNum);
-    const nextUrl = extractNextChapterUrl(html, url);
-    res.json({ url, title, content, nextUrl });
-  } catch (e: any) {
-    req.log.error({ err: e }, "Failed to fetch next chapter");
-    res.status(500).json({ error: e.message || "Failed to fetch chapter" });
-  }
+    const { url, chapterNum } = req.body as { url: string; chapterNum: number };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
+    }
+    if (!Number.isSafeInteger(chapterNum) || chapterNum < 1) {
+      res.status(400).json({ error: "chapterNum must be a positive integer" });
+      return;
+    }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const response = await httpClient.get(url);
+      const html = response.data as string;
+      const content = extractChapterContent(html);
+      const title = extractChapterTitle(html, chapterNum);
+      const nextUrl = extractNextChapterUrl(html, url);
+      res.json({ url, title, content, nextUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to fetch next chapter");
+      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
+    }
   },
 );
 
