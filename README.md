@@ -29,22 +29,6 @@
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
 
-### API server CORS configuration
-
-If you deploy `artifacts/api-server` and a browser-based client needs to call it, set
-`CORS_ORIGINS` in the API server environment to a comma-separated list of exact
-origins, including the scheme and port when applicable. For example:
-
-```sh
-CORS_ORIGINS=https://reader.example.com,https://admin.example.com
-```
-
-Do not include URL paths or trailing slashes unless they are actually part of the
-origin (normally they are not). Requests without an `Origin` header, such as
-native app requests, are allowed; browser requests with an origin not in this
-list are not granted CORS access. CORS is a browser policy, not authentication or
-API access control. Keep the list limited to trusted browser origins.
-
 ---
 
 <a id="download-counts"></a>
