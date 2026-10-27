@@ -32,6 +32,7 @@ import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useCrashLogger, logRenderError } from "@/hooks/useCrashLogger";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 import { loadReaderFonts } from "@/lib/readerFonts";
 
 SplashScreen.preventAutoHideAsync();
@@ -342,6 +343,7 @@ export default Sentry.wrap(function RootLayout() {
   // alongside Sentry's own handler (not replacing it). Local rotating
   // log lives on-device so it's viewable even without Sentry access.
   useCrashLogger();
+  useOnlinePresence();
 
   const connectivity = useConnectivity();
   const [bannerState, setBannerState] = useState<{
