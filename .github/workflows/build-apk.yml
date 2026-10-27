@@ -38,6 +38,12 @@ jobs:
         working-directory: artifacts/novel-reader
         run: eas init --non-interactive --force
 
+      - name: Free disk space on runner
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
