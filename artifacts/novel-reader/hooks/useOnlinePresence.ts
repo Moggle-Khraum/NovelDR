@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-const ONLINE_URL = "wss://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/ws";
+const ONLINE_URL = "wss://noveldr-online.noveldr-log.workers.dev/ws";
 const FIRST_CONNECT_DELAY_MS = 10_000;
 const PING_MS = 30_000;
 const MAX_BACKOFF_MS = 60_000;
