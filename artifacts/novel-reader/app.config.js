@@ -70,7 +70,7 @@ export default () => {
           "expo-build-properties",
           {
             android: {
-              buildArchs: ["arm64-v8a"],
+              buildArchs: ["arm64-v8a", "armeabi-v7a", "x86_64"],
             },
           },
         ],
