@@ -1,13 +1,20 @@
 version: 2
 updates:
-  # App dependencies (pnpm workspace) — grouped into one weekly PR instead of
-  # one PR per package, since this repo is edited through the GitHub web UI
-  # only and a flood of individual PRs isn't practical to review that way.
+  # App dependencies (pnpm workspace). The workspace has ONE lockfile at the
+  # root (pnpm-lock.yaml), so this must point at "/" -- pointing it at
+  # /artifacts/novel-reader would update package.json without the lockfile
+  # and break CI's --frozen-lockfile install.
+  #
+  # Updates are grouped into one weekly PR instead of one PR per package,
+  # since this repo is edited through the GitHub web UI only and a flood of
+  # individual PRs isn't practical to review that way.
   - package-ecosystem: "npm"
-    directory: "/artifacts/novel-reader"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "06:00"
+      timezone: "Asia/Manila"
     open-pull-requests-limit: 5
     groups:
       expo-and-react-native:
@@ -15,8 +22,23 @@ updates:
           - "expo*"
           - "react-native*"
           - "@expo/*"
+        update-types:
+          - "minor"
+          - "patch"
       dev-dependencies:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # SDK and major upgrades are planned changes, not weekly PRs.
+      # Security fixes still come through regardless of these holds.
+      - dependency-name: "expo*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
 
@@ -26,5 +48,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "06:00"
+      timezone: "Asia/Manila"
     commit-message:
       prefix: "chore(ci)"
