@@ -13,10 +13,21 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Move this here
     steps:
       - name: Free disk space on runner
-        run: |
-          df -h /
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
-          df -h /
+        run: df -h /
+
+      - name: Remove unused preinstalled software
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          tool-cache: false
+          swap-storage: true
+
+      - name: Check disk space after cleanup
+        run: df -h /
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,16 +43,12 @@ jobs:
           version: 10.26.1
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Install Expo packages
-        working-directory: artifacts/novel-reader
-        run: pnpm add expo-file-system expo-sharing @sentry/react-native && pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 25.3.0
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Initialize EAS project
