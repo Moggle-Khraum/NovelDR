@@ -67,6 +67,14 @@ export default () => {
       },
       plugins: [
         [
+          "expo-build-properties",
+          {
+            android: {
+              buildArchs: ["arm64-v8a"],
+            },
+          },
+        ],
+        [
           "expo-router",
           {
             origin: "https://replit.com/",
