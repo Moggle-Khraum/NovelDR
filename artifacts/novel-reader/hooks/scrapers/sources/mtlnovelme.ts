@@ -39,8 +39,7 @@ const slugFromNovelUrl = (url: string): string | null => {
  * sentence. Those paragraphs are dropped whole, because cutting only the
  * watermark leaves a broken sentence behind.
  */
-const isWatermarkParagraph = (text: string): boolean =>
-  /uukanshu/i.test(text);
+const isWatermarkParagraph = (text: string): boolean => /uukanshu/i.test(text);
 
 const paragraphsFrom = (block: string): string[] =>
   [...block.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)]
@@ -64,10 +63,7 @@ const isChapterUrl = (url: string | null): boolean => {
 
 /** First chapter link from a chapter-list fragment (ajax or in-page). */
 const firstChapterHref = (fragment: string): string | null =>
-  safeMatch(
-    fragment,
-    /<p class="update-box-chapter">\s*<a href="([^"]+)"/i,
-  );
+  safeMatch(fragment, /<p class="update-box-chapter">\s*<a href="([^"]+)"/i);
 
 export const mtlNovelMeScraper: SourceScraper = {
   id: "mtlnovel-me",
@@ -128,7 +124,11 @@ export const mtlNovelMeScraper: SourceScraper = {
     const synopsis = summaryBlock
       .replace(/<br\s*\/?>/gi, "\n")
       .split("\n")
-      .map((line) => decodeEntities(stripTags(line)).replace(/\u00a0/g, " ").trim())
+      .map((line) =>
+        decodeEntities(stripTags(line))
+          .replace(/\u00a0/g, " ")
+          .trim(),
+      )
       .filter((line) => line.length > 0)
       .join("\n\n");
 
