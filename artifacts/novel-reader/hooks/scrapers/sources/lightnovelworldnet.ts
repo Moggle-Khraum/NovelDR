@@ -41,7 +41,9 @@ const looksLikeChallengePage = (html: string): boolean =>
 const paragraphsFrom = (block: string): string[] =>
   [...block.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)]
     .map((m) =>
-      decodeEntities(stripTags(m[1])).replace(/\u00a0/g, " ").trim(),
+      decodeEntities(stripTags(m[1]))
+        .replace(/\u00a0/g, " ")
+        .trim(),
     )
     .filter((t) => t.length > 0 && !isJunk(t));
 
@@ -84,8 +86,10 @@ export const lightNovelWorldNetScraper: SourceScraper = {
 
     // <h1 class="entry-title" itemprop="name">Title</h1>
     const title = decodeEntities(
-      safeMatch(html, /<h1[^>]*class="entry-title"[^>]*>\s*([^<]+?)\s*<\/h1>/i) ??
-        "Unknown Title",
+      safeMatch(
+        html,
+        /<h1[^>]*class="entry-title"[^>]*>\s*([^<]+?)\s*<\/h1>/i,
+      ) ?? "Unknown Title",
     ).trim();
 
     // <div class="serl"><span class="sername">Author</span>
@@ -124,7 +128,9 @@ export const lightNovelWorldNetScraper: SourceScraper = {
       .replace(/<\/p>/gi, "\n")
       .split("\n")
       .map((line) =>
-        decodeEntities(stripTags(line)).replace(/\u00a0/g, " ").trim(),
+        decodeEntities(stripTags(line))
+          .replace(/\u00a0/g, " ")
+          .trim(),
       )
       .filter((line) => line.length > 0 && !/^(More|Less)$/i.test(line))
       .join("\n\n");
@@ -135,8 +141,7 @@ export const lightNovelWorldNetScraper: SourceScraper = {
       safeMatch(
         html,
         /<li[^>]*class="tseplsfrst"[^>]*>\s*<a href="([^"]+)"/i,
-      ) ??
-      safeMatch(html, /<a href="([^"]+)">\s*<span>First Chapter<\/span>/i);
+      ) ?? safeMatch(html, /<a href="([^"]+)">\s*<span>First Chapter<\/span>/i);
     const firstChapterUrl = firstHref
       ? makeAbsoluteUrl(decodeEntities(firstHref), url)
       : null;
@@ -181,7 +186,9 @@ export const lightNovelWorldNetScraper: SourceScraper = {
       extractByDepth(html, 'class="novel-content"') ??
       extractByDepth(html, 'class="epcontent');
     if (!block) {
-      throw new Error(`lightnovelworld.net: chapter content not found for ${url}`);
+      throw new Error(
+        `lightnovelworld.net: chapter content not found for ${url}`,
+      );
     }
 
     let paragraphs = paragraphsFrom(
