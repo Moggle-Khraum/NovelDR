@@ -308,6 +308,16 @@ const deleteNovelFile = async (novelId: string) => {
   await deleteFile(getNovelFilePath(novelId));
 };
 
+// Same as deleteNovelFile, but throws on failure so batch removal can tell
+// which novels were actually deleted.
+const deleteNovelFileOrThrow = async (novelId: string) => {
+  const filePath = getNovelFilePath(novelId);
+  const fileInfo = await FileSystem.getInfoAsync(filePath);
+  if (fileInfo.exists) {
+    await FileSystem.deleteAsync(filePath);
+  }
+};
+
 // Chapter file helpers (unchanged)
 const saveChapterToFile = async (
   novelId: string,
@@ -792,6 +802,11 @@ const extractChapterNumber = (chapter: Chapter): number | null => {
 // CONTEXT
 // =============================================================================
 
+export type RemoveNovelsResult = {
+  deleted: string[];
+  failed: string[];
+};
+
 type LibraryContextType = {
   novels: Novel[];
   loading: boolean;
@@ -800,7 +815,10 @@ type LibraryContextType = {
   addNovel: (novel: Novel) => Promise<void>;
   updateNovel: (id: string, updates: Partial<Novel>) => Promise<void>;
   removeNovel: (id: string) => Promise<void>;
-  removeNovels: (ids: string[]) => Promise<void>;
+  removeNovels: (
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+  ) => Promise<RemoveNovelsResult>;
   getNovel: (id: string) => Novel | undefined;
   saveReadingProgress: (
     novelId: string,
@@ -1190,20 +1208,61 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   // ── removeNovels ─────────────────────────────────────────────────────────
 
   const removeNovels = useCallback(
-    async (ids: string[]) => {
-      const updatedNovels = novelsRef.current.filter(
-        (n) => !ids.includes(n.id),
-      );
-      // Delete each novel file
-      await Promise.all(ids.map((id) => deleteNovelFile(id)));
-      // Update index
-      const newIds = updatedNovels.map((n) => n.id);
-      await writeIndexFile({ novelIds: newIds, sortOrder: sortOrder });
-      // Delete chapters
-      await Promise.all(ids.map((id) => deleteNovelChapters(id)));
+    async (
+      ids: string[],
+      onProgress?: (done: number, total: number) => void,
+    ): Promise<RemoveNovelsResult> => {
+      const total = ids.length;
+      let done = 0;
 
-      novelsRef.current = updatedNovels;
-      setNovels(updatedNovels);
+      // Delete each novel file. A failure is recorded, not thrown, so one bad
+      // file doesn't stop the rest of the batch.
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            await deleteNovelFileOrThrow(id);
+            return { id, ok: true };
+          } catch (error) {
+            console.error("[Library] Failed to delete novel file:", id, error);
+            return { id, ok: false };
+          } finally {
+            done += 1;
+            onProgress?.(done, total);
+          }
+        }),
+      );
+
+      const deleted = results.filter((r) => r.ok).map((r) => r.id);
+      const failed = results.filter((r) => !r.ok).map((r) => r.id);
+
+      if (deleted.length > 0) {
+        const updatedNovels = novelsRef.current.filter(
+          (n) => !deleted.includes(n.id),
+        );
+        novelsRef.current = updatedNovels;
+        setNovels(updatedNovels);
+
+        // The files are already gone, so keep the index in step with them.
+        try {
+          await writeIndexFile({
+            novelIds: updatedNovels.map((n) => n.id),
+            sortOrder: sortOrder,
+          });
+        } catch (error) {
+          console.error("[Library] Failed to update library index:", error);
+        }
+
+        // Chapter cleanup is best-effort; the novel is already out of the library.
+        await Promise.all(
+          deleted.map((id) =>
+            deleteNovelChapters(id).catch((error) =>
+              console.error("[Library] Failed to delete chapters:", id, error),
+            ),
+          ),
+        );
+      }
+
+      return { deleted, failed };
     },
     [sortOrder],
   );
@@ -1336,6 +1395,11 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── deleteChapters ──────────────────────────────────────────────────────
+  //
+  // Order matters. The surviving chapters are written to a staging folder
+  // first, then the folders are swapped. The old folder is only deleted once
+  // the swap has succeeded, so a failure at any step leaves the chapters on
+  // disk as they were.
 
   const deleteChapters = useCallback(
     async (
@@ -1344,34 +1408,79 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       onProgress?: (done: number, total: number) => void,
     ) => {
       const novel = novelsRef.current.find((n) => n.id === novelId);
-      if (!novel) return;
+      if (!novel) throw new Error("This novel is no longer in your library.");
 
       const urlsToDelete = new Set(chapterUrls);
       const oldChapters = novel.chapters;
+      const keepIndexes = oldChapters
+        .map((_, i) => i)
+        .filter((i) => !urlsToDelete.has(oldChapters[i].url));
+      const total = keepIndexes.length;
 
-      const survivingContent: (Chapter | null)[] = [];
-      for (let i = 0; i < oldChapters.length; i++) {
-        if (urlsToDelete.has(oldChapters[i].url)) continue;
-        survivingContent.push(await loadChapterFromFile(novelId, i));
-      }
+      const chaptersDir = getNovelChaptersPath(novelId);
+      const stagingDir = `${getChaptersPath()}${novelId}.staging/`;
+      const backupDir = `${getChaptersPath()}${novelId}.backup/`;
 
-      const newChapters = oldChapters.filter((ch) => !urlsToDelete.has(ch.url));
-      const total = survivingContent.length;
+      await ensureDirectoryExists(getChaptersPath());
+      // Clear anything an earlier, interrupted attempt left behind
+      await FileSystem.deleteAsync(stagingDir, { idempotent: true });
+      await FileSystem.deleteAsync(backupDir, { idempotent: true });
+      await ensureDirectoryExists(stagingDir);
 
-      await deleteNovelChapters(novelId);
-      onProgress?.(0, total);
-      for (let i = 0; i < survivingContent.length; i++) {
-        const data = survivingContent[i];
-        if (data?.content) {
-          await saveChapterToFile(novelId, i, {
-            title: data.title,
-            url: data.url,
-            content: data.content,
-            chapterNumber: data.chapterNumber,
-          });
+      // 1. Stage the survivors, renumbered from 0. A chapter that was never
+      //    downloaded has no file, so it stays without one, as before.
+      try {
+        for (let newIndex = 0; newIndex < total; newIndex++) {
+          const data = await loadChapterFromFile(
+            novelId,
+            keepIndexes[newIndex],
+          );
+          if (data?.content) {
+            await FileSystem.writeAsStringAsync(
+              `${stagingDir}chapter_${newIndex}.json`,
+              JSON.stringify({
+                title: data.title,
+                url: data.url,
+                content: data.content,
+                chapterNumber: data.chapterNumber,
+              }),
+            );
+          }
+          onProgress?.(newIndex + 1, total);
         }
-        onProgress?.(i + 1, total);
+      } catch (error) {
+        await FileSystem.deleteAsync(stagingDir, { idempotent: true }).catch(
+          () => {},
+        );
+        throw error;
       }
+
+      // 2. Swap the folders. The old folder is moved aside, not deleted.
+      const hadDir = (await FileSystem.getInfoAsync(chaptersDir)).exists;
+      if (hadDir) {
+        await FileSystem.moveAsync({ from: chaptersDir, to: backupDir });
+      }
+      try {
+        await FileSystem.moveAsync({ from: stagingDir, to: chaptersDir });
+      } catch (error) {
+        // Put the original chapters back before reporting the failure
+        if (hadDir) {
+          await FileSystem.moveAsync({
+            from: backupDir,
+            to: chaptersDir,
+          }).catch((restoreError) =>
+            console.error("[Library] Could not restore chapters:", restoreError),
+          );
+        }
+        throw error;
+      }
+      await FileSystem.deleteAsync(backupDir, { idempotent: true }).catch(
+        (error) =>
+          console.error("[Library] Could not remove old chapter folder:", error),
+      );
+
+      // 3. Update the novel record: chapter list and reading position
+      const newChapters = oldChapters.filter((ch) => !urlsToDelete.has(ch.url));
 
       let newLastRead = novel.lastRead;
       if (novel.lastRead) {
@@ -1403,7 +1512,6 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       novelsRef.current = updatedNovels;
       setNovels(updatedNovels);
 
-      // Write the updated novel file
       await writeNovelFile(updatedNovel);
     },
     [],
