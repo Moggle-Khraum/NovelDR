@@ -34,7 +34,6 @@ export const SUPPORTED_SITES = [
   { name: "FanMTL", baseUrl: "https://fanmtl.com/" },
   { name: "WuxiaBox", baseUrl: "https://www.wuxiabox.com/" },
   { name: "WuxiaClick", baseUrl: "https://wuxia.click/" },
-  { name: "LightNovelWorldNet", baseUrl: "https://lightnovelworld.net/" },
   { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/" },
 ];
 
