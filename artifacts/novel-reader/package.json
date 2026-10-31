@@ -6,7 +6,7 @@
   "dependencies": {
     "@notifee/react-native": "^9.1.8",
     "axios": "^1.18.0",
-    "entities": "^4.5.0",
+    "entities": "^8.1.0",
     "expo-print": "~15.0.8",
     "expo-speech": "~14.0.8",
     "expo-sharing": "~14.0.8",
