@@ -35,6 +35,7 @@ export const SUPPORTED_SITES = [
   { name: "WuxiaBox", baseUrl: "https://www.wuxiabox.com/" },
   { name: "WuxiaClick", baseUrl: "https://wuxia.click/" },
   { name: "LightNovelWorldNet", baseUrl: "https://lightnovelworld.net/" },
+  { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/" },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
