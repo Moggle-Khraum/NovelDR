@@ -78,7 +78,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [ReadNovelFull](https://readnovelfull.com/)     | ✅ Site Active | [NovelFull.com](https://novelfull.com/)     | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
 | [NovelFull.net](https://novelfull.net/)         | ✅ Site Active | [AllNovel](https://allnovel.org/)           | ✅ Site Active | [NovelPing](https://novelping.com/)| ✅ Site Active |
 | [FreeWebNovel](https://freewebnovel.com/)       | ✅ Site Active | [NovGo](https://novgo.net/)                 | ✅ Site Active | [NovelArchive.cc](https://novelarchive.cc/)     | ✅ Site Active  |
-| [LightNovelWorld](https://lightnovelworld.org/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active | [FanMTL](https://fanmtl.com/)     | ✅ Site Active  |
+|  | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active | [FanMTL](https://fanmtl.com/)     | ✅ Site Active  |
 | [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active | [WuxiaBox](https://www.wuxiabox.com/) |  ✅ Site Active  |
 | [NovelPhoenix](https://novelphoenix.com/)       | ✅ Site Active | [Novel-bin](https://novel-bin.com/)         | ✅ Site Active | [WuxiaClick](https://wuxia.click/) |  ✅ Site Active  |
 
@@ -91,7 +91,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | Source Domain                       | Status       | Source Domain                         | Status       |
 | ----------------------------------- | ------------ | ------------------------------------- | ------------ |
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
-| [NovelArrow](https://novelarrow.com/)   | ❌ Changed Domain |                              |              |
+| [NovelArrow](https://novelarrow.com/)   | ❌ Changed Domain | [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead |
 
 ---
 
