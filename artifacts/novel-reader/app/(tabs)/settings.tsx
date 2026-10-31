@@ -3229,27 +3229,6 @@ export default function SettingsScreen() {
                 <Pressable
                   onPress={() =>
                     Linking.openURL(
-                      "https://github.com/TUVIMEN/lightnovelworld",
-                    )
-                  }
-                >
-                  <Text
-                    style={[styles.creditsItemLink, { color: colors.accent }]}
-                  >
-                    @TUVIMEN/lightnovelworld
-                  </Text>
-                </Pressable>
-                <Text
-                  style={[
-                    styles.creditsItemDesc,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Forked LightNovelWorld Scraper into the App.
-                </Text>
-                <Pressable
-                  onPress={() =>
-                    Linking.openURL(
                       "https://github.com/lncrawl/lightnovel-crawler/tree/dev",
                     )
                   }
@@ -3281,6 +3260,36 @@ export default function SettingsScreen() {
                     @Rudransh-Susarla-1802/Novel_Project
                   </Text>
                 </Pressable>
+                <Text
+                  style={[
+                    styles.creditsItemDesc,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Adapted and ported NovelArrow scraper to the App.
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      "https://github.com/5ghzx/novelarchive-lnreader",
+                    )
+                  }
+                >
+                  <Text
+                    style={[styles.creditsItemLink, { color: colors.accent }]}
+                  >
+                    @5ghzx/novelarchive-lnreader
+                  </Text>
+                </Pressable>
+                <Text
+                  style={[
+                    styles.creditsItemDesc,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Adapted and ported the NovelArchive Extension into a Source
+                  Scraper.
+                </Text>
 
                 {/* ═══════════════════════════════════════════════════════════════
                     TEMPLATE: Add more WebNovel Source Scrapers here
