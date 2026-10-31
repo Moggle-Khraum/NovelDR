@@ -22,7 +22,6 @@ import { novelArchiveCcScraper } from "./sources/novelarchivecc";
 import { fanMtlScraper } from "./sources/fanmtl";
 import { wuxiaBoxScraper } from "./sources/wuxiabox";
 import { wuxiaClickScraper } from "./sources/wuxiaclick";
-import { lightNovelWorldNetScraper } from "./sources/lightnovelworldnet";
 import { mtlNovelMeScraper } from "./sources/mtlnovelme";
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
@@ -43,7 +42,6 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   fanMtlScraper,
   wuxiaBoxScraper,
   wuxiaClickScraper,
-  lightNovelWorldNetScraper,
   mtlNovelMeScraper,
 ];
 
