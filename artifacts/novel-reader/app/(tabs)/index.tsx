@@ -50,6 +50,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "allnovel.org": "AllNovel",
       "novgo.net": "NovGoNet",
       //"lightnovelworld.org": "LightNovelWorld",
+      "lightnovelworld.net": "LightNovelWorldNet",
       "wuxiaworld.site": "WuxiaWorldSite",
       "asianovel.net": "AsiaNovel",
       "novelphoenix.com": "NovelPhoenix",

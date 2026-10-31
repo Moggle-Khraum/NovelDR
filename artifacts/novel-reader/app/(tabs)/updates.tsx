@@ -257,7 +257,7 @@ export default function UpdatesScreen() {
 
   // ─── Direct URL skip for predictable chapter URL patterns ───────────────────
   const isLightNovelWorld = (url: string): boolean =>
-    url.toLowerCase().includes("lightnovelworld");
+    url.toLowerCase().includes("lightnovelworld.org");
 
   // AsiaNovel chapter URLs (.../chapter/chapter-773154/) LOOK like they'd
   // match the generic chapter-N patterns below, but the number is an opaque
