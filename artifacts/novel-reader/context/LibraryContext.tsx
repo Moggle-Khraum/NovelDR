@@ -201,6 +201,14 @@ const withFileLock = async <T,>(
   }
 };
 
+// moveAsync cannot overwrite an existing destination on Android. Clear any
+// stale file at the destination first so a previous partial migration can't
+// make the rename fail.
+const moveReplacing = async (from: string, to: string) => {
+  await FileSystem.deleteAsync(to, { idempotent: true });
+  await FileSystem.moveAsync({ from, to });
+};
+
 // Replace JSON files through a temporary file and backup. On platforms where
 // moveAsync cannot overwrite an existing destination, keep the old file until
 // the new file is safely in place so a failed write doesn't erase good data.
@@ -454,10 +462,7 @@ const migrateToPerNovelFiles = async (
       });
       // Rename old file to avoid re‑attempt
       const backupPath = getLibraryFilePath() + ".migrated";
-      await FileSystem.moveAsync({
-        from: getLibraryFilePath(),
-        to: backupPath,
-      });
+      await moveReplacing(getLibraryFilePath(), backupPath);
       return true;
     }
 
@@ -519,19 +524,13 @@ const migrateToPerNovelFiles = async (
 
     // Clean up old files (rename to .migrated)
     const libraryBackup = getLibraryFilePath() + ".migrated";
-    await FileSystem.moveAsync({
-      from: getLibraryFilePath(),
-      to: libraryBackup,
-    });
+    await moveReplacing(getLibraryFilePath(), libraryBackup);
     const sortBackup = getSortPreferenceFilePath() + ".migrated";
     const sortExists = await FileSystem.getInfoAsync(
       getSortPreferenceFilePath(),
     );
     if (sortExists.exists) {
-      await FileSystem.moveAsync({
-        from: getSortPreferenceFilePath(),
-        to: sortBackup,
-      });
+      await moveReplacing(getSortPreferenceFilePath(), sortBackup);
     }
 
     // Final status
