@@ -22,16 +22,11 @@ const DEPRECATED_SITES: DeprecatedSite[] = [
     reason: "Changed domain",
     aliases: ["novelarrow.net", "novelarrow.com"],
   },
-    {
+  {
     domain: "lightnovelworld",
     reason: "Site Shutdown",
     aliases: [],
   },
-
-
-
-
-  
 ];
 
 /**
