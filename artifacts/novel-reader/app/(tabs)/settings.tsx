@@ -3239,7 +3239,7 @@ export default function SettingsScreen() {
                     @lncrawl/lightnovel-crawler
                   </Text>
                 </Pressable>
-                
+
                 <Text
                   style={[
                     styles.creditsItemDesc,
@@ -3248,7 +3248,7 @@ export default function SettingsScreen() {
                 >
                   Adapted and ported 3 novel scraper src into the App.
                 </Text>
-                
+
                 <Pressable
                   onPress={() =>
                     Linking.openURL(
