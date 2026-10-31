@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -446,6 +447,14 @@ export default function LibraryScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   // ── Invisible modal trick (optional fallback) ─────────────────────────────
   const [dummyModalVisible, setDummyModalVisible] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const deleteBarWidth = useSharedValue(0);
+  const deleteBarStyle = useAnimatedStyle(() => ({
+    width: `${deleteBarWidth.value * 100}%`,
+  }));
 
   // ── Refresh state ──────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
@@ -589,12 +598,22 @@ export default function LibraryScreen() {
     );
   };
 
+  const allVisibleSelected =
+    filteredNovels.length > 0 &&
+    filteredNovels.every((n) => selectedNovels.includes(n.id));
+
+  const toggleSelectAll = () => {
+    setSelectedNovels(
+      allVisibleSelected ? [] : filteredNovels.map((n) => n.id),
+    );
+  };
+
   const showFirstConfirmation = () => {
     if (selectedNovels.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       "Confirm Deletion",
-      `Remove ${selectedNovels.length} novel(s) from your Library?`,
+      `Remove ${selectedNovels.length} ${selectedNovels.length === 1 ? "novel" : "novels"} from your Library?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -609,10 +628,40 @@ export default function LibraryScreen() {
   const performBatchDelete = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setConfirmDeleteVisible(false);
-    await removeNovels(selectedNovels);
-    setSelectionMode(false);
-    setSelectedNovels([]);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const total = selectedNovels.length;
+    deleteBarWidth.value = 0;
+    setDeleteProgress({ done: 0, total });
+
+    try {
+      const { failed } = await removeNovels(selectedNovels, (done, t) => {
+        setDeleteProgress({ done, total: t });
+        deleteBarWidth.value = withTiming(done / t, { duration: 250 });
+      });
+
+      if (failed.length === 0) {
+        setSelectionMode(false);
+        setSelectedNovels([]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        // Keep the ones that failed selected so the user can retry them.
+        setSelectedNovels(failed);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Some novels were not deleted",
+          `${failed.length} of ${total} could not be removed. They are still selected, so you can try again.`,
+        );
+      }
+    } catch (error) {
+      console.error("[Library] Batch delete failed:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Delete failed",
+        "Something went wrong while deleting. Your library was not changed for the novels that could not be removed.",
+      );
+    } finally {
+      setDeleteProgress(null);
+    }
   };
 
   const handleNovelPress = (novel: Novel) => {
@@ -736,13 +785,32 @@ export default function LibraryScreen() {
         <Ionicons name="arrow-back" size={24} color={colors.text} />
       </Pressable>
       <Text style={[styles.selectionTitle, { color: colors.text }]}>
-        Selected: {selectedNovels.length}
+        {selectedNovels.length} selected
       </Text>
-      {selectedNovels.length > 0 && (
-        <Pressable onPress={showFirstConfirmation} style={styles.iconButton}>
-          <Ionicons name="trash-outline" size={24} color={colors.text} />
-        </Pressable>
-      )}
+      <View style={styles.selectionActions}>
+        {filteredNovels.length > 0 && (
+          <Pressable
+            onPress={toggleSelectAll}
+            style={styles.iconButton}
+            accessibilityLabel={allVisibleSelected ? "Clear selection" : "Select all"}
+          >
+            <Ionicons
+              name={allVisibleSelected ? "checkbox" : "checkbox-outline"}
+              size={24}
+              color={colors.text}
+            />
+          </Pressable>
+        )}
+        {selectedNovels.length > 0 && (
+          <Pressable
+            onPress={showFirstConfirmation}
+            style={styles.iconButton}
+            accessibilityLabel="Delete selected"
+          >
+            <Ionicons name="trash-outline" size={24} color={colors.text} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 
@@ -1022,7 +1090,8 @@ export default function LibraryScreen() {
             <Text
               style={[styles.modalMessage, { color: colors.textSecondary }]}
             >
-              This will permanently delete {selectedNovels.length} novel(s) and
+              This will permanently delete {selectedNovels.length}{" "}
+              {selectedNovels.length === 1 ? "novel" : "novels"} and
               all related chapters.{"\n\n"}
               Are you sure about this? {"\n\n"}
               If YES, click the &apos;DELETE&apos; button.
@@ -1058,6 +1127,39 @@ export default function LibraryScreen() {
                   DELETE
                 </Text>
               </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Batch Delete Progress */}
+      <Modal
+        visible={deleteProgress !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Deleting novels…
+            </Text>
+            <Text
+              style={[styles.modalMessage, { color: colors.textSecondary }]}
+            >
+              {deleteProgress?.done ?? 0} of {deleteProgress?.total ?? 0} done
+            </Text>
+            <View
+              style={[styles.progressTrack, { backgroundColor: colors.border }]}
+            >
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: colors.accent },
+                  deleteBarStyle,
+                ]}
+              />
             </View>
           </View>
         </View>
@@ -1099,6 +1201,15 @@ const styles = StyleSheet.create({
   headerSub: { fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 2 },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: { padding: 8 },
+  selectionActions: { flexDirection: "row" },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    width: "100%",
+    marginTop: 16,
+    overflow: "hidden",
+  },
+  progressFill: { height: "100%", borderRadius: 3 },
 
   // selection header
   selectionHeader: {
