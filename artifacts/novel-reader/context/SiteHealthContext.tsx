@@ -22,7 +22,7 @@ export const SUPPORTED_SITES = [
   { name: "AllNovelOrg", baseUrl: "https://allnovel.org/" },
   { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
   { name: "NovGoNet", baseUrl: "https://novgo.net/" },
-  { name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
+  //{ name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
   { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
