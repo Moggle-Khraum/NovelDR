@@ -792,7 +792,9 @@ export default function LibraryScreen() {
           <Pressable
             onPress={toggleSelectAll}
             style={styles.iconButton}
-            accessibilityLabel={allVisibleSelected ? "Clear selection" : "Select all"}
+            accessibilityLabel={
+              allVisibleSelected ? "Clear selection" : "Select all"
+            }
           >
             <Ionicons
               name={allVisibleSelected ? "checkbox" : "checkbox-outline"}
@@ -1091,8 +1093,8 @@ export default function LibraryScreen() {
               style={[styles.modalMessage, { color: colors.textSecondary }]}
             >
               This will permanently delete {selectedNovels.length}{" "}
-              {selectedNovels.length === 1 ? "novel" : "novels"} and
-              all related chapters.{"\n\n"}
+              {selectedNovels.length === 1 ? "novel" : "novels"} and all related
+              chapters.{"\n\n"}
               Are you sure about this? {"\n\n"}
               If YES, click the &apos;DELETE&apos; button.
             </Text>

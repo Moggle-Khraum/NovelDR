@@ -1469,14 +1469,20 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
             from: backupDir,
             to: chaptersDir,
           }).catch((restoreError) =>
-            console.error("[Library] Could not restore chapters:", restoreError),
+            console.error(
+              "[Library] Could not restore chapters:",
+              restoreError,
+            ),
           );
         }
         throw error;
       }
       await FileSystem.deleteAsync(backupDir, { idempotent: true }).catch(
         (error) =>
-          console.error("[Library] Could not remove old chapter folder:", error),
+          console.error(
+            "[Library] Could not remove old chapter folder:",
+            error,
+          ),
       );
 
       // 3. Update the novel record: chapter list and reading position
