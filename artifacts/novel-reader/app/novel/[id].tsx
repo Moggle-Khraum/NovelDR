@@ -24,7 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const BULK_DELETE_LOADING_THRESHOLD = 1;
+const BULK_DELETE_LOADING_THRESHOLD = 3;
 
 // Export format types
 type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
@@ -709,6 +709,14 @@ export default function NovelDetailScreen() {
       // prop below guarantees the list actually redraws immediately.
       setChapterListRefreshKey((k) => k + 1);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      // Keep the selection so the user can retry the same chapters
+      console.error("[Novel] Chapter delete failed:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Chapters not deleted",
+        "Something went wrong while deleting these chapters. Please try again.",
+      );
     } finally {
       if (showLoadingModal) setDeletingChapters(false);
     }
