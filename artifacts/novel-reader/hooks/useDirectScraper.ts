@@ -221,198 +221,6 @@ const fetchWithFallback = async (
   }
 };
 
-// ─── LIGHTNOVELWORLD helpers ──────────────────────────────────────────────────
-
-interface LnwFetchResult {
-  html: string;
-  fetchMethod: "fetch" | "fetch-proxy";
-  httpStatus: number;
-  contentType: string;
-}
-
-const fetchLightNovelWorld = async (url: string): Promise<LnwFetchResult> => {
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    Connection: "keep-alive",
-  };
-
-  try {
-    const response = await fetch(url, { headers });
-    const html = await response.text();
-    const chapterTextCount = (html.match(/id="chapterText"/g) || []).length;
-    const pTagCount = (html.match(/<p[\s>]/gi) || []).length;
-    console.log(
-      `[LNW] Raw HTML: ${html.length} chars, #chapterText: ${chapterTextCount}, <p> tags: ${pTagCount}`,
-    );
-    return {
-      html,
-      fetchMethod: "fetch",
-      httpStatus: response.status,
-      contentType: response.headers.get("content-type") || "unknown",
-    };
-  } catch (err: any) {
-    console.warn("[LNW] Direct fetch failed, trying proxy:", err.message);
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const proxyRes = await fetch(proxyUrl, { headers });
-    if (!proxyRes.ok) throw new Error(`Proxy HTTP ${proxyRes.status}`);
-    const html = await proxyRes.text();
-    return {
-      html,
-      fetchMethod: "fetch-proxy",
-      httpStatus: proxyRes.status,
-      contentType: proxyRes.headers.get("content-type") || "unknown",
-    };
-  }
-};
-
-const lnwExtractInnerHtml = (html: string): string | null => {
-  const primaryMarker = 'id="chapterText"';
-  let start = html.indexOf(primaryMarker);
-  let usedFallback = false;
-
-  if (start === -1) {
-    start = html.indexOf('class="chapter-text');
-    if (start === -1) return null;
-    usedFallback = true;
-    console.log("[LNW] Fallback selector (.chapter-text) matched");
-  } else {
-    console.log("[LNW] Primary selector (#chapterText) matched");
-  }
-
-  const openTagEnd = html.indexOf(">", start);
-  if (openTagEnd === -1) return null;
-
-  let depth = 1;
-  let i = openTagEnd + 1;
-
-  while (i < html.length && depth > 0) {
-    const nextOpen = html.indexOf("<div", i);
-    const nextClose = html.indexOf("</div", i);
-    if (nextClose === -1) break;
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      depth++;
-      i = nextOpen + 4;
-    } else {
-      depth--;
-      i = nextClose + 5;
-    }
-  }
-
-  let inner = html.slice(openTagEnd + 1, i);
-
-  const removeNestedDivByClass = (
-    source: string,
-    classFragment: string,
-  ): string => {
-    let output = source;
-    let searchFrom = 0;
-    while (true) {
-      const classIndex = output.indexOf(classFragment, searchFrom);
-      if (classIndex === -1) break;
-      const tagStart = output.lastIndexOf("<div", classIndex);
-      const tagEnd = output.indexOf(">", classIndex);
-      if (tagStart === -1 || tagEnd === -1) {
-        searchFrom = classIndex + classFragment.length;
-        continue;
-      }
-      let divDepth = 1;
-      let cursor = tagEnd + 1;
-      while (cursor < output.length && divDepth > 0) {
-        const nextOpen = output.indexOf("<div", cursor);
-        const nextClose = output.indexOf("</div", cursor);
-        if (nextClose === -1) break;
-        if (nextOpen !== -1 && nextOpen < nextClose) {
-          divDepth++;
-          cursor = nextOpen + 4;
-        } else {
-          divDepth--;
-          cursor = nextClose + 5;
-        }
-      }
-      output = output.slice(0, tagStart) + output.slice(cursor);
-      searchFrom = tagStart;
-    }
-    return output;
-  };
-
-  inner = removeNestedDivByClass(inner, "chapter-ad-container");
-  inner = sanitizeHtml(inner, {
-    allowedTags: [],
-    allowedAttributes: {},
-  });
-  return inner;
-};
-
-const lnwExtractParagraphs = (
-  html: string,
-): {
-  paragraphs: string[];
-  selector: "chapterText" | "chapter-text" | "generic-fallback";
-} => {
-  const inner = lnwExtractInnerHtml(html);
-  if (inner) {
-    const rawParas = [...inner.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(
-      (m) => m[1],
-    );
-    if (rawParas.length > 0) {
-      const usedFallbackClass = html.indexOf('id="chapterText"') === -1;
-      const selector = usedFallbackClass ? "chapter-text" : "chapterText";
-      console.log(
-        `[LNW] Found ${rawParas.length} <p> paragraphs via #${selector}`,
-      );
-      return { paragraphs: rawParas, selector };
-    }
-  }
-  console.warn(
-    "[LNW] #chapterText extraction failed — falling through to generic <p> scan",
-  );
-  const fallback = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(
-    (m) => m[1],
-  );
-  console.log(`[LNW] Generic scan — ${fallback.length} raw paragraphs`);
-  return { paragraphs: fallback, selector: "generic-fallback" };
-};
-
-const LNW_JUNK_PHRASES = [
-  "text-to-speech is here",
-  "create a free account",
-  "unlock the full experience",
-  "post comment",
-  "verification code",
-  "resend code",
-  "staff account detected",
-  "forgot password",
-  "reset password",
-  "light novel world",
-  "your gateway to infinite stories",
-  "loading chapters",
-  "chapter comments",
-  "login to comment",
-  "please follow common sense",
-  "spam, phishing",
-];
-
-const lnwFilterParagraphs = (rawParas: string[]): string[] => {
-  const results: string[] = [];
-  for (const p of rawParas) {
-    const text = decodeEntities(stripTags(p)).trim();
-    const lower = text.toLowerCase();
-    if (text.length < 20) continue;
-    if (LNW_JUNK_PHRASES.some((phrase) => lower.includes(phrase))) continue;
-    results.push(text);
-  }
-  const deduped: string[] = [];
-  for (const p of results) {
-    if (deduped.length === 0 || p !== deduped[deduped.length - 1]) {
-      deduped.push(p);
-    }
-  }
-  return deduped;
-};
-
 // ─── ASIANOVEL.NET helpers ────────────────────────────────────────────────────
 
 const findRealTagEnd = (html: string, fromIdx: number): number => {
@@ -561,9 +369,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
       hostnameLower = "";
     }
 
-    const isLightNovelWorld =
-      hostnameLower === "lightnovelworld.com" ||
-      hostnameLower.endsWith(".lightnovelworld.com");
     const isAsianovel =
       hostnameLower === "asianovel.net" ||
       hostnameLower.endsWith(".asianovel.net");
@@ -595,63 +400,6 @@ export const directFetchNovelMeta = async (url: string): Promise<NovelMeta> => {
     let synopsis = "No summary available.";
     let coverUrl = "";
     let firstChapterUrl: string | null = null;
-
-    // ─── LIGHTNOVELWORLD ──────────────────────────────────────────────────────
-    if (isLightNovelWorld) {
-      console.log("[Scraper] LightNovelWorld detected");
-
-      const titleMatch = safeMatch(
-        html,
-        /<h1[^>]*class="novel-title"[^>]*>([^<]+)<\/h1>/i,
-      );
-      if (titleMatch) title = decodeEntities(titleMatch);
-
-      const authorMatch = safeMatch(
-        html,
-        /<p[^>]*class="novel-author"[^>]*>[\s\S]*?<a[^>]*class="author-link"[^>]*>([^<]+)<\/a>/i,
-      );
-      if (authorMatch) {
-        author = decodeEntities(authorMatch.trim());
-      } else {
-        const authorFallback = safeMatch(
-          html,
-          /<p[^>]*class="novel-author"[^>]*>([\s\S]*?)<\/p>/i,
-        );
-        if (authorFallback) {
-          author = decodeEntities(
-            stripTags(authorFallback)
-              .replace(/^Author:\s*/i, "")
-              .trim(),
-          );
-        }
-      }
-
-      const coverMatch =
-        safeMatch(
-          html,
-          /<img[^>]*class="novel-cover[^"]*"[^>]*src="([^"]+)"/i,
-        ) ||
-        safeMatch(html, /<img[^>]*src="([^"]+)"[^>]*class="novel-cover[^"]*"/i);
-      if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
-
-      const summaryMatch = safeMatch(
-        html,
-        /<div[^>]*class="summary-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      );
-      if (summaryMatch) {
-        const paragraphs = summaryMatch.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
-        if (paragraphs) {
-          synopsis = paragraphs
-            .map((p) => decodeEntities(stripTags(p)))
-            .filter((t) => t.length > 0)
-            .join("\n\n");
-        }
-      }
-
-      const baseNovelUrl = url.replace(/\/$/, "");
-      firstChapterUrl = `${baseNovelUrl}/chapter/1/`;
-      console.log("[Scraper] Constructed first chapter URL:", firstChapterUrl);
-    }
 
     // ─── ASIANOVEL.NET ────────────────────────────────────────────────────────
     if (isAsianovel) {
@@ -893,47 +641,12 @@ export const directFetchChapter = async (
 
   try {
     const domainLower = url.toLowerCase();
-    const isLightNovelWorld = domainLower.includes("lightnovelworld");
     const isAsianovel = domainLower.includes("asianovel.net");
 
-    let html: string;
-    let fetchMethod: "fetch" | "fetch-proxy" = "fetch";
-    let httpStatus = 200;
-    let contentType = "text/html";
-
-    if (isLightNovelWorld) {
-      const result = await fetchLightNovelWorld(url);
-      html = result.html;
-      fetchMethod = result.fetchMethod;
-      httpStatus = result.httpStatus;
-      contentType = result.contentType;
-    } else {
-      html = await fetchWithFallback(url, isAsianovel);
-    }
+    const html = await fetchWithFallback(url, isAsianovel);
 
     let title = `Chapter ${chapterNum}`;
     let skipCleanup = false;
-
-    // ─── LIGHTNOVELWORLD ──────────────────────────────────────────────────────
-    if (isLightNovelWorld) {
-      const titleMatch =
-        safeMatch(html, /<h1[^>]*class="chapter-title"[^>]*>([^<]+)<\/h1>/i) ||
-        safeMatch(
-          html,
-          /<span[^>]*class="chapter-title"[^>]*>([^<]+)<\/span>/i,
-        ) ||
-        safeMatch(html, /<h2[^>]*>([^<]*Chapter[^<]*)<\/h2>/i);
-      if (titleMatch) {
-        let rawTitle = decodeEntities(titleMatch.trim())
-          .replace(/\s+/g, " ")
-          .trim();
-        rawTitle = rawTitle
-          .replace(/Chapter\s+\d+\s*[:.\-–—]?\s*/gi, "")
-          .trim();
-        title = `Chapter ${chapterNum}: ${rawTitle}`;
-        skipCleanup = true;
-      }
-    }
 
     // ─── ASIANOVEL.NET ────────────────────────────────────────────────────────
     if (isAsianovel) {
@@ -957,61 +670,6 @@ export const directFetchChapter = async (
     }
 
     let paragraphMatches = null;
-
-    // ─── LNW EARLY RETURN ────────────────────────────────────────────────────
-    if (isLightNovelWorld) {
-      const { paragraphs, selector } = lnwExtractParagraphs(html);
-      const filtered = lnwFilterParagraphs(paragraphs);
-      console.log(
-        `[LNW] Extracted ${paragraphs.length}, kept ${filtered.length} after filtering`,
-      );
-
-      return {
-        url,
-        title: decodeEntities(title),
-        content: filtered.join("\n\n") || "No content available.",
-        nextUrl: (() => {
-          const linkRegex2 = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
-          let lm2: RegExpExecArray | null;
-          while ((lm2 = linkRegex2.exec(html)) !== null) {
-            const hrefM = lm2[1].match(/href=["']([^"']+)["']/i);
-            const href2 = hrefM ? hrefM[1] : null;
-            const txt2 = stripTags(lm2[2]).toLowerCase();
-            const cls2 =
-              (lm2[1].match(/class=["']([^"']*)["']/i) ||
-                [])[1]?.toLowerCase() ?? "";
-            const id2 =
-              (lm2[1].match(/id=["']([^"']*)["']/i) || [])[1]?.toLowerCase() ??
-              "";
-            const attrs2 = cls2 + " " + id2;
-            if (
-              (txt2.includes("next") ||
-                attrs2.includes("next") ||
-                attrs2.includes("next_chapter")) &&
-              href2
-            ) {
-              const next = makeAbsoluteUrl(href2, url);
-              console.log("[Scraper] Found next chapter:", next);
-              return next;
-            }
-          }
-          console.log("[Scraper] No next chapter found.");
-          return null;
-        })(),
-        scraperInfo: {
-          selector: selector,
-          rawCount: paragraphs.length,
-          filteredCount: filtered.length,
-          htmlLength: html.length,
-          pTagCount: (html.match(/<p[\s>]/gi) || []).length,
-          fetchMethod: fetchMethod,
-          httpStatus: httpStatus,
-          jsInjected: false,
-          chapterTextCount: (html.match(/id="chapterText"/g) || []).length,
-          contentType: contentType,
-        },
-      };
-    }
 
     // ─── GENERIC PARAGRAPH EXTRACTION (for Asianovel and any fallback) ──────
     if (!paragraphMatches) {
