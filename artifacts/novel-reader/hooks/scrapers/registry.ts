@@ -12,9 +12,7 @@ import { novelBinCcScraper } from "./sources/novelbincc";
 import { novelPingScraper } from "./sources/novelping";
 import { royalRoadScraper } from "./sources/royalroad";
 import { readNovelFullScraper } from "./sources/readnovelfull";
-import { novelFullNetScraper } from "./sources/novelfullnet";
 import { novelFullComScraper } from "./sources/novelfullcom";
-import { allNovelScraper } from "./sources/allnovel";
 import { novgoScraper } from "./sources/novgo";
 import { freeWebNovelScraper } from "./sources/freewebnovel";
 import { wuxiaworldScraper } from "./sources/wuxiaworld";
@@ -32,9 +30,7 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPingScraper,
   royalRoadScraper,
   readNovelFullScraper,
-  novelFullNetScraper,
   novelFullComScraper,
-  allNovelScraper,
   novgoScraper,
   freeWebNovelScraper,
   wuxiaworldScraper,
