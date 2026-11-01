@@ -15,8 +15,14 @@ import { isSafeHref } from "../shared/urlSafety";
 const BASE_HOST = "novgo.net";
 
 // Site text that can appear inside the chapter block.
-const CHAPTER_JUNK: RegExp[] = [/novgo\.net/i, /novelfull\.com/i, /readnovelfull\.com/i, /allnovel\.org/i];
-const isJunk = (text: string): boolean => CHAPTER_JUNK.some((re) => re.test(text));
+const CHAPTER_JUNK: RegExp[] = [
+  /novgo\.net/i,
+  /novelfull\.com/i,
+  /readnovelfull\.com/i,
+  /allnovel\.org/i,
+];
+const isJunk = (text: string): boolean =>
+  CHAPTER_JUNK.some((re) => re.test(text));
 
 // The summary box on novel pages holds generic SEO text, not a real synopsis.
 const isSeoBoilerplate = (text: string): boolean =>
@@ -27,10 +33,17 @@ const isSeoBoilerplate = (text: string): boolean =>
  * page would also pick up the tips line, comment rules and login text.
  */
 const chapterParagraphs = (html: string): string[] => {
-  const block = safeMatch(html, /<div id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i);
+  const block = safeMatch(
+    html,
+    /<div id="chapter-content"[^>]*>([\s\S]*?)<\/div>/i,
+  );
   if (!block) return [];
   return [...block.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-    .map((m) => decodeEntities(stripTags(m[1])).replace(/\u00a0/g, " ").trim())
+    .map((m) =>
+      decodeEntities(stripTags(m[1]))
+        .replace(/\u00a0/g, " ")
+        .trim(),
+    )
     .filter((t) => t.length > 0 && !isJunk(t));
 };
 
@@ -75,14 +88,17 @@ export const novgoScraper: SourceScraper = {
 
     // <div class="m-desc"><h1 class="tit">Title</h1>
     const title = decodeEntities(
-      safeMatch(html, /<h1 class="tit">\s*([^<]+?)\s*<\/h1>/i) ?? "Unknown Title",
+      safeMatch(html, /<h1 class="tit">\s*([^<]+?)\s*<\/h1>/i) ??
+        "Unknown Title",
     ).trim();
 
     // <div class="item"><span class="glyphicon glyphicon-user"...></span>
     //   <div class="right"><a href="/author/Name" ...>Name</a></div></div>
     const author = decodeEntities(
-      safeMatch(html, /glyphicon-user[\s\S]{0,200}?<a[^>]*href="\/author\/[^"]*"[^>]*>([^<]+)<\/a>/i) ??
-        "Unknown Author",
+      safeMatch(
+        html,
+        /glyphicon-user[\s\S]{0,200}?<a[^>]*href="\/author\/[^"]*"[^>]*>([^<]+)<\/a>/i,
+      ) ?? "Unknown Author",
     ).trim();
 
     // Summary box: <div class="inner" id="novel-summary-inner"><p>...</p></div>
@@ -101,16 +117,22 @@ export const novgoScraper: SourceScraper = {
 
     // <div class="m-imgtxt"><div class="pic"><img src="/uploads/..." ...>
     const coverRaw =
-      safeMatch(html, /<div class="m-imgtxt">\s*<div class="pic">\s*<img[^>]*src="([^"]+)"/i) ??
-      safeMatch(html, /<meta property="og:image" content="([^"]+)"/i);
-    const coverUrl = coverRaw ? makeAbsoluteUrl(decodeEntities(coverRaw), url) : "";
+      safeMatch(
+        html,
+        /<div class="m-imgtxt">\s*<div class="pic">\s*<img[^>]*src="([^"]+)"/i,
+      ) ?? safeMatch(html, /<meta property="og:image" content="([^"]+)"/i);
+    const coverUrl = coverRaw
+      ? makeAbsoluteUrl(decodeEntities(coverRaw), url)
+      : "";
 
     // First chapter: the page's own "read first" link, then the first list item.
     const firstRaw =
       safeMatch(html, /data-first-url="([^"]+)"/i) ??
       safeMatch(html, /<a[^>]*data-reading-first[^>]*href="([^"]+)"/i) ??
       safeMatch(html, /id="idData"[\s\S]{0,400}?<a href="([^"]+)"/i);
-    const firstChapterUrl = firstRaw ? makeAbsoluteUrl(decodeEntities(firstRaw), url) : null;
+    const firstChapterUrl = firstRaw
+      ? makeAbsoluteUrl(decodeEntities(firstRaw), url)
+      : null;
 
     return {
       title,
@@ -122,13 +144,22 @@ export const novgoScraper: SourceScraper = {
     };
   },
 
-  fetchChapter: async (url: string, chapterNum: number): Promise<ChapterData> => {
+  fetchChapter: async (
+    url: string,
+    chapterNum: number,
+  ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
     // <h1 class="chapter"><span class="chapter-text">C1: Title</span></h1>
-    const headingRaw = safeMatch(html, /<h1 class="chapter">[\s\S]*?<span class="chapter-text">([^<]+)<\/span>/i);
+    const headingRaw = safeMatch(
+      html,
+      /<h1 class="chapter">[\s\S]*?<span class="chapter-text">([^<]+)<\/span>/i,
+    );
     const title = headingRaw
-      ? cleanChapterTitle(decodeEntities(headingRaw).replace(/\s+/g, " ").trim(), chapterNum)
+      ? cleanChapterTitle(
+          decodeEntities(headingRaw).replace(/\s+/g, " ").trim(),
+          chapterNum,
+        )
       : `Chapter ${chapterNum}`;
 
     const paragraphs = chapterParagraphs(html);
@@ -150,7 +181,10 @@ export const novgoScraper: SourceScraper = {
     let nextUrl: string | null = null;
     const nextRaw =
       safeMatch(html, /<a[^>]*href="([^"]+)"[^>]*data-nav="next"/i) ??
-      safeMatch(html, /<li class="reader-next-item"[\s\S]*?<a[^>]*href="([^"]+)"/i);
+      safeMatch(
+        html,
+        /<li class="reader-next-item"[\s\S]*?<a[^>]*href="([^"]+)"/i,
+      );
     if (nextRaw && isSafeHref(nextRaw)) {
       const resolved = makeAbsoluteUrl(decodeEntities(nextRaw), url);
       if (isChapterUrl(resolved) && resolved !== url) nextUrl = resolved;
