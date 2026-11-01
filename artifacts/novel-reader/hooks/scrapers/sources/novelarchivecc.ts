@@ -4,7 +4,7 @@
 // plugin; verified against a live Python tester before porting to TS.
 
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
-import { fetchJsonWithFallback } from "../shared/http";
+import { fetchJsonWithFallback, fetchHtmlWithFallback } from "../shared/http";
 import { decodeEntities, stripTags } from "../shared/html";
 
 const BASE_HOST = "novelarchive.cc";
@@ -57,6 +57,23 @@ const cleanContent = (text: string, isDescription: boolean = false): string => {
   return cleaned;
 };
 
+/**
+ * The synopsis the site shows is rendered into the novel page as
+ * <p id="novel-description">. Read it from there first; the API's description
+ * field has stopped carrying it. Returns "" if the element isn't found.
+ */
+const synopsisFromPage = async (novelId: string): Promise<string> => {
+  try {
+    const html = await fetchHtmlWithFallback(
+      `${BASE_URL}/novel?id=${encodeURIComponent(novelId)}`,
+    );
+    const match = html.match(/<p id="novel-description"[^>]*>([\s\S]*?)<\/p>/i);
+    return match ? cleanContent(match[1], true) : "";
+  } catch {
+    return "";
+  }
+};
+
 export const novelArchiveCcScraper: SourceScraper = {
   id: "novelarchivecc",
   name: "NovelArchive.cc",
@@ -91,7 +108,13 @@ export const novelArchiveCcScraper: SourceScraper = {
 
     const title = novel.title || "Unknown Title";
     const author = novel.author || "Unknown Author";
-    const synopsis = cleanContent(novel.description || "", true);
+    let synopsis = await synopsisFromPage(novelId);
+    if (!synopsis) {
+      synopsis = cleanContent(
+        novel.description || novel.summary || novel.synopsis || "",
+        true,
+      );
+    }
 
     // Make cover URL absolute if it's relative
     let coverUrl =
