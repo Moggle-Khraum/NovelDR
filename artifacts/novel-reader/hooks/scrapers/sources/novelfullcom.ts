@@ -97,14 +97,14 @@ export const novelFullComScraper: SourceScraper = {
     let coverUrl = "";
     const coverMatch = safeMatch(
       html,
-      /<div[^>]*class="book"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*>/i,
+      /<div[^>]*class="book"[^>]*>\s*<img[^>]*src="([^"]+)"[^>]*>/i,
     );
     if (coverMatch) coverUrl = makeAbsoluteUrl(coverMatch, url);
 
     let firstChapterUrl: string | null = null;
     const chapterMatch = safeMatch(
       html,
-      /<(?:div|ul)[^>]*(?:id="(?:tab-chapters|list-chapter)"|class="list-chapter")[^>]*>.*?<li[^>]*>.*?<a[^>]*href="([^"]+)"/i,
+      /<(?:div|ul)[^>]*(?:id="(?:tab-chapters|list-chapter)"|class="list-chapter")[^>]*>[\s\S]*?<li[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"/i,
     );
     if (chapterMatch) {
       firstChapterUrl = makeAbsoluteUrl(chapterMatch, url);
