@@ -27,6 +27,16 @@ const DEPRECATED_SITES: DeprecatedSite[] = [
     reason: "Site Shutdown",
     aliases: [],
   },
+  {
+    domain: "allnovel.org",
+    reason: "Site Shutdown",
+    aliases: [],
+  },
+  {
+    domain: "novelfull.net",
+    reason: "Site Shutdown",
+    aliases: [],
+  },
 ];
 
 /**
