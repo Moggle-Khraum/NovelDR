@@ -44,7 +44,9 @@ const scrapeRateLimit: RequestHandler = (req, res, next) => {
 
   if (window.count > RATE_LIMIT_PER_IP) {
     res.setHeader("Retry-After", String(resetSeconds));
-    res.status(429).json({ error: "Too many scrape requests; try again later" });
+    res
+      .status(429)
+      .json({ error: "Too many scrape requests; try again later" });
     return;
   }
 
@@ -54,7 +56,9 @@ const scrapeRateLimit: RequestHandler = (req, res, next) => {
 const scrapeConcurrencyLimit: RequestHandler = (_req, res, next) => {
   if (activeScrapes >= MAX_CONCURRENT_SCRAPES) {
     res.setHeader("Retry-After", "5");
-    res.status(503).json({ error: "Scrape capacity is busy; try again shortly" });
+    res
+      .status(503)
+      .json({ error: "Scrape capacity is busy; try again shortly" });
     return;
   }
 
