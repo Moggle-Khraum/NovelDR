@@ -114,11 +114,11 @@ const makeAbsoluteUrl = (relativeUrl: string, baseUrl: string): string => {
   }
 };
 
-const delayMs = (ms: number) =>
+export const delayMs = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // Random jitter between 1-3 seconds
-const jitterMs = () => Math.random() * 2000 + 1000;
+export const jitterMs = () => Math.random() * 2000 + 1000;
 
 // ─── Shared HTTP client ────────────────────────────────────────────────────────
 
