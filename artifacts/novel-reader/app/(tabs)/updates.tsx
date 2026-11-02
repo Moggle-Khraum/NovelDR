@@ -345,6 +345,15 @@ export default function UpdatesScreen() {
 
     const existingChapters = [...selectedNovel.chapters];
     const existingCount = existingChapters.length;
+
+    // Chapter number -> index in existingChapters, for chapters whose title
+    // carries a number. Lets the skip logic below hop over chapters already
+    // in the library by number instead of requesting each one from the site.
+    const localByNumber = new Map<number, number>();
+    existingChapters.forEach((c, i) => {
+      const n = extractChapterNumber(c.title);
+      if (n > 0 && !localByNumber.has(n)) localByNumber.set(n, i);
+    });
     const startCh = Math.max(
       1,
       parseInt(startChStr) || getNextStartChapter(selectedNovel),
@@ -497,9 +506,27 @@ export default function UpdatesScreen() {
             "warning",
           );
 
+          // Walk the chapter numbers downward from startCh - 1: the first one
+          // the library already has is where the crawl can resume. Everything
+          // before it is already local, so it needs no requests at all. Only
+          // that one chapter is fetched (to read its "next" link); any
+          // numbers missing between it and startCh are crawled as before.
+          for (let n = startCh - 1; n >= 1; n--) {
+            const localIdx = localByNumber.get(n);
+            if (localIdx !== undefined && existingChapters[localIdx].url) {
+              currentUrl = existingChapters[localIdx].url;
+              chapterNum = n;
+              addLog(
+                `Chapters 1–${n} already in library — resuming crawl from chapter ${n}`,
+                "info",
+              );
+              break;
+            }
+          }
+
           let skippedCount = 0;
           let lastLoggedMilestone = 0;
-          const totalToSkip = startCh - 1;
+          const totalToSkip = startCh - chapterNum;
 
           while (currentUrl && chapterNum < startCh && !stopRef.current) {
             try {
@@ -677,6 +704,28 @@ export default function UpdatesScreen() {
               `SKIPPED: Chapter ${chapterNum} already in library`,
               "warning",
             );
+
+            // If the next chapter number is also in the library with real
+            // content on disk, hop straight to it using its saved URL — no
+            // request. Only when the next one is missing locally do we fetch
+            // this chapter to read its "next" link.
+            const nextLocalIdx = localByNumber.get(chapterNum + 1);
+            if (nextLocalIdx !== undefined) {
+              const nextOnDisk = await loadChapterContent(
+                selectedNovel.id,
+                nextLocalIdx,
+              );
+              if (
+                existingChapters[nextLocalIdx].url &&
+                !!nextOnDisk?.content &&
+                nextOnDisk.content.trim().length > 0
+              ) {
+                currentUrl = existingChapters[nextLocalIdx].url;
+                chapterNum++;
+                continue;
+              }
+            }
+
             try {
               const { nextUrl } = await getChapterMetadata(
                 currentUrl,
