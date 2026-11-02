@@ -31,6 +31,8 @@ updates:
           - "minor"
           - "patch"
     ignore:
+      # Pin all npm dependencies: no version updates. Security fixes still come through.
+      - dependency-name: "*"
       # SDK and major upgrades are planned changes, not weekly PRs.
       # Security fixes still come through regardless of these holds.
       - dependency-name: "expo*"
@@ -52,3 +54,6 @@ updates:
       timezone: "Asia/Manila"
     commit-message:
       prefix: "chore(ci)"
+    ignore:
+      # Pin all GitHub Actions: no version updates. Security fixes still come through.
+      - dependency-name: "*"
