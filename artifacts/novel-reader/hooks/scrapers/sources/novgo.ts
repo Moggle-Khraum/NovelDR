@@ -47,6 +47,10 @@ const chapterParagraphs = (html: string): string[] => {
     .filter((t) => t.length > 0 && !isJunk(t));
 };
 
+/** Pure extractor, exported for scripts/test-scrapers.ts. */
+export const extractNovGoContent = (html: string): string =>
+  chapterParagraphs(html).join("\n\n");
+
 /**
  * Chapter headings look like "C1: Meeting an Online Girlfriend in Real Life?"
  * or "C30 - 29: A Clear Heartbeat". Keep only the title, and number it with
