@@ -1,6 +1,6 @@
 {
   "name": "@workspace/novel-reader",
-  "version": "5.1.1",
+  "version": "5.0.1",
   "private": true,
   "main": "index.js",
   "dependencies": {
@@ -44,7 +44,7 @@
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@expo/config-plugins": "~9.0.0",
-    "@react-native-async-storage/async-storage": "3.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "^11.3.0",
     "@sentry/react-native": "^8.33.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
