@@ -43,7 +43,6 @@ const DEPRECATED_SITES = [
   { domain: "novelarrow" },
   { domain: "lightnovelworld.org" },
   { domain: "allnovel.org" },
-  { domain: "novelfull.net" },
 ];
 
 // Fallback used when Max Chapters is left blank (mirrors Start Chapter's
