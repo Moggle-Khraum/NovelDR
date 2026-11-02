@@ -1,4 +1,9 @@
-import { directFetchNovelMeta, directFetchChapter } from "./useDirectScraper";
+import {
+  directFetchNovelMeta,
+  directFetchChapter,
+  delayMs,
+  jitterMs,
+} from "./useDirectScraper";
 import { findExternalScraper } from "./scrapers/registry";
 import { fetchViaWebView } from "./scrapers/shared/webviewBridge";
 
@@ -13,10 +18,28 @@ export const fetchNovelMeta: typeof directFetchNovelMeta = async (url) => {
   return directFetchNovelMeta(url);
 };
 
+// ── Chapter request pacing ─────────────────────────────────────────────────
+// Every chapter request (first attempt, retries, skip-crawl, prefetch, and
+// the skipped-chapter recovery pass) goes through fetchChapter, so spacing
+// them here covers all sources and all callers. Each call reserves the next
+// free slot, 3000ms + 1-3s jitter (4-6s) after the previous one started, so
+// requests are strictly one at a time even if callers overlap. The first
+// request after an idle period goes out immediately.
+const CHAPTER_REQUEST_GAP_MS = 3000;
+let nextChapterSlotAt = 0;
+
+const waitForChapterSlot = async (): Promise<void> => {
+  const now = Date.now();
+  const startAt = Math.max(now, nextChapterSlotAt);
+  nextChapterSlotAt = startAt + CHAPTER_REQUEST_GAP_MS + jitterMs();
+  if (startAt > now) await delayMs(startAt - now);
+};
+
 export const fetchChapter: typeof directFetchChapter = async (
   url,
   chapterNum,
 ) => {
+  await waitForChapterSlot();
   const external = findExternalScraper(url);
   if (external) return external.fetchChapter(url, chapterNum);
   return directFetchChapter(url, chapterNum);
