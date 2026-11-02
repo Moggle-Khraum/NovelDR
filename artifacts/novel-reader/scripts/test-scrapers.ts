@@ -1,479 +1,388 @@
-import { Router, type IRouter, type RequestHandler } from "express";
-import axios from "axios";
-import { parse } from "node-html-parser";
-import { URL } from "url";
+/**
+ * Scraper content-extraction regression tests.
+ *
+ * Run with: pnpm exec tsx scripts/test-scrapers.ts
+ * (wired into CI via .github/workflows/Lint Test.yml — job "scraper-regression")
+ *
+ * Why this exists: novel-bin.ts and novelbincc.ts previously extracted
+ * chapter content with a <p>-tag matcher (extractParagraphs), but the real
+ * site markup wraps the chapter body in bare <br>-separated text inside
+ * div#chr-content — not individual <p> tags. That mismatch silently saved
+ * every chapter from those two sources as empty content. This test fixed a
+ * known-good HTML fixture matching that real structure in place, so any
+ * future edit that reintroduces a <p>-based extractor (or otherwise breaks
+ * extraction) fails CI instead of shipping silently.
+ *
+ * Coverage was originally limited to novel-bin/novelbincc. It has since
+ * been expanded to cover every real scraper source: allnovel, freewebnovel,
+ * novelarrow, novelfullcom, novelfullnet, novelphoenix, novgo,
+ * readnovelfull, royalroad, and wuxiaworld. Each source's inline content
+ * extraction logic was pulled out into a named, exported pure function
+ * (e.g. extractNovelFullContent, extractFreeWebNovelContent,
+ * extractWuxiaworldContent) specifically so it could be exercised here
+ * without a network call. exampleScraper.ts is a template, not a real
+ * source, and is intentionally excluded.
+ *
+ * No network calls — this only exercises the pure extraction functions
+ * against fixture HTML, not fetchHtmlWithFallback.
+ */
 
-const router: IRouter = Router();
+import { extractChapterBody as novelBinExtract } from "../hooks/scrapers/sources/novel-bin";
+import { extractChapterBody as novelBinCcExtract } from "../hooks/scrapers/sources/novelbincc";
+import { extractNovelFullContent as allNovelExtract } from "../hooks/scrapers/sources/allnovel";
+import { extractNovelFullContent as novelFullComExtract } from "../hooks/scrapers/sources/novelfullcom";
+import { extractNovelFullContent as novelFullNetExtract } from "../hooks/scrapers/sources/novelfullnet";
+import { extractNovGoContent as novgoExtract } from "../hooks/scrapers/sources/novgo";
+import { extractNovelFullContent as readNovelFullExtract } from "../hooks/scrapers/sources/readnovelfull";
+import { extractContentParagraphs as royalRoadExtract } from "../hooks/scrapers/sources/royalroad";
+import { extractParagraphs as novelArrowExtract } from "../hooks/scrapers/sources/novelarrow";
+import { extractParagraphs as novelPhoenixExtract } from "../hooks/scrapers/sources/novelphoenix";
+import { extractFreeWebNovelContent as freeWebNovelExtract } from "../hooks/scrapers/sources/freewebnovel";
+import { extractWuxiaworldContent as wuxiaworldExtract } from "../hooks/scrapers/sources/wuxiaworld";
 
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT_PER_IP = 20;
-const MAX_CONCURRENT_SCRAPES = 8;
+// Mirrors the real div#chr-content structure: a leading empty <p></p>, an
+// <h4> repeating the chapter title, then the actual body as raw text nodes
+// separated by bare <br> tags (NOT wrapped in <p> tags).
+const FIXTURE_CHR_CONTENT = `
+  <p></p>
+  <h4>Chapter 12: The Water Mansion</h4>
+  Chen Mobai stepped through the gate.<br>
+  The air shimmered with spirit energy.<br><br>
+  "Indeed," he murmured, "this place is different."<br>
+  He walked on, unaware of what awaited him.
+`;
 
-const ipRequestWindows = new Map<
-  string,
-  { startedAt: number; count: number }
->();
-let activeScrapes = 0;
+// Standard <p>-tag-based chapter body, used by the "NovelFull family"
+// (allnovel, novelfullcom, novelfullnet, novgo, readnovelfull) plus
+// royalroad/novelarrow/novelphoenix, all of which extract via <p> tags
+// rather than novel-bin's <br>-separated markup.
+const FIXTURE_NOVELBINCC_P_CONTENT = `<p>Chapter 12: The Water Mansion</p><p>Chen Mobai stepped through the gate.</p><p>The air shimmered with spirit energy.</p>`;
 
-const scrapeRateLimit: RequestHandler = (req, res, next) => {
-  const now = Date.now();
-  const key = req.ip ?? req.socket.remoteAddress ?? "unknown";
-  let window = ipRequestWindows.get(key);
+// NovGo scopes extraction to div#chapter-content; nav/tips live outside it.
+const FIXTURE_NOVGO_PAGE = `
+  <div class="tips"><p>Next Chapter</p></div>
+  <div id="chapter-content">
+    <p>Chen Mobai stepped through the gate.</p>
+    <p>novgo.net</p>
+    <p>The air shimmered with spirit energy.</p>
+  </div>
+`;
 
-  if (!window || now - window.startedAt >= RATE_WINDOW_MS) {
-    window = { startedAt: now, count: 0 };
-    ipRequestWindows.set(key, window);
-  }
+const FIXTURE_P_TAG_CONTENT = `
+  <p>Chen Mobai stepped through the gate.</p>
+  <p>The air shimmered with spirit energy.</p>
+  <p>"Indeed," he murmured, "this place is different."</p>
+  <p>Next Chapter</p>
+  <p>novelfull.com</p>
+`;
 
-  window.count += 1;
-  const remaining = Math.max(0, RATE_LIMIT_PER_IP - window.count);
-  const resetSeconds = Math.max(
-    1,
-    Math.ceil((window.startedAt + RATE_WINDOW_MS - now) / 1000),
-  );
-  res.setHeader("RateLimit-Limit", String(RATE_LIMIT_PER_IP));
-  res.setHeader("RateLimit-Remaining", String(remaining));
-  res.setHeader("RateLimit-Reset", String(resetSeconds));
+// Same <p>-tag body but wrapped as freewebnovel would present it, including
+// a junk/ad paragraph that should be filtered out.
+const FIXTURE_FREEWEBNOVEL_CONTENT = `
+  <p>Chen Mobai stepped through the gate.</p>
+  <p>The air shimmered with spirit energy.</p>
+  <p>Please visit freewebnovel.com for more chapters.</p>
+  <p>Support the author on patreon.</p>
+`;
 
-  // Bound stale key accumulation if a server receives many distinct IPs.
-  if (ipRequestWindows.size > 5000) {
-    for (const [ip, entry] of ipRequestWindows) {
-      if (now - entry.startedAt >= RATE_WINDOW_MS) ipRequestWindows.delete(ip);
-    }
-  }
+// wuxiaworld's extractor takes the already-isolated content block, not raw
+// page HTML, and handles both <p>-wrapped and <br>-separated bodies.
+const FIXTURE_WUXIAWORLD_P_CONTENT = `
+  <p>Chen Mobai stepped through the gate.</p>
+  <p>The air shimmered with spirit energy.<br>He walked on.</p>
+`;
+const FIXTURE_WUXIAWORLD_BR_ONLY_CONTENT = `Chen Mobai stepped through the gate.<br>The air shimmered with spirit energy.`;
 
-  if (window.count > RATE_LIMIT_PER_IP) {
-    res.setHeader("Retry-After", String(resetSeconds));
-    res
-      .status(429)
-      .json({ error: "Too many scrape requests; try again later" });
-    return;
-  }
+type Check = { name: string; run: () => void };
 
-  next();
-};
-
-const scrapeConcurrencyLimit: RequestHandler = (_req, res, next) => {
-  if (activeScrapes >= MAX_CONCURRENT_SCRAPES) {
-    res.setHeader("Retry-After", "5");
-    res
-      .status(503)
-      .json({ error: "Scrape capacity is busy; try again shortly" });
-    return;
-  }
-
-  activeScrapes += 1;
-  let released = false;
-  const release = () => {
-    if (released) return;
-    released = true;
-    activeScrapes = Math.max(0, activeScrapes - 1);
-  };
-
-  res.once("finish", release);
-  res.once("close", release);
-  next();
-};
-
-const httpClient = axios.create({
-  timeout: 15000,
-  // Do not follow redirects automatically: a supported host could redirect
-  // the request to an internal or otherwise disallowed destination.
-  maxRedirects: 0,
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
+const checks: Check[] = [
+  {
+    name: "novel-bin.ts: extracts non-empty content from <br>-separated chr-content",
+    run: () => {
+      const result = novelBinExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        result.length > 0,
+        `expected non-empty content, got: ${JSON.stringify(result)}`,
+      );
+    },
   },
-});
-
-// Allow-list of known novel-source hostnames. Requests to any URL whose
-// hostname isn't on this list (or a subdomain of one) are rejected before
-// the server ever fetches them. This is required to prevent SSRF: without
-// it, a caller could pass an arbitrary URL (e.g. an internal/private
-// address) and have this server fetch it on their behalf.
-const ALLOWED_HOSTS = [
-  "freewebnovel.com",
-  "novel-bin.com",
-  "novelarrow.com",
-  "novelbin.cc",
-  "novelfull.com",
-  "novelphoenix.com",
-  "novgo.net",
-  "readnovelfull.com",
-  "royalroad.com",
-  "wuxiaworld.site",
+  {
+    name: "novel-bin.ts: strips the repeated <h4> chapter title from the body",
+    run: () => {
+      const result = novelBinExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        !result.includes("The Water Mansion"),
+        `expected <h4> title to be stripped, but it leaked into content: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novel-bin.ts: preserves actual paragraph text",
+    run: () => {
+      const result = novelBinExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate."),
+        `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+      assert(
+        result.includes("this place is different"),
+        `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: extracts non-empty content from <br>-separated chr-content",
+    run: () => {
+      const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        result.length > 0,
+        `expected non-empty content, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: strips the repeated <h4> chapter title from the body",
+    run: () => {
+      const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        !result.includes("The Water Mansion"),
+        `expected <h4> title to be stripped, but it leaked into content: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: preserves actual paragraph text",
+    run: () => {
+      const result = novelBinCcExtract(FIXTURE_CHR_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate."),
+        `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: <p> markup drops the repeated chapter title paragraph",
+    run: () => {
+      const result = novelBinCcExtract(
+        FIXTURE_NOVELBINCC_P_CONTENT,
+        "Chapter 12: The Water Mansion",
+      );
+      assert(
+        !result.includes("Water Mansion"),
+        `expected repeated title <p> to be dropped, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelbincc.ts: <p> markup preserves every body paragraph",
+    run: () => {
+      const result = novelBinCcExtract(
+        FIXTURE_NOVELBINCC_P_CONTENT,
+        "Chapter 12: The Water Mansion",
+      );
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("The air shimmered with spirit energy."),
+        `expected both paragraphs to survive, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
 ];
 
-function isAllowedNovelUrl(rawUrl: string): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    return false;
-  }
-  const hostname = parsed.hostname.toLowerCase();
-  return ALLOWED_HOSTS.some(
-    (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`),
+// "NovelFull family" — identical extraction logic shared by these 5 sources.
+const novelFullFamily: Array<{
+  name: string;
+  extract: (html: string) => string;
+}> = [
+  { name: "allnovel.ts", extract: allNovelExtract },
+  { name: "novelfullcom.ts", extract: novelFullComExtract },
+  { name: "novelfullnet.ts", extract: novelFullNetExtract },
+  { name: "readnovelfull.ts", extract: readNovelFullExtract },
+];
+
+for (const { name, extract } of novelFullFamily) {
+  checks.push(
+    {
+      name: `${name}: extracts non-empty content from <p>-tag body`,
+      run: () => {
+        const result = extract(FIXTURE_P_TAG_CONTENT);
+        assert(
+          result.length > 0,
+          `expected non-empty content, got: ${JSON.stringify(result)}`,
+        );
+      },
+    },
+    {
+      name: `${name}: preserves actual paragraph text`,
+      run: () => {
+        const result = extract(FIXTURE_P_TAG_CONTENT);
+        assert(
+          result.includes("Chen Mobai stepped through the gate."),
+          `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
+        );
+      },
+    },
+    {
+      name: `${name}: filters out "Next Chapter" nav text`,
+      run: () => {
+        const result = extract(FIXTURE_P_TAG_CONTENT);
+        assert(
+          !result.includes("Next Chapter"),
+          `expected nav text to be filtered, but it leaked into content: ${JSON.stringify(result)}`,
+        );
+      },
+    },
+    {
+      name: `${name}: filters out site-name junk paragraph`,
+      run: () => {
+        const result = extract(FIXTURE_P_TAG_CONTENT);
+        // Note: this checks that a known junk phrase was stripped from
+        // extracted article text, not a URL/host — not a security check.
+        // codeql[js/incomplete-url-substring-sanitization]
+        assert(
+          !result.includes("novelfull.com"),
+          `expected junk paragraph to be filtered, but it leaked into content: ${JSON.stringify(result)}`,
+        );
+      },
+    },
   );
 }
 
-function ensureAbsoluteUrl(href: string, baseUrl: string): string {
-  try {
-    if (href.startsWith("http://") || href.startsWith("https://")) return href;
-    const base = new URL(baseUrl);
-    if (href.startsWith("/")) return `${base.protocol}//${base.host}${href}`;
-    return new URL(href, baseUrl).href;
-  } catch {
-    return href;
-  }
-}
-
-function detectSite(url: string) {
-  const lower = url.toLowerCase();
-  return {
-    isReadNovelFull: lower.includes("readnovelfull"),
-    isNovelFull:
-      lower.includes("novelfull") && !lower.includes("readnovelfull"),
-    isFreeWebNovel: lower.includes("freewebnovel"),
-    isChapterPage: lower.includes("chapter"),
-  };
-}
-
-function extractTitleFromUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    let path = parsed.pathname;
-    if (path.endsWith(".html")) path = path.slice(0, -5);
-    const parts = path.split("/").filter(Boolean);
-    let slug = parts.find(
-      (p) => !p.toLowerCase().includes("chapter") && p.length > 5,
-    );
-    if (!slug) slug = parts[parts.length - 1] || "Unknown Novel";
-    slug = slug.replace(/^\d+[\s\-\.]+/, "");
-    return slug
-      .replace(/-/g, " ")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
-  } catch {
-    return "Unknown Novel";
-  }
-}
-
-function getNovelMainPageUrl(html: string, chapterUrl: string): string | null {
-  const root = parse(html);
-  const breadcrumb = root.querySelector("ol.breadcrumb");
-  if (breadcrumb) {
-    const links = breadcrumb.querySelectorAll("a");
-    if (links.length >= 2) {
-      const href = links[1].getAttribute("href");
-      if (href) return ensureAbsoluteUrl(href, chapterUrl);
-    }
-  }
-  for (const a of root.querySelectorAll("a")) {
-    const text = (a.text || "").toLowerCase();
-    if (
-      text.includes("back to novel") ||
-      text.includes("novel home") ||
-      text.includes("main page")
-    ) {
-      const href = a.getAttribute("href");
-      if (href) return ensureAbsoluteUrl(href, chapterUrl);
-    }
-  }
-  return null;
-}
-
-function getFirstChapterUrl(html: string, baseUrl: string): string | null {
-  const root = parse(html);
-  const container =
-    root.querySelector("#tab-chapters") || root.querySelector("#list-chapter");
-  if (container) {
-    const ul = container.querySelector("ul.list-chapter");
-    if (ul) {
-      const first = ul.querySelector("li a");
-      if (first) {
-        const href = first.getAttribute("href");
-        if (href) return ensureAbsoluteUrl(href, baseUrl);
-      }
-    }
-  }
-  for (const a of root.querySelectorAll("a")) {
-    const href = (a.getAttribute("href") || "").toLowerCase();
-    const text = (a.text || "").toLowerCase();
-    if (
-      (href.includes("chapter-1") ||
-        href.includes("chapter-01") ||
-        href.includes("chapter1") ||
-        text.includes("chapter 1")) &&
-      !href.includes("next") &&
-      !text.includes("next")
-    ) {
-      const realHref = a.getAttribute("href");
-      if (realHref) return ensureAbsoluteUrl(realHref, baseUrl);
-    }
-  }
-  return null;
-}
-
-function extractNextChapterUrl(
-  html: string,
-  currentUrl: string,
-): string | null {
-  const root = parse(html);
-  for (const a of root.querySelectorAll("a")) {
-    const text = (a.text || "").toLowerCase().trim();
-    const cls = (a.getAttribute("class") || "").toLowerCase();
-    const id = (a.getAttribute("id") || "").toLowerCase();
-    if (
-      text === "next chapter" ||
-      text === "next" ||
-      cls.includes("next") ||
-      id.includes("next")
-    ) {
-      const href = a.getAttribute("href");
-      if (href && !href.includes("javascript") && href !== "#") {
-        return ensureAbsoluteUrl(href, currentUrl);
-      }
-    }
-  }
-  return null;
-}
-
-function extractChapterContent(html: string): string {
-  const root = parse(html);
-  const paragraphs = root.querySelectorAll("p");
-  return paragraphs
-    .map((p) => p.text.trim())
-    .filter((t) => t.length > 5)
-    .join("\n\n");
-}
-
-function extractChapterTitle(html: string, chapterNum: number): string {
-  const root = parse(html);
-  const titleEl =
-    root.querySelector(".chapter-title") ||
-    root.querySelector(".chr-title") ||
-    root.querySelector(".entry-title") ||
-    root.querySelector("h1") ||
-    root.querySelector("h2");
-  if (titleEl) {
-    const raw = titleEl.text.trim();
-    const clean = raw.replace(/^Chapter\s*\d+\s*[:\-]*\s*/i, "").trim();
-    if (clean) return `Chapter ${chapterNum}: ${clean}`;
-  }
-  return `Chapter ${chapterNum}`;
-}
-
-function extractNovelMeta(
-  html: string,
-  baseUrl: string,
-  site: ReturnType<typeof detectSite>,
-) {
-  const root = parse(html);
-
-  let coverUrl = "";
-  const picDiv =
-    root.querySelector("div.pic img") || root.querySelector("div.book img");
-  if (picDiv) {
-    const src =
-      picDiv.getAttribute("src") || picDiv.getAttribute("data-src") || "";
-    if (src) coverUrl = ensureAbsoluteUrl(src, baseUrl);
-  }
-
-  let author = "Unknown Author";
-  if (site.isReadNovelFull) {
-    const authorMeta = root.querySelector(
-      "[itemprop='author'] [itemprop='name']",
-    );
-    if (authorMeta) author = authorMeta.getAttribute("content") || author;
-  } else if (site.isNovelFull) {
-    const infoDiv = root.querySelector("div.info");
-    if (infoDiv) {
-      const authLink = infoDiv.querySelector("a");
-      if (authLink) author = authLink.text.trim() || author;
-    }
-  } else if (site.isFreeWebNovel) {
-    const authorLink = root.querySelector(".right .a1");
-    if (authorLink) author = authorLink.text.trim() || author;
-  }
-
-  let synopsis = "No summary available.";
-  if (site.isReadNovelFull) {
-    const descDiv = root.querySelector("[itemprop='description']");
-    if (descDiv) {
-      const paras = descDiv.querySelectorAll("p");
-      synopsis =
-        paras.length > 0
-          ? paras
-              .map((p) => p.text.trim())
-              .filter(Boolean)
-              .join("\n\n")
-          : descDiv.text.trim();
-    }
-  } else if (site.isNovelFull) {
-    const descDiv = root.querySelector("div.desc-text");
-    if (descDiv) {
-      const paras = descDiv.querySelectorAll("p");
-      synopsis =
-        paras.length > 0
-          ? paras
-              .map((p) => p.text.trim())
-              .filter(Boolean)
-              .join("\n\n")
-          : descDiv.text.trim();
-    }
-  } else if (site.isFreeWebNovel) {
-    const descDiv = root.querySelector("div.m-desc .inner");
-    if (descDiv) {
-      const paras = descDiv.querySelectorAll("p");
-      synopsis =
-        paras.length > 0
-          ? paras
-              .map((p) => p.text.trim())
-              .filter(Boolean)
-              .join("\n\n")
-          : descDiv.text.trim();
-    }
-  }
-
-  return { coverUrl, author, synopsis };
-}
-
-router.post(
-  "/novel/scrape-chapter",
-  scrapeRateLimit,
-  scrapeConcurrencyLimit,
-  async (req, res) => {
-    const { url } = req.body as { url: string };
-    if (typeof url !== "string" || !url.trim()) {
-      res.status(400).json({ error: "A valid URL is required" });
-      return;
-    }
-    if (!isAllowedNovelUrl(url)) {
-      res.status(400).json({ error: "URL is not from a supported source" });
-      return;
-    }
-    try {
-      const response = await httpClient.get(url);
-      const html = response.data as string;
-      const content = extractChapterContent(html);
-      const chapterNum = parseInt(
-        (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
-        10,
+// royalroad.ts and novelarrow.ts / novelphoenix.ts checks
+checks.push(
+  {
+    name: "royalroad.ts: extracts non-empty content from <p>-tag body",
+    run: () => {
+      const result = royalRoadExtract(FIXTURE_P_TAG_CONTENT);
+      assert(
+        result.length > 0,
+        `expected non-empty content, got: ${JSON.stringify(result)}`,
       );
-      const title = extractChapterTitle(html, chapterNum);
-      const nextUrl = extractNextChapterUrl(html, url);
-      res.json({ title, content, nextUrl });
-    } catch (e: any) {
-      req.log.error({ err: e }, "Failed to scrape chapter");
-      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
-    }
+    },
   },
-);
-
-router.post(
-  "/novel/meta",
-  scrapeRateLimit,
-  scrapeConcurrencyLimit,
-  async (req, res) => {
-    const { url } = req.body as { url: string };
-    if (typeof url !== "string" || !url.trim()) {
-      res.status(400).json({ error: "A valid URL is required" });
-      return;
-    }
-    if (!isAllowedNovelUrl(url)) {
-      res.status(400).json({ error: "URL is not from a supported source" });
-      return;
-    }
-    try {
-      const site = detectSite(url);
-      const title = extractTitleFromUrl(url);
-
-      let pageUrl = url;
-      let html: string;
-
-      const resp = await httpClient.get(url);
-      html = resp.data as string;
-
-      if (site.isChapterPage) {
-        const novelUrl = getNovelMainPageUrl(html, url);
-        if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
-          try {
-            const novelResp = await httpClient.get(novelUrl);
-            html = novelResp.data as string;
-            pageUrl = novelUrl;
-          } catch {}
-        }
-      }
-
-      const { coverUrl, author, synopsis } = extractNovelMeta(
-        html,
-        pageUrl,
-        site,
+  {
+    name: "royalroad.ts: preserves actual paragraph text and filters nav text",
+    run: () => {
+      const result = royalRoadExtract(FIXTURE_P_TAG_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate."),
+        `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
       );
-
-      let firstChapterUrl: string | null = null;
-      if (!site.isChapterPage) {
-        if (site.isFreeWebNovel) {
-          const root = parse(html);
-          const ul = root.querySelector("ul.ul-list5");
-          if (ul) {
-            const firstA = ul.querySelector("li a");
-            if (firstA) {
-              const href = firstA.getAttribute("href");
-              if (href) firstChapterUrl = ensureAbsoluteUrl(href, url);
-            }
-          }
-        } else {
-          firstChapterUrl = getFirstChapterUrl(html, url);
-        }
-      } else {
-        firstChapterUrl = url;
-      }
-
-      res.json({ title, author, synopsis, coverUrl, firstChapterUrl });
-    } catch (e: any) {
-      req.log.error({ err: e }, "Failed to fetch novel meta");
-      res.status(500).json({ error: e.message || "Failed to fetch metadata" });
-    }
+      assert(
+        !result.includes("Next Chapter"),
+        `expected nav text to be filtered, but it leaked into content: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelarrow.ts: extracts and joins <p>-tag paragraphs",
+    run: () => {
+      const result = novelArrowExtract(FIXTURE_P_TAG_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("this place is different"),
+        `expected all paragraph text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novelphoenix.ts: extracts and joins <p>-tag paragraphs",
+    run: () => {
+      const result = novelPhoenixExtract(FIXTURE_P_TAG_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("this place is different"),
+        `expected all paragraph text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "freewebnovel.ts: extracts non-empty content and preserves body text",
+    run: () => {
+      const result = freeWebNovelExtract(FIXTURE_FREEWEBNOVEL_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate."),
+        `expected body text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "freewebnovel.ts: filters out ad/junk paragraphs",
+    run: () => {
+      const result = freeWebNovelExtract(FIXTURE_FREEWEBNOVEL_CONTENT);
+      assert(
+        !result.toLowerCase().includes("patreon") &&
+          !result.toLowerCase().includes("please visit"),
+        `expected junk paragraphs to be filtered, but leaked into content: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "wuxiaworld.ts: extracts <p>-wrapped content, converting inner <br> to breaks",
+    run: () => {
+      const result = wuxiaworldExtract(FIXTURE_WUXIAWORLD_P_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("He walked on."),
+        `expected all paragraph text to survive extraction, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "wuxiaworld.ts: falls back to raw <br>-separated text when no <p> tags present",
+    run: () => {
+      const result = wuxiaworldExtract(FIXTURE_WUXIAWORLD_BR_ONLY_CONTENT);
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("The air shimmered with spirit energy."),
+        `expected fallback extraction to preserve body text, got: ${JSON.stringify(result)}`,
+      );
+    },
   },
 );
 
-router.post(
-  "/novel/next-chapter",
-  scrapeRateLimit,
-  scrapeConcurrencyLimit,
-  async (req, res) => {
-    const { url, chapterNum } = req.body as { url: string; chapterNum: number };
-    if (typeof url !== "string" || !url.trim()) {
-      res.status(400).json({ error: "A valid URL is required" });
-      return;
-    }
-    if (!Number.isSafeInteger(chapterNum) || chapterNum < 1) {
-      res.status(400).json({ error: "chapterNum must be a positive integer" });
-      return;
-    }
-    if (!isAllowedNovelUrl(url)) {
-      res.status(400).json({ error: "URL is not from a supported source" });
-      return;
-    }
-    try {
-      const response = await httpClient.get(url);
-      const html = response.data as string;
-      const content = extractChapterContent(html);
-      const title = extractChapterTitle(html, chapterNum);
-      const nextUrl = extractNextChapterUrl(html, url);
-      res.json({ url, title, content, nextUrl });
-    } catch (e: any) {
-      req.log.error({ err: e }, "Failed to fetch next chapter");
-      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
-    }
+checks.push(
+  {
+    name: "novgo.ts: keeps only #chapter-content paragraphs",
+    run: () => {
+      const result = novgoExtract(FIXTURE_NOVGO_PAGE);
+      assert(
+        result.includes("Chen Mobai stepped through the gate.") &&
+          result.includes("The air shimmered with spirit energy.") &&
+          !result.includes("Next Chapter"),
+        `expected scoped body text, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "novgo.ts: filters out site-name notes without dropping sentences",
+    run: () => {
+      const result = novgoExtract(FIXTURE_NOVGO_PAGE);
+      assert(
+        !result.includes("novgo.net") && result.split("\n\n").length === 2,
+        `expected only the 2 real paragraphs, got: ${JSON.stringify(result)}`,
+      );
+    },
   },
 );
 
-export default router;
+function assert(condition: boolean, message: string): void {
+  if (!condition) throw new Error(message);
+}
+
+let failures = 0;
+for (const check of checks) {
+  try {
+    check.run();
+    console.log(`  ok  ${check.name}`);
+  } catch (err) {
+    failures++;
+    console.error(`FAIL  ${check.name}`);
+    console.error(`      ${(err as Error).message}`);
+  }
+}
+
+console.log(`\n${checks.length - failures}/${checks.length} passed`);
+if (failures > 0) {
+  process.exit(1);
+}
