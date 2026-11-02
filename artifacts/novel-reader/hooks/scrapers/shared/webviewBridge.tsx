@@ -79,6 +79,8 @@ const CHALLENGE_POLL_JS = `
   var maxAttempts = 60; // 30 seconds (60 * 500ms)
 
   function isRealPage() {
+    // A JSON API response (no challenge in front of it) is already final
+    if (/json/i.test(document.contentType || '')) return true;
     // Look for the Next.js RSC payload – this is a solid marker
     var scripts = document.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
