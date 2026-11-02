@@ -55,7 +55,7 @@
     "@workspace/api-client-react": "workspace:*",
     "babel-plugin-react-compiler": "^19.0.0-beta-e993439-20250117",
     "eslint": "^9.0.0",
-    "eslint-config-expo": "^58.0.4",
+    "eslint-config-expo": "~10.0.0",
     "expo": "~54.0.38",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.14",
