@@ -70,7 +70,11 @@ const synopsisHtmlToText = (html: string): string => {
     .replace(/<[^>]*>/g, "");
   return withBreaks
     .split(/\r?\n/)
-    .map((line) => decodeEntities(line).replace(/[ \t]+/g, " ").trim())
+    .map((line) =>
+      decodeEntities(line)
+        .replace(/[ \t]+/g, " ")
+        .trim(),
+    )
     .filter((line) => line.length > 0)
     .join("\n");
 };
