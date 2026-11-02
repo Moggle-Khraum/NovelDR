@@ -50,7 +50,22 @@ const extractBrSeparatedText = (html: string): string => {
  * Exported for the scraper content-extraction regression test — see
  * scripts/test-scrapers.ts.
  */
-export const extractChapterBody = (rawContentBlock: string): string => {
+export const extractChapterBody = (
+  rawContentBlock: string,
+  chapterTitle = "",
+): string => {
+  // Current markup (2026 redesign): one <p> per paragraph, and the first <p>
+  // repeats the chapter title. Use that when real paragraphs are present.
+  const paras = [...rawContentBlock.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) => decodeEntities(stripTags(m[1])))
+    .filter(Boolean);
+  if (paras.length > 1) {
+    const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+    if (chapterTitle && norm(paras[0]) === norm(chapterTitle)) paras.shift();
+    return splitAdjacentDialogue(paras.join("\n\n"));
+  }
+
+  // Legacy markup: <br>-separated text with a leading <h4> title repeat.
   const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
   return splitAdjacentDialogue(
     splitGluedSentences(extractBrSeparatedText(contentBlock)),
@@ -74,27 +89,47 @@ export const novelBinCcScraper: SourceScraper = {
     const html = await fetchHtmlWithFallback(url);
 
     // <meta itemprop="image" content="https://www.novelbin.cc/files/image/....jpg">
+    // New markup: <meta property="og:image" content="...">
     const coverUrl =
+      safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ??
       safeMatch(
         html,
         /<meta[\s\S]*?itemprop="image"[\s\S]*?content="([^"]+)"/i,
-      ) ?? "";
+      ) ??
+      "";
 
     // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
+    // New markup: <meta property="og:novel:novel_name" content="Title"> / <h1>Title</h1>
     const title = decodeEntities(
       safeMatch(
         html,
-        /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i,
-      ) ?? "Unknown Title",
+        /<meta[^>]*property="og:novel:novel_name"[^>]*content="([^"]+)"/i,
+      ) ??
+        safeMatch(
+          html,
+          /<div class="civic-detail-summary">[\s\S]*?<h1[^>]*>([^<]+)<\/h1>/i,
+        ) ??
+        safeMatch(
+          html,
+          /<h3[\s\S]*?class="title"[\s\S]*?itemprop="name"[\s\S]*?>([^<]+)<\/h3>/i,
+        ) ??
+        "Unknown Title",
     );
 
     // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
     // NOTE: The span and meta may be on separate lines, so use [\s\S] to match newlines
+    // New markup: <meta property="og:novel:author" content="Author">
     const author = decodeEntities(
       safeMatch(
         html,
-        /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i,
-      ) ?? "Unknown Author",
+        /<meta[^>]*property="og:novel:author"[^>]*content="([^"]+)"/i,
+      ) ??
+        safeMatch(html, /<p class="civic-author">[\s\S]*?<\/i>([^<]+)<\/p>/i) ??
+        safeMatch(
+          html,
+          /<span[\s\S]*?itemprop="author"[\s\S]*?<meta[\s\S]*?itemprop="name"[\s\S]*?content="([^"]+)"/i,
+        ) ??
+        "Unknown Author",
     );
 
     // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
@@ -103,7 +138,11 @@ export const novelBinCcScraper: SourceScraper = {
     // unrelated <meta name="description" ...> tags in <head>, and matching
     // those would make extractByDepth's <div>/</div> counter run wild over
     // the rest of the page.
-    const descBlock = extractByDepth(html, 'class="desc-text"') ?? "";
+    // New markup: <div class="civic-synopsis"> (still <br>-separated text).
+    const descBlock =
+      extractByDepth(html, 'class="civic-synopsis"') ??
+      extractByDepth(html, 'class="desc-text"') ??
+      "";
     // Some novels' synopsis text has no <br> tags at all — it's one run-on
     // blob with [Tag] callouts and sentence punctuation glued directly onto
     // the next word (see splitGluedSentences in shared/html.ts). Apply that
@@ -119,10 +158,17 @@ export const novelBinCcScraper: SourceScraper = {
     //    NOTE: href may be split across multiple lines, so use [\s\S] instead of . to match newlines
     // 2. Flexible: <a ...class contains "btn"... href contains "/chapter"
     // 3. Last resort: any <a> with href to /book/.../chapter-1 that contains "READ"
-    let firstChapterPath = safeMatch(
-      html,
-      /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i,
-    );
+    // New markup: first /book/.../chapter-N link on the page is the
+    // "Start reading" button (<a href=... class="civic-primary-button">).
+    let firstChapterPath =
+      safeMatch(
+        html,
+        /<a[^>]*href="([^"]*\/book\/[^"]*\/chapter-\d+[^"]*)"[^>]*class="civic-primary-button"/i,
+      ) ??
+      safeMatch(
+        html,
+        /<a[\s\S]*?class="btn btn-danger btn-read-now"[\s\S]*?href="([^"]+)"/i,
+      );
 
     if (!firstChapterPath) {
       // Fallback: look for any link with chapter in the href and "read" text nearby
@@ -162,8 +208,11 @@ export const novelBinCcScraper: SourceScraper = {
 
     // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
     // Fallback: look for any h2/h3 with "chapter" in it if the class selector doesn't work
+    // New markup: <h1><span class="chr-text">Chapter 1: ...</span></h1>
     let title = decodeEntities(
-      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? "",
+      safeMatch(html, /<span class="chr-text">([^<]+)<\/span>/i) ??
+        safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ??
+        "",
     );
     if (!title) {
       title = decodeEntities(
@@ -173,7 +222,7 @@ export const novelBinCcScraper: SourceScraper = {
 
     // <div id="chr-content" class="chr-c" ...>...</div>
     const contentBlock = extractByDepth(html, 'id="chr-content"') ?? "";
-    const content = extractChapterBody(contentBlock);
+    const content = extractChapterBody(contentBlock, title);
 
     // <a title="Chapter 2: ..." href="..." class="btn btn-success" id="next_chap">
     // Gets a `disabled=""` attribute (no href change) on the last chapter.
