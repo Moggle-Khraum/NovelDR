@@ -73,15 +73,14 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ## 🌐 Supported Sources
 
-| Source Domain                                   | Status         | Source Domain                               | Status         | Source Domain                          | Status         |
-| ----------------------------------------------- | -------------- | ------------------------------------------- | -------------- | -------------------------------------- | -------------- |
-| [ReadNovelFull](https://readnovelfull.com/)     | ✅ Site Active | [NovelFull.com](https://novelfull.com/)     | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
-| [NovelFull.net](https://novelfull.net/)         | ✅ Site Active | [AllNovel](https://allnovel.org/)           | ✅ Site Active | [NovelPing](https://novelping.com/)| ✅ Site Active |
-| [FreeWebNovel](https://freewebnovel.com/)       | ✅ Site Active | [NovGo](https://novgo.net/)                 | ✅ Site Active | [NovelArchive.cc](https://novelarchive.cc/)     | ✅ Site Active  |
-| [MTLNovel.me](https://mtlnovel.me/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active | [FanMTL](https://fanmtl.com/)     | ✅ Site Active  |
-| [RoyalRoad](https://www.royalroad.com/)         | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/)     | ✅ Site Active | [WuxiaBox](https://www.wuxiabox.com/) |  ✅ Site Active  |
-| [NovelPhoenix](https://novelphoenix.com/)       | ✅ Site Active | [Novel-bin](https://novel-bin.com/)         | ✅ Site Active | [WuxiaClick](https://wuxia.click/) |  ✅ Site Active  |
-|              | ✅ Site Active |     | ✅ Site Active |
+| Source Domain | Status | Source Domain | Status | Source Domain | Status |
+| --- | --- | --- | --- | --- | --- |
+| [ReadNovelFull](https://readnovelfull.com/) | ✅ Site Active | [NovelFull.com](https://novelfull.com/) | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
+| [FreeWebNovel](https://freewebnovel.com/) | ✅ Site Active | [NovGo](https://novgo.net/) | ✅ Site Active | [NovelArchive.cc](https://novelarchive.cc/) | ✅ Site Active |
+| [MTLNovel.me](https://mtlnovel.me/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active | [FanMTL](https://fanmtl.com/) | ✅ Site Active |
+| [RoyalRoad](https://www.royalroad.com/) | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/) | ✅ Site Active | [WuxiaBox](https://www.wuxiabox.com/) | ✅ Site Active |
+| [NovelPhoenix](https://novelphoenix.com/) | ✅ Site Active | [Novel-bin](https://novel-bin.com/) | ✅ Site Active | [WuxiaClick](https://wuxia.click/) | ✅ Site Active |
+| [NovelPing](https://novelping.com/) | ✅ Site Active |  |  |  |  |
 
 ---
 
@@ -89,10 +88,11 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 ## 💀 Deprecated Sources
 
-| Source Domain                       | Status       | Source Domain                         | Status       |
-| ----------------------------------- | ------------ | ------------------------------------- | ------------ |
+| Source Domain | Status | Source Domain | Status |
+| --- | --- | --- | --- |
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
-| [NovelArrow](https://novelarrow.com/)   | ❌ Changed Domain | [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead |
+| [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead | [AllNovel](https://allnovel.org/) | ❌ Site Dead |
+| [NovelFull.net](https://novelfull.net/) | ❌ Site Dead |  |  |
 
 ---
 
@@ -142,7 +142,6 @@ If this project helps you somehow, please dont forget to Star the Repo~!
 |-------------|-----------|--------------|
 |~~[@TUVIMEN](https://github.com/TUVIMEN)~~ | ~~[lightnovelworld](https://github.com/TUVIMEN/lightnovelworld)~~ |~~Forked LightNovelWorld Scraper into the App.~~ [💀DEPRECATED]|
 | [@lncrawl](https://github.com/lncrawl) | [lightnovel-crawler](https://github.com/lncrawl/lightnovel-crawler/tree/dev) | Adapted and ported 3 novel scraper sources into the App. |
-| ~~[@Rudransh-Susarla-1802](https://github.com/Rudransh-Susarla-1802)~~ | ~~[Novel_Project](https://github.com/Rudransh-Susarla-1802/Novel_Project)~~ | ~~Adapted and ported NovelArrow scraper to the App.~~ [💀DEPRECATED]  |
 | [@5ghzx](https://github.com/5ghzx) | [novelarchive-lnreader](https://github.com/5ghzx/novelarchive-lnreader) | Adapted and ported the NovelArchive Extension into a Source Scraper. |
 
 ---
