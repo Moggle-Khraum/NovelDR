@@ -58,6 +58,24 @@ const cleanContent = (text: string, isDescription: boolean = false): string => {
 };
 
 /**
+ * Convert a synopsis's HTML into paragraph-separated plain text. stripTags()
+ * collapses every tag and newline into a single space, which is why the
+ * paragraph breaks disappeared, so breaks are turned into newlines first.
+ */
+const synopsisHtmlToText = (html: string): string => {
+  if (!html) return "";
+  const withBreaks = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "");
+  return withBreaks
+    .split(/\r?\n/)
+    .map((line) => decodeEntities(line).replace(/[ \t]+/g, " ").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+};
+
+/**
  * The synopsis the site shows is rendered into the novel page as
  * <p id="novel-description">. Read it from there first; the API's description
  * field has stopped carrying it. Returns "" if the element isn't found.
@@ -68,7 +86,7 @@ const synopsisFromPage = async (novelId: string): Promise<string> => {
       `${BASE_URL}/novel?id=${encodeURIComponent(novelId)}`,
     );
     const match = html.match(/<p id="novel-description"[^>]*>([\s\S]*?)<\/p>/i);
-    return match ? cleanContent(match[1], true) : "";
+    return match ? synopsisHtmlToText(match[1]) : "";
   } catch {
     return "";
   }
@@ -110,9 +128,8 @@ export const novelArchiveCcScraper: SourceScraper = {
     const author = novel.author || "Unknown Author";
     let synopsis = await synopsisFromPage(novelId);
     if (!synopsis) {
-      synopsis = cleanContent(
+      synopsis = synopsisHtmlToText(
         novel.description || novel.summary || novel.synopsis || "",
-        true,
       );
     }
 
