@@ -2256,7 +2256,6 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
-
         </View>
 
         <View style={styles.storageLabelRow}>
@@ -2275,7 +2274,10 @@ export default function SettingsScreen() {
             accessibilityLabel="Measure storage again"
             style={[
               styles.measureBtn,
-              { borderColor: colors.border, opacity: measuringStorage ? 0.6 : 1 },
+              {
+                borderColor: colors.border,
+                opacity: measuringStorage ? 0.6 : 1,
+              },
             ]}
           >
             {measuringStorage ? (
@@ -2355,7 +2357,6 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           APP THEME
-
         </Text>
         <View style={styles.themeRow}>
           <ThemeButton
