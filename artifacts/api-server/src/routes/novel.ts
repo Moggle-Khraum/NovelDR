@@ -1,4 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
+import "pino-http";
 import axios from "axios";
 import { parse } from "node-html-parser";
 import { URL } from "url";
