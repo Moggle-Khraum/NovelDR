@@ -319,7 +319,8 @@ export function extractChapterContent(html: string): string {
   if (paragraphs.length > 0) return paragraphs.join("\n\n");
 
   const hasParagraphMarkup = /<p\b/i.test(sourceHtml);
-  if (hasParagraphMarkup) return "";
+  const hasBreakSeparatedText = /<br\s*\/?>/i.test(sourceHtml);
+  if (hasParagraphMarkup && !hasBreakSeparatedText) return "";
 
   return sourceHtml
     .split(/<br\s*\/?>/i)
