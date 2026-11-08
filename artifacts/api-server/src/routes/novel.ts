@@ -121,7 +121,11 @@ export function isAllowedNovelUrl(rawUrl: string): boolean {
   } catch {
     return false;
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password
+  ) {
     return false;
   }
   const hostname = parsed.hostname.toLowerCase();
