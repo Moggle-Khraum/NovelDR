@@ -98,8 +98,23 @@ const loadViaWebView = async (url: string, timeoutMs: number) => {
 
 const WEBVIEW_TIMEOUT_MS = 35000;
 
-const looksLikeChallenge = (html: string): boolean =>
-  /<title>\s*just a moment/i.test(html);
+export const looksLikeChallenge = (html: string): boolean =>
+  /<title[^>]*>\\s*(?:just a moment|attention required|checking your browser)/i.test(
+    html,
+  ) ||
+  /(?:cf-browser-verification|cf-chl-|challenge-platform|checking your browser)/i.test(
+    html,
+  );
+
+const assertUsableHtml = (value: unknown, tier: string): string => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${tier} returned an empty or non-text response`);
+  }
+  if (looksLikeChallenge(value)) {
+    throw new Error(`${tier} returned an anti-bot challenge page`);
+  }
+  return value;
+};
 
 // A browser shows a JSON response as <pre>{...}</pre>; pull the JSON back out.
 const jsonFromWebViewHtml = <T>(html: string): T => {
@@ -128,21 +143,23 @@ export const fetchHtmlWithFallback = async (
 
   const direct: Tier<string> = {
     name: "direct",
-    run: () => httpClient.get(validatedUrl).then((res) => res.data),
+    run: () =>
+      httpClient
+        .get(validatedUrl)
+        .then((res) => assertUsableHtml(res.data, "direct fetch")),
   };
   const proxy: Tier<string> = {
     name: "proxy",
     run: () =>
-      httpClient.get(buildProxyUrl(validatedUrl)).then((res) => res.data),
+      httpClient
+        .get(buildProxyUrl(validatedUrl))
+        .then((res) => assertUsableHtml(res.data, "proxy fetch")),
   };
   const webview: Tier<string> = {
     name: "webview",
     run: async () => {
       const html = await loadViaWebView(validatedUrl, WEBVIEW_TIMEOUT_MS);
-      if (looksLikeChallenge(html)) {
-        throw new Error("challenge page never cleared");
-      }
-      return html;
+      return assertUsableHtml(html, "WebView fetch");
     },
   };
 
