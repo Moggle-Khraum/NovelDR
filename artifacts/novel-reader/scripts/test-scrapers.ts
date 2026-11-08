@@ -40,6 +40,7 @@ import { extractParagraphs as novelPhoenixExtract } from "../hooks/scrapers/sour
 import { extractFreeWebNovelContent as freeWebNovelExtract } from "../hooks/scrapers/sources/freewebnovel";
 import { extractWuxiaworldContent as wuxiaworldExtract } from "../hooks/scrapers/sources/wuxiaworld";
 import { findExternalScraper } from "../hooks/scrapers/registry";
+import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
 // Mirrors the real div#chr-content structure: a leading empty <p></p>, an
 // <h4> repeating the chapter title, then the actual body as raw text nodes
@@ -362,6 +363,27 @@ checks.push(
       assert(
         !result.includes("novgo.net") && result.split("\n\n").length === 2,
         `expected only the 2 real paragraphs, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+);
+
+checks.push(
+  {
+    name: "shared/http.ts: detects Cloudflare challenge pages",
+    run: () => {
+      assert(
+        looksLikeChallenge("<html><title>Just a moment...</title><body>Checking your browser</body></html>"),
+        "expected a Cloudflare interstitial to be detected",
+      );
+    },
+  },
+  {
+    name: "shared/http.ts: does not classify ordinary chapter HTML as a challenge",
+    run: () => {
+      assert(
+        !looksLikeChallenge("<html><title>Chapter 1</title><body><p>Story text.</p></body></html>"),
+        "ordinary chapter HTML must not be classified as a challenge",
       );
     },
   },
