@@ -18,6 +18,7 @@
     "expo-keep-awake": "~15.0.8",
     "expo-mail-composer": "~15.0.8",
     "expo-document-picker": "~14.0.8",
+    "jszip": "3.10.1",
     "react-native-gesture-handler": "~2.33.1",
     "react-native-webview": "^14.0.1",
     "react-native-zip-archive": "^9.5.3",
