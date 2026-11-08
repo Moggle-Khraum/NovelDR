@@ -1,7 +1,8 @@
 // XML helpers shared by the EPUB and DOCX builders. Pure functions, no imports.
 
 // Characters that XML 1.0 does not allow, even when escaped.
-const INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
+const INVALID_XML_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
 
 // Escapes text for use in element content or attribute values.
 export function xmlText(value: string): string {

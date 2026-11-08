@@ -22,7 +22,10 @@ export type RefillTarget = {
 };
 
 export type RefillDeps = {
-  fetch: (url: string, chapterNumber: number) => Promise<{ title: string; content: string }>;
+  fetch: (
+    url: string,
+    chapterNumber: number,
+  ) => Promise<{ title: string; content: string }>;
   save: (target: RefillTarget, title: string, content: string) => Promise<void>;
   shouldStop?: () => boolean;
   onProgress?: (done: number, total: number) => void;
@@ -50,7 +53,8 @@ export function buildRefillTargets(
   const byId = new Map(novels.map((n) => [n.id, n]));
   const targets: RefillTarget[] = [];
   for (const issue of issues) {
-    if (issue.kind !== "missingChapterFile" || issue.novelId === undefined) continue;
+    if (issue.kind !== "missingChapterFile" || issue.novelId === undefined)
+      continue;
     if (issue.chapterIndex === undefined) continue;
     const novel = byId.get(issue.novelId);
     if (!novel) continue;

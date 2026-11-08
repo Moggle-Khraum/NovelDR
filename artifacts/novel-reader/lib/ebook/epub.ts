@@ -50,11 +50,7 @@ function chapterFileName(index: number): string {
   return `chapter-${String(index + 1).padStart(4, "0")}.xhtml`;
 }
 
-function xhtmlPage(
-  language: string,
-  title: string,
-  bodyHtml: string,
-): string {
+function xhtmlPage(language: string, title: string, bodyHtml: string): string {
   return `${XML_DECL}
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${xmlText(language)}" lang="${xmlText(language)}">
@@ -156,10 +152,17 @@ export function buildEpubFiles(
   // 7. NCX table of contents, for older readers that do not read the nav document.
   const ncxPoints = [
     { id: "np-title", href: "title.xhtml", title: displayTitle },
-    ...chapterItems.map((item) => ({ id: `np-${item.id}`, href: item.href, title: item.title })),
+    ...chapterItems.map((item) => ({
+      id: `np-${item.id}`,
+      href: item.href,
+      title: item.title,
+    })),
   ]
     .map(
-      (point, index) => `    <navPoint id="${point.id}" playOrder="${index + 1}">
+      (
+        point,
+        index,
+      ) => `    <navPoint id="${point.id}" playOrder="${index + 1}">
       <navLabel><text>${xmlText(point.title)}</text></navLabel>
       <content src="${point.href}"/>
     </navPoint>`,

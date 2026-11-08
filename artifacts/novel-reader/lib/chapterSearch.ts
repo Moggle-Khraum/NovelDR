@@ -33,7 +33,9 @@ export function queryTerms(query: string): string[] {
   return query
     .toLowerCase()
     .split(/\s+/)
-    .map((term) => term.replace(ASCII_PUNCTUATION, "").replace(/^\.+|\.+$/g, ""))
+    .map((term) =>
+      term.replace(ASCII_PUNCTUATION, "").replace(/^\.+|\.+$/g, ""),
+    )
     .filter((term) => term.length > 0);
 }
 

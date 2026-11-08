@@ -16,10 +16,7 @@ import {
 } from "./storageStats";
 
 export type IntegrityIssueKind =
-  | "missingChapterFile"
-  | "leftoverFile"
-  | "unlinkedFolder"
-  | "needsAttention";
+  "missingChapterFile" | "leftoverFile" | "unlinkedFolder" | "needsAttention";
 
 export type IntegrityIssue = {
   kind: IntegrityIssueKind;
@@ -93,7 +90,8 @@ export async function checkLibraryIntegrity(
         if (!present.has(name)) {
           issues.push({
             kind: "missingChapterFile",
-            reason: "The library expects this chapter file, but it is not on disk.",
+            reason:
+              "The library expects this chapter file, but it is not on disk.",
             removable: false,
             novelId: novel.id,
             title,
@@ -133,7 +131,8 @@ export async function checkLibraryIntegrity(
         } else if (entry.isDirectory) {
           issues.push({
             kind: "needsAttention",
-            reason: "An unexpected folder sits inside this novel's chapter folder.",
+            reason:
+              "An unexpected folder sits inside this novel's chapter folder.",
             removable: false,
             novelId: novel.id,
             title,
@@ -142,7 +141,8 @@ export async function checkLibraryIntegrity(
         } else {
           issues.push({
             kind: "leftoverFile",
-            reason: "This file is not a chapter the library expects for this novel.",
+            reason:
+              "This file is not a chapter the library expects for this novel.",
             removable: true,
             novelId: novel.id,
             title,
@@ -152,7 +152,9 @@ export async function checkLibraryIntegrity(
       }
     }
 
-    const record = await adapter.stat(joinPath(recordsRoot, `${novel.id}.json`)).catch(() => null);
+    const record = await adapter
+      .stat(joinPath(recordsRoot, `${novel.id}.json`))
+      .catch(() => null);
     if (!record || !record.exists) {
       issues.push({
         kind: "needsAttention",
@@ -192,7 +194,12 @@ export async function checkLibraryIntegrity(
       continue;
     }
 
-    const hasRecord = (await adapter.stat(joinPath(recordsRoot, `${name}.json`)).catch(() => null))?.exists ?? false;
+    const hasRecord =
+      (
+        await adapter
+          .stat(joinPath(recordsRoot, `${name}.json`))
+          .catch(() => null)
+      )?.exists ?? false;
     if (hasRecord) {
       issues.push({
         kind: "needsAttention",
@@ -205,7 +212,8 @@ export async function checkLibraryIntegrity(
     } else if (!indexKnown) {
       issues.push({
         kind: "needsAttention",
-        reason: "The library index could not be read, so this folder is not removed.",
+        reason:
+          "The library index could not be read, so this folder is not removed.",
         removable: false,
         novelId: name,
         path,
@@ -213,7 +221,8 @@ export async function checkLibraryIntegrity(
     } else if (indexIds.has(name)) {
       issues.push({
         kind: "needsAttention",
-        reason: "This folder is listed in the library index, but the novel did not load. It is not removed.",
+        reason:
+          "This folder is listed in the library index, but the novel did not load. It is not removed.",
         removable: false,
         novelId: name,
         path,
@@ -246,7 +255,8 @@ export async function checkLibraryIntegrity(
     });
   }
 
-  const count = (kind: IntegrityIssueKind) => issues.filter((i) => i.kind === kind).length;
+  const count = (kind: IntegrityIssueKind) =>
+    issues.filter((i) => i.kind === kind).length;
   return {
     checkedAt: Date.now(),
     novelsChecked: input.novels.length,

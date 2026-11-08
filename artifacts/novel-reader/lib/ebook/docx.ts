@@ -15,7 +15,8 @@ export type DocxMeta = {
 
 const XML_DECL = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`;
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-const R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const R_NS =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 const CONTENT_TYPES = `${XML_DECL}
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -141,7 +142,9 @@ function documentXml(meta: DocxMeta, chapters: EbookChapter[]): string {
 
   chapters.forEach((chapter, index) => {
     const heading = chapter.title.trim() || `Chapter ${index + 1}`;
-    body.push(paragraph([heading], { style: "Heading1", pageBreakBefore: true }));
+    body.push(
+      paragraph([heading], { style: "Heading1", pageBreakBefore: true }),
+    );
     for (const lines of splitParagraphs(chapter.content)) {
       body.push(paragraph(lines));
     }

@@ -163,13 +163,31 @@ async function entryBytes(
   try {
     stat = await adapter.stat(path);
   } catch {
-    return { exists: false, isDirectory: false, bytes: 0, files: 0, skipped: 1 };
+    return {
+      exists: false,
+      isDirectory: false,
+      bytes: 0,
+      files: 0,
+      skipped: 1,
+    };
   }
   if (!stat.exists) {
-    return { exists: false, isDirectory: false, bytes: 0, files: 0, skipped: 0 };
+    return {
+      exists: false,
+      isDirectory: false,
+      bytes: 0,
+      files: 0,
+      skipped: 0,
+    };
   }
   if (!stat.isDirectory) {
-    return { exists: true, isDirectory: false, bytes: stat.size || 0, files: 1, skipped: 0 };
+    return {
+      exists: true,
+      isDirectory: false,
+      bytes: stat.size || 0,
+      files: 1,
+      skipped: 0,
+    };
   }
   const folder = await folderBytes(adapter, path);
   return { exists: true, isDirectory: true, ...folder };
@@ -232,7 +250,10 @@ export async function estimateLibraryStorage(
     }
     leftoverBytes += novelLeftoverBytes;
 
-    const record = await fileBytes(adapter, joinPath(recordsRoot, `${novel.id}.json`));
+    const record = await fileBytes(
+      adapter,
+      joinPath(recordsRoot, `${novel.id}.json`),
+    );
     skipped += record.skipped;
     recordBytes += record.bytes;
 
@@ -271,7 +292,8 @@ export async function estimateLibraryStorage(
   const backups = await folderBytes(adapter, locations.backupsDir);
   const exports = await folderBytes(adapter, locations.exportsDir);
   const updates = await folderBytes(adapter, locations.updatesDir);
-  skipped += covers.skipped + backups.skipped + exports.skipped + updates.skipped;
+  skipped +=
+    covers.skipped + backups.skipped + exports.skipped + updates.skipped;
 
   // 4. Everything else in the app folder: all children except chapters/ and novels/.
   const appListing = await listSafe(adapter, locations.appDataDir);
@@ -279,7 +301,10 @@ export async function estimateLibraryStorage(
   let otherBytes = 0;
   for (const name of appListing.names) {
     if (name === "chapters" || name === "novels") continue;
-    const entry = await entryBytes(adapter, joinPath(locations.appDataDir, name));
+    const entry = await entryBytes(
+      adapter,
+      joinPath(locations.appDataDir, name),
+    );
     otherBytes += entry.bytes;
     skipped += entry.skipped;
   }
@@ -287,12 +312,20 @@ export async function estimateLibraryStorage(
   const categories: StorageCategory[] = [
     { key: "chapters", label: "Chapter text", bytes: chapterBytes },
     { key: "novelDetails", label: "Novel details", bytes: recordBytes },
-    { key: "leftovers", label: "Leftover files", bytes: leftoverBytes + orphanBytes },
+    {
+      key: "leftovers",
+      label: "Leftover files",
+      bytes: leftoverBytes + orphanBytes,
+    },
     { key: "covers", label: "Cover images", bytes: covers.bytes },
     { key: "backups", label: "Backups", bytes: backups.bytes },
     { key: "exports", label: "Exported files", bytes: exports.bytes },
     { key: "updates", label: "Update downloads", bytes: updates.bytes },
-    { key: "otherAppData", label: "Library index and other data", bytes: otherBytes },
+    {
+      key: "otherAppData",
+      label: "Library index and other data",
+      bytes: otherBytes,
+    },
   ];
   const totalBytes = categories.reduce((sum, c) => sum + c.bytes, 0);
 
