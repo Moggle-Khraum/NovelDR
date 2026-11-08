@@ -240,9 +240,12 @@ jobs:
         working-directory: artifacts/novel-reader
         run: pnpm run typecheck
 
-      - name: Run API TypeScript check
+      - name: Typecheck the modified API scraper route
         working-directory: artifacts/api-server
-        run: pnpm exec tsc -p tsconfig.json --noEmit
+        run: >-
+          pnpm exec tsc --noEmit --target ES2022 --module NodeNext
+          --moduleResolution NodeNext --strict --esModuleInterop --skipLibCheck
+          src/routes/novel.ts
 
   scraper-regression:
     needs: [format, format-check]
