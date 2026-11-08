@@ -34,6 +34,8 @@ export type StorageLocations = {
   backupsDir: string;
   exportsDir: string;
   updatesDir: string;
+  // Optional temporary cache folder. Reported on its own, not in totalBytes.
+  cacheDir?: string;
 };
 
 export type StorageCategoryKey =
@@ -63,6 +65,8 @@ export type NovelStorage = {
 export type LibraryStorageReport = {
   measuredAt: number;
   totalBytes: number;
+  // Temporary cache size. Not part of totalBytes.
+  cacheBytes: number;
   categories: StorageCategory[];
   novels: NovelStorage[];
   // Expected chapter files that are present.
@@ -292,8 +296,15 @@ export async function estimateLibraryStorage(
   const backups = await folderBytes(adapter, locations.backupsDir);
   const exports = await folderBytes(adapter, locations.exportsDir);
   const updates = await folderBytes(adapter, locations.updatesDir);
+  const cache = locations.cacheDir
+    ? await folderBytes(adapter, locations.cacheDir)
+    : { bytes: 0, skipped: 0 };
   skipped +=
-    covers.skipped + backups.skipped + exports.skipped + updates.skipped;
+    covers.skipped +
+    backups.skipped +
+    exports.skipped +
+    updates.skipped +
+    cache.skipped;
 
   // 4. Everything else in the app folder: all children except chapters/ and novels/.
   const appListing = await listSafe(adapter, locations.appDataDir);
@@ -332,6 +343,7 @@ export async function estimateLibraryStorage(
   return {
     measuredAt: Date.now(),
     totalBytes,
+    cacheBytes: cache.bytes,
     categories,
     novels: perNovel.sort((a, b) => b.bytes - a.bytes),
     chapterFiles,
