@@ -166,7 +166,7 @@ export function detectSite(url: string) {
     isReadNovelFull,
     isNovelFull,
     isFreeWebNovel,
-    isChapterPage: /(?:^|\\/)chapter(?:[-_/]|\\d)/i.test(pathname),
+    isChapterPage: /(?:^|\/)chapter(?:[-_/]|\d)/i.test(pathname),
   };
 }
 
@@ -252,7 +252,7 @@ export function extractNextChapterUrl(
 ): string | null {
   const root = parse(html);
   const normalize = (value: string) =>
-    value.split("#")[0].replace(/\\/$/, "").toLowerCase();
+    value.split("#")[0].replace(/\/$/, "").toLowerCase();
   const current = normalize(currentUrl);
 
   for (const a of root.querySelectorAll("a")) {
@@ -262,7 +262,7 @@ export function extractNextChapterUrl(
     const href = (a.getAttribute("href") || "").trim();
     const disabled =
       a.hasAttribute("disabled") ||
-      /(?:^|\\s)disabled(?:\\s|$)/i.test(a.getAttribute("class") || "");
+      /(?:^|\s)disabled(?:\s|$)/i.test(a.getAttribute("class") || "");
 
     if (
       !disabled &&
@@ -277,7 +277,7 @@ export function extractNextChapterUrl(
       const resolved = ensureAbsoluteUrl(href, currentUrl);
       if (
         resolved !== href ||
-        /^https?:\\/\\//i.test(resolved)
+        /^https?:\/\//i.test(resolved)
       ) {
         if (
           normalize(resolved) !== current &&
@@ -304,7 +304,7 @@ export function extractChapterContent(html: string): string {
   // Scope extraction to the chapter container first so navigation/sidebar
   // paragraphs cannot be mistaken for story text.
   const sourceHtml = container
-    ? container.innerHTML.replace(/<h4\\b[^>]*>[\\s\\S]*?<\\/h4>/gi, "")
+    ? container.innerHTML.replace(/<h4\b[^>]*>[\s\S]*?<\/h4>/gi, "")
     : html;
   const scopedRoot = parse(sourceHtml);
   const paragraphs = scopedRoot
@@ -314,18 +314,18 @@ export function extractChapterContent(html: string): string {
 
   if (paragraphs.length > 0) return paragraphs.join("\n\n");
 
-  const hasParagraphMarkup = /<p\\b/i.test(sourceHtml);
+  const hasParagraphMarkup = /<p\b/i.test(sourceHtml);
   if (hasParagraphMarkup) return "";
 
   return sourceHtml
-    .split(/<br\\s*\\/?>/i)
+    .split(/<br\s*\/?>/i)
     .map((fragment) => parse(fragment).text.trim())
     .filter((text) => text.length > 0 && !isChapterNavigationText(text))
     .join("\n\n");
 }
 
 function isChapterNavigationText(text: string): boolean {
-  const normalized = text.toLowerCase().replace(/\\s+/g, " ").trim();
+  const normalized = text.toLowerCase().replace(/\s+/g, " ").trim();
   return (
     normalized === "next" ||
     normalized === "next chapter" ||
