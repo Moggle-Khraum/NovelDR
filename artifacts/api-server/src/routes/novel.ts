@@ -89,20 +89,32 @@ const httpClient = axios.create({
 // the server ever fetches them. This is required to prevent SSRF: without
 // it, a caller could pass an arbitrary URL (e.g. an internal/private
 // address) and have this server fetch it on their behalf.
-const ALLOWED_HOSTS = [
+// Keep this list aligned with the frontend's registered source domains
+// plus AsiaNovel, which is handled by useDirectScraper.ts. NovelFull.net
+// remains listed because its scraper is registered, even though the README
+// currently marks that site as unavailable. Host validation remains exact
+// (or a true subdomain match) to avoid accepting lookalike domains.
+export const ALLOWED_HOSTS = [
+  "asianovel.net",
+  "fanmtl.com",
   "freewebnovel.com",
+  "mtlnovel.me",
   "novel-bin.com",
-  "novelarrow.com",
+  "novelarchive.cc",
   "novelbin.cc",
   "novelfull.com",
+  "novelfull.net",
   "novelphoenix.com",
+  "novelping.com",
   "novgo.net",
   "readnovelfull.com",
   "royalroad.com",
+  "wuxia.click",
+  "wuxiabox.com",
   "wuxiaworld.site",
 ];
 
-function isAllowedNovelUrl(rawUrl: string): boolean {
+export function isAllowedNovelUrl(rawUrl: string): boolean {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -129,14 +141,32 @@ function ensureAbsoluteUrl(href: string, baseUrl: string): string {
   }
 }
 
-function detectSite(url: string) {
-  const lower = url.toLowerCase();
+export function detectSite(url: string) {
+  let hostname = "";
+  let pathname = "";
+  try {
+    const parsed = new URL(url);
+    hostname = parsed.hostname.toLowerCase();
+    pathname = parsed.pathname.toLowerCase();
+  } catch {
+    // URL validation happens before this helper is used by a route.
+  }
+
+  const isReadNovelFull =
+    hostname === "readnovelfull.com" ||
+    hostname.endsWith(".readnovelfull.com");
+  const isNovelFull =
+    (hostname === "novelfull.com" || hostname.endsWith(".novelfull.com")) &&
+    !isReadNovelFull;
+  const isFreeWebNovel =
+    hostname === "freewebnovel.com" ||
+    hostname.endsWith(".freewebnovel.com");
+
   return {
-    isReadNovelFull: lower.includes("readnovelfull"),
-    isNovelFull:
-      lower.includes("novelfull") && !lower.includes("readnovelfull"),
-    isFreeWebNovel: lower.includes("freewebnovel"),
-    isChapterPage: lower.includes("chapter"),
+    isReadNovelFull,
+    isNovelFull,
+    isFreeWebNovel,
+    isChapterPage: /(?:^|\\/)chapter(?:[-_/]|\\d)/i.test(pathname),
   };
 }
 
@@ -216,40 +246,97 @@ function getFirstChapterUrl(html: string, baseUrl: string): string | null {
   return null;
 }
 
-function extractNextChapterUrl(
+export function extractNextChapterUrl(
   html: string,
   currentUrl: string,
 ): string | null {
   const root = parse(html);
+  const normalize = (value: string) =>
+    value.split("#")[0].replace(/\\/$/, "").toLowerCase();
+  const current = normalize(currentUrl);
+
   for (const a of root.querySelectorAll("a")) {
     const text = (a.text || "").toLowerCase().trim();
     const cls = (a.getAttribute("class") || "").toLowerCase();
     const id = (a.getAttribute("id") || "").toLowerCase();
+    const href = (a.getAttribute("href") || "").trim();
+    const disabled =
+      a.hasAttribute("disabled") ||
+      /(?:^|\\s)disabled(?:\\s|$)/i.test(a.getAttribute("class") || "");
+
     if (
-      text === "next chapter" ||
-      text === "next" ||
-      cls.includes("next") ||
-      id.includes("next")
+      !disabled &&
+      (text === "next chapter" ||
+        text === "next" ||
+        cls.includes("next") ||
+        id.includes("next")) &&
+      href &&
+      href !== "#" &&
+      !/^(?:javascript:|mailto:|data:)/i.test(href)
     ) {
-      const href = a.getAttribute("href");
-      if (href && !href.includes("javascript") && href !== "#") {
-        return ensureAbsoluteUrl(href, currentUrl);
+      const resolved = ensureAbsoluteUrl(href, currentUrl);
+      if (
+        resolved !== href ||
+        /^https?:\\/\\//i.test(resolved)
+      ) {
+        if (
+          normalize(resolved) !== current &&
+          isAllowedNovelUrl(resolved)
+        ) {
+          return resolved;
+        }
       }
     }
   }
   return null;
 }
 
-function extractChapterContent(html: string): string {
+export function extractChapterContent(html: string): string {
   const root = parse(html);
-  const paragraphs = root.querySelectorAll("p");
-  return paragraphs
+  const container =
+    root.querySelector("#chr-content") ||
+    root.querySelector("#chapter-content") ||
+    root.querySelector(".chapter-content") ||
+    root.querySelector(".chr-c");
+
+  // Most sources use <p> tags, but Novel-bin-family chapters use raw text
+  // separated by <br> inside #chr-content, with a repeated <h4> title.
+  // Scope extraction to the chapter container first so navigation/sidebar
+  // paragraphs cannot be mistaken for story text.
+  const sourceHtml = container
+    ? container.innerHTML.replace(/<h4\\b[^>]*>[\\s\\S]*?<\\/h4>/gi, "")
+    : html;
+  const scopedRoot = parse(sourceHtml);
+  const paragraphs = scopedRoot
+    .querySelectorAll("p")
     .map((p) => p.text.trim())
-    .filter((t) => t.length > 5)
+    .filter((text) => text.length > 0 && !isChapterNavigationText(text));
+
+  if (paragraphs.length > 0) return paragraphs.join("\n\n");
+
+  const hasParagraphMarkup = /<p\\b/i.test(sourceHtml);
+  if (hasParagraphMarkup) return "";
+
+  return sourceHtml
+    .split(/<br\\s*\\/?>/i)
+    .map((fragment) => parse(fragment).text.trim())
+    .filter((text) => text.length > 0 && !isChapterNavigationText(text))
     .join("\n\n");
 }
 
-function extractChapterTitle(html: string, chapterNum: number): string {
+function isChapterNavigationText(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/\\s+/g, " ").trim();
+  return (
+    normalized === "next" ||
+    normalized === "next chapter" ||
+    normalized === "previous" ||
+    normalized === "previous chapter" ||
+    normalized === "table of contents" ||
+    normalized === "back to novel"
+  );
+}
+
+export function extractChapterTitle(html: string, chapterNum: number): string {
   const root = parse(html);
   const titleEl =
     root.querySelector(".chapter-title") ||
@@ -358,6 +445,10 @@ router.post(
       const response = await httpClient.get(url);
       const html = response.data as string;
       const content = extractChapterContent(html);
+      if (!content) {
+        res.status(422).json({ error: "Could not extract chapter content from this page" });
+        return;
+      }
       const chapterNum = parseInt(
         (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
         10,
@@ -462,6 +553,10 @@ router.post(
       const response = await httpClient.get(url);
       const html = response.data as string;
       const content = extractChapterContent(html);
+      if (!content) {
+        res.status(422).json({ error: "Could not extract chapter content from this page" });
+        return;
+      }
       const title = extractChapterTitle(html, chapterNum);
       const nextUrl = extractNextChapterUrl(html, url);
       res.json({ url, title, content, nextUrl });
