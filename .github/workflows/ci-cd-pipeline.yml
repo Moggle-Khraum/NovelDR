@@ -266,6 +266,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run scraper content-extraction regression tests
+      - name: Run frontend scraper and registry regression tests
         working-directory: artifacts/novel-reader
         run: pnpm run test:scrapers
+
+      - name: Run API allowlist and chapter extraction regression tests
+        working-directory: artifacts/api-server
+        run: pnpm exec tsx scripts/test-novel-route.ts
