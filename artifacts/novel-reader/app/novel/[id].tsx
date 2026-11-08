@@ -21,11 +21,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadExportChapters } from "@/lib/exportChapters";
-import { buildEpubFiles } from "@/lib/ebook/epub";
-import { buildDocxFiles } from "@/lib/ebook/docx";
-import { zipToBase64 } from "@/lib/ebook/package";
-import { filterChaptersByTitle } from "@/lib/chapterSearch";
+import { loadExportChapters } from "../../lib/exportChapters";
+import { buildEpubFiles } from "../../lib/ebook/epub";
+import { buildDocxFiles } from "../../lib/ebook/docx";
+import { zipToBase64 } from "../../lib/ebook/package";
+import { filterChaptersByTitle } from "../../lib/chapterSearch";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -269,13 +269,6 @@ function escapeXML(str: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;")
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-}
-
-function escapeXMLContent(str: string): string {
-  const brPlaceholder = "___BR_PLACEHOLDER___";
-  const withProtected = str.replace(/<br\/>/g, brPlaceholder);
-  const escaped = escapeXML(withProtected);
-  return escaped.replace(new RegExp(brPlaceholder, "g"), "<br/>");
 }
 
 function escapeRTF(str: string): string {
