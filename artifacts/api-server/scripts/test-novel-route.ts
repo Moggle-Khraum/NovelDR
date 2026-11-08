@@ -84,7 +84,7 @@ checks.push(
         '<div id="chapter-content"><p>First paragraph.</p><p>Second paragraph.</p></div>',
       );
       assert(
-        result === "First paragraph.\\n\\nSecond paragraph.",
+        result === "First paragraph.\n\nSecond paragraph.",
         `unexpected paragraph extraction: ${JSON.stringify(result)}`,
       );
     },
@@ -180,5 +180,5 @@ for (const check of checks) {
   }
 }
 
-console.log(`\\n${checks.length - failures}/${checks.length} passed`);
+console.log(`\n${checks.length - failures}/${checks.length} passed`);
 if (failures > 0) process.exit(1);
