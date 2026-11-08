@@ -2,7 +2,7 @@
  * Scraper content-extraction regression tests.
  *
  * Run with: pnpm exec tsx scripts/test-scrapers.ts
- * (wired into CI via .github/workflows/Lint Test.yml — job "scraper-regression")
+ * (wired into .github/workflows/ci-cd-pipeline.yml — job "scraper-regression")
  *
  * Why this exists: novel-bin.ts and novelbincc.ts previously extracted
  * chapter content with a <p>-tag matcher (extractParagraphs), but the real
