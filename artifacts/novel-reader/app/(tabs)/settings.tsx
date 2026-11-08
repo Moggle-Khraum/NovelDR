@@ -38,17 +38,6 @@ import {
   type LibraryStorageReport,
   type StorageAdapter,
 } from "../../lib/storageStats";
-import {
-  checkLibraryIntegrity,
-  removeRemovableIssues,
-  type IntegrityReport,
-} from "../../lib/libraryIntegrity";
-import {
-  buildRefillTargets,
-  refillChapters,
-  type RefillResult,
-} from "../../lib/chapterRefill";
-import { fetchChapter } from "@/hooks/useApi";
 import { Theme } from "@/constants/colors";
 import { useUpdateContext } from "@/context/UpdateContext";
 import { CRASH_LOG_FILE_PATH } from "@/hooks/useCrashLogger";
@@ -260,7 +249,6 @@ export default function SettingsScreen() {
   const {
     novels,
     purgeOrphanedData,
-    saveChapterContent,
     setRestoring,
     commitRestoredLibrary,
     abortRestore,
@@ -2110,7 +2098,7 @@ export default function SettingsScreen() {
     useState<LibraryStorageReport | null>(null);
   const [measuringStorage, setMeasuringStorage] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
-  const [showAllStorageNovels, setShowAllStorageNovels] = useState(false);
+  const [showStorageDetails, setShowStorageDetails] = useState(false);
 
   const measureStorage = async () => {
     setMeasuringStorage(true);
@@ -2128,10 +2116,10 @@ export default function SettingsScreen() {
           backupsDir: BACKUP_DIR,
           exportsDir: `${FileSystem.documentDirectory}exports/`,
           updatesDir: `${FileSystem.documentDirectory}updates/`,
+          cacheDir: FileSystem.cacheDirectory ?? undefined,
         },
       });
       setStorageReport(report);
-      setShowAllStorageNovels(false);
     } catch (error: any) {
       setStorageError(error?.message || "Storage could not be measured.");
     } finally {
@@ -2142,158 +2130,16 @@ export default function SettingsScreen() {
   const storageBytes = (key: string): number =>
     storageReport?.categories.find((c) => c.key === key)?.bytes ?? 0;
 
-  // Library check. Read-only until the user taps a button.
-  const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
-  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
-  const [repairing, setRepairing] = useState(false);
-  const [repairMessage, setRepairMessage] = useState<string | null>(null);
+  const missingNovels = (storageReport?.novels ?? [])
+    .filter((n) => n.missingChapters > 0)
+    .sort((a, b) => b.missingChapters - a.missingChapters);
 
-  // The library index lists the novel ids it owns. If it cannot be read, the
-  // check treats nothing as unlinked, so nothing becomes removable.
-  const readIndexIds = async (): Promise<string[] | null> => {
-    try {
-      const raw = await FileSystem.readAsStringAsync(
-        `${APP_DATA_DIR}novel_index_v2.json`,
-      );
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed?.novelIds) ? parsed.novelIds : null;
-    } catch {
-      return null;
-    }
-  };
+  // Measure automatically, and again whenever the library changes.
+  useEffect(() => {
+    measureStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [novels.length, totalChapters]);
 
-  const runIntegrityCheck = async (): Promise<IntegrityReport> =>
-    checkLibraryIntegrity(deviceStorageAdapter, {
-      novels: novels.map((n) => ({
-        id: n.id,
-        title: n.title,
-        chapterCount: n.chapters.length,
-      })),
-      indexIds: await readIndexIds(),
-      appDataDir: APP_DATA_DIR,
-    });
-
-  const checkLibrary = async () => {
-    setCheckingIntegrity(true);
-    setRepairMessage(null);
-    try {
-      setIntegrity(await runIntegrityCheck());
-    } catch (error: any) {
-      setRepairMessage(error?.message || "The library could not be checked.");
-    } finally {
-      setCheckingIntegrity(false);
-    }
-  };
-
-  const performRemoval = async (kind: "leftoverFile" | "unlinkedFolder") => {
-    setRepairing(true);
-    setRepairMessage(null);
-    try {
-      // Check again right before removing, so the list is never stale.
-      const fresh = await runIntegrityCheck();
-      const result = await removeRemovableIssues(
-        fresh.issues.filter((i) => i.kind === kind),
-        (path) => FileSystem.deleteAsync(path, { idempotent: true }),
-      );
-      const failedNote = result.failed
-        ? `, ${result.failed} could not be removed`
-        : "";
-      setRepairMessage(
-        `Removed ${result.removed} item${result.removed === 1 ? "" : "s"}${failedNote}.`,
-      );
-      setIntegrity(await runIntegrityCheck());
-    } catch (error: any) {
-      setRepairMessage(error?.message || "Removal did not finish.");
-    } finally {
-      setRepairing(false);
-    }
-  };
-
-  // Refill: fetch each missing chapter by its stored URL, one at a time.
-  const [refilling, setRefilling] = useState(false);
-  const refillStopRef = useRef(false);
-
-  const summarizeRefill = (result: RefillResult, total: number): string => {
-    const parts = [
-      `Refilled ${result.filled} of ${total} chapter${total === 1 ? "" : "s"}.`,
-    ];
-    if (result.failed.length > 0) {
-      const first = result.failed[0];
-      parts.push(
-        `${result.failed.length} could not be fetched. First: ${first.novelTitle}, chapter ${first.index + 1}. ${first.reason}`,
-      );
-    }
-    if (result.stopped) parts.push("Stopped before finishing.");
-    return parts.join(" ");
-  };
-
-  const performRefill = async () => {
-    if (!integrity) return;
-    const targets = buildRefillTargets(
-      integrity.issues,
-      novels.map((n) => ({ id: n.id, title: n.title, chapters: n.chapters })),
-    );
-    if (targets.length === 0) return;
-    refillStopRef.current = false;
-    setRefilling(true);
-    setRepairMessage(null);
-    try {
-      const result = await refillChapters(targets, {
-        fetch: (url, chapterNumber) => fetchChapter(url, chapterNumber),
-        save: (t, title, content) =>
-          saveChapterContent(
-            t.novelId,
-            t.index,
-            title,
-            t.url,
-            content,
-            t.chapterNumber,
-          ),
-        shouldStop: () => refillStopRef.current,
-      });
-      setRepairMessage(summarizeRefill(result, targets.length));
-      setIntegrity(await runIntegrityCheck());
-    } catch (error: any) {
-      setRepairMessage(error?.message || "Refill did not finish.");
-    } finally {
-      setRefilling(false);
-    }
-  };
-
-  const confirmRefill = () => {
-    const count = integrity?.missingChapterFiles ?? 0;
-    if (count === 0) return;
-    Alert.alert(
-      `Refill ${count} missing chapter${count === 1 ? "" : "s"}?`,
-      "Each missing chapter is fetched from its site, one at a time. Chapters that fail are left as they are. Don't run this during an update.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Refill", onPress: performRefill },
-      ],
-    );
-  };
-
-  const confirmRemoval = (kind: "leftoverFile" | "unlinkedFolder") => {
-    const count =
-      kind === "leftoverFile"
-        ? (integrity?.leftoverFiles ?? 0)
-        : (integrity?.unlinkedFolders ?? 0);
-    if (count === 0) return;
-    const label =
-      kind === "leftoverFile" ? "leftover files" : "unlinked folders";
-    Alert.alert(
-      `Remove ${count} ${label}?`,
-      "Nothing in your library uses these. Chapters your library expects are not touched. Don't run this while an update is in progress.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => performRemoval(kind),
-        },
-      ],
-    );
-  };
   const handleThemeChange = (t: Theme) => {
     setTheme(t);
     Haptics.selectionAsync();
@@ -2411,420 +2257,105 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View
+        </View>
+
+        <View style={styles.storageLabelRow}>
+          <Text
             style={[
-              styles.statsHorizontalDivider,
-              { backgroundColor: colors.border },
+              styles.sectionLabel,
+              { color: colors.textSecondary, marginTop: 0 },
             ]}
-          />
-
-          <View style={styles.storageHeaderRow}>
-            <Text
-              style={[styles.statsSubtitle, { color: colors.textSecondary }]}
-            >
-              STORAGE
+          >
+            STORAGE
+          </Text>
+          <Pressable
+            onPress={measureStorage}
+            disabled={measuringStorage}
+            accessibilityRole="button"
+            accessibilityLabel="Measure storage again"
+            style={[
+              styles.measureBtn,
+              { borderColor: colors.border, opacity: measuringStorage ? 0.6 : 1 },
+            ]}
+          >
+            {measuringStorage ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Ionicons name="refresh" size={14} color={colors.accent} />
+            )}
+            <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+              {measuringStorage ? "Measuring…" : "Measure again"}
             </Text>
-            <Pressable
-              onPress={measureStorage}
-              disabled={measuringStorage}
-              accessibilityRole="button"
-              accessibilityLabel={
-                storageReport ? "Measure storage again" : "Measure storage"
-              }
-              style={[
-                styles.measureBtn,
-                {
-                  borderColor: colors.border,
-                  opacity: measuringStorage ? 0.6 : 1,
-                },
-              ]}
-            >
-              {measuringStorage ? (
-                <ActivityIndicator size="small" color={colors.accent} />
-              ) : (
-                <Ionicons name="refresh" size={14} color={colors.accent} />
-              )}
-              <Text style={[styles.measureBtnText, { color: colors.accent }]}>
-                {measuringStorage
-                  ? "Measuring…"
-                  : storageReport
-                    ? "Measure again"
-                    : "Measure"}
-              </Text>
-            </Pressable>
-          </View>
-
+          </Pressable>
+        </View>
+        <View
+          style={[
+            styles.statsCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           {storageError && (
             <Text style={styles.storageErrorText}>{storageError}</Text>
           )}
-
-          {!storageReport && !measuringStorage && (
-            <Text style={[styles.storageHint, { color: colors.textSecondary }]}>
-              Adds up the space used by your chapters, covers, and backups. It
-              runs only when you tap Measure.
-            </Text>
-          )}
-
-          {storageReport && (
-            <>
-              <View style={styles.statsGrid}>
-                <StatCell
-                  icon="pie-chart-outline"
-                  value={formatBytes(storageReport.totalBytes)}
-                  label="Total used"
-                  colors={colors}
-                />
-                <StatCell
-                  icon="document-text-outline"
-                  value={formatBytes(storageBytes("chapters"))}
-                  label="Chapter text"
-                  colors={colors}
-                />
-                <StatCell
-                  icon="image-outline"
-                  value={formatBytes(storageBytes("covers"))}
-                  label="Cover images"
-                  colors={colors}
-                />
-                <StatCell
-                  icon="archive-outline"
-                  value={formatBytes(storageBytes("backups"))}
-                  label="Backups"
-                  colors={colors}
-                />
-                <StatCell
-                  icon="alert-circle-outline"
-                  value={storageReport.missingChapterFiles.toLocaleString()}
-                  label="Missing chapter files"
-                  warn={storageReport.missingChapterFiles > 0}
-                  colors={colors}
-                />
-                <StatCell
-                  icon="layers-outline"
-                  value={storageReport.leftoverFiles.toLocaleString()}
-                  label="Leftover files"
-                  warn={storageReport.leftoverFiles > 0}
-                  colors={colors}
-                />
-              </View>
-
-              <Text
-                style={[
-                  styles.statsFooterText,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                Measured at{" "}
-                {new Date(storageReport.measuredAt).toLocaleTimeString()}
-                {storageReport.orphanFolders > 0
-                  ? ` · ${storageReport.orphanFolders} chapter folder${storageReport.orphanFolders === 1 ? "" : "s"} with no matching novel`
-                  : ""}
-              </Text>
-              {storageReport.skipped > 0 && (
-                <Text style={styles.storageErrorText}>
-                  {storageReport.skipped} folder
-                  {storageReport.skipped === 1 ? "" : "s"} could not be read, so
-                  totals may be low.
-                </Text>
-              )}
-
-              <View
-                style={[
-                  styles.statsHorizontalDivider,
-                  { backgroundColor: colors.border },
-                ]}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Ionicons
+                name="pie-chart-outline"
+                size={20}
+                color={colors.accent}
               />
-              <Text
-                style={[styles.statsSubtitle, { color: colors.textSecondary }]}
-              >
-                LARGEST NOVELS
-              </Text>
-              {(showAllStorageNovels
-                ? storageReport.novels
-                : storageReport.novels.slice(0, 5)
-              ).map((n) => (
-                <View key={n.id} style={styles.novelRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[styles.novelRowTitle, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {n.title}
-                    </Text>
-                    {n.missingChapters > 0 && (
-                      <Text style={styles.orphanNote}>
-                        {n.missingChapters} chapter file
-                        {n.missingChapters === 1 ? "" : "s"} missing
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={[styles.novelRowValue, { color: colors.text }]}>
-                    {formatBytes(n.bytes)}
-                  </Text>
-                </View>
-              ))}
-              {storageReport.novels.length > 5 && (
-                <Pressable
-                  onPress={() => setShowAllStorageNovels((v) => !v)}
-                  style={styles.showMoreBtn}
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {storageReport ? formatBytes(storageReport.totalBytes) : "—"}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
                 >
-                  <Text
-                    style={[styles.measureBtnText, { color: colors.accent }]}
-                  >
-                    {showAllStorageNovels
-                      ? "Show fewer"
-                      : `Show all ${storageReport.novels.length} novels`}
-                  </Text>
-                </Pressable>
-              )}
-            </>
-          )}
-
+                  Total used
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[styles.statDivider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.statItem}>
+              <Ionicons
+                name="archive-outline"
+                size={20}
+                color={colors.accent}
+              />
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {storageReport ? formatBytes(storageBytes("backups")) : "—"}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Backups
+                </Text>
+              </View>
+            </View>
+          </View>
           <View
             style={[
               styles.statsHorizontalDivider,
               { backgroundColor: colors.border },
             ]}
           />
-
-          <View style={styles.storageHeaderRow}>
-            <Text
-              style={[styles.statsSubtitle, { color: colors.textSecondary }]}
-            >
-              LIBRARY CHECK
+          <Pressable
+            onPress={() => setShowStorageDetails(true)}
+            accessibilityRole="button"
+            style={styles.showMoreBtn}
+          >
+            <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+              Show More
             </Text>
-            <Pressable
-              onPress={checkLibrary}
-              disabled={checkingIntegrity || repairing}
-              accessibilityRole="button"
-              accessibilityLabel={
-                integrity ? "Check library again" : "Check library"
-              }
-              style={[
-                styles.measureBtn,
-                {
-                  borderColor: colors.border,
-                  opacity: checkingIntegrity ? 0.6 : 1,
-                },
-              ]}
-            >
-              {checkingIntegrity ? (
-                <ActivityIndicator size="small" color={colors.accent} />
-              ) : (
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={14}
-                  color={colors.accent}
-                />
-              )}
-              <Text style={[styles.measureBtnText, { color: colors.accent }]}>
-                {checkingIntegrity
-                  ? "Checking…"
-                  : integrity
-                    ? "Check again"
-                    : "Check library"}
-              </Text>
-            </Pressable>
-          </View>
-
-          {!integrity && !checkingIntegrity && (
-            <Text style={[styles.storageHint, { color: colors.textSecondary }]}>
-              Finds chapter files that are missing and files no novel uses. It
-              only reads. Nothing changes unless you tap a button below.
-            </Text>
-          )}
-
-          {integrity && (
-            <>
-              <View style={styles.statsGrid}>
-                <StatCell
-                  icon="alert-circle-outline"
-                  value={integrity.missingChapterFiles.toLocaleString()}
-                  label="Missing chapter files"
-                  warn={integrity.missingChapterFiles > 0}
-                  colors={colors}
-                />
-                <StatCell
-                  icon="layers-outline"
-                  value={integrity.leftoverFiles.toLocaleString()}
-                  label="Leftover files"
-                  warn={integrity.leftoverFiles > 0}
-                  colors={colors}
-                />
-                <StatCell
-                  icon="folder-outline"
-                  value={integrity.unlinkedFolders.toLocaleString()}
-                  label="Unlinked folders"
-                  warn={integrity.unlinkedFolders > 0}
-                  colors={colors}
-                />
-                <StatCell
-                  icon="warning-outline"
-                  value={integrity.needsAttention.toLocaleString()}
-                  label="Need a look"
-                  warn={integrity.needsAttention > 0}
-                  colors={colors}
-                />
-              </View>
-
-              {integrity.missingChapterFiles > 0 && (
-                <View style={styles.integrityRow}>
-                  <Text
-                    style={[styles.integrityRowText, { color: colors.text }]}
-                  >
-                    Fetch the missing chapters again from their sites.
-                  </Text>
-                  {refilling ? (
-                    <Pressable
-                      onPress={() => {
-                        refillStopRef.current = true;
-                      }}
-                      style={[
-                        styles.measureBtn,
-                        { borderColor: colors.border },
-                      ]}
-                    >
-                      <ActivityIndicator size="small" color={colors.accent} />
-                      <Text
-                        style={[
-                          styles.measureBtnText,
-                          { color: colors.accent },
-                        ]}
-                      >
-                        Stop
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      onPress={confirmRefill}
-                      disabled={repairing || checkingIntegrity}
-                      style={[
-                        styles.measureBtn,
-                        {
-                          borderColor: colors.border,
-                          opacity: repairing ? 0.6 : 1,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.measureBtnText,
-                          { color: colors.accent },
-                        ]}
-                      >
-                        Refill
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
-
-              {integrity.leftoverFiles > 0 && (
-                <View style={styles.integrityRow}>
-                  <Text
-                    style={[styles.integrityRowText, { color: colors.text }]}
-                  >
-                    Remove leftover files that no novel uses.
-                  </Text>
-                  <Pressable
-                    onPress={() => confirmRemoval("leftoverFile")}
-                    disabled={repairing}
-                    style={[
-                      styles.measureBtn,
-                      {
-                        borderColor: colors.border,
-                        opacity: repairing ? 0.6 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>
-                      Remove
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-
-              {integrity.unlinkedFolders > 0 && (
-                <View style={styles.integrityRow}>
-                  <Text
-                    style={[styles.integrityRowText, { color: colors.text }]}
-                  >
-                    Remove folders that no novel refers to.
-                  </Text>
-                  <Pressable
-                    onPress={() => confirmRemoval("unlinkedFolder")}
-                    disabled={repairing}
-                    style={[
-                      styles.measureBtn,
-                      {
-                        borderColor: colors.border,
-                        opacity: repairing ? 0.6 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>
-                      Remove
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-
-              {integrity.needsAttention > 0 && (
-                <>
-                  <Text
-                    style={[
-                      styles.statsFooterText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    These are not removed. Look at them first.
-                  </Text>
-                  {integrity.issues
-                    .filter((i) => i.kind === "needsAttention")
-                    .slice(0, 8)
-                    .map((i, index) => (
-                      <Text key={index} style={styles.attentionText}>
-                        {i.title ? `${i.title}: ` : ""}
-                        {i.reason}
-                      </Text>
-                    ))}
-                  {integrity.needsAttention > 8 && (
-                    <Text
-                      style={[
-                        styles.statsFooterText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      And {integrity.needsAttention - 8} more.
-                    </Text>
-                  )}
-                </>
-              )}
-
-              {repairMessage && (
-                <Text style={[styles.storageHint, { color: colors.text }]}>
-                  {repairMessage}
-                </Text>
-              )}
-
-              <Text
-                style={[
-                  styles.statsFooterText,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                Checked at {new Date(integrity.checkedAt).toLocaleTimeString()}
-              </Text>
-            </>
-          )}
-
-          {!integrity && repairMessage && (
-            <Text style={styles.storageErrorText}>{repairMessage}</Text>
-          )}
+          </Pressable>
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           APP THEME
+
         </Text>
         <View style={styles.themeRow}>
           <ThemeButton
@@ -3547,6 +3078,104 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      {/* Storage Details Modal */}
+      <Modal visible={showStorageDetails} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.bugModalCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.bugModalHeader}>
+              <Text style={[styles.bugModalTitle, { color: colors.text }]}>
+                Storage Details
+              </Text>
+              <Pressable onPress={() => setShowStorageDetails(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 460 }}>
+              {(
+                [
+                  ["Cache size", storageReport?.cacheBytes ?? 0],
+                  ["Total library size", storageReport?.totalBytes ?? 0],
+                  ["Cover images", storageBytes("covers")],
+                  ["Chapter text", storageBytes("chapters")],
+                  ["Backups", storageBytes("backups")],
+                ] as [string, number][]
+              ).map(([label, bytes]) => (
+                <View key={label} style={styles.novelRow}>
+                  <Text style={[styles.novelRowTitle, { color: colors.text }]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.novelRowValue, { color: colors.text }]}>
+                    {storageReport ? formatBytes(bytes) : "—"}
+                  </Text>
+                </View>
+              ))}
+              <View style={styles.novelRow}>
+                <Text style={[styles.novelRowTitle, { color: colors.text }]}>
+                  Missing chapter files
+                </Text>
+                <Text
+                  style={[
+                    styles.novelRowValue,
+                    {
+                      color:
+                        (storageReport?.missingChapterFiles ?? 0) > 0
+                          ? "#E67E22"
+                          : colors.text,
+                    },
+                  ]}
+                >
+                  {(storageReport?.missingChapterFiles ?? 0).toLocaleString()}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statsHorizontalDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
+              <Text
+                style={[styles.statsSubtitle, { color: colors.textSecondary }]}
+              >
+                NOVELS WITH MISSING CHAPTERS
+              </Text>
+              {missingNovels.length === 0 ? (
+                <Text
+                  style={[
+                    styles.storageHint,
+                    { color: colors.textSecondary, marginTop: 8 },
+                  ]}
+                >
+                  None. Every chapter file is in place.
+                </Text>
+              ) : (
+                missingNovels.map((n) => (
+                  <View key={n.id} style={styles.novelRow}>
+                    <Text
+                      style={[
+                        styles.novelRowTitle,
+                        { color: colors.text, flex: 1 },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {n.title}
+                    </Text>
+                    <Text style={styles.orphanNote}>
+                      {n.missingChapters} missing
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Bug Report Modal */}
       <Modal visible={showBugReport} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -4169,42 +3798,6 @@ const deviceStorageAdapter: StorageAdapter = {
 };
 
 // One number and its label, styled like the Novels and Chapters figures.
-function StatCell({
-  icon,
-  value,
-  label,
-  warn,
-  colors,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  label: string;
-  warn?: boolean;
-  colors: { text: string; textSecondary: string; accent: string };
-}) {
-  return (
-    <View style={styles.statCell}>
-      <Ionicons
-        name={icon}
-        size={20}
-        color={warn ? "#E67E22" : colors.accent}
-      />
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[styles.statValue, { color: warn ? "#E67E22" : colors.text }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {value}
-        </Text>
-        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-          {label}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -4260,6 +3853,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 0.8,
+  },
+  storageLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+    marginBottom: 8,
   },
   storageHeaderRow: {
     flexDirection: "row",
