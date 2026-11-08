@@ -10,6 +10,7 @@ import React, {
   useState,
 } from "react";
 import * as Sentry from "@sentry/react-native";
+import { orderChapters } from "@/lib/chapterOrder";
 
 export type Chapter = {
   title: string;
@@ -377,6 +378,64 @@ const saveAllChaptersToFile = async (
       });
     }
   }
+};
+
+// Moves existing chapter files to new positions after novel.chapters has been
+// re-sorted. Chapter files are addressed by position, so a chapter whose
+// position changed must have its file move with it. Files are copied into a
+// staging folder first; originals are only removed once every copy succeeded.
+// Only chapters whose index actually changed are touched, and nothing is
+// parsed or read into memory.
+export type ChapterFileMove = { from: number; to: number };
+
+const applyChapterFileMoves = async (
+  novelId: string,
+  moves: ChapterFileMove[],
+) => {
+  const changed = moves.filter((m) => m.from !== m.to);
+  if (changed.length === 0) return;
+
+  const chaptersDir = getNovelChaptersPath(novelId);
+  const stagingDir = `${chaptersDir}.reindex/`;
+  const stagingInfo = await FileSystem.getInfoAsync(stagingDir);
+  if (stagingInfo.exists) {
+    // A previous run was interrupted and its staged copies may be the only
+    // copy of some chapters. Refuse to touch the folder rather than guess.
+    throw new Error(
+      "Chapter re-index interrupted earlier; staging folder left in place",
+    );
+  }
+  await ensureDirectoryExists(stagingDir);
+
+  // 1. Copy every moved chapter into staging. Sources stay untouched.
+  const staged: ChapterFileMove[] = [];
+  for (const m of changed) {
+    const src = getChapterFilePath(novelId, m.from);
+    const info = await FileSystem.getInfoAsync(src);
+    if (!info.exists) continue; // e.g. gap chapter with no file yet
+    await FileSystem.copyAsync({
+      from: src,
+      to: `${stagingDir}chapter_${m.to}.json`,
+    });
+    staged.push(m);
+  }
+
+  // 2. Remove the originals of moved chapters. Every one is now in staging.
+  for (const m of staged) {
+    await FileSystem.deleteAsync(getChapterFilePath(novelId, m.from), {
+      idempotent: true,
+    });
+  }
+
+  // 3. Place each staged copy at its new index.
+  for (const m of staged) {
+    await FileSystem.moveAsync({
+      from: `${stagingDir}chapter_${m.to}.json`,
+      to: getChapterFilePath(novelId, m.to),
+    });
+  }
+
+  await FileSystem.deleteAsync(stagingDir, { idempotent: true });
 };
 
 // =============================================================================
@@ -788,16 +847,6 @@ const purgeOrphanedDataOnStartup = async (
   return { dirs: purgedDirs, files: purgedFiles };
 };
 
-const extractChapterNumber = (chapter: Chapter): number | null => {
-  const titleMatch = (chapter.title || "").match(/chapter\s*(\d+)/i);
-  if (titleMatch) return parseInt(titleMatch[1], 10);
-
-  const urlMatch = (chapter.url || "").match(/chapter[-/](\d+)/i);
-  if (urlMatch) return parseInt(urlMatch[1], 10);
-
-  return null;
-};
-
 // =============================================================================
 // CONTEXT
 // =============================================================================
@@ -842,6 +891,10 @@ type LibraryContextType = {
     novelId: string,
     chapters: Chapter[],
     offset?: number,
+  ) => Promise<void>;
+  applyChapterFileMoves: (
+    novelId: string,
+    moves: ChapterFileMove[],
   ) => Promise<void>;
   loadChapterContent: (
     novelId: string,
@@ -1320,15 +1373,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const getSortedChapters = useCallback(
     (chapters: Chapter[]): Chapter[] => {
       if (!chapters?.length) return [];
-      const sorted = [...chapters].sort((a, b) => {
-        const na = extractChapterNumber(a);
-        const nb = extractChapterNumber(b);
-        if (na && nb) return na - nb;
-        if (na) return -1;
-        if (nb) return 1;
-        return (a.title || "").localeCompare(b.title || "");
-      });
-      return sortOrder === "descending" ? sorted.reverse() : sorted;
+      const ordered = orderChapters(chapters);
+      return sortOrder === "descending" ? ordered.reverse() : ordered;
     },
     [sortOrder],
   );
@@ -1572,6 +1618,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       getSortedChapters,
       saveChapterContent,
       saveAllChaptersToFile,
+      applyChapterFileMoves,
       loadChapterContent,
       refreshLibrary,
       purgeOrphanedData: purgeOrphanedDataCb,
@@ -1600,6 +1647,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       getSortedChapters,
       saveChapterContent,
       saveAllChaptersToFile,
+      applyChapterFileMoves,
       loadChapterContent,
       refreshLibrary,
       purgeOrphanedDataCb,
