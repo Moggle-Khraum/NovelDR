@@ -371,16 +371,37 @@ checks.push(
 // scraper implementation. These are deterministic URL-routing checks; they
 // do not make network requests or invoke fetchNovelMeta/fetchChapter.
 const registryRoutes: Array<{ source: string; url: string }> = [
-  { source: "novelphoenix", url: "https://novelphoenix.com/novel/example/chapter-1" },
-  { source: "novelbin", url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1" },
+  {
+    source: "novelphoenix",
+    url: "https://novelphoenix.com/novel/example/chapter-1",
+  },
+  {
+    source: "novelbin",
+    url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1",
+  },
   { source: "novelbincc", url: "https://novelbin.cc/b/example/chapter-1" },
   { source: "novelping", url: "https://novelping.com/novel/example/chapter-1" },
-  { source: "royalroad", url: "https://www.royalroad.com/fiction/123/example/chapter/456/chapter-1" },
-  { source: "readnovelfull", url: "https://readnovelfull.com/example/chapter-1.html" },
-  { source: "novelfullcom", url: "https://novelfull.com/example/chapter-1.html" },
-  { source: "novelfullnet", url: "https://novelfull.net/example/chapter-1.html" },
+  {
+    source: "royalroad",
+    url: "https://www.royalroad.com/fiction/123/example/chapter/456/chapter-1",
+  },
+  {
+    source: "readnovelfull",
+    url: "https://readnovelfull.com/example/chapter-1.html",
+  },
+  {
+    source: "novelfullcom",
+    url: "https://novelfull.com/example/chapter-1.html",
+  },
+  {
+    source: "novelfullnet",
+    url: "https://novelfull.net/example/chapter-1.html",
+  },
   { source: "novgo", url: "https://novgo.net/example/chapter-1.html" },
-  { source: "freewebnovel", url: "https://freewebnovel.com/example/chapter-1.html" },
+  {
+    source: "freewebnovel",
+    url: "https://freewebnovel.com/example/chapter-1.html",
+  },
   { source: "wuxiaworld", url: "https://wuxiaworld.site/example/chapter-1/" },
   { source: "novelarchivecc", url: "https://novelarchive.cc/novel/example" },
   { source: "fanmtl", url: "https://fanmtl.com/novel/example" },
