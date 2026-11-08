@@ -10,7 +10,7 @@ import React, {
   useState,
 } from "react";
 import * as Sentry from "@sentry/react-native";
-import { orderChapters } from "@/lib/chapterOrder";
+import { orderChapters } from "../lib/chapterOrder";
 
 export type Chapter = {
   title: string;
