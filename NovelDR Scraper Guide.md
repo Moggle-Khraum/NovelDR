@@ -83,9 +83,14 @@ Once you've built a scraper, you need to register it in **three places**:
 
 | Where            | What You Add                                            | Why                                      |
 | ---------------- | ------------------------------------------------------- | ---------------------------------------- |
-| **Scraper File** | A new file that knows how to read this specific website | Makes it actually work                   |
-| **Registry**     | Add it to the list of known websites                    | Tells the app "we support this site now" |
-| **Site Picker**  | Add it to the dropdown list                             | Users see it when adding a new book      |
+| **Scraper File** | A new file that knows how to read this specific website | Makes it actually work |
+| **Registry** | Add it to the list of known websites | Tells the app "we support this site now" |
+| **Site Picker** | Add it to the dropdown list | Users see it when adding a new book |
+| **API Allowlist** | Add the exact source hostname to `artifacts/api-server/src/routes/novel.ts` when the source uses the API routes | Keeps server-side access aligned while preserving SSRF protection |
+
+---
+
+**Important:** The API allowlist is a security boundary, not a scraper registry. Add only the source's real hostname (not a broad wildcard), and keep it aligned with the registered scraper sources. The API validates URLs before making outbound requests; listing a source does not guarantee the website is online or that its markup has not changed.
 
 ---
 
