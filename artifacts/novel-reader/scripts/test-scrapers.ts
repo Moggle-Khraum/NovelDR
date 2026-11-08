@@ -39,6 +39,7 @@ import { extractParagraphs as novelArrowExtract } from "../hooks/scrapers/source
 import { extractParagraphs as novelPhoenixExtract } from "../hooks/scrapers/sources/novelphoenix";
 import { extractFreeWebNovelContent as freeWebNovelExtract } from "../hooks/scrapers/sources/freewebnovel";
 import { extractWuxiaworldContent as wuxiaworldExtract } from "../hooks/scrapers/sources/wuxiaworld";
+import { findExternalScraper } from "../hooks/scrapers/registry";
 
 // Mirrors the real div#chr-content structure: a leading empty <p></p>, an
 // <h4> repeating the chapter title, then the actual body as raw text nodes
@@ -361,6 +362,62 @@ checks.push(
       assert(
         !result.includes("novgo.net") && result.split("\n\n").length === 2,
         `expected only the 2 real paragraphs, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+);
+
+// Registry routing tests: verify each registered source resolves to its own
+// scraper implementation. These are deterministic URL-routing checks; they
+// do not make network requests or invoke fetchNovelMeta/fetchChapter.
+const registryRoutes: Array<{ source: string; url: string }> = [
+  { source: "novelphoenix", url: "https://novelphoenix.com/novel/example/chapter-1" },
+  { source: "novelbin", url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1" },
+  { source: "novelbincc", url: "https://novelbin.cc/b/example/chapter-1" },
+  { source: "novelping", url: "https://novelping.com/novel/example/chapter-1" },
+  { source: "royalroad", url: "https://www.royalroad.com/fiction/123/example/chapter/456/chapter-1" },
+  { source: "readnovelfull", url: "https://readnovelfull.com/example/chapter-1.html" },
+  { source: "novelfullcom", url: "https://novelfull.com/example/chapter-1.html" },
+  { source: "novelfullnet", url: "https://novelfull.net/example/chapter-1.html" },
+  { source: "novgo", url: "https://novgo.net/example/chapter-1.html" },
+  { source: "freewebnovel", url: "https://freewebnovel.com/example/chapter-1.html" },
+  { source: "wuxiaworld", url: "https://wuxiaworld.site/example/chapter-1/" },
+  { source: "novelarchivecc", url: "https://novelarchive.cc/novel/example" },
+  { source: "fanmtl", url: "https://fanmtl.com/novel/example" },
+  { source: "wuxiabox", url: "https://wuxiabox.com/novel/example" },
+  { source: "wuxiaclick", url: "https://wuxia.click/novel/example" },
+  { source: "mtlnovel-me", url: "https://mtlnovel.me/read/example/chapter-1" },
+];
+
+for (const route of registryRoutes) {
+  checks.push({
+    name: `registry: routes ${route.url} to ${route.source}`,
+    run: () => {
+      const scraper = findExternalScraper(route.url);
+      assert(
+        scraper?.id === route.source,
+        `expected ${route.source}, received ${scraper?.id ?? "no matching scraper"} for ${route.url}`,
+      );
+    },
+  });
+}
+
+checks.push(
+  {
+    name: "registry: returns null for unsupported hosts",
+    run: () => {
+      assert(
+        findExternalScraper("https://unsupported.example/chapter-1") === null,
+        "expected unsupported host to have no external scraper",
+      );
+    },
+  },
+  {
+    name: "registry: returns null for malformed URLs",
+    run: () => {
+      assert(
+        findExternalScraper("not-a-valid-url") === null,
+        "expected malformed URL to have no external scraper",
       );
     },
   },
