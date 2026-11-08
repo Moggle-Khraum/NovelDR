@@ -55,6 +55,15 @@ checks.push(
     },
   },
   {
+    name: "allowlist: rejects URLs containing credentials",
+    run: () => {
+      assert(
+        !isAllowedNovelUrl("https://user:pass@novelping.com/book/example"),
+        "must reject URLs containing embedded credentials",
+      );
+    },
+  },
+  {
     name: "site detection: uses the hostname, not arbitrary URL text",
     run: () => {
       const result = detectSite(
