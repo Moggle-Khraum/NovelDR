@@ -79,7 +79,7 @@ These have each bitten a real scraper at least once — worth double-checking be
 
 ## 🗂️ What Gets Added to the App
 
-Once you've built a scraper, you need to register it in **three places**:
+Once you've built a scraper, you need to register it in **the relevant places**:
 
 | Where            | What You Add                                            | Why                                      |
 | ---------------- | ------------------------------------------------------- | ---------------------------------------- |
