@@ -942,38 +942,38 @@ export default function NovelDetailScreen() {
                     </Text>
                   </View>
                 ) : (
-                <View style={styles.emptyChapters}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={32}
-                    color={colors.textSecondary}
-                    style={styles.emptyChaptersIcon}
-                  />
-                  <Text style={[styles.emptyText, { color: colors.text }]}>
-                    No chapters yet
-                  </Text>
-                  <Text
-                    style={[
-                      styles.emptyTextSub,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    This novel hasn&apos;t downloaded any chapters. Check the
-                    Updates tab to fetch the latest ones.
-                  </Text>
-                  <Pressable
-                    style={[
-                      styles.emptyChaptersBtn,
-                      { backgroundColor: colors.accent },
-                    ]}
-                    onPress={() => router.push("/(tabs)/updates")}
-                  >
-                    <Ionicons name="refresh" size={16} color="#fff" />
-                    <Text style={styles.emptyChaptersBtnText}>
-                      Go to Updates
+                  <View style={styles.emptyChapters}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={32}
+                      color={colors.textSecondary}
+                      style={styles.emptyChaptersIcon}
+                    />
+                    <Text style={[styles.emptyText, { color: colors.text }]}>
+                      No chapters yet
                     </Text>
-                  </Pressable>
-                </View>
+                    <Text
+                      style={[
+                        styles.emptyTextSub,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      This novel hasn&apos;t downloaded any chapters. Check the
+                      Updates tab to fetch the latest ones.
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.emptyChaptersBtn,
+                        { backgroundColor: colors.accent },
+                      ]}
+                      onPress={() => router.push("/(tabs)/updates")}
+                    >
+                      <Ionicons name="refresh" size={16} color="#fff" />
+                      <Text style={styles.emptyChaptersBtnText}>
+                        Go to Updates
+                      </Text>
+                    </Pressable>
+                  </View>
                 )
               }
             />

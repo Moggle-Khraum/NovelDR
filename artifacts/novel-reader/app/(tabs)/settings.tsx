@@ -2106,7 +2106,8 @@ export default function SettingsScreen() {
 
   const totalChapters = novels.reduce((sum, n) => sum + n.chapters.length, 0);
   // Storage estimate. Measured only when the user taps Measure.
-  const [storageReport, setStorageReport] = useState<LibraryStorageReport | null>(null);
+  const [storageReport, setStorageReport] =
+    useState<LibraryStorageReport | null>(null);
   const [measuringStorage, setMeasuringStorage] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [showAllStorageNovels, setShowAllStorageNovels] = useState(false);
@@ -2151,7 +2152,9 @@ export default function SettingsScreen() {
   // check treats nothing as unlinked, so nothing becomes removable.
   const readIndexIds = async (): Promise<string[] | null> => {
     try {
-      const raw = await FileSystem.readAsStringAsync(`${APP_DATA_DIR}novel_index_v2.json`);
+      const raw = await FileSystem.readAsStringAsync(
+        `${APP_DATA_DIR}novel_index_v2.json`,
+      );
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed?.novelIds) ? parsed.novelIds : null;
     } catch {
@@ -2211,7 +2214,9 @@ export default function SettingsScreen() {
   const refillStopRef = useRef(false);
 
   const summarizeRefill = (result: RefillResult, total: number): string => {
-    const parts = [`Refilled ${result.filled} of ${total} chapter${total === 1 ? "" : "s"}.`];
+    const parts = [
+      `Refilled ${result.filled} of ${total} chapter${total === 1 ? "" : "s"}.`,
+    ];
     if (result.failed.length > 0) {
       const first = result.failed[0];
       parts.push(
@@ -2274,7 +2279,8 @@ export default function SettingsScreen() {
         ? (integrity?.leftoverFiles ?? 0)
         : (integrity?.unlinkedFolders ?? 0);
     if (count === 0) return;
-    const label = kind === "leftoverFile" ? "leftover files" : "unlinked folders";
+    const label =
+      kind === "leftoverFile" ? "leftover files" : "unlinked folders";
     Alert.alert(
       `Remove ${count} ${label}?`,
       "Nothing in your library uses these. Chapters your library expects are not touched. Don't run this while an update is in progress.",
@@ -2380,7 +2386,9 @@ export default function SettingsScreen() {
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {novels.length}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
                   Novels
                 </Text>
               </View>
@@ -2394,7 +2402,9 @@ export default function SettingsScreen() {
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {totalChapters.toLocaleString()}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
                   Chapters
                 </Text>
               </View>
@@ -2402,21 +2412,31 @@ export default function SettingsScreen() {
           </View>
 
           <View
-            style={[styles.statsHorizontalDivider, { backgroundColor: colors.border }]}
+            style={[
+              styles.statsHorizontalDivider,
+              { backgroundColor: colors.border },
+            ]}
           />
 
           <View style={styles.storageHeaderRow}>
-            <Text style={[styles.statsSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.statsSubtitle, { color: colors.textSecondary }]}
+            >
               STORAGE
             </Text>
             <Pressable
               onPress={measureStorage}
               disabled={measuringStorage}
               accessibilityRole="button"
-              accessibilityLabel={storageReport ? "Measure storage again" : "Measure storage"}
+              accessibilityLabel={
+                storageReport ? "Measure storage again" : "Measure storage"
+              }
               style={[
                 styles.measureBtn,
-                { borderColor: colors.border, opacity: measuringStorage ? 0.6 : 1 },
+                {
+                  borderColor: colors.border,
+                  opacity: measuringStorage ? 0.6 : 1,
+                },
               ]}
             >
               {measuringStorage ? (
@@ -2488,23 +2508,35 @@ export default function SettingsScreen() {
                 />
               </View>
 
-              <Text style={[styles.statsFooterText, { color: colors.textSecondary }]}>
-                Measured at {new Date(storageReport.measuredAt).toLocaleTimeString()}
+              <Text
+                style={[
+                  styles.statsFooterText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Measured at{" "}
+                {new Date(storageReport.measuredAt).toLocaleTimeString()}
                 {storageReport.orphanFolders > 0
                   ? ` · ${storageReport.orphanFolders} chapter folder${storageReport.orphanFolders === 1 ? "" : "s"} with no matching novel`
                   : ""}
               </Text>
               {storageReport.skipped > 0 && (
                 <Text style={styles.storageErrorText}>
-                  {storageReport.skipped} folder{storageReport.skipped === 1 ? "" : "s"} could
-                  not be read, so totals may be low.
+                  {storageReport.skipped} folder
+                  {storageReport.skipped === 1 ? "" : "s"} could not be read, so
+                  totals may be low.
                 </Text>
               )}
 
               <View
-                style={[styles.statsHorizontalDivider, { backgroundColor: colors.border }]}
+                style={[
+                  styles.statsHorizontalDivider,
+                  { backgroundColor: colors.border },
+                ]}
               />
-              <Text style={[styles.statsSubtitle, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.statsSubtitle, { color: colors.textSecondary }]}
+              >
                 LARGEST NOVELS
               </Text>
               {(showAllStorageNovels
@@ -2536,7 +2568,9 @@ export default function SettingsScreen() {
                   onPress={() => setShowAllStorageNovels((v) => !v)}
                   style={styles.showMoreBtn}
                 >
-                  <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+                  <Text
+                    style={[styles.measureBtnText, { color: colors.accent }]}
+                  >
                     {showAllStorageNovels
                       ? "Show fewer"
                       : `Show all ${storageReport.novels.length} novels`}
@@ -2547,27 +2581,41 @@ export default function SettingsScreen() {
           )}
 
           <View
-            style={[styles.statsHorizontalDivider, { backgroundColor: colors.border }]}
+            style={[
+              styles.statsHorizontalDivider,
+              { backgroundColor: colors.border },
+            ]}
           />
 
           <View style={styles.storageHeaderRow}>
-            <Text style={[styles.statsSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.statsSubtitle, { color: colors.textSecondary }]}
+            >
               LIBRARY CHECK
             </Text>
             <Pressable
               onPress={checkLibrary}
               disabled={checkingIntegrity || repairing}
               accessibilityRole="button"
-              accessibilityLabel={integrity ? "Check library again" : "Check library"}
+              accessibilityLabel={
+                integrity ? "Check library again" : "Check library"
+              }
               style={[
                 styles.measureBtn,
-                { borderColor: colors.border, opacity: checkingIntegrity ? 0.6 : 1 },
+                {
+                  borderColor: colors.border,
+                  opacity: checkingIntegrity ? 0.6 : 1,
+                },
               ]}
             >
               {checkingIntegrity ? (
                 <ActivityIndicator size="small" color={colors.accent} />
               ) : (
-                <Ionicons name="shield-checkmark-outline" size={14} color={colors.accent} />
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={14}
+                  color={colors.accent}
+                />
               )}
               <Text style={[styles.measureBtnText, { color: colors.accent }]}>
                 {checkingIntegrity
@@ -2621,7 +2669,9 @@ export default function SettingsScreen() {
 
               {integrity.missingChapterFiles > 0 && (
                 <View style={styles.integrityRow}>
-                  <Text style={[styles.integrityRowText, { color: colors.text }]}>
+                  <Text
+                    style={[styles.integrityRowText, { color: colors.text }]}
+                  >
                     Fetch the missing chapters again from their sites.
                   </Text>
                   {refilling ? (
@@ -2629,10 +2679,18 @@ export default function SettingsScreen() {
                       onPress={() => {
                         refillStopRef.current = true;
                       }}
-                      style={[styles.measureBtn, { borderColor: colors.border }]}
+                      style={[
+                        styles.measureBtn,
+                        { borderColor: colors.border },
+                      ]}
                     >
                       <ActivityIndicator size="small" color={colors.accent} />
-                      <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+                      <Text
+                        style={[
+                          styles.measureBtnText,
+                          { color: colors.accent },
+                        ]}
+                      >
                         Stop
                       </Text>
                     </Pressable>
@@ -2642,10 +2700,18 @@ export default function SettingsScreen() {
                       disabled={repairing || checkingIntegrity}
                       style={[
                         styles.measureBtn,
-                        { borderColor: colors.border, opacity: repairing ? 0.6 : 1 },
+                        {
+                          borderColor: colors.border,
+                          opacity: repairing ? 0.6 : 1,
+                        },
                       ]}
                     >
-                      <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+                      <Text
+                        style={[
+                          styles.measureBtnText,
+                          { color: colors.accent },
+                        ]}
+                      >
                         Refill
                       </Text>
                     </Pressable>
@@ -2655,37 +2721,62 @@ export default function SettingsScreen() {
 
               {integrity.leftoverFiles > 0 && (
                 <View style={styles.integrityRow}>
-                  <Text style={[styles.integrityRowText, { color: colors.text }]}>
+                  <Text
+                    style={[styles.integrityRowText, { color: colors.text }]}
+                  >
                     Remove leftover files that no novel uses.
                   </Text>
                   <Pressable
                     onPress={() => confirmRemoval("leftoverFile")}
                     disabled={repairing}
-                    style={[styles.measureBtn, { borderColor: colors.border, opacity: repairing ? 0.6 : 1 }]}
+                    style={[
+                      styles.measureBtn,
+                      {
+                        borderColor: colors.border,
+                        opacity: repairing ? 0.6 : 1,
+                      },
+                    ]}
                   >
-                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>Remove</Text>
+                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>
+                      Remove
+                    </Text>
                   </Pressable>
                 </View>
               )}
 
               {integrity.unlinkedFolders > 0 && (
                 <View style={styles.integrityRow}>
-                  <Text style={[styles.integrityRowText, { color: colors.text }]}>
+                  <Text
+                    style={[styles.integrityRowText, { color: colors.text }]}
+                  >
                     Remove folders that no novel refers to.
                   </Text>
                   <Pressable
                     onPress={() => confirmRemoval("unlinkedFolder")}
                     disabled={repairing}
-                    style={[styles.measureBtn, { borderColor: colors.border, opacity: repairing ? 0.6 : 1 }]}
+                    style={[
+                      styles.measureBtn,
+                      {
+                        borderColor: colors.border,
+                        opacity: repairing ? 0.6 : 1,
+                      },
+                    ]}
                   >
-                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>Remove</Text>
+                    <Text style={[styles.measureBtnText, { color: "#E74C3C" }]}>
+                      Remove
+                    </Text>
                   </Pressable>
                 </View>
               )}
 
               {integrity.needsAttention > 0 && (
                 <>
-                  <Text style={[styles.statsFooterText, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.statsFooterText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     These are not removed. Look at them first.
                   </Text>
                   {integrity.issues
@@ -2698,7 +2789,12 @@ export default function SettingsScreen() {
                       </Text>
                     ))}
                   {integrity.needsAttention > 8 && (
-                    <Text style={[styles.statsFooterText, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.statsFooterText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       And {integrity.needsAttention - 8} more.
                     </Text>
                   )}
@@ -2711,7 +2807,12 @@ export default function SettingsScreen() {
                 </Text>
               )}
 
-              <Text style={[styles.statsFooterText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.statsFooterText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Checked at {new Date(integrity.checkedAt).toLocaleTimeString()}
               </Text>
             </>
@@ -4151,24 +4252,84 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statsRow: { flexDirection: "row" },
-  statsHorizontalDivider: { height: StyleSheet.hairlineWidth, marginVertical: 14 },
-  statsSubtitle: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 0.8 },
-  storageHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  measureBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  statsHorizontalDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 14,
+  },
+  statsSubtitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.8,
+  },
+  storageHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  measureBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   measureBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   storageHint: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 },
-  storageErrorText: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#E74C3C", marginTop: 4 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: 16, columnGap: 12 },
-  statCell: { width: "47%", flexDirection: "row", alignItems: "center", gap: 10 },
-  statsFooterText: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 10 },
-  novelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, paddingVertical: 6 },
+  storageErrorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#E74C3C",
+    marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 16,
+    columnGap: 12,
+  },
+  statCell: {
+    width: "47%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  statsFooterText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 10,
+  },
+  novelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 6,
+  },
   novelRowTitle: { fontFamily: "Inter_500Medium", fontSize: 14 },
   novelRowValue: { fontFamily: "Inter_700Bold", fontSize: 15 },
-  orphanNote: { fontFamily: "Inter_400Regular", fontSize: 11, color: "#E67E22" },
+  orphanNote: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "#E67E22",
+  },
   showMoreBtn: { alignItems: "center", paddingVertical: 8 },
-  integrityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, paddingVertical: 6 },
+  integrityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 6,
+  },
   integrityRowText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
-  attentionText: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#E67E22", lineHeight: 17 },
+  attentionText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#E67E22",
+    lineHeight: 17,
+  },
   statItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   statDivider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
   statValue: { fontFamily: "Inter_700Bold", fontSize: 24 },
