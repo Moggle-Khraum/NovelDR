@@ -373,7 +373,9 @@ checks.push(
     name: "shared/http.ts: detects Cloudflare challenge pages",
     run: () => {
       assert(
-        looksLikeChallenge("<html><title>Just a moment...</title><body>Checking your browser</body></html>"),
+        looksLikeChallenge(
+          "<html><title>Just a moment...</title><body>Checking your browser</body></html>",
+        ),
         "expected a Cloudflare interstitial to be detected",
       );
     },
@@ -382,7 +384,9 @@ checks.push(
     name: "shared/http.ts: does not classify ordinary chapter HTML as a challenge",
     run: () => {
       assert(
-        !looksLikeChallenge("<html><title>Chapter 1</title><body><p>Story text.</p></body></html>"),
+        !looksLikeChallenge(
+          "<html><title>Chapter 1</title><body><p>Story text.</p></body></html>",
+        ),
         "ordinary chapter HTML must not be classified as a challenge",
       );
     },
