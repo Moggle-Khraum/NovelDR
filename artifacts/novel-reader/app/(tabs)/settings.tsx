@@ -37,17 +37,17 @@ import {
   formatBytes,
   type LibraryStorageReport,
   type StorageAdapter,
-} from "@/lib/storageStats";
+} from "../../lib/storageStats";
 import {
   checkLibraryIntegrity,
   removeRemovableIssues,
   type IntegrityReport,
-} from "@/lib/libraryIntegrity";
+} from "../../lib/libraryIntegrity";
 import {
   buildRefillTargets,
   refillChapters,
   type RefillResult,
-} from "@/lib/chapterRefill";
+} from "../../lib/chapterRefill";
 import { fetchChapter } from "@/hooks/useApi";
 import { Theme } from "@/constants/colors";
 import { useUpdateContext } from "@/context/UpdateContext";
@@ -4154,13 +4154,13 @@ export default function SettingsScreen() {
 // Nothing is opened or copied.
 const deviceStorageAdapter: StorageAdapter = {
   async stat(path) {
-    const info = await FileSystem.getInfoAsync(path, { size: true });
+    const info = await FileSystem.getInfoAsync(path);
     if (!info.exists) return { exists: false, isDirectory: false, size: 0 };
     const isDirectory = !!info.isDirectory;
     return {
       exists: true,
       isDirectory,
-      size: isDirectory ? 0 : ((info as { size?: number }).size ?? 0),
+      size: info.exists && !isDirectory ? info.size || 0 : 0,
     };
   },
   list(path) {

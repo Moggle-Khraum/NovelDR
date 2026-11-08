@@ -20,7 +20,7 @@ import {
   Chapter,
   ChapterFileMove,
 } from "@/context/LibraryContext";
-import { orderChapters, parseChapterNumber } from "@/lib/chapterOrder";
+import { orderChapters, parseChapterNumber } from "../../lib/chapterOrder";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import {
