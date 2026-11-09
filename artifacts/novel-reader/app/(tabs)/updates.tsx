@@ -14,7 +14,13 @@ import {
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLibrary, Novel, Chapter } from "@/context/LibraryContext";
+import {
+  useLibrary,
+  Novel,
+  Chapter,
+  ChapterFileMove,
+} from "@/context/LibraryContext";
+import { orderChapters, parseChapterNumber } from "../../lib/chapterOrder";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import {
@@ -98,8 +104,13 @@ function LogLine({ entry }: { entry: LogEntry }) {
 
 export default function UpdatesScreen() {
   const { colors } = useTheme();
-  const { novels, updateNovel, saveAllChaptersToFile, loadChapterContent } =
-    useLibrary();
+  const {
+    novels,
+    updateNovel,
+    saveAllChaptersToFile,
+    applyChapterFileMoves,
+    loadChapterContent,
+  } = useLibrary();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -186,21 +197,9 @@ export default function UpdatesScreen() {
   };
 
   // ─── Extract chapter number from title ──────────────────────────────────────
-  const extractChapterNumber = (title: string): number => {
-    const patterns = [
-      /chapter\s+(\d+(?:\.\d+)?)/i,
-      /ch\.?\s*(\d+(?:\.\d+)?)/i,
-      /#(\d+(?:\.\d+)?)/,
-      /(\d+)(?:st|nd|rd|th)\s+chapter/i,
-      /^(\d+(?:\.\d+)?)[\s\-:]/,
-      /volume\s+\d+\s+chapter\s+(\d+)/i,
-    ];
-    for (const pattern of patterns) {
-      const match = title.match(pattern);
-      if (match) return parseFloat(match[1]);
-    }
-    return 0;
-  };
+  // Shared parser (digits and Roman numerals). 0 when the title has no number.
+  const extractChapterNumber = (title: string): number =>
+    parseChapterNumber(title) ?? 0;
 
   // ─── Determine next Start Chapter from saved chapters ───────────────────────
   const getNextStartChapter = (novel: Novel): number => {
@@ -865,6 +864,11 @@ export default function UpdatesScreen() {
           ...existingChapters,
         ];
 
+        // Position of each existing chapter file before the re-sort below.
+        const preSortIndexByUrl = new Map<string, number>(
+          existingChapters.map((c, i) => [c.url, i]),
+        );
+
         // Add new chapters
         newChapters.forEach((newCh) => {
           if (!chapterExists(newCh.url, allChapters)) {
@@ -888,13 +892,14 @@ export default function UpdatesScreen() {
           "info",
         );
 
-        allChapters.sort((a, b) => {
-          const numA = extractChapterNumber(a.title);
-          const numB = extractChapterNumber(b.title);
-          if (numA === 0 && numB === 0)
-            return (a.url || "").localeCompare(b.url || "");
-          return numA - numB;
-        });
+        // Reading order. Unnumbered chapters keep their place after the number
+        // before them, instead of moving to the front. Phase 0 moves each
+        // chapter file to match the new positions.
+        allChapters.splice(
+          0,
+          allChapters.length,
+          ...orderChapters(allChapters),
+        );
 
         const validNums = allChapters
           .map((c) => extractChapterNumber(c.title))
@@ -908,6 +913,19 @@ export default function UpdatesScreen() {
             "success",
           );
         }
+
+        // Files are addressed by position in novel.chapters. Move any existing
+        // chapter file that the re-sort relocated, so every position still
+        // maps to the same chapter. Runs on every update, because the sorted
+        // list is persisted below whether or not anything was downloaded.
+        const chapterFileMoves: ChapterFileMove[] = [];
+        allChapters.forEach((c, newIdx) => {
+          const oldIdx = preSortIndexByUrl.get(c.url);
+          if (oldIdx !== undefined) {
+            chapterFileMoves.push({ from: oldIdx, to: newIdx });
+          }
+        });
+        await applyChapterFileMoves(selectedNovel.id, chapterFileMoves);
 
         // Save all updated content to disk (only chapters that have `content` will be written)
         if (downloaded > 0 || gapFillCount > 0) {
