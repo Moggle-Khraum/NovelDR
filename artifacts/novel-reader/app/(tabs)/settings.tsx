@@ -248,6 +248,7 @@ export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
   const {
     novels,
+    loading: libraryLoading,
     purgeOrphanedData,
     setRestoring,
     commitRestoredLibrary,
@@ -2093,17 +2094,46 @@ export default function SettingsScreen() {
   const closePanel = () => setActivePanel(null);
 
   const totalChapters = novels.reduce((sum, n) => sum + n.chapters.length, 0);
-  // Storage estimate. Measured only when the user taps Measure.
+  // Storage estimate. Saved on the device and only re-measured when a new
+  // file is detected (novel, chapter, cover or backup count changes).
   const [storageReport, setStorageReport] =
     useState<LibraryStorageReport | null>(null);
-  const [measuringStorage, setMeasuringStorage] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [showStorageDetails, setShowStorageDetails] = useState(false);
+  const STORAGE_CACHE_KEY = "noveldr:storage-report-v1";
 
-  const measureStorage = async () => {
-    setMeasuringStorage(true);
+  const countFiles = async (dir: string): Promise<number> => {
+    try {
+      return (await FileSystem.readDirectoryAsync(dir)).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  const refreshStorage = async () => {
     setStorageError(null);
     try {
+      const signature = [
+        novels.length,
+        totalChapters,
+        await countFiles(COVERS_DIR),
+        await countFiles(BACKUP_DIR),
+      ].join("|");
+      const AsyncStorage = await getAsyncStorage();
+      const raw = AsyncStorage
+        ? await AsyncStorage.getItem(STORAGE_CACHE_KEY)
+        : null;
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw);
+          if (saved?.signature === signature && saved?.report) {
+            setStorageReport(saved.report);
+            return;
+          }
+        } catch {
+          // Unreadable copy: measure again below.
+        }
+      }
       const report = await estimateLibraryStorage(deviceStorageAdapter, {
         novels: novels.map((n) => ({
           id: n.id,
@@ -2120,10 +2150,14 @@ export default function SettingsScreen() {
         },
       });
       setStorageReport(report);
+      if (AsyncStorage) {
+        await AsyncStorage.setItem(
+          STORAGE_CACHE_KEY,
+          JSON.stringify({ signature, report }),
+        );
+      }
     } catch (error: any) {
       setStorageError(error?.message || "Storage could not be measured.");
-    } finally {
-      setMeasuringStorage(false);
     }
   };
 
@@ -2134,11 +2168,12 @@ export default function SettingsScreen() {
     .filter((n) => n.missingChapters > 0)
     .sort((a, b) => b.missingChapters - a.missingChapters);
 
-  // Measure automatically, and again whenever the library changes.
+  // Show the saved copy; measure only when something new was detected.
   useEffect(() => {
-    measureStorage();
+    if (libraryLoading) return;
+    refreshStorage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [novels.length, totalChapters]);
+  }, [libraryLoading, novels.length, totalChapters]);
 
   const handleThemeChange = (t: Theme) => {
     setTheme(t);
@@ -2258,42 +2293,17 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.storageLabelRow}>
-          <Text
-            style={[
-              styles.sectionLabel,
-              { color: colors.textSecondary, marginTop: 0 },
-            ]}
-          >
-            STORAGE
-          </Text>
-          <Pressable
-            onPress={measureStorage}
-            disabled={measuringStorage}
-            accessibilityRole="button"
-            accessibilityLabel="Measure storage again"
-            style={[
-              styles.measureBtn,
-              {
-                borderColor: colors.border,
-                opacity: measuringStorage ? 0.6 : 1,
-              },
-            ]}
-          >
-            {measuringStorage ? (
-              <ActivityIndicator size="small" color={colors.accent} />
-            ) : (
-              <Ionicons name="refresh" size={14} color={colors.accent} />
-            )}
-            <Text style={[styles.measureBtnText, { color: colors.accent }]}>
-              {measuringStorage ? "Measuring…" : "Measure again"}
-            </Text>
-          </Pressable>
-        </View>
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          STORAGE
+        </Text>
         <View
           style={[
             styles.statsCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              paddingBottom: 14,
+            },
           ]}
         >
           {storageError && (
@@ -2341,7 +2351,7 @@ export default function SettingsScreen() {
           <View
             style={[
               styles.statsHorizontalDivider,
-              { backgroundColor: colors.border },
+              { backgroundColor: colors.border, marginVertical: 10 },
             ]}
           />
           <Pressable
@@ -3097,41 +3107,44 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
             <ScrollView style={{ maxHeight: 460 }}>
-              {(
-                [
-                  ["Cache size", storageReport?.cacheBytes ?? 0],
-                  ["Total library size", storageReport?.totalBytes ?? 0],
-                  ["Cover images", storageBytes("covers")],
-                  ["Chapter text", storageBytes("chapters")],
-                  ["Backups", storageBytes("backups")],
-                ] as [string, number][]
-              ).map(([label, bytes]) => (
-                <View key={label} style={styles.novelRow}>
-                  <Text style={[styles.novelRowTitle, { color: colors.text }]}>
-                    {label}
-                  </Text>
-                  <Text style={[styles.novelRowValue, { color: colors.text }]}>
-                    {storageReport ? formatBytes(bytes) : "—"}
-                  </Text>
-                </View>
-              ))}
-              <View style={styles.novelRow}>
-                <Text style={[styles.novelRowTitle, { color: colors.text }]}>
-                  Missing chapter files
-                </Text>
-                <Text
-                  style={[
-                    styles.novelRowValue,
-                    {
-                      color:
-                        (storageReport?.missingChapterFiles ?? 0) > 0
-                          ? "#E67E22"
-                          : colors.text,
-                    },
-                  ]}
-                >
-                  {(storageReport?.missingChapterFiles ?? 0).toLocaleString()}
-                </Text>
+              <View style={styles.statsGrid}>
+                <StatCell
+                  icon="hardware-chip-outline"
+                  value={storageReport ? formatBytes(storageReport.cacheBytes) : "—"}
+                  label="Cache size"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="pie-chart-outline"
+                  value={storageReport ? formatBytes(storageReport.totalBytes) : "—"}
+                  label="Total library size"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="image-outline"
+                  value={storageReport ? formatBytes(storageBytes("covers")) : "—"}
+                  label="Cover images"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="document-text-outline"
+                  value={storageReport ? formatBytes(storageBytes("chapters")) : "—"}
+                  label="Chapter text"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="archive-outline"
+                  value={storageReport ? formatBytes(storageBytes("backups")) : "—"}
+                  label="Backups"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="alert-circle-outline"
+                  value={(storageReport?.missingChapterFiles ?? 0).toLocaleString()}
+                  label="Missing chapter files"
+                  warn={(storageReport?.missingChapterFiles ?? 0) > 0}
+                  colors={colors}
+                />
               </View>
 
               <View
@@ -3799,6 +3812,43 @@ const deviceStorageAdapter: StorageAdapter = {
 };
 
 // One number and its label, styled like the Novels and Chapters figures.
+// One number and its label, styled like the Novels and Chapters figures.
+function StatCell({
+  icon,
+  value,
+  label,
+  warn,
+  colors,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  label: string;
+  warn?: boolean;
+  colors: { text: string; textSecondary: string; accent: string };
+}) {
+  return (
+    <View style={styles.statCell}>
+      <Ionicons
+        name={icon}
+        size={20}
+        color={warn ? "#E67E22" : colors.accent}
+      />
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[styles.statValue, { color: warn ? "#E67E22" : colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {value}
+        </Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -3916,7 +3966,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#E67E22",
   },
-  showMoreBtn: { alignItems: "center", paddingVertical: 8 },
+  showMoreBtn: { alignItems: "center", paddingVertical: 0 },
   integrityRow: {
     flexDirection: "row",
     alignItems: "center",
