@@ -3110,37 +3110,49 @@ export default function SettingsScreen() {
               <View style={styles.statsGrid}>
                 <StatCell
                   icon="hardware-chip-outline"
-                  value={storageReport ? formatBytes(storageReport.cacheBytes) : "—"}
+                  value={
+                    storageReport ? formatBytes(storageReport.cacheBytes) : "—"
+                  }
                   label="Cache size"
                   colors={colors}
                 />
                 <StatCell
                   icon="pie-chart-outline"
-                  value={storageReport ? formatBytes(storageReport.totalBytes) : "—"}
+                  value={
+                    storageReport ? formatBytes(storageReport.totalBytes) : "—"
+                  }
                   label="Total library size"
                   colors={colors}
                 />
                 <StatCell
                   icon="image-outline"
-                  value={storageReport ? formatBytes(storageBytes("covers")) : "—"}
+                  value={
+                    storageReport ? formatBytes(storageBytes("covers")) : "—"
+                  }
                   label="Cover images"
                   colors={colors}
                 />
                 <StatCell
                   icon="document-text-outline"
-                  value={storageReport ? formatBytes(storageBytes("chapters")) : "—"}
+                  value={
+                    storageReport ? formatBytes(storageBytes("chapters")) : "—"
+                  }
                   label="Chapter text"
                   colors={colors}
                 />
                 <StatCell
                   icon="archive-outline"
-                  value={storageReport ? formatBytes(storageBytes("backups")) : "—"}
+                  value={
+                    storageReport ? formatBytes(storageBytes("backups")) : "—"
+                  }
                   label="Backups"
                   colors={colors}
                 />
                 <StatCell
                   icon="alert-circle-outline"
-                  value={(storageReport?.missingChapterFiles ?? 0).toLocaleString()}
+                  value={(
+                    storageReport?.missingChapterFiles ?? 0
+                  ).toLocaleString()}
                   label="Missing chapter files"
                   warn={(storageReport?.missingChapterFiles ?? 0) > 0}
                   colors={colors}
