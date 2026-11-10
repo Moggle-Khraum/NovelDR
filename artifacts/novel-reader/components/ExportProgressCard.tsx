@@ -89,7 +89,7 @@ export function ExportProgressCard(props: {
           const done = i < current || progress.phase === "done";
           const active = i === current && progress.phase !== "done";
           const color = done
-            ? (colors.textSuccess ?? colors.text)
+            ? "#27AE60"
             : active
               ? colors.accent
               : colors.textMuted;
@@ -142,7 +142,7 @@ export function ExportProgressCard(props: {
                 : e.level === "warn"
                   ? "#E67E22"
                   : e.level === "ok"
-                    ? (colors.textSuccess ?? colors.text)
+                    ? "#27AE60"
                     : colors.textSecondary;
             return (
               <View key={`${e.at}-${i}`} style={styles.logLine}>
