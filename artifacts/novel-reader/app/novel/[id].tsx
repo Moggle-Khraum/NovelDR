@@ -5,7 +5,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -25,6 +25,16 @@ import { loadExportChapters } from "../../lib/exportChapters";
 import { buildEpubFiles } from "../../lib/ebook/epub";
 import { buildDocxFiles } from "../../lib/ebook/docx";
 import { zipToBase64 } from "../../lib/ebook/package";
+import { escapeRTF } from "../../lib/rtf";
+import { LONG_NOVEL_CHAPTERS } from "../../lib/exportPlan";
+import { runLongNovelExport, type LongFormat } from "../../lib/longExport";
+import { createDeviceAdapters } from "../../lib/exportDevice";
+import { exportLongPdf } from "../../lib/pdfExport";
+import {
+  ExportProgressCard,
+  type TimedEvent,
+} from "../../components/ExportProgressCard";
+import type { ExportProgress } from "../../lib/exportRunner";
 import { filterChaptersByTitle } from "../../lib/chapterSearch";
 
 import { useLibrary } from "@/context/LibraryContext";
@@ -271,15 +281,6 @@ function escapeXML(str: string): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
 }
 
-function escapeRTF(str: string): string {
-  if (!str) return "";
-  return str
-    .replace(/\\/g, "\\\\")
-    .replace(/{/g, "\\{")
-    .replace(/}/g, "\\}")
-    .replace(/\n/g, "\\par ");
-}
-
 const generators: Record<
   ExportFormat,
   (
@@ -322,6 +323,7 @@ export default function NovelDetailScreen() {
     toggleSortOrder,
     getSortedChapters,
     deleteChapters,
+    loadChapterContent,
   } = useLibrary();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -330,6 +332,26 @@ export default function NovelDetailScreen() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("");
+  const [longRun, setLongRun] = useState(false);
+  const [longEvents, setLongEvents] = useState<TimedEvent[]>([]);
+  const [longProgress, setLongProgress] = useState<ExportProgress>({
+    phase: "checking",
+    chaptersDone: 0,
+    chaptersTotal: 0,
+  });
+  const [longStartedAt, setLongStartedAt] = useState(0);
+  const [longNow, setLongNow] = useState(0);
+  const [longCancelling, setLongCancelling] = useState(false);
+  const [longFormatLabel, setLongFormatLabel] = useState("");
+  const [longShowFullLog, setLongShowFullLog] = useState(false);
+  const longCancelRef = useRef(false);
+
+  // Keeps the elapsed time moving while a long export runs.
+  useEffect(() => {
+    if (!longRun) return;
+    const timer = setInterval(() => setLongNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [longRun]);
   const [chapterSelectionMode, setChapterSelectionMode] = useState(false);
   const [chapterQuery, setChapterQuery] = useState("");
   const [selectedChapterUrls, setSelectedChapterUrls] = useState<string[]>([]);
@@ -479,7 +501,197 @@ export default function NovelDetailScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   // ── Export Handler ──────────────────────────────────────────────────────
+  const handleLongExport = async (format: LongFormat) => {
+    const safeTitle = novel.title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .substring(0, 50);
+    const baseDir = `${FileSystem.documentDirectory}exports/${safeTitle}/`;
+    const zipPath = `${FileSystem.documentDirectory}exports/${safeTitle}.zip`;
+    const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novel.id}/`;
+
+    // Sizes drive how chapters are grouped into parts.
+    const chapters: { index: number; title: string; bytes: number }[] = [];
+    for (let i = 0; i < novel.chapters.length; i++) {
+      const info = await FileSystem.getInfoAsync(
+        `${chaptersDir}chapter_${i}.json`,
+      );
+      const bytes = info.exists ? ((info as { size?: number }).size ?? 0) : 0;
+      chapters.push({ index: i, title: novel.chapters[i].title, bytes });
+    }
+
+    const started = Date.now();
+    longCancelRef.current = false;
+    setLongCancelling(false);
+    setLongShowFullLog(false);
+    setLongEvents([]);
+    setLongStartedAt(started);
+    setLongNow(started);
+    setLongProgress({
+      phase: "checking",
+      chaptersDone: 0,
+      chaptersTotal: novel.chapters.length,
+    });
+    setLongFormatLabel(format.toUpperCase());
+    setLongRun(true);
+    setExporting(true);
+
+    try {
+      const result = await runLongNovelExport(
+        {
+          novelId: novel.id,
+          title: novel.title,
+          author: novel.author,
+          format,
+          chapters,
+          baseDir,
+          zipPath,
+          isCancelled: () => longCancelRef.current,
+          onEvent: (e) =>
+            setLongEvents((prev) => [...prev, { ...e, at: Date.now() }]),
+          onProgress: (p) => setLongProgress(p),
+        },
+        createDeviceAdapters({
+          stagingDir: `${baseDir}staging/`,
+          readLibraryChapter: async (index) => {
+            const data = await loadChapterContent(novel.id, index);
+            if (!data || !data.content) return null;
+            return {
+              title:
+                data.title ||
+                novel.chapters[index]?.title ||
+                `Chapter ${index + 1}`,
+              content: data.content,
+            };
+          },
+        }),
+      );
+
+      if (result.zipPath) {
+        await Sharing.shareAsync(result.zipPath, {
+          mimeType: "application/zip",
+        });
+      } else if (result.phase !== "done") {
+        Alert.alert("Export not finished", result.note);
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Export failed",
+        error?.message || "The export could not be finished.",
+      );
+    } finally {
+      await FileSystem.deleteAsync(`${baseDir}staging/`, { idempotent: true });
+      setLongRun(false);
+      setExporting(false);
+    }
+  };
+
+  const handleLongPdf = async () => {
+    const safeTitle = novel.title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .substring(0, 50);
+    const exportDir = `${FileSystem.documentDirectory}exports/`;
+    const finalPath = `${exportDir}${safeTitle}.pdf`;
+
+    const started = Date.now();
+    longCancelRef.current = false;
+    setLongCancelling(false);
+    setLongShowFullLog(false);
+    setLongEvents([]);
+    setLongStartedAt(started);
+    setLongNow(started);
+    setLongFormatLabel("PDF");
+    setLongProgress({
+      phase: "reading",
+      chaptersDone: 0,
+      chaptersTotal: novel.chapters.length,
+    });
+    setLongRun(true);
+    setExporting(true);
+
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(exportDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
+      }
+      const result = await exportLongPdf(
+        {
+          title: novel.title,
+          author: novel.author,
+          chapters: novel.chapters.map((c, i) => ({
+            index: i,
+            title: c.title,
+          })),
+          finalPath,
+        },
+        {
+          freeBytes: () => FileSystem.getFreeDiskStorageAsync(),
+          readChapter: async (index) => {
+            const data = await loadChapterContent(novel.id, index);
+            if (!data || !data.content) return null;
+            return {
+              title:
+                data.title ||
+                novel.chapters[index]?.title ||
+                `Chapter ${index + 1}`,
+              content: data.content,
+            };
+          },
+          // Gives the UI a turn between chapters, so the progress card keeps moving.
+          yieldToUi: () =>
+            new Promise<void>((resolve) => setTimeout(resolve, 0)),
+          isCancelled: () => longCancelRef.current,
+          onChapter: (done, total) =>
+            setLongProgress({
+              phase: "reading",
+              chaptersDone: done,
+              chaptersTotal: total,
+            }),
+          printToFile: async (html) => {
+            const printed = await Print.printToFileAsync({ html });
+            return printed.uri;
+          },
+          moveFile: async (from, to) => {
+            await FileSystem.moveAsync({ from, to });
+          },
+          onEvent: (level, text) =>
+            setLongEvents((prev) => [...prev, { level, text, at: Date.now() }]),
+        },
+      );
+
+      if (result.pdfPath) {
+        await Sharing.shareAsync(result.pdfPath, {
+          mimeType: "application/pdf",
+        });
+      } else if (result.phase !== "done") {
+        Alert.alert("PDF not created", result.note);
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "PDF export failed",
+        error?.message || "The PDF could not be created.",
+      );
+    } finally {
+      setLongRun(false);
+      setExporting(false);
+    }
+  };
+
   const handleExport = async (format: ExportFormat) => {
+    if (format === "pdf" && novel.chapters.length >= LONG_NOVEL_CHAPTERS) {
+      setShowExportModal(false);
+      setShowMenu(false);
+      await handleLongPdf();
+      return;
+    }
+    if (novel.chapters.length >= LONG_NOVEL_CHAPTERS) {
+      setShowExportModal(false);
+      setShowMenu(false);
+      await handleLongExport(format as LongFormat);
+      return;
+    }
+
     setShowExportModal(false);
     setShowMenu(false);
     setExporting(true);
@@ -1097,15 +1309,42 @@ export default function NovelDetailScreen() {
           <View
             style={[styles.progressModal, { backgroundColor: colors.card }]}
           >
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.progressText, { color: colors.text }]}>
-              {exportProgress}
-            </Text>
-            <Text
-              style={[styles.progressSubText, { color: colors.textSecondary }]}
-            >
-              This may take a moment for large novels...
-            </Text>
+            {longRun ? (
+              <ExportProgressCard
+                novelTitle={novel.title}
+                formatLabel={longFormatLabel}
+                longMode
+                progress={longProgress}
+                events={longEvents}
+                startedAt={longStartedAt}
+                now={longNow}
+                cancelVisible={longEvents.some(
+                  (e) => e.level === "warn" || e.level === "error",
+                )}
+                cancelling={longCancelling}
+                onCancel={() => {
+                  longCancelRef.current = true;
+                  setLongCancelling(true);
+                }}
+                showFullLog={longShowFullLog}
+                onToggleFullLog={() => setLongShowFullLog((v) => !v)}
+              />
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={[styles.progressText, { color: colors.text }]}>
+                  {exportProgress}
+                </Text>
+                <Text
+                  style={[
+                    styles.progressSubText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  This may take a moment for large novels...
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </Modal>
