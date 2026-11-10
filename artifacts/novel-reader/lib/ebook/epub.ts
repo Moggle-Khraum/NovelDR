@@ -17,9 +17,9 @@ export type EpubMeta = {
   modified?: Date;
 };
 
-const XML_DECL = `<?xml version="1.0" encoding="UTF-8"?>`;
+export const XML_DECL = `<?xml version="1.0" encoding="UTF-8"?>`;
 
-const STYLE_CSS = `body {
+export const STYLE_CSS = `body {
   font-family: serif;
   line-height: 1.5;
   margin: 1em;
@@ -46,11 +46,15 @@ p.first, h1 + p {
 }
 `;
 
-function chapterFileName(index: number): string {
+export function chapterFileName(index: number): string {
   return `chapter-${String(index + 1).padStart(4, "0")}.xhtml`;
 }
 
-function xhtmlPage(language: string, title: string, bodyHtml: string): string {
+export function xhtmlPage(
+  language: string,
+  title: string,
+  bodyHtml: string,
+): string {
   return `${XML_DECL}
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${xmlText(language)}" lang="${xmlText(language)}">
@@ -66,7 +70,7 @@ ${bodyHtml}
 `;
 }
 
-function paragraphsToHtml(text: string): string {
+export function paragraphsToHtml(text: string): string {
   return splitParagraphs(text)
     .map((lines) => {
       const inner = lines.map((line) => xmlText(line)).join("<br/>");

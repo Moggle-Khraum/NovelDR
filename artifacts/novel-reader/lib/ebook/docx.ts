@@ -13,12 +13,13 @@ export type DocxMeta = {
   modified?: Date;
 };
 
-const XML_DECL = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`;
-const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-const R_NS =
+export const XML_DECL = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`;
+export const W_NS =
+  "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+export const R_NS =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
-const CONTENT_TYPES = `${XML_DECL}
+export const CONTENT_TYPES = `${XML_DECL}
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -28,14 +29,14 @@ const CONTENT_TYPES = `${XML_DECL}
 </Types>
 `;
 
-const ROOT_RELS = `${XML_DECL}
+export const ROOT_RELS = `${XML_DECL}
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="${R_NS}/officeDocument" Target="word/document.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
 </Relationships>
 `;
 
-const DOCUMENT_RELS = `${XML_DECL}
+export const DOCUMENT_RELS = `${XML_DECL}
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="${R_NS}/styles" Target="styles.xml"/>
 </Relationships>
@@ -43,7 +44,7 @@ const DOCUMENT_RELS = `${XML_DECL}
 
 // Built-in style ids and names (Title, Subtitle, heading 1) are used so Word's
 // navigation pane and outline pick up chapter headings.
-const STYLES = `${XML_DECL}
+export const STYLES = `${XML_DECL}
 <w:styles xmlns:w="${W_NS}">
   <w:docDefaults>
     <w:rPrDefault>
@@ -121,7 +122,7 @@ function runsForLines(lines: string[]): string {
     .join("");
 }
 
-function paragraph(
+export function paragraph(
   lines: string[],
   options: { style?: string; pageBreakBefore?: boolean } = {},
 ): string {
@@ -166,7 +167,7 @@ function documentXml(meta: DocxMeta, chapters: EbookChapter[]): string {
 `;
 }
 
-function coreXml(meta: DocxMeta): string {
+export function coreXml(meta: DocxMeta): string {
   const stamp = isoSeconds(meta.modified);
   return `${XML_DECL}
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
