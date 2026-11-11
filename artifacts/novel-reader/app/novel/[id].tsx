@@ -149,8 +149,9 @@ function generateTXT(
   return txt;
 }
 
-// Reads the novel's local cover for EPUB. Remote covers are intentionally
-// skipped so exports remain available offline.
+// Real EPUB 3 package: a ZIP with mimetype, container, OPF, nav, NCX, and XHTML.
+// Reads the novel's local cover for EPUB. Returns null (no cover) when there is
+// no local file, the type is unsupported, or the file is over the size cap.
 async function readEpubCover(coverUri?: string) {
   if (!coverUri || !coverUri.startsWith("file://")) return null;
   const file = coverFromFileName(coverUri.split("/").pop() ?? "");
@@ -164,8 +165,6 @@ async function readEpubCover(coverUri?: string) {
   return { file, base64 };
 }
 
-// Real EPUB 3 package: a ZIP with mimetype, container, OPF, nav, NCX, XHTML,
-// and (when available) the novel's local cover image.
 async function generateEPUB(
   novelTitle: string,
   author: string,
@@ -533,6 +532,7 @@ export default function NovelDetailScreen() {
       .replace(/[^a-zA-Z0-9\s]/g, "")
       .replace(/\s+/g, "_")
       .substring(0, 50);
+    // One folder and one zip per format, so formats never share files.
     const baseDir = `${FileSystem.documentDirectory}exports/${safeTitle}/${format}/`;
     const zipPath = `${FileSystem.documentDirectory}exports/${safeTitle}-${format}.zip`;
     const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novel.id}/`;
