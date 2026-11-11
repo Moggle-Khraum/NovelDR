@@ -13,7 +13,8 @@ export async function zipFilesToBase64(
 
   for (const [path, content] of Object.entries(files)) {
     const options = {
-      compression: path === "mimetype" ? "STORE" as const : "DEFLATE" as const,
+      compression:
+        path === "mimetype" ? ("STORE" as const) : ("DEFLATE" as const),
       createFolders: false,
     };
     if (binaryPaths.has(path)) {

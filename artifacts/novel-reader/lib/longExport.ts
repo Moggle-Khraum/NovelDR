@@ -19,7 +19,11 @@ import { writeEpubPart } from "./ebook/epubPart";
 import { writeDocxPart } from "./ebook/docxPart";
 import { writeTxtPart, writeRtfPart } from "./textPart";
 import { packagePart } from "./ebook/partPackage";
-import { coverFromFileName, MAX_COVER_BYTES, type EpubCover } from "./ebook/epubCover";
+import {
+  coverFromFileName,
+  MAX_COVER_BYTES,
+  type EpubCover,
+} from "./ebook/epubCover";
 
 export type LongFormat = "epub" | "docx" | "txt" | "rtf";
 
@@ -186,11 +190,20 @@ export async function runLongNovelExport(
     const file = coverFromFileName(name);
     const size = await adapters.fileSize(input.coverSourceUri);
     if (!file) {
-      input.onEvent?.({ level: "warn", text: "Cover skipped: unsupported image type." });
+      input.onEvent?.({
+        level: "warn",
+        text: "Cover skipped: unsupported image type.",
+      });
     } else if (size === null) {
-      input.onEvent?.({ level: "warn", text: "Cover skipped: the cover file could not be found." });
+      input.onEvent?.({
+        level: "warn",
+        text: "Cover skipped: the cover file could not be found.",
+      });
     } else if (size > MAX_COVER_BYTES) {
-      input.onEvent?.({ level: "warn", text: "Cover skipped: the image is larger than 5 MB." });
+      input.onEvent?.({
+        level: "warn",
+        text: "Cover skipped: the image is larger than 5 MB.",
+      });
     } else {
       cover = { file, sourceUri: input.coverSourceUri };
     }
@@ -204,10 +217,17 @@ export async function runLongNovelExport(
       stageChapter: adapters.stage,
       buildPart: (partNumber, partTotal) => {
         const part = plan.parts[partNumber - 1];
-        return buildPartArtifact(input, adapters, partNumber, partTotal, {
-          firstChapter: part.firstChapter,
-          lastChapter: part.lastChapter,
-        }, cover);
+        return buildPartArtifact(
+          input,
+          adapters,
+          partNumber,
+          partTotal,
+          {
+            firstChapter: part.firstChapter,
+            lastChapter: part.lastChapter,
+          },
+          cover,
+        );
       },
       finishPart: async (tempPath, partNumber) => {
         const finalPath = `${input.baseDir}part-${partNumber}${ext}`;
