@@ -24,7 +24,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadExportChapters } from "../../lib/exportChapters";
 import { buildEpubFiles } from "../../lib/ebook/epub";
 import { buildDocxFiles } from "../../lib/ebook/docx";
-import { zipToBase64 } from "../../lib/ebook/package";
+import { zipToBase64, zipFilesToBase64 } from "../../lib/ebook/package";
+import { coverFromFileName, MAX_COVER_BYTES } from "../../lib/ebook/epubCover";
 import { escapeRTF } from "../../lib/rtf";
 import { LONG_NOVEL_CHAPTERS } from "../../lib/exportPlan";
 import { runLongNovelExport, type LongFormat } from "../../lib/longExport";
@@ -148,18 +149,43 @@ function generateTXT(
   return txt;
 }
 
-// Real EPUB 3 package: a ZIP with mimetype, container, OPF, nav, NCX, and XHTML.
+// Reads the novel's local cover for EPUB. Remote covers are intentionally
+// skipped so exports remain available offline.
+async function readEpubCover(coverUri?: string) {
+  if (!coverUri || !coverUri.startsWith("file://")) return null;
+  const file = coverFromFileName(coverUri.split("/").pop() ?? "");
+  if (!file) return null;
+  const info = await FileSystem.getInfoAsync(coverUri);
+  if (!info.exists || info.isDirectory) return null;
+  if (((info as { size?: number }).size ?? 0) > MAX_COVER_BYTES) return null;
+  const base64 = await FileSystem.readAsStringAsync(coverUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { file, base64 };
+}
+
+// Real EPUB 3 package: a ZIP with mimetype, container, OPF, nav, NCX, XHTML,
+// and (when available) the novel's local cover image.
 async function generateEPUB(
   novelTitle: string,
   author: string,
   chapters: { title: string; content: string }[],
   novelId: string,
+  coverUri?: string,
 ): Promise<string> {
+  const cover = await readEpubCover(coverUri);
   const files = buildEpubFiles(
     { id: novelId, title: novelTitle, author },
     chapters,
+    cover?.file,
   );
-  return zipToBase64(files, "application/epub+zip");
+  const binaryPaths = new Set<string>();
+  if (cover) {
+    const coverEntry = `OEBPS/${cover.file.fileName}`;
+    files[coverEntry] = cover.base64;
+    binaryPaths.add(coverEntry);
+  }
+  return zipFilesToBase64(files, "application/epub+zip", binaryPaths);
 }
 
 async function generatePDF(
@@ -288,6 +314,7 @@ const generators: Record<
     author: string,
     chapters: { title: string; content: string }[],
     novelId: string,
+    coverUri?: string,
   ) => string | Promise<string>
 > = {
   txt: generateTXT,
@@ -717,6 +744,7 @@ export default function NovelDetailScreen() {
         novel.author,
         chapters,
         novel.id,
+        novel.coverUrl,
       );
 
       const exportDir = `${FileSystem.documentDirectory}exports/`;

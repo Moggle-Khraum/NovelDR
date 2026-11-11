@@ -5,6 +5,7 @@
 // they must appear in the archive: "mimetype" first.
 
 import { isoSeconds, safeId, splitParagraphs, xmlText } from "./xml";
+import { coverPageXhtml, type EpubCover } from "./epubCover";
 
 export type EbookChapter = { title: string; content: string };
 
@@ -82,6 +83,7 @@ export function paragraphsToHtml(text: string): string {
 export function buildEpubFiles(
   meta: EpubMeta,
   chapters: EbookChapter[],
+  cover?: EpubCover,
 ): Record<string, string> {
   const language = meta.language ?? "en";
   const bookId = `urn:noveldr:${safeId(meta.id)}`;
@@ -102,6 +104,15 @@ export function buildEpubFiles(
   </rootfiles>
 </container>
 `;
+
+  // 2b. Cover page, first in the reading order, when the novel has a cover.
+  if (cover) {
+    files["OEBPS/cover.xhtml"] = coverPageXhtml(
+      language,
+      displayTitle,
+      cover.fileName,
+    );
+  }
 
   // 3. Title page.
   files["OEBPS/title.xhtml"] = xhtmlPage(
@@ -129,6 +140,7 @@ export function buildEpubFiles(
 
   // 6. Navigation document (EPUB 3 required).
   const navItems = [
+    ...(cover ? [`<li><a href="cover.xhtml">Cover</a></li>`] : []),
     `<li><a href="title.xhtml">${xmlText(displayTitle)}</a></li>`,
     ...chapterItems.map(
       (item) => `<li><a href="${item.href}">${xmlText(item.title)}</a></li>`,
@@ -155,6 +167,7 @@ export function buildEpubFiles(
 
   // 7. NCX table of contents, for older readers that do not read the nav document.
   const ncxPoints = [
+    ...(cover ? [{ id: "np-cover", href: "cover.xhtml", title: "Cover" }] : []),
     { id: "np-title", href: "title.xhtml", title: displayTitle },
     ...chapterItems.map((item) => ({
       id: `np-${item.id}`,
@@ -189,6 +202,12 @@ ${ncxPoints}
 
   // 8. Package document (OPF): metadata, manifest, reading order.
   const manifest = [
+    ...(cover
+      ? [
+          `    <item id="cover-image" href="${cover.fileName}" media-type="${cover.mediaType}" properties="cover-image"/>`,
+          `    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+        ]
+      : []),
     `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`,
     `    <item id="css" href="style.css" media-type="text/css"/>`,
@@ -199,6 +218,7 @@ ${ncxPoints}
     ),
   ].join("\n");
   const spine = [
+    ...(cover ? [`    <itemref idref="cover"/>`] : []),
     `    <itemref idref="title"/>`,
     ...chapterItems.map((item) => `    <itemref idref="${item.id}"/>`),
   ].join("\n");
@@ -211,7 +231,7 @@ ${ncxPoints}
     <dc:creator>${xmlText(displayAuthor)}</dc:creator>
     <dc:language>${xmlText(language)}</dc:language>
     <meta property="dcterms:modified">${modified}</meta>
-  </metadata>
+${cover ? `    <meta name="cover" content="cover-image"/>\n` : ""}  </metadata>
   <manifest>
 ${manifest}
   </manifest>

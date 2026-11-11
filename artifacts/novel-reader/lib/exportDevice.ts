@@ -84,6 +84,12 @@ export function createDeviceAdapters(input: {
         encoding: FileSystem.EncodingType.Base64,
       }),
 
+    fileSize: async (path) => {
+      const info = await FileSystem.getInfoAsync(path);
+      if (!info.exists || info.isDirectory) return null;
+      return (info as { size?: number }).size ?? 0;
+    },
+
     zipFinished: async (files, note, zipPath) => {
       // The note sits next to the zip, is added to it, then removed.
       const notePath = `${parentOf(zipPath)}NOTE.txt`;

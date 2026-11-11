@@ -19,6 +19,7 @@ import { writeEpubPart } from "./ebook/epubPart";
 import { writeDocxPart } from "./ebook/docxPart";
 import { writeTxtPart, writeRtfPart } from "./textPart";
 import { packagePart } from "./ebook/partPackage";
+import { coverFromFileName, MAX_COVER_BYTES, type EpubCover } from "./ebook/epubCover";
 
 export type LongFormat = "epub" | "docx" | "txt" | "rtf";
 
@@ -69,6 +70,7 @@ export type LongExportAdapters = {
   ) => Promise<string>;
   // Reads back a file's base64 (used to zip binary parts).
   readBase64: (path: string) => Promise<string>;
+  fileSize: (path: string) => Promise<number | null>;
 };
 
 export type LongExportInput = {
@@ -82,6 +84,7 @@ export type LongExportInput = {
   // Zip file path for the finished parts, e.g. "<documentDirectory>exports/Title.zip".
   zipPath: string;
   estimatedOutputBytes?: number;
+  coverSourceUri?: string;
   isCancelled: () => boolean;
   onEvent?: (event: ExportEvent) => void;
   onProgress?: (progress: ExportProgress) => void;
@@ -97,6 +100,7 @@ async function buildPartArtifact(
   partNumber: number,
   partTotal: number,
   partInfo: { firstChapter: number; lastChapter: number },
+  cover: { file: EpubCover; sourceUri: string } | null,
 ): Promise<string> {
   const folder = partFolder(input.baseDir, partNumber);
   const info = { number: partNumber, total: partTotal, ...partInfo };
@@ -114,11 +118,20 @@ async function buildPartArtifact(
       readStaged: adapters.readStaged,
       writeText: put,
     };
-    const entries = await writeEpubPart(meta, info, io);
+    const binary = new Map<string, string>();
+    const binaryPaths = new Set<string>();
+    const entries = await writeEpubPart(meta, info, io, cover?.file);
+    if (cover) {
+      const coverEntry = `OEBPS/${cover.file.fileName}`;
+      binary.set(coverEntry, await adapters.readBase64(cover.sourceUri));
+      binaryPaths.add(coverEntry);
+      entries.push(coverEntry);
+    }
     const base64 = await packagePart(
       entries,
-      async (rel) => buffers.get(rel) ?? "",
+      async (rel) => binary.get(rel) ?? buffers.get(rel) ?? "",
       FORMAT_MIME.epub,
+      binaryPaths,
     );
     const temp = `${folder}artifact${FORMAT_EXTENSION.epub}`;
     await adapters.writeBase64(temp, base64);
@@ -167,6 +180,22 @@ export async function runLongNovelExport(
   const plan = planExport(planned);
   const ext = FORMAT_EXTENSION[input.format];
 
+  let cover: { file: EpubCover; sourceUri: string } | null = null;
+  if (input.format === "epub" && input.coverSourceUri) {
+    const name = input.coverSourceUri.split("/").pop() ?? "";
+    const file = coverFromFileName(name);
+    const size = await adapters.fileSize(input.coverSourceUri);
+    if (!file) {
+      input.onEvent?.({ level: "warn", text: "Cover skipped: unsupported image type." });
+    } else if (size === null) {
+      input.onEvent?.({ level: "warn", text: "Cover skipped: the cover file could not be found." });
+    } else if (size > MAX_COVER_BYTES) {
+      input.onEvent?.({ level: "warn", text: "Cover skipped: the image is larger than 5 MB." });
+    } else {
+      cover = { file, sourceUri: input.coverSourceUri };
+    }
+  }
+
   return runLongExport(
     plan,
     {
@@ -178,7 +207,7 @@ export async function runLongNovelExport(
         return buildPartArtifact(input, adapters, partNumber, partTotal, {
           firstChapter: part.firstChapter,
           lastChapter: part.lastChapter,
-        });
+        }, cover);
       },
       finishPart: async (tempPath, partNumber) => {
         const finalPath = `${input.baseDir}part-${partNumber}${ext}`;

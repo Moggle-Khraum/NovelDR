@@ -1,24 +1,25 @@
-// Packages a file set (from epub.ts or docx.ts) into a ZIP archive.
-//
-// Uses JSZip, a pure JavaScript library, so it needs no native module and works
-// in Expo managed builds. Output is base64, which expo-file-system writes as
-// binary.
+// Packages a file set into a ZIP archive. Binary entries are supplied as
+// base64; text entries remain UTF-8. Object insertion order preserves EPUB's
+// required first "mimetype" entry, which is stored without compression.
 
 import JSZip from "jszip";
 
-export async function zipToBase64(
+export async function zipFilesToBase64(
   files: Record<string, string>,
   mimeType: string,
+  binaryPaths: Set<string> = new Set(),
 ): Promise<string> {
   const zip = new JSZip();
 
-  // Insertion order is archive order. Object keys keep their insertion order.
-  for (const [path, text] of Object.entries(files)) {
-    if (path === "mimetype") {
-      // EPUB requires "mimetype" to be the first entry and stored uncompressed.
-      zip.file(path, text, { compression: "STORE", createFolders: false });
+  for (const [path, content] of Object.entries(files)) {
+    const options = {
+      compression: path === "mimetype" ? "STORE" as const : "DEFLATE" as const,
+      createFolders: false,
+    };
+    if (binaryPaths.has(path)) {
+      zip.file(path, content, { ...options, base64: true });
     } else {
-      zip.file(path, text, { compression: "DEFLATE", createFolders: false });
+      zip.file(path, content, options);
     }
   }
 
@@ -27,4 +28,11 @@ export async function zipToBase64(
     mimeType,
     compression: "DEFLATE",
   });
+}
+
+export async function zipToBase64(
+  files: Record<string, string>,
+  mimeType: string,
+): Promise<string> {
+  return zipFilesToBase64(files, mimeType);
 }

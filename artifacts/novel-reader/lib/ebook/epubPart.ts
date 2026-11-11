@@ -16,6 +16,7 @@ import {
   xhtmlPage,
 } from "./epub";
 import { isoSeconds, safeId, xmlText } from "./xml";
+import { coverPageXhtml, type EpubCover } from "./epubCover";
 
 export type EpubPartMeta = {
   // Stable id of the novel.
@@ -48,6 +49,7 @@ export async function writeEpubPart(
   meta: EpubPartMeta,
   part: EpubPartInfo,
   io: PartIo,
+  cover?: EpubCover,
 ): Promise<string[]> {
   const language = meta.language ?? "en";
   const displayTitle = meta.title.trim() || "Untitled";
@@ -76,6 +78,14 @@ export async function writeEpubPart(
 </container>
 `,
   );
+
+  // 2b. Cover page, when this part includes the novel cover.
+  if (cover) {
+    await write(
+      "OEBPS/cover.xhtml",
+      coverPageXhtml(language, partTitle, cover.fileName),
+    );
+  }
 
   // 3. Part title page.
   await write(
@@ -115,6 +125,7 @@ export async function writeEpubPart(
 
   // 6. Navigation document.
   const navItems = [
+    ...(cover ? [`<li><a href="cover.xhtml">Cover</a></li>`] : []),
     `<li><a href="title.xhtml">${xmlText(partTitle)}</a></li>`,
     ...chapters.map(
       (c) => `<li><a href="${c.href}">${xmlText(c.title)}</a></li>`,
@@ -144,6 +155,7 @@ export async function writeEpubPart(
 
   // 7. NCX table of contents, for older readers.
   const ncxPoints = [
+    ...(cover ? [{ id: "np-cover", href: "cover.xhtml", title: "Cover" }] : []),
     { id: "np-title", href: "title.xhtml", title: partTitle },
     ...chapters.map((c) => ({
       id: `np-${c.id}`,
@@ -178,6 +190,12 @@ ${ncxPoints}
 
   // 8. Package document.
   const manifest = [
+    ...(cover
+      ? [
+          `    <item id="cover-image" href="${cover.fileName}" media-type="${cover.mediaType}" properties="cover-image"/>`,
+          `    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+        ]
+      : []),
     `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`,
     `    <item id="css" href="style.css" media-type="text/css"/>`,
@@ -188,6 +206,7 @@ ${ncxPoints}
     ),
   ].join("\n");
   const spine = [
+    ...(cover ? [`    <itemref idref="cover"/>`] : []),
     `    <itemref idref="title"/>`,
     ...chapters.map((c) => `    <itemref idref="${c.id}"/>`),
   ].join("\n");
@@ -201,7 +220,7 @@ ${ncxPoints}
     <dc:creator>${xmlText(displayAuthor)}</dc:creator>
     <dc:language>${xmlText(language)}</dc:language>
     <meta property="dcterms:modified">${modified}</meta>
-  </metadata>
+${cover ? `    <meta name="cover" content="cover-image"/>\n` : ""}  </metadata>
   <manifest>
 ${manifest}
   </manifest>
