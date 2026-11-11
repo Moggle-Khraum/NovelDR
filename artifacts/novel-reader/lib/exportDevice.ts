@@ -79,28 +79,36 @@ export function createDeviceAdapters(input: {
       await FileSystem.deleteAsync(path, { idempotent: true });
     },
 
-    readBase64: async (path) =>
-      FileSystem.readAsStringAsync(path, {
-        encoding: FileSystem.EncodingType.Base64,
-      }),
-
     fileSize: async (path) => {
       const info = await FileSystem.getInfoAsync(path);
       if (!info.exists || info.isDirectory) return null;
       return (info as { size?: number }).size ?? 0;
     },
 
+    readBase64: async (path) =>
+      FileSystem.readAsStringAsync(path, {
+        encoding: FileSystem.EncodingType.Base64,
+      }),
+
     zipFinished: async (files, note, zipPath) => {
-      // The note sits next to the zip, is added to it, then removed.
-      const notePath = `${parentOf(zipPath)}NOTE.txt`;
-      await FileSystem.writeAsStringAsync(notePath, note, TEXT);
+      // Zip a clean staging folder that holds only this run's finished parts and
+      // the note. Packing the whole export folder could pick up files from other
+      // formats or earlier runs.
+      const stageDir = `${parentOf(zipPath)}zip-stage/`;
+      await FileSystem.deleteAsync(stageDir, { idempotent: true });
+      await FileSystem.makeDirectoryAsync(stageDir, { intermediates: true });
       try {
+        for (const file of files) {
+          const name = file.split("/").pop() ?? "part";
+          await FileSystem.copyAsync({ from: file, to: `${stageDir}${name}` });
+        }
+        await FileSystem.writeAsStringAsync(`${stageDir}NOTE.txt`, note, TEXT);
         const { zip } = await import("react-native-zip-archive");
-        const written: string = await zip([...files, notePath], zipPath);
+        const written: string = await zip(stageDir, zipPath);
         // The native library returns a bare path; the share sheet needs a file:// URL.
         return written.startsWith("file://") ? written : `file://${written}`;
       } finally {
-        await FileSystem.deleteAsync(notePath, { idempotent: true });
+        await FileSystem.deleteAsync(stageDir, { idempotent: true });
       }
     },
   };
