@@ -568,6 +568,13 @@ export default function NovelDetailScreen() {
       );
 
       if (result.zipPath) {
+        // Pacing only: lets the Package and Share steps show as complete before the share sheet opens.
+        const pause = (ms: number) =>
+          new Promise<void>((resolve) => setTimeout(resolve, ms));
+        setLongProgress((p) => ({ ...p, phase: "packaging" }));
+        await pause(1500);
+        setLongProgress((p) => ({ ...p, phase: "done" }));
+        await pause(1500);
         await Sharing.shareAsync(result.zipPath, {
           mimeType: "application/zip",
         });
