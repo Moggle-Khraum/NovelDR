@@ -90,7 +90,9 @@ export function createDeviceAdapters(input: {
       await FileSystem.writeAsStringAsync(notePath, note, TEXT);
       try {
         const { zip } = await import("react-native-zip-archive");
-        return await zip([...files, notePath], zipPath);
+        const written: string = await zip([...files, notePath], zipPath);
+        // The native library returns a bare path; the share sheet needs a file:// URL.
+        return written.startsWith("file://") ? written : `file://${written}`;
       } finally {
         await FileSystem.deleteAsync(notePath, { idempotent: true });
       }
