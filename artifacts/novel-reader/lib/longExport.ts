@@ -74,6 +74,7 @@ export type LongExportAdapters = {
   ) => Promise<string>;
   // Reads back a file's base64 (used to zip binary parts).
   readBase64: (path: string) => Promise<string>;
+  // Size of a file in bytes, or null if it does not exist.
   fileSize: (path: string) => Promise<number | null>;
 };
 
@@ -88,6 +89,7 @@ export type LongExportInput = {
   // Zip file path for the finished parts, e.g. "<documentDirectory>exports/Title.zip".
   zipPath: string;
   estimatedOutputBytes?: number;
+  // Local cover file for the novel. Used by EPUB only.
   coverSourceUri?: string;
   isCancelled: () => boolean;
   onEvent?: (event: ExportEvent) => void;
@@ -126,6 +128,7 @@ async function buildPartArtifact(
     const binaryPaths = new Set<string>();
     const entries = await writeEpubPart(meta, info, io, cover?.file);
     if (cover) {
+      // The cover image is read once per part, as base64, and stored as a binary entry.
       const coverEntry = `OEBPS/${cover.file.fileName}`;
       binary.set(coverEntry, await adapters.readBase64(cover.sourceUri));
       binaryPaths.add(coverEntry);
@@ -176,6 +179,11 @@ export async function runLongNovelExport(
   input: LongExportInput,
   adapters: LongExportAdapters,
 ): Promise<RunnerResult> {
+  // Start clean. Earlier output for this novel and format must never be packed
+  // into this run's zip, so the run folder and the old zip are removed first.
+  await adapters.deleteDir(input.baseDir);
+  await adapters.deleteDir(input.zipPath);
+
   const planned: PlannedChapter[] = input.chapters.map((c) => ({
     index: c.index,
     title: c.title,
@@ -184,6 +192,7 @@ export async function runLongNovelExport(
   const plan = planExport(planned);
   const ext = FORMAT_EXTENSION[input.format];
 
+  // The cover is used for EPUB only, and only when it is a supported type and within the size cap.
   let cover: { file: EpubCover; sourceUri: string } | null = null;
   if (input.format === "epub" && input.coverSourceUri) {
     const name = input.coverSourceUri.split("/").pop() ?? "";
@@ -192,7 +201,7 @@ export async function runLongNovelExport(
     if (!file) {
       input.onEvent?.({
         level: "warn",
-        text: "Cover skipped: unsupported image type.",
+        text: "Cover skipped: the cover image type is not supported for EPUB.",
       });
     } else if (size === null) {
       input.onEvent?.({
@@ -222,10 +231,7 @@ export async function runLongNovelExport(
           adapters,
           partNumber,
           partTotal,
-          {
-            firstChapter: part.firstChapter,
-            lastChapter: part.lastChapter,
-          },
+          { firstChapter: part.firstChapter, lastChapter: part.lastChapter },
           cover,
         );
       },
