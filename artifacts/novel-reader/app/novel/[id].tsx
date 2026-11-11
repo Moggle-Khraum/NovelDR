@@ -533,8 +533,8 @@ export default function NovelDetailScreen() {
       .replace(/[^a-zA-Z0-9\s]/g, "")
       .replace(/\s+/g, "_")
       .substring(0, 50);
-    const baseDir = `${FileSystem.documentDirectory}exports/${safeTitle}/`;
-    const zipPath = `${FileSystem.documentDirectory}exports/${safeTitle}.zip`;
+    const baseDir = `${FileSystem.documentDirectory}exports/${safeTitle}/${format}/`;
+    const zipPath = `${FileSystem.documentDirectory}exports/${safeTitle}-${format}.zip`;
     const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novel.id}/`;
 
     // Sizes drive how chapters are grouped into parts.
@@ -573,6 +573,10 @@ export default function NovelDetailScreen() {
           chapters,
           baseDir,
           zipPath,
+          coverSourceUri:
+            format === "epub" && novel.coverUrl.startsWith("file://")
+              ? novel.coverUrl
+              : undefined,
           isCancelled: () => longCancelRef.current,
           onEvent: (e) =>
             setLongEvents((prev) => [...prev, { ...e, at: Date.now() }]),
