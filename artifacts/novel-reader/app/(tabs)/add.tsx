@@ -622,8 +622,17 @@ export default function AddNovelScreen() {
     }
   };
 
+  // Strip a trailing "#fragment" (e.g. "#tab-description-title") from pasted
+  // links. The fragment never reaches the server, only slows the download and
+  // is kept in the field.
+  const stripUrlFragment = (raw: string): string => raw.trim().replace(/#.*$/, "");
+
   const handleDownload = async () => {
-    const trimmedUrl = url.trim();
+    const trimmedUrl = stripUrlFragment(url);
+    if (trimmedUrl !== url.trim()) {
+      setUrl(trimmedUrl);
+      addLog("Removed #fragment from link", "info");
+    }
     if (!trimmedUrl) {
       addLog("Error: URL field is empty!", "error");
       return;
