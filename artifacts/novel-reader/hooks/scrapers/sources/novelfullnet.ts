@@ -101,7 +101,10 @@ export const novelFullNetScraper: SourceScraper = {
       /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i,
     );
     const titleMatch =
-      safeMatch(html, /<h1[^>]*class="[^"]*\btit\b[^"]*"[^>]*>([^<]+)<\/h1>/i) ||
+      safeMatch(
+        html,
+        /<h1[^>]*class="[^"]*\btit\b[^"]*"[^>]*>([^<]+)<\/h1>/i,
+      ) ||
       (ogTitle ? ogTitle.replace(/\s+-\s+NovelFull\s*$/i, "") : null) ||
       safeMatch(html, /<h3[^>]*class="title"[^>]*>([^<]+)<\/h3>/i) ||
       safeMatch(html, /<h1[^>]*class="title"[^>]*>([^<]+)<\/h1>/i) ||
@@ -111,7 +114,10 @@ export const novelFullNetScraper: SourceScraper = {
     // 2026 layout: <a href="/author/Name" class="a1">Name</a>
     let author = "Unknown Author";
     const authorMatch =
-      safeMatch(html, /<a[^>]*href="[^"]*\/author\/[^"]*"[^>]*>([^<]+)<\/a>/i) ||
+      safeMatch(
+        html,
+        /<a[^>]*href="[^"]*\/author\/[^"]*"[^>]*>([^<]+)<\/a>/i,
+      ) ||
       safeMatch(
         html,
         /<div[^>]*class="info"[^>]*>[\s\S]*?<h3>Author:<\/h3>\s*<a[^>]*>([^<]+)<\/a>/i,
@@ -138,10 +144,7 @@ export const novelFullNetScraper: SourceScraper = {
     let coverUrl = "";
     const coverMatch =
       safeMatch(html, /<div[^>]*class="pic"[^>]*>\s*<img[^>]*src="([^"]+)"/i) ||
-      safeMatch(
-        html,
-        /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i,
-      ) ||
+      safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ||
       safeMatch(
         html,
         /<div[^>]*class="book"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>/i,
