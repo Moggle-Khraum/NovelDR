@@ -47,6 +47,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "bednovel.com": "BedNovelCom",
       "readnovelfull.com": "ReadNovelFull",
       "novelfull.com": "NovelFullCom",
+      "novelfull.net": "NovelFullNet",
       "novgo.net": "NovGoNet",
       //"lightnovelworld.org": "LightNovelWorld",
       "royalroad.com": "RoyalRoad",
