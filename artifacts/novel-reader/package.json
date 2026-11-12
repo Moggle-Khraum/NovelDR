@@ -1,6 +1,6 @@
 {
   "name": "@workspace/novel-reader",
-  "version": "5.2.20",
+  "version": "5.2.12",
   "private": true,
   "main": "index.js",
   "dependencies": {
@@ -79,7 +79,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-native": "0.81.5",
-    "react-native-keyboard-controller": "^1.20.6",
+    "react-native-keyboard-controller": "1.21.1",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",

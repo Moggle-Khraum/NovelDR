@@ -96,7 +96,7 @@ const loadViaWebView = async (url: string, timeoutMs: number) => {
   return fetchViaWebView(url, timeoutMs);
 };
 
-const WEBVIEW_TIMEOUT_MS = 35000;
+const WEBVIEW_TIMEOUT_MS = 30000;
 
 export const looksLikeChallenge = (html: string): boolean =>
   /<title[^>]*>\s*(?:just a moment|attention required|checking your browser)/i.test(
