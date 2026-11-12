@@ -51,6 +51,7 @@ const DEFAULT_MAX_CHAPTERS = 30;
 
 type LogEntry = {
   id: string;
+  time: string;
   text: string;
   type: "info" | "downloading" | "success" | "error" | "warning";
 };
@@ -93,7 +94,8 @@ function LogLine({ entry }: { entry: LogEntry }) {
   };
 
   const icon = getIcon(entry.text);
-  const displayText = icon ? `${icon} ${entry.text}` : entry.text;
+  const body = icon ? `${icon} ${entry.text}` : entry.text;
+  const displayText = `[${entry.time}] ${body}`;
 
   return (
     <Text style={[styles.logLine, { color: colorMap[entry.type] }]}>
@@ -462,16 +464,22 @@ export default function AddNovelScreen() {
   };
 
   const addLog = (text: string, type: LogEntry["type"] = "info") => {
+    const now = new Date();
     const entry: LogEntry = {
       id: Date.now().toString() + Math.random(),
+      time: now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }),
       text,
       type,
     };
     setLogs((prev) => [...prev.slice(-200), entry]);
-    setTimeout(
-      () => logScrollRef.current?.scrollToEnd({ animated: true }),
-      100,
-    );
+    // Non-animated: an animated scroll on every line was re-laying out the
+    // screen while the log grew.
+    setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: false }), 100);
   };
 
   const clearAll = () => {
@@ -534,7 +542,7 @@ export default function AddNovelScreen() {
             `Chapter ${num} failed (attempt ${attempt}/${retries}), retrying...`,
             "warning",
           );
-          await new Promise((r) => setTimeout(r, 600 * attempt));
+          await new Promise((r) => setTimeout(r, 400 * attempt));
         }
       }
     }
@@ -730,7 +738,14 @@ export default function AddNovelScreen() {
     startTimer();
 
     try {
+      const connectStart = Date.now();
+      addLog(`Connecting to ${metaUrl}...`, "info");
       const meta = await fetchNovelMeta(metaUrl);
+
+      addLog(
+        `Metadata received in ${((Date.now() - connectStart) / 1000).toFixed(1)}s`,
+        "info",
+      );
 
       const existingNovel = novels.find(
         (n) => n.title.toLowerCase() === meta.title.toLowerCase(),
@@ -1013,6 +1028,7 @@ export default function AddNovelScreen() {
         setProgressLabel(`Chapter ${chapterNum}`);
         if (maxCh) setProgress((downloaded / maxCh) * 100);
 
+        const chapterStart = Date.now();
         try {
           // OPTIMIZATION: reuse the validated prefetch from the direct-skip
           // step if it matches exactly what we're about to fetch, avoiding a
@@ -1034,6 +1050,8 @@ export default function AddNovelScreen() {
           }
           // Prefetch cache is single-use — clear it after this iteration.
           prefetchedChapter = null;
+          const chapterSecs = ((Date.now() - chapterStart) / 1000).toFixed(1);
+          addLog(`Chapter ${chapterNum} fetched in ${chapterSecs}s`, "info");
 
           const chapterNumber = extractChapterNumber(data.title);
 
@@ -1161,7 +1179,7 @@ export default function AddNovelScreen() {
           chapterNum++;
         }
 
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 50));
       }
 
       // ========== RETRY SKIPPED CHAPTERS ==========
