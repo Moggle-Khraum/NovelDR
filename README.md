@@ -92,7 +92,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | --- | --- | --- | --- |
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
 | [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead | [AllNovel](https://allnovel.org/) | ❌ Site Dead |
-| [NovelFull.net](https://novelfull.net/) | ❌ Site Dead |  |  |
+
 
 ---
 
