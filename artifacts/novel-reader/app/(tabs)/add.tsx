@@ -479,7 +479,10 @@ export default function AddNovelScreen() {
     setLogs((prev) => [...prev.slice(-200), entry]);
     // Non-animated: an animated scroll on every line was re-laying out the
     // screen while the log grew.
-    setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: false }), 100);
+    setTimeout(
+      () => logScrollRef.current?.scrollToEnd({ animated: false }),
+      100,
+    );
   };
 
   const clearAll = () => {
