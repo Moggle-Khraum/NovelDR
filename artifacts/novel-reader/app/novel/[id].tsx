@@ -1774,3 +1774,4 @@ const styles = StyleSheet.create({
   confirmModalDeleteButton: { backgroundColor: "#ff4444" },
   confirmModalButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });
+
