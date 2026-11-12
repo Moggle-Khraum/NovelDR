@@ -18,6 +18,7 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 export const SUPPORTED_SITES = [
   { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
   { name: "NovelFullCom", baseUrl: "https://novelfull.com/" },
+  { name: "NovelFullNet", baseUrl: "https://novelfull.net/" },
   { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
   { name: "NovGoNet", baseUrl: "https://novgo.net/" },
   //{ name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
