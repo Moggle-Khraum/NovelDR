@@ -1,193 +1,475 @@
-import {
-  ALLOWED_HOSTS,
-  detectSite,
-  extractChapterContent,
-  extractChapterTitle,
-  extractNextChapterUrl,
-  isAllowedNovelUrl,
-} from "../src/routes/novel.ts";
+import { Router, type IRouter, type RequestHandler } from "express";
+import axios from "axios";
+import { parse } from "node-html-parser";
+import { URL } from "url";
 
-type Check = { name: string; run: () => void };
-const checks: Check[] = [];
+const router: IRouter = Router();
 
-function assert(condition: boolean, message: string): void {
-  if (!condition) throw new Error(message);
-}
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT_PER_IP = 20;
+const MAX_CONCURRENT_SCRAPES = 8;
 
-checks.push({
-  name: "allowlist: accepts every configured source domain",
-  run: () => {
-    for (const host of ALLOWED_HOSTS) {
-      assert(
-        isAllowedNovelUrl(`https://${host}/novel/example`),
-        `expected configured host to be allowed: ${host}`,
-      );
+const ipRequestWindows = new Map<
+  string,
+  { startedAt: number; count: number }
+>();
+let activeScrapes = 0;
+
+const scrapeRateLimit: RequestHandler = (req, res, next) => {
+  const now = Date.now();
+  const key = req.ip ?? req.socket.remoteAddress ?? "unknown";
+  let window = ipRequestWindows.get(key);
+
+  if (!window || now - window.startedAt >= RATE_WINDOW_MS) {
+    window = { startedAt: now, count: 0 };
+    ipRequestWindows.set(key, window);
+  }
+
+  window.count += 1;
+  const remaining = Math.max(0, RATE_LIMIT_PER_IP - window.count);
+  const resetSeconds = Math.max(
+    1,
+    Math.ceil((window.startedAt + RATE_WINDOW_MS - now) / 1000),
+  );
+  res.setHeader("RateLimit-Limit", String(RATE_LIMIT_PER_IP));
+  res.setHeader("RateLimit-Remaining", String(remaining));
+  res.setHeader("RateLimit-Reset", String(resetSeconds));
+
+  // Bound stale key accumulation if a server receives many distinct IPs.
+  if (ipRequestWindows.size > 5000) {
+    for (const [ip, entry] of ipRequestWindows) {
+      if (now - entry.startedAt >= RATE_WINDOW_MS) ipRequestWindows.delete(ip);
     }
+  }
+
+  if (window.count > RATE_LIMIT_PER_IP) {
+    res.setHeader("Retry-After", String(resetSeconds));
+    res.status(429).json({ error: "Too many scrape requests; try again later" });
+    return;
+  }
+
+  next();
+};
+
+const scrapeConcurrencyLimit: RequestHandler = (_req, res, next) => {
+  if (activeScrapes >= MAX_CONCURRENT_SCRAPES) {
+    res.setHeader("Retry-After", "5");
+    res.status(503).json({ error: "Scrape capacity is busy; try again shortly" });
+    return;
+  }
+
+  activeScrapes += 1;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    activeScrapes = Math.max(0, activeScrapes - 1);
+  };
+
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+};
+
+const httpClient = axios.create({
+  timeout: 15000,
+  // Do not follow redirects automatically: a supported host could redirect
+  // the request to an internal or otherwise disallowed destination.
+  maxRedirects: 0,
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
   },
 });
 
-checks.push(
-  {
-    name: "allowlist: accepts real subdomains",
-    run: () => {
-      assert(
-        isAllowedNovelUrl("https://www.novelping.com/book/example"),
-        "expected www subdomain to be allowed",
-      );
-    },
-  },
-  {
-    name: "allowlist: rejects lookalike suffix domains",
-    run: () => {
-      assert(
-        !isAllowedNovelUrl("https://novelping.com.attacker.example/book/example"),
-        "must reject a lookalike domain",
-      );
-    },
-  },
-  {
-    name: "allowlist: rejects unsupported schemes",
-    run: () => {
-      assert(
-        !isAllowedNovelUrl("javascript://novelping.com/chapter-1"),
-        "must reject non-HTTP schemes",
-      );
-    },
-  },
-  {
-    name: "allowlist: rejects URLs containing credentials",
-    run: () => {
-      assert(
-        !isAllowedNovelUrl("https://user:pass@novelping.com/book/example"),
-        "must reject URLs containing embedded credentials",
-      );
-    },
-  },
-  {
-    name: "site detection: uses the hostname, not arbitrary URL text",
-    run: () => {
-      const result = detectSite(
-        "https://example.org/readnovelfull.com/chapter-1",
-      );
-      assert(
-        !result.isReadNovelFull && !result.isNovelFull,
-        "a source name in the path must not change host detection",
-      );
-    },
-  },
-  {
-    name: "site detection: detects chapter paths without matching query strings",
-    run: () => {
-      const chapter = detectSite("https://novelfull.com/book/chapter-12.html");
-      const novel = detectSite(
-        "https://novelfull.com/book?next=chapter-12",
-      );
-      assert(chapter.isChapterPage, "expected chapter path to be detected");
-      assert(!novel.isChapterPage, "query text must not mark a novel page as a chapter");
-    },
-  },
-  {
-    name: "chapter content: extracts <p>-based chapter content",
-    run: () => {
-      const result = extractChapterContent(
-        '<div id="chapter-content"><p>First paragraph.</p><p>Second paragraph.</p></div>',
-      );
-      assert(
-        result === "First paragraph.\n\nSecond paragraph.",
-        `unexpected paragraph extraction: ${JSON.stringify(result)}`,
-      );
-    },
-  },
-  {
-    name: "chapter content: extracts Novel-bin bare <br> content and drops repeated title",
-    run: () => {
-      const result = extractChapterContent(`
-        <div id="chr-content">
-          <p></p>
-          <h4>Chapter 12: The Water Mansion</h4>
-          Chen Mobai stepped through the gate.<br>
-          The air shimmered with spirit energy.<br><br>
-          He walked on.
-        </div>
-        <p>Next Chapter</p>
-      `);
-      assert(
-        result.includes("Chen Mobai stepped through the gate.") &&
-          result.includes("The air shimmered with spirit energy.") &&
-          !result.includes("Water Mansion") &&
-          !result.includes("Next Chapter"),
-        `unexpected br-based extraction: ${JSON.stringify(result)}`,
-      );
-    },
-  },
-  {
-    name: "chapter content: does not mistake navigation paragraphs for content",
-    run: () => {
-      assert(
-        extractChapterContent('<div id="chapter-content"><p>Next Chapter</p></div>') === "",
-        "expected navigation-only block to return empty content",
-      );
-    },
-  },
-  {
-    name: "chapter title: preserves heading text and normalizes chapter number",
-    run: () => {
-      const title = extractChapterTitle(
-        '<h1 class="chapter-title">Chapter 1: Reborn as an Ancient Tree</h1>',
-        1,
-      );
-      assert(
-        title === "Chapter 1: Reborn as an Ancient Tree",
-        `unexpected title: ${title}`,
-      );
-    },
-  },
-  {
-    name: "next chapter: extracts a supported relative URL",
-    run: () => {
-      const next = extractNextChapterUrl(
-        '<a id="next_chap" class="next" href="/book/example/chapter-2">Next Chapter</a>',
-        "https://novel-bin.com/book/example/chapter-1",
-      );
-      assert(
-        next === "https://novel-bin.com/book/example/chapter-2",
-        `unexpected next URL: ${next}`,
-      );
-    },
-  },
-  {
-    name: "next chapter: ignores disabled last-chapter links",
-    run: () => {
-      const next = extractNextChapterUrl(
-        '<a id="next_chap" class="next" disabled="" href="/book/example/chapter-2">Next Chapter</a>',
-        "https://novel-bin.com/book/example/chapter-1",
-      );
-      assert(next === null, `expected disabled link to be ignored, got: ${next}`);
-    },
-  },
-  {
-    name: "next chapter: rejects external destinations",
-    run: () => {
-      const next = extractNextChapterUrl(
-        '<a class="next" href="https://attacker.example/chapter-2">Next Chapter</a>',
-        "https://novel-bin.com/book/example/chapter-1",
-      );
-      assert(next === null, `expected external URL to be rejected, got: ${next}`);
-    },
-  },
-);
+// Allow-list of known novel-source hostnames. Requests to any URL whose
+// hostname isn't on this list (or a subdomain of one) are rejected before
+// the server ever fetches them. This is required to prevent SSRF: without
+// it, a caller could pass an arbitrary URL (e.g. an internal/private
+// address) and have this server fetch it on their behalf.
+const ALLOWED_HOSTS = [
+  "freewebnovel.com",
+  "novel-bin.com",
+  "novelarrow.com",
+  "novelbin.cc",
+  "novelfull.com",
+  "novelphoenix.com",
+  "novgo.net",
+  "readnovelfull.com",
+  "royalroad.com",
+  "wuxiaworld.site",
+];
 
-let failures = 0;
-for (const check of checks) {
+function isAllowedNovelUrl(rawUrl: string): boolean {
+  let parsed: URL;
   try {
-    check.run();
-    console.log(`  ok  ${check.name}`);
-  } catch (error) {
-    failures++;
-    console.error(`FAIL  ${check.name}`);
-    console.error(`      ${(error as Error).message}`);
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return false;
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  return ALLOWED_HOSTS.some(
+    (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`),
+  );
+}
+
+function ensureAbsoluteUrl(href: string, baseUrl: string): string {
+  try {
+    if (href.startsWith("http://") || href.startsWith("https://")) return href;
+    const base = new URL(baseUrl);
+    if (href.startsWith("/")) return `${base.protocol}//${base.host}${href}`;
+    return new URL(href, baseUrl).href;
+  } catch {
+    return href;
   }
 }
 
-console.log(`\n${checks.length - failures}/${checks.length} passed`);
-if (failures > 0) process.exit(1);
+function detectSite(url: string) {
+  const lower = url.toLowerCase();
+  return {
+    isReadNovelFull: lower.includes("readnovelfull"),
+    isNovelFull:
+      lower.includes("novelfull") && !lower.includes("readnovelfull"),
+    isFreeWebNovel: lower.includes("freewebnovel"),
+    isChapterPage: lower.includes("chapter"),
+  };
+}
+
+function extractTitleFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    let path = parsed.pathname;
+    if (path.endsWith(".html")) path = path.slice(0, -5);
+    const parts = path.split("/").filter(Boolean);
+    let slug = parts.find(
+      (p) => !p.toLowerCase().includes("chapter") && p.length > 5,
+    );
+    if (!slug) slug = parts[parts.length - 1] || "Unknown Novel";
+    slug = slug.replace(/^\d+[\s\-\.]+/, "");
+    return slug
+      .replace(/-/g, " ")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+  } catch {
+    return "Unknown Novel";
+  }
+}
+
+function getNovelMainPageUrl(html: string, chapterUrl: string): string | null {
+  const root = parse(html);
+  const breadcrumb = root.querySelector("ol.breadcrumb");
+  if (breadcrumb) {
+    const links = breadcrumb.querySelectorAll("a");
+    if (links.length >= 2) {
+      const href = links[1].getAttribute("href");
+      if (href) return ensureAbsoluteUrl(href, chapterUrl);
+    }
+  }
+  for (const a of root.querySelectorAll("a")) {
+    const text = (a.text || "").toLowerCase();
+    if (
+      text.includes("back to novel") ||
+      text.includes("novel home") ||
+      text.includes("main page")
+    ) {
+      const href = a.getAttribute("href");
+      if (href) return ensureAbsoluteUrl(href, chapterUrl);
+    }
+  }
+  return null;
+}
+
+function getFirstChapterUrl(html: string, baseUrl: string): string | null {
+  const root = parse(html);
+  const container =
+    root.querySelector("#tab-chapters") || root.querySelector("#list-chapter");
+  if (container) {
+    const ul = container.querySelector("ul.list-chapter");
+    if (ul) {
+      const first = ul.querySelector("li a");
+      if (first) {
+        const href = first.getAttribute("href");
+        if (href) return ensureAbsoluteUrl(href, baseUrl);
+      }
+    }
+  }
+  for (const a of root.querySelectorAll("a")) {
+    const href = (a.getAttribute("href") || "").toLowerCase();
+    const text = (a.text || "").toLowerCase();
+    if (
+      (href.includes("chapter-1") ||
+        href.includes("chapter-01") ||
+        href.includes("chapter1") ||
+        text.includes("chapter 1")) &&
+      !href.includes("next") &&
+      !text.includes("next")
+    ) {
+      const realHref = a.getAttribute("href");
+      if (realHref) return ensureAbsoluteUrl(realHref, baseUrl);
+    }
+  }
+  return null;
+}
+
+function extractNextChapterUrl(
+  html: string,
+  currentUrl: string,
+): string | null {
+  const root = parse(html);
+  for (const a of root.querySelectorAll("a")) {
+    const text = (a.text || "").toLowerCase().trim();
+    const cls = (a.getAttribute("class") || "").toLowerCase();
+    const id = (a.getAttribute("id") || "").toLowerCase();
+    if (
+      text === "next chapter" ||
+      text === "next" ||
+      cls.includes("next") ||
+      id.includes("next")
+    ) {
+      const href = a.getAttribute("href");
+      if (href && !href.includes("javascript") && href !== "#") {
+        return ensureAbsoluteUrl(href, currentUrl);
+      }
+    }
+  }
+  return null;
+}
+
+function extractChapterContent(html: string): string {
+  const root = parse(html);
+  const paragraphs = root.querySelectorAll("p");
+  return paragraphs
+    .map((p) => p.text.trim())
+    .filter((t) => t.length > 5)
+    .join("\n\n");
+}
+
+function extractChapterTitle(html: string, chapterNum: number): string {
+  const root = parse(html);
+  const titleEl =
+    root.querySelector(".chapter-title") ||
+    root.querySelector(".chr-title") ||
+    root.querySelector(".entry-title") ||
+    root.querySelector("h1") ||
+    root.querySelector("h2");
+  if (titleEl) {
+    const raw = titleEl.text.trim();
+    const clean = raw.replace(/^Chapter\s*\d+\s*[:\-]*\s*/i, "").trim();
+    if (clean) return `Chapter ${chapterNum}: ${clean}`;
+  }
+  return `Chapter ${chapterNum}`;
+}
+
+function extractNovelMeta(
+  html: string,
+  baseUrl: string,
+  site: ReturnType<typeof detectSite>,
+) {
+  const root = parse(html);
+
+  let coverUrl = "";
+  const picDiv =
+    root.querySelector("div.pic img") || root.querySelector("div.book img");
+  if (picDiv) {
+    const src =
+      picDiv.getAttribute("src") || picDiv.getAttribute("data-src") || "";
+    if (src) coverUrl = ensureAbsoluteUrl(src, baseUrl);
+  }
+
+  let author = "Unknown Author";
+  if (site.isReadNovelFull) {
+    const authorMeta = root.querySelector(
+      "[itemprop='author'] [itemprop='name']",
+    );
+    if (authorMeta) author = authorMeta.getAttribute("content") || author;
+  } else if (site.isNovelFull) {
+    const infoDiv = root.querySelector("div.info");
+    if (infoDiv) {
+      const authLink = infoDiv.querySelector("a");
+      if (authLink) author = authLink.text.trim() || author;
+    }
+  } else if (site.isFreeWebNovel) {
+    const authorLink = root.querySelector(".right .a1");
+    if (authorLink) author = authorLink.text.trim() || author;
+  }
+
+  let synopsis = "No summary available.";
+  if (site.isReadNovelFull) {
+    const descDiv = root.querySelector("[itemprop='description']");
+    if (descDiv) {
+      const paras = descDiv.querySelectorAll("p");
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
+    }
+  } else if (site.isNovelFull) {
+    const descDiv = root.querySelector("div.desc-text");
+    if (descDiv) {
+      const paras = descDiv.querySelectorAll("p");
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
+    }
+  } else if (site.isFreeWebNovel) {
+    const descDiv = root.querySelector("div.m-desc .inner");
+    if (descDiv) {
+      const paras = descDiv.querySelectorAll("p");
+      synopsis =
+        paras.length > 0
+          ? paras
+              .map((p) => p.text.trim())
+              .filter(Boolean)
+              .join("\n\n")
+          : descDiv.text.trim();
+    }
+  }
+
+  return { coverUrl, author, synopsis };
+}
+
+router.post(
+  "/novel/scrape-chapter",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
+    const { url } = req.body as { url: string };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
+    }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const response = await httpClient.get(url);
+      const html = response.data as string;
+      const content = extractChapterContent(html);
+      const chapterNum = parseInt(
+        (url.match(/chapter[-_]?(\d+)/i) || [])[1] || "1",
+        10,
+      );
+      const title = extractChapterTitle(html, chapterNum);
+      const nextUrl = extractNextChapterUrl(html, url);
+      res.json({ title, content, nextUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to scrape chapter");
+      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
+    }
+  },
+);
+
+router.post(
+  "/novel/meta",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
+    const { url } = req.body as { url: string };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
+    }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const site = detectSite(url);
+      const title = extractTitleFromUrl(url);
+
+      let pageUrl = url;
+      let html: string;
+
+      const resp = await httpClient.get(url);
+      html = resp.data as string;
+
+      if (site.isChapterPage) {
+        const novelUrl = getNovelMainPageUrl(html, url);
+        if (novelUrl && novelUrl !== url && isAllowedNovelUrl(novelUrl)) {
+          try {
+            const novelResp = await httpClient.get(novelUrl);
+            html = novelResp.data as string;
+            pageUrl = novelUrl;
+          } catch {}
+        }
+      }
+
+      const { coverUrl, author, synopsis } = extractNovelMeta(
+        html,
+        pageUrl,
+        site,
+      );
+
+      let firstChapterUrl: string | null = null;
+      if (!site.isChapterPage) {
+        if (site.isFreeWebNovel) {
+          const root = parse(html);
+          const ul = root.querySelector("ul.ul-list5");
+          if (ul) {
+            const firstA = ul.querySelector("li a");
+            if (firstA) {
+              const href = firstA.getAttribute("href");
+              if (href) firstChapterUrl = ensureAbsoluteUrl(href, url);
+            }
+          }
+        } else {
+          firstChapterUrl = getFirstChapterUrl(html, url);
+        }
+      } else {
+        firstChapterUrl = url;
+      }
+
+      res.json({ title, author, synopsis, coverUrl, firstChapterUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to fetch novel meta");
+      res.status(500).json({ error: e.message || "Failed to fetch metadata" });
+    }
+  },
+);
+
+router.post(
+  "/novel/next-chapter",
+  scrapeRateLimit,
+  scrapeConcurrencyLimit,
+  async (req, res) => {
+    const { url, chapterNum } = req.body as { url: string; chapterNum: number };
+    if (typeof url !== "string" || !url.trim()) {
+      res.status(400).json({ error: "A valid URL is required" });
+      return;
+    }
+    if (!Number.isSafeInteger(chapterNum) || chapterNum < 1) {
+      res.status(400).json({ error: "chapterNum must be a positive integer" });
+      return;
+    }
+    if (!isAllowedNovelUrl(url)) {
+      res.status(400).json({ error: "URL is not from a supported source" });
+      return;
+    }
+    try {
+      const response = await httpClient.get(url);
+      const html = response.data as string;
+      const content = extractChapterContent(html);
+      const title = extractChapterTitle(html, chapterNum);
+      const nextUrl = extractNextChapterUrl(html, url);
+      res.json({ url, title, content, nextUrl });
+    } catch (e: any) {
+      req.log.error({ err: e }, "Failed to fetch next chapter");
+      res.status(500).json({ error: e.message || "Failed to fetch chapter" });
+    }
+  },
+);
+
+export default router;
