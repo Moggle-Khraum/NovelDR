@@ -2,7 +2,7 @@
  * Scraper content-extraction regression tests.
  *
  * Run with: pnpm exec tsx scripts/test-scrapers.ts
- * (wired into CI via .github/workflows/Lint Test.yml — job "scraper-regression")
+ * (wired into .github/workflows/ci-cd-pipeline.yml — job "scraper-regression")
  *
  * Why this exists: novel-bin.ts and novelbincc.ts previously extracted
  * chapter content with a <p>-tag matcher (extractParagraphs), but the real
@@ -39,6 +39,8 @@ import { extractParagraphs as novelArrowExtract } from "../hooks/scrapers/source
 import { extractParagraphs as novelPhoenixExtract } from "../hooks/scrapers/sources/novelphoenix";
 import { extractFreeWebNovelContent as freeWebNovelExtract } from "../hooks/scrapers/sources/freewebnovel";
 import { extractWuxiaworldContent as wuxiaworldExtract } from "../hooks/scrapers/sources/wuxiaworld";
+import { findExternalScraper } from "../hooks/scrapers/registry";
+import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
 // Mirrors the real div#chr-content structure: a leading empty <p></p>, an
 // <h4> repeating the chapter title, then the actual body as raw text nodes
@@ -361,6 +363,132 @@ checks.push(
       assert(
         !result.includes("novgo.net") && result.split("\n\n").length === 2,
         `expected only the 2 real paragraphs, got: ${JSON.stringify(result)}`,
+      );
+    },
+  },
+);
+
+checks.push(
+  {
+    name: "shared/http.ts: detects Cloudflare challenge pages",
+    run: () => {
+      assert(
+        looksLikeChallenge(
+          "<html><title>Just a moment...</title><body>Checking your browser</body></html>",
+        ),
+        "expected a Cloudflare interstitial to be detected",
+      );
+    },
+  },
+  {
+    name: "shared/http.ts: does not classify ordinary chapter HTML as a challenge",
+    run: () => {
+      assert(
+        !looksLikeChallenge(
+          "<html><title>Chapter 1</title><body><p>Story text.</p></body></html>",
+        ),
+        "ordinary chapter HTML must not be classified as a challenge",
+      );
+    },
+  },
+);
+
+// Registry routing tests: verify each registered source resolves to its own
+// scraper implementation. These are deterministic URL-routing checks; they
+// do not make network requests or invoke fetchNovelMeta/fetchChapter.
+const registryRoutes: Array<{ source: string; url: string }> = [
+  {
+    source: "novelphoenix",
+    url: "https://novelphoenix.com/novel/we-agreed-on-experiencing-life-so-why-did-you-immortals-become-real/chapter-1",
+  },
+  {
+    source: "novelbin",
+    url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1",
+  },
+  {
+    source: "novelbincc",
+    url: "https://novelbin.cc/book/unprecedented-pill-refiner-entitled-ninth-young-lady-novel/chapter-1",
+  },
+  {
+    source: "novelping",
+    url: "https://novelping.com/book/shadow-slave/chapter-1-nightmare-begins",
+  },
+  {
+    source: "royalroad",
+    url: "https://www.royalroad.com/fiction/202598/my-client-is-the-most-dangerous-woman-in-every/chapter/4292319/chapter-1-applications-61-offers-0",
+  },
+  {
+    source: "readnovelfull",
+    url: "https://readnovelfull.com/my-sect-is-down-to-seven-people/chapter-1-a-bronze-token.html",
+  },
+  {
+    source: "novelfullcom",
+    url: "https://novelfull.com/system-build-my-own-territory/chapter-1-heavenly-artifacts.html",
+  },
+  {
+    source: "novelfullnet",
+    url: "https://novelfull.net/i-materialized-the-cultivation-game/chapter-1-loading-into-the-game-world.html",
+  },
+  {
+    source: "novgo",
+    url: "https://novgo.net/divine-level-base/chapter-1-void-demon.html",
+  },
+  {
+    source: "freewebnovel",
+    url: "https://freewebnovel.com/novel/i-turn-my-masters-fake-techniques-into-reality/chapter-1",
+  },
+  {
+    source: "wuxiaworld",
+    url: "https://wuxiaworld.site/novel/a-blessed-wife-at-home/chapter-1/",
+  },
+  {
+    source: "novelarchivecc",
+    url: "https://novelarchive.st/reader?novel=6a7260f01e3db0813cc1a103&chapter=1",
+  },
+  {
+    source: "fanmtl",
+    url: "https://www.fanmtl.com/novel/lord-more-children-more-blessings-build-a-family-of-gods_1.html",
+  },
+  { source: "wuxiabox", url: "https://www.wuxiabox.com/novel/kks45080_1.html" },
+  {
+    source: "wuxiaclick",
+    url: "https://wuxia.click/chapter/stop-friendly-fire-1",
+  },
+  {
+    source: "mtlnovel-me",
+    url: "https://mtlnovel.me/read/i-have-a-time-and-space-garden/chapter-1-opening-1-time-and-space-garden/",
+  },
+];
+
+for (const route of registryRoutes) {
+  checks.push({
+    name: `registry: routes ${route.url} to ${route.source}`,
+    run: () => {
+      const scraper = findExternalScraper(route.url);
+      assert(
+        scraper?.id === route.source,
+        `expected ${route.source}, received ${scraper?.id ?? "no matching scraper"} for ${route.url}`,
+      );
+    },
+  });
+}
+
+checks.push(
+  {
+    name: "registry: returns null for unsupported hosts",
+    run: () => {
+      assert(
+        findExternalScraper("https://unsupported.example/chapter-1") === null,
+        "expected unsupported host to have no external scraper",
+      );
+    },
+  },
+  {
+    name: "registry: returns null for malformed URLs",
+    run: () => {
+      assert(
+        findExternalScraper("not-a-valid-url") === null,
+        "expected malformed URL to have no external scraper",
       );
     },
   },
