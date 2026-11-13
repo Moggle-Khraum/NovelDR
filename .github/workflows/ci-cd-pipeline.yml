@@ -7,11 +7,13 @@ on:
       - dev5.5
       - dev3
       - arch-review
+      - testDrive
   pull_request:
     branches:
       - dev5.5
       - dev3
       - arch-review
+      - testDrive
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -234,9 +236,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run TypeScript check
+      - name: Run frontend TypeScript check
         working-directory: artifacts/novel-reader
         run: pnpm run typecheck
+
+      - name: Typecheck the modified API scraper route
+        working-directory: artifacts/api-server
+        run: >-
+          pnpm exec tsc --noEmit --target ES2022 --module NodeNext
+          --moduleResolution NodeNext --strict --esModuleInterop --skipLibCheck
+          src/routes/novel.ts
 
   scraper-regression:
     needs: [format, format-check]
@@ -264,6 +273,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run scraper content-extraction regression tests
+      - name: Run frontend scraper and registry regression tests
         working-directory: artifacts/novel-reader
         run: pnpm run test:scrapers
+
+      - name: Run API allowlist and chapter extraction regression tests
+        working-directory: artifacts/api-server
+        run: pnpm exec tsx scripts/test-novel-route.ts
