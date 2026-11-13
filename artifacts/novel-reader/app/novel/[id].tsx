@@ -5,7 +5,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -17,9 +17,26 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loadExportChapters } from "../../lib/exportChapters";
+import { buildEpubFiles } from "../../lib/ebook/epub";
+import { buildDocxFiles } from "../../lib/ebook/docx";
+import { zipToBase64, zipFilesToBase64 } from "../../lib/ebook/package";
+import { coverFromFileName, MAX_COVER_BYTES } from "../../lib/ebook/epubCover";
+import { escapeRTF } from "../../lib/rtf";
+import { LONG_NOVEL_CHAPTERS } from "../../lib/exportPlan";
+import { runLongNovelExport, type LongFormat } from "../../lib/longExport";
+import { createDeviceAdapters } from "../../lib/exportDevice";
+import { exportLongPdf } from "../../lib/pdfExport";
+import {
+  ExportProgressCard,
+  type TimedEvent,
+} from "../../components/ExportProgressCard";
+import type { ExportProgress } from "../../lib/exportRunner";
+import { filterChaptersByTitle } from "../../lib/chapterSearch";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -27,7 +44,10 @@ import { useTheme } from "@/context/ThemeContext";
 const BULK_DELETE_LOADING_THRESHOLD = 3;
 
 // Export format types
-type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "mobi" | "pdf";
+type ExportFormat = "txt" | "epub" | "docx" | "rtf" | "pdf";
+
+// Formats written as base64 (ZIP packages). All others are written as UTF-8 text.
+const BINARY_FORMATS: ExportFormat[] = ["epub", "docx"];
 
 // Export options configuration
 const EXPORT_OPTIONS: {
@@ -66,12 +86,6 @@ const EXPORT_OPTIONS: {
     icon: "text-outline",
     color: "#E67E22",
   },
-  {
-    format: "mobi",
-    label: "Kindle (.mobi)",
-    icon: "tablet-portrait-outline",
-    color: "#8E44AD",
-  },
 ];
 
 // ── Export Functions ────────────────────────────────────────────────────────
@@ -82,41 +96,7 @@ async function loadFullNovelContent(
 ): Promise<{ title: string; content: string }[]> {
   const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novelId}/`;
 
-  // ── Helper: Check if content has enough words to be real ─────────
-  const hasRealContent = (text: string | null | undefined): boolean => {
-    if (!text || !text.trim()) return false;
-    const wordCount = text.trim().split(/\s+/).length;
-    return wordCount >= 100; // At least 100 words to be considered real content
-  };
-
-  // ── DEDUPLICATE: Keep only one entry per chapter number, prefer ones with real content ─
-  const seenNumbers = new Map<
-    number,
-    { title: string; url: string; content?: string }
-  >();
-
-  for (const ch of chapters) {
-    const num = extractChapterNumber(ch.title, ch.url);
-    const existing = seenNumbers.get(num);
-
-    if (
-      !existing ||
-      (hasRealContent(ch.content) && !hasRealContent(existing.content))
-    ) {
-      seenNumbers.set(num, { ...ch });
-    }
-  }
-
-  // Sort by chapter number
-  const sortedChapters = Array.from(seenNumbers.values()).sort((a, b) => {
-    const numA = extractChapterNumber(a.title, a.url);
-    const numB = extractChapterNumber(b.title, b.url);
-    return numA - numB;
-  });
-
-  const result: { title: string; content: string }[] = [];
-
-  // Pre-load AsyncStorage data once
+  // Legacy AsyncStorage copy, read once. Used only when a chapter file is absent.
   let legacyNovel: any = null;
   try {
     const libraryData = await AsyncStorage.getItem("novel_library_v1");
@@ -126,59 +106,29 @@ async function loadFullNovelContent(
     }
   } catch {}
 
-  for (let i = 0; i < sortedChapters.length; i++) {
-    const ch = sortedChapters[i];
-    let title = ch.title || `Chapter ${i + 1}`;
-    let content: string | null = null;
-
-    // Check file system
+  // Chapter files are stored by position in novel.chapters. The loader passes
+  // each chapter's original index, so the right file is always read.
+  const readStoredFile = async (index: number) => {
     try {
-      const chapterPath = `${chaptersDir}chapter_${i}.json`;
+      const chapterPath = `${chaptersDir}chapter_${index}.json`;
       const fileInfo = await FileSystem.getInfoAsync(chapterPath);
-      if (fileInfo.exists) {
-        const raw = await FileSystem.readAsStringAsync(chapterPath);
-        const chapterData = JSON.parse(raw);
-        if (hasRealContent(chapterData.content)) {
-          content = chapterData.content;
-          if (chapterData.title) title = chapterData.title;
-        }
-      }
-    } catch {}
-
-    // Fallback to AsyncStorage (only if real content exists)
-    if (!content && legacyNovel?.chapters) {
-      const urlMatch = legacyNovel.chapters.find(
-        (lc: any) => lc.url === ch.url && hasRealContent(lc.content),
-      );
-      if (urlMatch) {
-        content = urlMatch.content;
-        if (urlMatch.title) title = urlMatch.title;
-      }
+      if (!fileInfo.exists) return null;
+      const raw = await FileSystem.readAsStringAsync(chapterPath);
+      return JSON.parse(raw);
+    } catch {
+      return null;
     }
+  };
 
-    // Fallback to in-memory
-    if (!content && hasRealContent(ch.content)) {
-      content = ch.content ?? null;
-    }
+  const readLegacyContent = async (url: string) =>
+    legacyNovel?.chapters?.find((lc: any) => lc.url === url) ?? null;
 
-    result.push({
-      title,
-      content:
-        content ||
-        `[Content not available for this chapter. Open it in the reader first to migrate the data.]`,
-    });
-  }
-
-  return result;
-}
-
-// Helper to extract chapter number
-function extractChapterNumber(title: string, url: string): number {
-  const titleMatch = (title || "").match(/chapter\s*(\d+)/i);
-  if (titleMatch) return parseInt(titleMatch[1]);
-  const urlMatch = (url || "").match(/chapter[-/](\d+)/i);
-  if (urlMatch) return parseInt(urlMatch[1]);
-  return 9999;
+  const { chapters: exported } = await loadExportChapters(
+    chapters,
+    readStoredFile,
+    readLegacyContent,
+  );
+  return exported;
 }
 
 function generateTXT(
@@ -199,35 +149,42 @@ function generateTXT(
   return txt;
 }
 
-function generateEPUB(
+// Real EPUB 3 package: a ZIP with mimetype, container, OPF, nav, NCX, and XHTML.
+// Reads the novel's local cover for EPUB. Returns null (no cover) when there is
+// no local file, the type is unsupported, or the file is over the size cap.
+async function readEpubCover(coverUri?: string) {
+  if (!coverUri || !coverUri.startsWith("file://")) return null;
+  const file = coverFromFileName(coverUri.split("/").pop() ?? "");
+  if (!file) return null;
+  const info = await FileSystem.getInfoAsync(coverUri);
+  if (!info.exists || info.isDirectory) return null;
+  if (((info as { size?: number }).size ?? 0) > MAX_COVER_BYTES) return null;
+  const base64 = await FileSystem.readAsStringAsync(coverUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { file, base64 };
+}
+
+async function generateEPUB(
   novelTitle: string,
   author: string,
   chapters: { title: string; content: string }[],
-): string {
-  let epub = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  epub += `<!DOCTYPE html>\n`;
-  epub += `<html xmlns="http://www.w3.org/1999/xhtml">\n`;
-  epub += `<head><title>${escapeXML(novelTitle)}</title>\n`;
-  epub += `<style>body { font-family: serif; line-height: 1.6; } p { margin: 0 0 0.5em 0; }</style></head>\n`;
-  epub += `<body>\n`;
-  epub += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  epub += `<p><em>by ${escapeXML(author)}</em></p>\n`;
-  epub += `<hr/>\n`;
-
-  for (const ch of chapters) {
-    epub += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split(/\n\n+/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim()) {
-        const formatted = paragraph.trim().replace(/\n/g, "<br/>\n");
-        epub += `<p>${escapeXMLContent(formatted)}</p>\n`;
-      }
-    }
-    epub += `<hr/>\n`;
+  novelId: string,
+  coverUri?: string,
+): Promise<string> {
+  const cover = await readEpubCover(coverUri);
+  const files = buildEpubFiles(
+    { id: novelId, title: novelTitle, author },
+    chapters,
+    cover?.file,
+  );
+  const binaryPaths = new Set<string>();
+  if (cover) {
+    const coverEntry = `OEBPS/${cover.file.fileName}`;
+    files[coverEntry] = cover.base64;
+    binaryPaths.add(coverEntry);
   }
-
-  epub += `</body></html>`;
-  return epub;
+  return zipFilesToBase64(files, "application/epub+zip", binaryPaths);
 }
 
 async function generatePDF(
@@ -304,33 +261,17 @@ async function generatePDF(
   return uri;
 }
 
-function generateDOCX(
+// Real Word (OOXML) package: a ZIP with document, styles, and core properties.
+async function generateDOCX(
   novelTitle: string,
   author: string,
   chapters: { title: string; content: string }[],
-): string {
-  let docx = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">\n`;
-  docx += `<head><meta charset="UTF-8"/><title>${escapeXML(novelTitle)}</title>\n`;
-  docx += `<style>body { font-family: 'Times New Roman', serif; line-height: 1.5; } p { margin: 0 0 6pt 0; }</style></head>\n`;
-  docx += `<body>\n`;
-  docx += `<h1>${escapeXML(novelTitle)}</h1>\n`;
-  docx += `<p><strong>by ${escapeXML(author)}</strong></p>\n`;
-  docx += `<hr/>\n`;
-
-  for (const ch of chapters) {
-    docx += `<h2>${escapeXML(ch.title)}</h2>\n`;
-    const paragraphs = ch.content.split(/\n\n+/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim()) {
-        const formatted = paragraph.trim().replace(/\n/g, "<br/>\n");
-        docx += `<p>${escapeXMLContent(formatted)}</p>\n`;
-      }
-    }
-    docx += `<br/>\n`;
-  }
-
-  docx += `</body></html>`;
-  return docx;
+): Promise<string> {
+  const files = buildDocxFiles({ title: novelTitle, author }, chapters);
+  return zipToBase64(
+    files,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  );
 }
 
 function generateRTF(
@@ -354,14 +295,6 @@ function generateRTF(
   return rtf;
 }
 
-function generateMOBI(
-  novelTitle: string,
-  author: string,
-  chapters: { title: string; content: string }[],
-): string {
-  return generateEPUB(novelTitle, author, chapters);
-}
-
 function escapeXML(str: string): string {
   if (!str) return "";
   return str
@@ -373,28 +306,14 @@ function escapeXML(str: string): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
 }
 
-function escapeXMLContent(str: string): string {
-  const brPlaceholder = "___BR_PLACEHOLDER___";
-  const withProtected = str.replace(/<br\/>/g, brPlaceholder);
-  const escaped = escapeXML(withProtected);
-  return escaped.replace(new RegExp(brPlaceholder, "g"), "<br/>");
-}
-
-function escapeRTF(str: string): string {
-  if (!str) return "";
-  return str
-    .replace(/\\/g, "\\\\")
-    .replace(/{/g, "\\{")
-    .replace(/}/g, "\\}")
-    .replace(/\n/g, "\\par ");
-}
-
 const generators: Record<
   ExportFormat,
   (
     title: string,
     author: string,
     chapters: { title: string; content: string }[],
+    novelId: string,
+    coverUri?: string,
   ) => string | Promise<string>
 > = {
   txt: generateTXT,
@@ -402,25 +321,22 @@ const generators: Record<
   pdf: generatePDF,
   docx: generateDOCX,
   rtf: generateRTF,
-  mobi: generateMOBI,
 };
 
 const extensions: Record<ExportFormat, string> = {
   txt: ".txt",
   epub: ".epub",
   pdf: ".pdf",
-  docx: ".doc",
+  docx: ".docx",
   rtf: ".rtf",
-  mobi: ".mobi",
 };
 
 const mimeTypes: Record<ExportFormat, string> = {
   txt: "text/plain",
   epub: "application/epub+zip",
   pdf: "application/pdf",
-  docx: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   rtf: "application/rtf",
-  mobi: "application/x-mobipocket-ebook",
 };
 
 // ── Main Component ──────────────────────────────────────────────────────────
@@ -433,6 +349,7 @@ export default function NovelDetailScreen() {
     toggleSortOrder,
     getSortedChapters,
     deleteChapters,
+    loadChapterContent,
   } = useLibrary();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -441,7 +358,28 @@ export default function NovelDetailScreen() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("");
+  const [longRun, setLongRun] = useState(false);
+  const [longEvents, setLongEvents] = useState<TimedEvent[]>([]);
+  const [longProgress, setLongProgress] = useState<ExportProgress>({
+    phase: "checking",
+    chaptersDone: 0,
+    chaptersTotal: 0,
+  });
+  const [longStartedAt, setLongStartedAt] = useState(0);
+  const [longNow, setLongNow] = useState(0);
+  const [longCancelling, setLongCancelling] = useState(false);
+  const [longFormatLabel, setLongFormatLabel] = useState("");
+  const [longShowFullLog, setLongShowFullLog] = useState(false);
+  const longCancelRef = useRef(false);
+
+  // Keeps the elapsed time moving while a long export runs.
+  useEffect(() => {
+    if (!longRun) return;
+    const timer = setInterval(() => setLongNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [longRun]);
   const [chapterSelectionMode, setChapterSelectionMode] = useState(false);
+  const [chapterQuery, setChapterQuery] = useState("");
   const [selectedChapterUrls, setSelectedChapterUrls] = useState<string[]>([]);
   const [confirmDeleteChaptersVisible, setConfirmDeleteChaptersVisible] =
     useState(false);
@@ -572,6 +510,8 @@ export default function NovelDetailScreen() {
   }
 
   const sortedChapters = getSortedChapters(novel.chapters);
+  const visibleChapters = filterChaptersByTitle(sortedChapters, chapterQuery);
+  const chapterQueryActive = chapterQuery.trim().length > 0;
 
   const progress = novel.lastRead
     ? `${novel.lastRead.chapterIndex + 1} / ${novel.chapters.length}`
@@ -587,7 +527,209 @@ export default function NovelDetailScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   // ── Export Handler ──────────────────────────────────────────────────────
+  const handleLongExport = async (format: LongFormat) => {
+    const safeTitle = novel.title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .substring(0, 50);
+    // One folder and one zip per format, so formats never share files.
+    const baseDir = `${FileSystem.documentDirectory}exports/${safeTitle}/${format}/`;
+    const zipPath = `${FileSystem.documentDirectory}exports/${safeTitle}-${format}.zip`;
+    const chaptersDir = `${FileSystem.documentDirectory}NovelDR/chapters/${novel.id}/`;
+
+    // Sizes drive how chapters are grouped into parts.
+    const chapters: { index: number; title: string; bytes: number }[] = [];
+    for (let i = 0; i < novel.chapters.length; i++) {
+      const info = await FileSystem.getInfoAsync(
+        `${chaptersDir}chapter_${i}.json`,
+      );
+      const bytes = info.exists ? ((info as { size?: number }).size ?? 0) : 0;
+      chapters.push({ index: i, title: novel.chapters[i].title, bytes });
+    }
+
+    const started = Date.now();
+    longCancelRef.current = false;
+    setLongCancelling(false);
+    setLongShowFullLog(false);
+    setLongEvents([]);
+    setLongStartedAt(started);
+    setLongNow(started);
+    setLongProgress({
+      phase: "checking",
+      chaptersDone: 0,
+      chaptersTotal: novel.chapters.length,
+    });
+    setLongFormatLabel(format.toUpperCase());
+    setLongRun(true);
+    setExporting(true);
+
+    try {
+      const result = await runLongNovelExport(
+        {
+          novelId: novel.id,
+          title: novel.title,
+          author: novel.author,
+          format,
+          chapters,
+          baseDir,
+          zipPath,
+          coverSourceUri:
+            format === "epub" && novel.coverUrl.startsWith("file://")
+              ? novel.coverUrl
+              : undefined,
+          isCancelled: () => longCancelRef.current,
+          onEvent: (e) =>
+            setLongEvents((prev) => [...prev, { ...e, at: Date.now() }]),
+          onProgress: (p) => setLongProgress(p),
+        },
+        createDeviceAdapters({
+          stagingDir: `${baseDir}staging/`,
+          readLibraryChapter: async (index) => {
+            const data = await loadChapterContent(novel.id, index);
+            if (!data || !data.content) return null;
+            return {
+              title:
+                data.title ||
+                novel.chapters[index]?.title ||
+                `Chapter ${index + 1}`,
+              content: data.content,
+            };
+          },
+        }),
+      );
+
+      if (result.zipPath) {
+        // Pacing only: lets the Package and Share steps show as complete before the share sheet opens.
+        const pause = (ms: number) =>
+          new Promise<void>((resolve) => setTimeout(resolve, ms));
+        setLongProgress((p) => ({ ...p, phase: "packaging" }));
+        await pause(1500);
+        setLongProgress((p) => ({ ...p, phase: "done" }));
+        await pause(1500);
+        await Sharing.shareAsync(result.zipPath, {
+          mimeType: "application/zip",
+        });
+      } else if (result.phase !== "done") {
+        Alert.alert("Export not finished", result.note);
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Export failed",
+        error?.message || "The export could not be finished.",
+      );
+    } finally {
+      await FileSystem.deleteAsync(`${baseDir}staging/`, { idempotent: true });
+      setLongRun(false);
+      setExporting(false);
+    }
+  };
+
+  const handleLongPdf = async () => {
+    const safeTitle = novel.title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .substring(0, 50);
+    const exportDir = `${FileSystem.documentDirectory}exports/`;
+    const finalPath = `${exportDir}${safeTitle}.pdf`;
+
+    const started = Date.now();
+    longCancelRef.current = false;
+    setLongCancelling(false);
+    setLongShowFullLog(false);
+    setLongEvents([]);
+    setLongStartedAt(started);
+    setLongNow(started);
+    setLongFormatLabel("PDF");
+    setLongProgress({
+      phase: "reading",
+      chaptersDone: 0,
+      chaptersTotal: novel.chapters.length,
+    });
+    setLongRun(true);
+    setExporting(true);
+
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(exportDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
+      }
+      const result = await exportLongPdf(
+        {
+          title: novel.title,
+          author: novel.author,
+          chapters: novel.chapters.map((c, i) => ({
+            index: i,
+            title: c.title,
+          })),
+          finalPath,
+        },
+        {
+          freeBytes: () => FileSystem.getFreeDiskStorageAsync(),
+          readChapter: async (index) => {
+            const data = await loadChapterContent(novel.id, index);
+            if (!data || !data.content) return null;
+            return {
+              title:
+                data.title ||
+                novel.chapters[index]?.title ||
+                `Chapter ${index + 1}`,
+              content: data.content,
+            };
+          },
+          // Gives the UI a turn between chapters, so the progress card keeps moving.
+          yieldToUi: () =>
+            new Promise<void>((resolve) => setTimeout(resolve, 0)),
+          isCancelled: () => longCancelRef.current,
+          onChapter: (done, total) =>
+            setLongProgress({
+              phase: "reading",
+              chaptersDone: done,
+              chaptersTotal: total,
+            }),
+          printToFile: async (html) => {
+            const printed = await Print.printToFileAsync({ html });
+            return printed.uri;
+          },
+          moveFile: async (from, to) => {
+            await FileSystem.moveAsync({ from, to });
+          },
+          onEvent: (level, text) =>
+            setLongEvents((prev) => [...prev, { level, text, at: Date.now() }]),
+        },
+      );
+
+      if (result.pdfPath) {
+        await Sharing.shareAsync(result.pdfPath, {
+          mimeType: "application/pdf",
+        });
+      } else if (result.phase !== "done") {
+        Alert.alert("PDF not created", result.note);
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "PDF export failed",
+        error?.message || "The PDF could not be created.",
+      );
+    } finally {
+      setLongRun(false);
+      setExporting(false);
+    }
+  };
+
   const handleExport = async (format: ExportFormat) => {
+    if (format === "pdf" && novel.chapters.length >= LONG_NOVEL_CHAPTERS) {
+      setShowExportModal(false);
+      setShowMenu(false);
+      await handleLongPdf();
+      return;
+    }
+    if (novel.chapters.length >= LONG_NOVEL_CHAPTERS) {
+      setShowExportModal(false);
+      setShowMenu(false);
+      await handleLongExport(format as LongFormat);
+      return;
+    }
+
     setShowExportModal(false);
     setShowMenu(false);
     setExporting(true);
@@ -601,7 +743,13 @@ export default function NovelDetailScreen() {
       setExportProgress("Generating file...");
 
       const generator = generators[format];
-      const content = await generator(novel.title, novel.author, chapters);
+      const content = await generator(
+        novel.title,
+        novel.author,
+        chapters,
+        novel.id,
+        novel.coverUrl,
+      );
 
       const exportDir = `${FileSystem.documentDirectory}exports/`;
       const dirInfo = await FileSystem.getInfoAsync(exportDir);
@@ -618,6 +766,10 @@ export default function NovelDetailScreen() {
 
       if (format === "pdf") {
         await FileSystem.copyAsync({ from: content as string, to: filePath });
+      } else if (BINARY_FORMATS.includes(format)) {
+        await FileSystem.writeAsStringAsync(filePath, content as string, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
       } else {
         await FileSystem.writeAsStringAsync(filePath, content as string, {
           encoding: FileSystem.EncodingType.UTF8,
@@ -953,10 +1105,61 @@ export default function NovelDetailScreen() {
             </View>
           </View>
 
+          {novel.chapters.length > 0 && (
+            <View style={styles.chapterSearchBlock}>
+              <View
+                style={[
+                  styles.chapterSearchContainer,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="search"
+                  size={18}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.chapterSearchInput, { color: colors.text }]}
+                  placeholder="Search chapter titles..."
+                  placeholderTextColor={colors.textMuted}
+                  value={chapterQuery}
+                  onChangeText={setChapterQuery}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  returnKeyType="search"
+                  accessibilityLabel="Search chapter titles"
+                />
+                {chapterQueryActive && (
+                  <Pressable
+                    onPress={() => setChapterQuery("")}
+                    accessibilityLabel="Clear chapter search"
+                    hitSlop={8}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
+                  </Pressable>
+                )}
+              </View>
+              {chapterQueryActive && (
+                <Text
+                  style={[
+                    styles.chapterSearchMeta,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Showing {visibleChapters.length} of {novel.chapters.length}
+                </Text>
+              )}
+            </View>
+          )}
+
           <View style={styles.chapterListContainer}>
             <FlatList
               key={chapterListRefreshKey}
-              data={sortedChapters}
+              data={visibleChapters}
               extraData={[chapterSelectionMode, selectedChapterUrls]}
               keyExtractor={keyExtractor}
               renderItem={renderChapterItem}
@@ -968,38 +1171,54 @@ export default function NovelDetailScreen() {
               windowSize={10}
               removeClippedSubviews={true}
               ListEmptyComponent={
-                <View style={styles.emptyChapters}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={32}
-                    color={colors.textSecondary}
-                    style={styles.emptyChaptersIcon}
-                  />
-                  <Text style={[styles.emptyText, { color: colors.text }]}>
-                    No chapters yet
-                  </Text>
-                  <Text
-                    style={[
-                      styles.emptyTextSub,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    This novel hasn&apos;t downloaded any chapters. Check the
-                    Updates tab to fetch the latest ones.
-                  </Text>
-                  <Pressable
-                    style={[
-                      styles.emptyChaptersBtn,
-                      { backgroundColor: colors.accent },
-                    ]}
-                    onPress={() => router.push("/(tabs)/updates")}
-                  >
-                    <Ionicons name="refresh" size={16} color="#fff" />
-                    <Text style={styles.emptyChaptersBtnText}>
-                      Go to Updates
+                chapterQueryActive ? (
+                  <View style={styles.emptyChapters}>
+                    <Text style={[styles.emptyText, { color: colors.text }]}>
+                      No chapters match &quot;{chapterQuery.trim()}&quot;
                     </Text>
-                  </Pressable>
-                </View>
+                    <Text
+                      style={[
+                        styles.emptyTextSub,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Try a shorter word, or check the chapter number.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.emptyChapters}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={32}
+                      color={colors.textSecondary}
+                      style={styles.emptyChaptersIcon}
+                    />
+                    <Text style={[styles.emptyText, { color: colors.text }]}>
+                      No chapters yet
+                    </Text>
+                    <Text
+                      style={[
+                        styles.emptyTextSub,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      This novel hasn&apos;t downloaded any chapters. Check the
+                      Updates tab to fetch the latest ones.
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.emptyChaptersBtn,
+                        { backgroundColor: colors.accent },
+                      ]}
+                      onPress={() => router.push("/(tabs)/updates")}
+                    >
+                      <Ionicons name="refresh" size={16} color="#fff" />
+                      <Text style={styles.emptyChaptersBtnText}>
+                        Go to Updates
+                      </Text>
+                    </Pressable>
+                  </View>
+                )
               }
             />
           </View>
@@ -1129,15 +1348,42 @@ export default function NovelDetailScreen() {
           <View
             style={[styles.progressModal, { backgroundColor: colors.card }]}
           >
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.progressText, { color: colors.text }]}>
-              {exportProgress}
-            </Text>
-            <Text
-              style={[styles.progressSubText, { color: colors.textSecondary }]}
-            >
-              This may take a moment for large novels...
-            </Text>
+            {longRun ? (
+              <ExportProgressCard
+                novelTitle={novel.title}
+                formatLabel={longFormatLabel}
+                longMode
+                progress={longProgress}
+                events={longEvents}
+                startedAt={longStartedAt}
+                now={longNow}
+                cancelVisible={longEvents.some(
+                  (e) => e.level === "warn" || e.level === "error",
+                )}
+                cancelling={longCancelling}
+                onCancel={() => {
+                  longCancelRef.current = true;
+                  setLongCancelling(true);
+                }}
+                showFullLog={longShowFullLog}
+                onToggleFullLog={() => setLongShowFullLog((v) => !v)}
+              />
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={[styles.progressText, { color: colors.text }]}>
+                  {exportProgress}
+                </Text>
+                <Text
+                  style={[
+                    styles.progressSubText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  This may take a moment for large novels...
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -1236,6 +1482,27 @@ export default function NovelDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  chapterSearchBlock: { marginBottom: 12, gap: 6 },
+  chapterSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  chapterSearchInput: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
+    paddingVertical: 4,
+  },
+  chapterSearchMeta: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    paddingLeft: 4,
+  },
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   navBar: {
