@@ -399,41 +399,41 @@ checks.push(
 const registryRoutes: Array<{ source: string; url: string }> = [
   {
     source: "novelphoenix",
-    url: "https://novelphoenix.com/novel/example/chapter-1",
+    url: "https://novelphoenix.com/novel/we-agreed-on-experiencing-life-so-why-did-you-immortals-become-real/chapter-1",
   },
   {
     source: "novelbin",
     url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1",
   },
-  { source: "novelbincc", url: "https://novelbin.cc/b/example/chapter-1" },
-  { source: "novelping", url: "https://novelping.com/novel/example/chapter-1" },
+  { source: "novelbincc", url: "https://novelbin.cc/book/unprecedented-pill-refiner-entitled-ninth-young-lady-novel/chapter-1" },
+  { source: "novelping", url: "https://novelping.com/book/shadow-slave/chapter-1-nightmare-begins" },
   {
     source: "royalroad",
-    url: "https://www.royalroad.com/fiction/123/example/chapter/456/chapter-1",
+    url: "https://www.royalroad.com/fiction/202598/my-client-is-the-most-dangerous-woman-in-every/chapter/4292319/chapter-1-applications-61-offers-0",
   },
   {
     source: "readnovelfull",
-    url: "https://readnovelfull.com/example/chapter-1.html",
+    url: "https://readnovelfull.com/my-sect-is-down-to-seven-people/chapter-1-a-bronze-token.html",
   },
   {
     source: "novelfullcom",
-    url: "https://novelfull.com/example/chapter-1.html",
+    url: "https://novelfull.com/system-build-my-own-territory/chapter-1-heavenly-artifacts.html",
   },
   {
     source: "novelfullnet",
-    url: "https://novelfull.net/example/chapter-1.html",
+    url: "https://novelfull.net/i-materialized-the-cultivation-game/chapter-1-loading-into-the-game-world.html",
   },
-  { source: "novgo", url: "https://novgo.net/example/chapter-1.html" },
+  { source: "novgo", url: "https://novgo.net/divine-level-base/chapter-1-void-demon.html" },
   {
     source: "freewebnovel",
-    url: "https://freewebnovel.com/example/chapter-1.html",
+    url: "https://freewebnovel.com/novel/i-turn-my-masters-fake-techniques-into-reality/chapter-1",
   },
-  { source: "wuxiaworld", url: "https://wuxiaworld.site/example/chapter-1/" },
-  { source: "novelarchivecc", url: "https://novelarchive.cc/novel/example" },
-  { source: "fanmtl", url: "https://fanmtl.com/novel/example" },
-  { source: "wuxiabox", url: "https://wuxiabox.com/novel/example" },
-  { source: "wuxiaclick", url: "https://wuxia.click/novel/example" },
-  { source: "mtlnovel-me", url: "https://mtlnovel.me/read/example/chapter-1" },
+  { source: "wuxiaworld", url: "https://wuxiaworld.site/novel/a-blessed-wife-at-home/chapter-1/" },
+  { source: "novelarchivecc", url: "https://novelarchive.st/reader?novel=6a7260f01e3db0813cc1a103&chapter=1" },
+  { source: "fanmtl", url: "https://www.fanmtl.com/novel/lord-more-children-more-blessings-build-a-family-of-gods_1.html" },
+  { source: "wuxiabox", url: "https://www.wuxiabox.com/novel/kks45080_1.html" },
+  { source: "wuxiaclick", url: "https://wuxia.click/chapter/stop-friendly-fire-1" },
+  { source: "mtlnovel-me", url: "https://mtlnovel.me/read/i-have-a-time-and-space-garden/chapter-1-opening-1-time-and-space-garden/" },
 ];
 
 for (const route of registryRoutes) {
