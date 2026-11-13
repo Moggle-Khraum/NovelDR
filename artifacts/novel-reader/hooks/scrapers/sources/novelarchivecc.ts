@@ -7,8 +7,8 @@ import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchJsonWithFallback, fetchHtmlWithFallback } from "../shared/http";
 import { decodeEntities, stripTags } from "../shared/html";
 
-const BASE_HOST = "novelarchive.cc";
-const BASE_URL = "https://novelarchive.cc";
+const BASE_HOST = "novelarchive.st";
+const BASE_URL = "https://novelarchive.st";
 const API_BASE = `${BASE_URL}/api`;
 
 /** Extract a novel ID from a novelarchive.cc URL (?id=... or /novel/<id>). */
