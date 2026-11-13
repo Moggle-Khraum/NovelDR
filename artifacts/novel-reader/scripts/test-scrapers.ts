@@ -405,8 +405,14 @@ const registryRoutes: Array<{ source: string; url: string }> = [
     source: "novelbin",
     url: "https://novel-bin.com/b/reborn-as-an-ancient-tree/chapter-1",
   },
-  { source: "novelbincc", url: "https://novelbin.cc/book/unprecedented-pill-refiner-entitled-ninth-young-lady-novel/chapter-1" },
-  { source: "novelping", url: "https://novelping.com/book/shadow-slave/chapter-1-nightmare-begins" },
+  {
+    source: "novelbincc",
+    url: "https://novelbin.cc/book/unprecedented-pill-refiner-entitled-ninth-young-lady-novel/chapter-1",
+  },
+  {
+    source: "novelping",
+    url: "https://novelping.com/book/shadow-slave/chapter-1-nightmare-begins",
+  },
   {
     source: "royalroad",
     url: "https://www.royalroad.com/fiction/202598/my-client-is-the-most-dangerous-woman-in-every/chapter/4292319/chapter-1-applications-61-offers-0",
@@ -423,17 +429,35 @@ const registryRoutes: Array<{ source: string; url: string }> = [
     source: "novelfullnet",
     url: "https://novelfull.net/i-materialized-the-cultivation-game/chapter-1-loading-into-the-game-world.html",
   },
-  { source: "novgo", url: "https://novgo.net/divine-level-base/chapter-1-void-demon.html" },
+  {
+    source: "novgo",
+    url: "https://novgo.net/divine-level-base/chapter-1-void-demon.html",
+  },
   {
     source: "freewebnovel",
     url: "https://freewebnovel.com/novel/i-turn-my-masters-fake-techniques-into-reality/chapter-1",
   },
-  { source: "wuxiaworld", url: "https://wuxiaworld.site/novel/a-blessed-wife-at-home/chapter-1/" },
-  { source: "novelarchivecc", url: "https://novelarchive.st/reader?novel=6a7260f01e3db0813cc1a103&chapter=1" },
-  { source: "fanmtl", url: "https://www.fanmtl.com/novel/lord-more-children-more-blessings-build-a-family-of-gods_1.html" },
+  {
+    source: "wuxiaworld",
+    url: "https://wuxiaworld.site/novel/a-blessed-wife-at-home/chapter-1/",
+  },
+  {
+    source: "novelarchivecc",
+    url: "https://novelarchive.st/reader?novel=6a7260f01e3db0813cc1a103&chapter=1",
+  },
+  {
+    source: "fanmtl",
+    url: "https://www.fanmtl.com/novel/lord-more-children-more-blessings-build-a-family-of-gods_1.html",
+  },
   { source: "wuxiabox", url: "https://www.wuxiabox.com/novel/kks45080_1.html" },
-  { source: "wuxiaclick", url: "https://wuxia.click/chapter/stop-friendly-fire-1" },
-  { source: "mtlnovel-me", url: "https://mtlnovel.me/read/i-have-a-time-and-space-garden/chapter-1-opening-1-time-and-space-garden/" },
+  {
+    source: "wuxiaclick",
+    url: "https://wuxia.click/chapter/stop-friendly-fire-1",
+  },
+  {
+    source: "mtlnovel-me",
+    url: "https://mtlnovel.me/read/i-have-a-time-and-space-garden/chapter-1-opening-1-time-and-space-garden/",
+  },
 ];
 
 for (const route of registryRoutes) {
