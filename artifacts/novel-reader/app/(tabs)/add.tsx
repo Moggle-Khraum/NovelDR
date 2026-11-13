@@ -1309,8 +1309,14 @@ export default function AddNovelScreen() {
         </Text>
       </View>
 
-      {/* Fixed (non-scrolling) supported-sites panel */}
-      <View style={styles.fixedSitesWrap}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomPad + 20 },
+        ]}
+        showsVerticalScrollIndicator={true}
+        alwaysBounceVertical={true}
+      >
         {/* Supported Sites Section */}
         <View style={styles.sitesSection}>
           <View style={styles.sitesHeader}>
@@ -1413,17 +1419,7 @@ export default function AddNovelScreen() {
             </Pressable>
           </View>
         </View>
-      </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: bottomPad + 20 },
-        ]}
-        showsVerticalScrollIndicator={true}
-        alwaysBounceVertical={true}
-      >
         {/* Form Section */}
         <View style={styles.form}>
           <View>
@@ -1665,10 +1661,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  fixedSitesWrap: {
     paddingHorizontal: 16,
     paddingTop: 16,
   },
