@@ -58,7 +58,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novelarrow.com": "NovelArrow",
       "novel-bin.com": "Novel-Bin",
       "novelbin.cc": "NovelBinCC",
-      "novelarchive.cc": "NovelArchiveCC",
+      "novelarchive.st": "NovelArchiveCC",
       "novelping.com": "NovelPing",
       "fanmtl.com": "FanMTL",
       "wuxiabox.com": "WuxiaBox",
