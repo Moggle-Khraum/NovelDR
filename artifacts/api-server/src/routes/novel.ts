@@ -90,15 +90,23 @@ const httpClient = axios.create({
 // it, a caller could pass an arbitrary URL (e.g. an internal/private
 // address) and have this server fetch it on their behalf.
 const ALLOWED_HOSTS = [
+  "asianovel.net",
+  "fanmtl.com",
   "freewebnovel.com",
+  "mtlnovel.me",
   "novel-bin.com",
+  "novelarchive.st",
   "novelarrow.com",
   "novelbin.cc",
   "novelfull.com",
+  "novelfull.net",
   "novelphoenix.com",
+  "novelping.com",
   "novgo.net",
   "readnovelfull.com",
   "royalroad.com",
+  "wuxia.click",
+  "wuxiabox.com",
   "wuxiaworld.site",
 ];
 
