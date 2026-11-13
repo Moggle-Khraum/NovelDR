@@ -15,8 +15,8 @@ const BASE_HOST = "novel-bin.com";
 
 /**
  * novel-bin.com doesn't wrap synopsis text in <p> tags — it's raw text
- * nodes separated by bare <br> tags inside div.desc-text. Split on <br>,
- * strip/decode each fragment, drop empties, join with double newlines.
+ * nodes separated by bare <br> tags. Split on <br>, strip/decode each
+ * fragment, drop empties, join with double newlines.
  */
 const extractBrSeparatedText = (html: string): string => {
   return html
@@ -27,24 +27,42 @@ const extractBrSeparatedText = (html: string): string => {
 };
 
 /**
- * Chapter content on this site is NOT wrapped in individual <p> tags —
- * div#chr-content starts with a leading empty <p></p>, then an <h4>
- * restating the chapter title, then the real body as raw text nodes
- * separated by bare <br> tags. Pulling <p>...</p> matches (extractParagraphs,
- * the previous approach here) only ever finds that one empty <p></p> and
- * returns nothing — this is the same <br>-separated style as the synopsis,
- * so reuse that same splitting approach instead, after stripping the
- * leading <h4> title repeat. Sentence/tag punctuation that ends up glued
- * directly onto the next word with no space (see shared/html.ts
- * splitGluedSentences — the same run-on-blob issue seen in this site's
- * synopsis text) and dialogue lines squashed onto the same <br>-separated
- * chunk (splitAdjacentDialogue) are then broken apart so each line reads
- * on its own line.
+ * Chapter body extraction. Two markups are handled:
+ *
+ * - Current (2026 redesign): one <p> per paragraph. The first <p> usually
+ *   repeats the chapter title, so it is dropped when it matches.
+ * - Legacy: <br>-separated text with a leading <h4> title repeat.
+ *
+ * The same glue/dialogue fixes are applied to both, since the site's text
+ * can still run sentences and dialogue together.
  *
  * Exported for the scraper content-extraction regression test — see
  * scripts/test-scrapers.ts.
  */
-export const extractChapterBody = (rawContentBlock: string): string => {
+export const extractChapterBody = (
+  rawContentBlock: string,
+  chapterTitle = "",
+): string => {
+  const paras = [...rawContentBlock.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) => decodeEntities(stripTags(m[1])))
+    .filter(Boolean);
+  if (paras.length > 1) {
+    const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+    // The first paragraph is usually the heading again, sometimes without the
+    // "Chapter N:" prefix. Drop it when the heading contains it (min 15 chars,
+    // so a short real first line is never dropped by accident).
+    if (
+      chapterTitle &&
+      norm(paras[0]).length >= 15 &&
+      norm(chapterTitle).includes(norm(paras[0]))
+    ) {
+      paras.shift();
+    }
+    return splitInnerThoughtClose(
+      splitAdjacentDialogue(splitGluedSentences(paras.join("\n\n"))),
+    );
+  }
+
   const contentBlock = rawContentBlock.replace(/<h4[^>]*>[\s\S]*?<\/h4>/i, "");
   return splitInnerThoughtClose(
     splitAdjacentDialogue(
@@ -69,50 +87,69 @@ export const novelBinScraper: SourceScraper = {
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // <meta itemprop="image" content="https://novel-bin.com/files/image/....jpg">
+    // Cover. Current: <meta property="og:image" content="...">.
+    // Legacy: <meta itemprop="image" content="...">.
     const coverUrl =
       safeMatch(html, /<meta[^>]*itemprop="image"[^>]*content="([^"]+)"/i) ??
+      safeMatch(html, /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i) ??
       "";
 
-    // <h3 class="title" itemprop="name">Title</h3> (inside div.desc > div.books)
+    // Title. Current: <h1> inside the detail header, or og:novel:novel_name.
+    // Legacy: <h3 class="title" itemprop="name">.
     const title = decodeEntities(
       safeMatch(
         html,
         /<h3[^>]*class="title"[^>]*itemprop="name"[^>]*>([^<]+)<\/h3>/i,
-      ) ?? "Unknown Title",
+      ) ??
+        safeMatch(
+          html,
+          /<div class="almanac-detail-intro"[\s\S]*?<h1>([^<]+)<\/h1>/i,
+        ) ??
+        safeMatch(
+          html,
+          /<meta[^>]*property="og:novel:novel_name"[^>]*content="([^"]+)"/i,
+        ) ??
+        "Unknown Title",
     );
 
-    // <span itemprop="author" ...><meta itemprop="name" content="Author Name"></span>
+    // Author. Current: <meta property="og:novel:author">.
+    // Legacy: <span itemprop="author"><meta itemprop="name" content="...">.
     const author = decodeEntities(
       safeMatch(
         html,
         /<span[^>]*itemprop="author"[\s\S]*?<meta[^>]*itemprop="name"[^>]*content="([^"]+)"/i,
-      ) ?? "Unknown Author",
+      ) ??
+        safeMatch(
+          html,
+          /<meta[^>]*property="og:novel:author"[^>]*content="([^"]+)"/i,
+        ) ??
+        "Unknown Author",
     );
 
-    // div.desc-text (itemprop="description") — plain text separated by bare <br> tags.
-    // NOTE: match on class="desc-text" specifically, not the bare
-    // itemprop="description" string — that also appears twice earlier in
-    // unrelated <meta name="description" ...> tags in <head>, and matching
-    // those would make extractByDepth's <div>/</div> counter run wild over
-    // the rest of the page.
-    const descBlock = extractByDepth(html, 'class="desc-text"') ?? "";
-    // Some novels' synopsis text has no <br> tags at all — it's one run-on
-    // blob with [Tag] callouts and sentence punctuation glued directly onto
-    // the next word (see splitGluedSentences in shared/html.ts). Apply that
-    // normalization, then split any dialogue lines that end up glued
-    // together the same way chapter bodies do.
+    // Synopsis. Current: div.almanac-synopsis. Legacy: div.desc-text.
+    // Both are <br>-separated text. Match on the class, not the bare
+    // itemprop, which also appears in <head> meta tags.
+    const descBlock =
+      extractByDepth(html, 'class="desc-text"') ??
+      extractByDepth(html, 'class="almanac-synopsis"') ??
+      "";
     const synopsis = splitInnerThoughtClose(
       splitAdjacentDialogue(
         splitGluedSentences(extractBrSeparatedText(descBlock)),
       ),
     );
 
-    // <a class="btn btn-danger btn-read-now" title="READ NOW" href="/novel-bin/{slug}/chapter-1">
-    const firstChapterPath = safeMatch(
-      html,
-      /<a[^>]*class="btn btn-danger btn-read-now"[^>]*href="([^"]+)"/i,
-    );
+    // First chapter. Current: a.almanac-primary-action ("Start reading").
+    // Legacy: a.btn-read-now.
+    const firstChapterPath =
+      safeMatch(
+        html,
+        /<a[^>]*class="btn btn-danger btn-read-now"[^>]*href="([^"]+)"/i,
+      ) ??
+      safeMatch(
+        html,
+        /<a[^>]*href="([^"]+)"[^>]*class="almanac-primary-action"/i,
+      );
     const firstChapterUrl = firstChapterPath
       ? makeAbsoluteUrl(firstChapterPath, url)
       : null;
@@ -133,19 +170,24 @@ export const novelBinScraper: SourceScraper = {
   ): Promise<ChapterData> => {
     const html = await fetchHtmlWithFallback(url);
 
-    // <h2><a class="chr-title" ... title="Chapter 1: Damn system!"><span class="chr-text">...</span></a></h2>
+    // Chapter title. Current: <span class="chr-text"> inside the <h1>.
+    // Legacy: <a class="chr-title" title="...">.
     const title = decodeEntities(
-      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ?? "",
+      safeMatch(html, /<a[^>]*class="chr-title"[^>]*title="([^"]+)"/i) ??
+        safeMatch(
+          html,
+          /<h1[^>]*>\s*<span class="chr-text">([^<]+)<\/span>/i,
+        ) ??
+        "",
     );
 
-    // <div id="chr-content" class="chr-c" ...>...</div>
+    // Chapter body: div#chr-content.
     const contentBlock = extractByDepth(html, 'id="chr-content"') ?? "";
-    const content = extractChapterBody(contentBlock);
+    const content = extractChapterBody(contentBlock, title);
 
-    // <a title="Chapter 2: ..." href="..." class="btn btn-success" id="next_chap">
-    // Gets a `disabled=""` attribute (no href change) on the last chapter.
-    // Note: safeMatch() returns capture group 1, so it can't be used to
-    // grab the whole tag with no group — use a plain match for that.
+    // Next chapter: a#next_chap. It has no href change and gets a
+    // `disabled=""` attribute on the last chapter. Plain match on the whole
+    // tag, since safeMatch() returns capture group 1 only.
     const nextTag = html.match(/<a[^>]*id="next_chap"[^>]*>/i)?.[0] ?? "";
     const nextHref = safeMatch(nextTag, /href="([^"]+)"/i);
     const isDisabled = /disabled=""/i.test(nextTag);
