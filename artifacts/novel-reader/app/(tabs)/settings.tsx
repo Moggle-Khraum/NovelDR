@@ -32,6 +32,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary } from "@/context/LibraryContext";
 import { useTheme } from "@/context/ThemeContext";
+import {
+  estimateLibraryStorage,
+  formatBytes,
+  type LibraryStorageReport,
+  type StorageAdapter,
+} from "../../lib/storageStats";
 import { Theme } from "@/constants/colors";
 import { useUpdateContext } from "@/context/UpdateContext";
 import { CRASH_LOG_FILE_PATH } from "@/hooks/useCrashLogger";
@@ -242,6 +248,7 @@ export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
   const {
     novels,
+    loading: libraryLoading,
     purgeOrphanedData,
     setRestoring,
     commitRestoredLibrary,
@@ -2087,6 +2094,87 @@ export default function SettingsScreen() {
   const closePanel = () => setActivePanel(null);
 
   const totalChapters = novels.reduce((sum, n) => sum + n.chapters.length, 0);
+  // Storage estimate. Saved on the device and only re-measured when a new
+  // file is detected (novel, chapter, cover or backup count changes).
+  const [storageReport, setStorageReport] =
+    useState<LibraryStorageReport | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [showStorageDetails, setShowStorageDetails] = useState(false);
+  const STORAGE_CACHE_KEY = "noveldr:storage-report-v1";
+
+  const countFiles = async (dir: string): Promise<number> => {
+    try {
+      return (await FileSystem.readDirectoryAsync(dir)).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  const refreshStorage = async () => {
+    setStorageError(null);
+    try {
+      const signature = [
+        novels.length,
+        totalChapters,
+        await countFiles(COVERS_DIR),
+        await countFiles(BACKUP_DIR),
+      ].join("|");
+      const AsyncStorage = await getAsyncStorage();
+      const raw = AsyncStorage
+        ? await AsyncStorage.getItem(STORAGE_CACHE_KEY)
+        : null;
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw);
+          if (saved?.signature === signature && saved?.report) {
+            setStorageReport(saved.report);
+            return;
+          }
+        } catch {
+          // Unreadable copy: measure again below.
+        }
+      }
+      const report = await estimateLibraryStorage(deviceStorageAdapter, {
+        novels: novels.map((n) => ({
+          id: n.id,
+          title: n.title,
+          chapterCount: n.chapters.length,
+        })),
+        locations: {
+          appDataDir: APP_DATA_DIR,
+          coversDir: COVERS_DIR,
+          backupsDir: BACKUP_DIR,
+          exportsDir: `${FileSystem.documentDirectory}exports/`,
+          updatesDir: `${FileSystem.documentDirectory}updates/`,
+          cacheDir: FileSystem.cacheDirectory ?? undefined,
+        },
+      });
+      setStorageReport(report);
+      if (AsyncStorage) {
+        await AsyncStorage.setItem(
+          STORAGE_CACHE_KEY,
+          JSON.stringify({ signature, report }),
+        );
+      }
+    } catch (error: any) {
+      setStorageError(error?.message || "Storage could not be measured.");
+    }
+  };
+
+  const storageBytes = (key: string): number =>
+    storageReport?.categories.find((c) => c.key === key)?.bytes ?? 0;
+
+  const missingNovels = (storageReport?.novels ?? [])
+    .filter((n) => n.missingChapters > 0)
+    .sort((a, b) => b.missingChapters - a.missingChapters);
+
+  // Show the saved copy; measure only when something new was detected.
+  useEffect(() => {
+    if (libraryLoading) return;
+    refreshStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [libraryLoading, novels.length, totalChapters]);
+
   const handleThemeChange = (t: Theme) => {
     setTheme(t);
     Haptics.selectionAsync();
@@ -2172,31 +2260,109 @@ export default function SettingsScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <View style={styles.statItem}>
-            <Ionicons name="library" size={20} color={colors.accent} />
-            <View>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {novels.length}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                Novels
-              </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Ionicons name="library" size={20} color={colors.accent} />
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {novels.length}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Novels
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[styles.statDivider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.statItem}>
+              <Ionicons name="document-text" size={20} color={colors.accent} />
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {totalChapters.toLocaleString()}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Chapters
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          STORAGE
+        </Text>
+        <View
+          style={[
+            styles.statsCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              paddingBottom: 14,
+            },
+          ]}
+        >
+          {storageError && (
+            <Text style={styles.storageErrorText}>{storageError}</Text>
+          )}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Ionicons
+                name="pie-chart-outline"
+                size={20}
+                color={colors.accent}
+              />
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {storageReport ? formatBytes(storageReport.totalBytes) : "—"}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Total used
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[styles.statDivider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.statItem}>
+              <Ionicons
+                name="archive-outline"
+                size={20}
+                color={colors.accent}
+              />
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {storageReport ? formatBytes(storageBytes("backups")) : "—"}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Backups
+                </Text>
+              </View>
             </View>
           </View>
           <View
-            style={[styles.statDivider, { backgroundColor: colors.border }]}
+            style={[
+              styles.statsHorizontalDivider,
+              { backgroundColor: colors.border, marginVertical: 10 },
+            ]}
           />
-          <View style={styles.statItem}>
-            <Ionicons name="document-text" size={20} color={colors.accent} />
-            <View>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {totalChapters.toLocaleString()}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                Chapters
-              </Text>
-            </View>
-          </View>
+          <Pressable
+            onPress={() => setShowStorageDetails(true)}
+            accessibilityRole="button"
+            style={styles.showMoreBtn}
+          >
+            <Text style={[styles.measureBtnText, { color: colors.accent }]}>
+              Show More
+            </Text>
+          </Pressable>
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
@@ -2923,6 +3089,119 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      {/* Storage Details Modal */}
+      <Modal visible={showStorageDetails} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.bugModalCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.bugModalHeader}>
+              <Text style={[styles.bugModalTitle, { color: colors.text }]}>
+                Storage Details
+              </Text>
+              <Pressable onPress={() => setShowStorageDetails(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 460 }}>
+              <View style={styles.statsGrid}>
+                <StatCell
+                  icon="hardware-chip-outline"
+                  value={
+                    storageReport ? formatBytes(storageReport.cacheBytes) : "—"
+                  }
+                  label="Cache size"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="pie-chart-outline"
+                  value={
+                    storageReport ? formatBytes(storageReport.totalBytes) : "—"
+                  }
+                  label="Total library size"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="image-outline"
+                  value={
+                    storageReport ? formatBytes(storageBytes("covers")) : "—"
+                  }
+                  label="Cover images"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="document-text-outline"
+                  value={
+                    storageReport ? formatBytes(storageBytes("chapters")) : "—"
+                  }
+                  label="Chapter text"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="archive-outline"
+                  value={
+                    storageReport ? formatBytes(storageBytes("backups")) : "—"
+                  }
+                  label="Backups"
+                  colors={colors}
+                />
+                <StatCell
+                  icon="alert-circle-outline"
+                  value={(
+                    storageReport?.missingChapterFiles ?? 0
+                  ).toLocaleString()}
+                  label="Missing chapter files"
+                  warn={(storageReport?.missingChapterFiles ?? 0) > 0}
+                  colors={colors}
+                />
+              </View>
+
+              <View
+                style={[
+                  styles.statsHorizontalDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
+              <Text
+                style={[styles.statsSubtitle, { color: colors.textSecondary }]}
+              >
+                NOVELS WITH MISSING CHAPTERS
+              </Text>
+              {missingNovels.length === 0 ? (
+                <Text
+                  style={[
+                    styles.storageHint,
+                    { color: colors.textSecondary, marginTop: 8 },
+                  ]}
+                >
+                  None. Every chapter file is in place.
+                </Text>
+              ) : (
+                missingNovels.map((n) => (
+                  <View key={n.id} style={styles.novelRow}>
+                    <Text
+                      style={[
+                        styles.novelRowTitle,
+                        { color: colors.text, flex: 1 },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {n.title}
+                    </Text>
+                    <Text style={styles.orphanNote}>
+                      {n.missingChapters} missing
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Bug Report Modal */}
       <Modal visible={showBugReport} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -3526,6 +3805,62 @@ export default function SettingsScreen() {
 // STYLES
 // =============================================================================
 
+// Reads sizes the way the backup size estimate does: stat and list only.
+// Nothing is opened or copied.
+const deviceStorageAdapter: StorageAdapter = {
+  async stat(path) {
+    const info = await FileSystem.getInfoAsync(path);
+    if (!info.exists) return { exists: false, isDirectory: false, size: 0 };
+    const isDirectory = !!info.isDirectory;
+    return {
+      exists: true,
+      isDirectory,
+      size: info.exists && !isDirectory ? info.size || 0 : 0,
+    };
+  },
+  list(path) {
+    return FileSystem.readDirectoryAsync(path);
+  },
+};
+
+// One number and its label, styled like the Novels and Chapters figures.
+// One number and its label, styled like the Novels and Chapters figures.
+function StatCell({
+  icon,
+  value,
+  label,
+  warn,
+  colors,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  label: string;
+  warn?: boolean;
+  colors: { text: string; textSecondary: string; accent: string };
+}) {
+  return (
+    <View style={styles.statCell}>
+      <Ionicons
+        name={icon}
+        size={20}
+        color={warn ? "#E67E22" : colors.accent}
+      />
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[styles.statValue, { color: warn ? "#E67E22" : colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {value}
+        </Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -3569,8 +3904,94 @@ const styles = StyleSheet.create({
   statsCard: {
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
+    flexDirection: "column",
     padding: 20,
+  },
+  statsRow: { flexDirection: "row" },
+  statsHorizontalDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 14,
+  },
+  statsSubtitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.8,
+  },
+  storageLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  storageHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  measureBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  measureBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  storageHint: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 },
+  storageErrorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#E74C3C",
+    marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 16,
+    columnGap: 12,
+  },
+  statCell: {
+    width: "47%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  statsFooterText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 10,
+  },
+  novelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  novelRowTitle: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  novelRowValue: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  orphanNote: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "#E67E22",
+  },
+  showMoreBtn: { alignItems: "center", paddingVertical: 0 },
+  integrityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  integrityRowText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
+  attentionText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#E67E22",
+    lineHeight: 17,
   },
   statItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   statDivider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
