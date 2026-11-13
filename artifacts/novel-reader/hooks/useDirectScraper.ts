@@ -170,7 +170,7 @@ const fetchAsianovel = async (url: string): Promise<string> => {
     return response.data;
   } catch (error: any) {
     console.warn("[Scraper] Asianovel direct fetch failed:", error.message);
-    await delayMs(10000 + jitterMs());
+    await delayMs(1000);
     try {
       console.log("[Scraper] Retrying Asianovel with native fetch...");
       const response = await fetch(url, {
@@ -213,7 +213,7 @@ const fetchWithFallback = async (
       "[Scraper] Direct fetch failed, waiting before retry:",
       directError.message,
     );
-    await delayMs(3000 + jitterMs());
+    await delayMs(500);
     console.log("[Scraper] Retrying with proxy...");
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const proxyResponse = await httpClient.get(proxyUrl);
@@ -940,7 +940,7 @@ export async function downloadNovelByCrawling(
     content: string,
   ) => Promise<void>,
   onProgress?: (chapterNumber: number, title: string) => void,
-  delayMs: number = 3000,
+  delayMs: number = 300,
 ): Promise<void> {
   let currentUrl: string | null = startUrl;
   let chapterNumber = 1;
