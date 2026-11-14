@@ -388,6 +388,113 @@ const saveAllChaptersToFile = async (
 // parsed or read into memory.
 export type ChapterFileMove = { from: number; to: number };
 
+// Chapter files are addressed by position, so a re-sort has to move files.
+// applyChapterFileMoves does it through a staging folder inside the novel's
+// chapter folder:
+//   .reindex/chapter_<to>.json  a copy of every moved chapter
+//   .reindex/moves.json         written once ALL copies exist (commit point)
+//   .reindex/normalized         written by recovery once all data is staged
+// The library metadata is only saved after the moves finish, so after a
+// crash the state that matches the metadata is the one from BEFORE the
+// moves. Recovery therefore rolls back, never forward.
+const REINDEX_DIR_NAME = ".reindex";
+const REINDEX_MARKER_FILE = "moves.json";
+const REINDEX_NORMALIZED_FILE = "normalized";
+
+const getReindexDir = (novelId: string) =>
+  `${getNovelChaptersPath(novelId)}${REINDEX_DIR_NAME}/`;
+
+const pathExists = async (path: string) =>
+  (await FileSystem.getInfoAsync(path)).exists;
+
+/**
+ * Roll back an interrupted applyChapterFileMoves for one novel, so every
+ * chapter file is back at the position the saved metadata expects. Safe to
+ * run again if it is itself interrupted. Returns true if a leftover staging
+ * folder was found.
+ */
+const recoverInterruptedReindex = async (novelId: string): Promise<boolean> => {
+  const stagingDir = getReindexDir(novelId);
+  if (!(await pathExists(stagingDir))) return false;
+
+  const stagedPathOf = (m: ChapterFileMove) =>
+    `${stagingDir}chapter_${m.to}.json`;
+
+  // No complete marker means the crash came before any original was deleted
+  // (the marker is written first), so the originals are all intact.
+  let moves: ChapterFileMove[] | null = null;
+  const markerPath = `${stagingDir}${REINDEX_MARKER_FILE}`;
+  if (await pathExists(markerPath)) {
+    // A read error must propagate (retry on the next run). Only content that
+    // does not parse counts as a half-written marker.
+    const raw = await FileSystem.readAsStringAsync(markerPath);
+    try {
+      const parsed = JSON.parse(raw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.every(
+          (m) => typeof m?.from === "number" && typeof m?.to === "number",
+        )
+      ) {
+        moves = parsed as ChapterFileMove[];
+      }
+    } catch {
+      // Half-written marker: same as no marker.
+    }
+  }
+  if (!moves) {
+    await FileSystem.deleteAsync(stagingDir, { idempotent: true });
+    return true;
+  }
+
+  // Phase 1: pull every chapter that was already placed back into staging,
+  // so all moved data sits in one place and no placed file can be mistaken
+  // for an original.
+  const normalizedPath = `${stagingDir}${REINDEX_NORMALIZED_FILE}`;
+  if (!(await pathExists(normalizedPath))) {
+    for (const m of moves) {
+      const staged = stagedPathOf(m);
+      if (await pathExists(staged)) continue;
+      const placed = getChapterFilePath(novelId, m.to);
+      if (await pathExists(placed)) {
+        await FileSystem.moveAsync({ from: placed, to: staged });
+      }
+    }
+    await FileSystem.writeAsStringAsync(normalizedPath, "1");
+  }
+
+  // Phase 2: put each chapter back at its original position.
+  for (const m of moves) {
+    const staged = stagedPathOf(m);
+    if (!(await pathExists(staged))) continue; // already restored
+    const original = getChapterFilePath(novelId, m.from);
+    await FileSystem.deleteAsync(original, { idempotent: true });
+    await FileSystem.moveAsync({ from: staged, to: original });
+  }
+
+  await FileSystem.deleteAsync(stagingDir, { idempotent: true });
+  return true;
+};
+
+/** Run the rollback for every novel folder. Called once at startup. */
+const recoverAllInterruptedReindex = async () => {
+  try {
+    const root = getChaptersPath();
+    if (!(await pathExists(root))) return;
+    for (const novelId of await FileSystem.readDirectoryAsync(root)) {
+      try {
+        await recoverInterruptedReindex(novelId);
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { context: "recoverInterruptedReindex" },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[Storage] Reindex recovery scan failed:", error);
+  }
+};
+
 const applyChapterFileMoves = async (
   novelId: string,
   moves: ChapterFileMove[],
@@ -395,16 +502,10 @@ const applyChapterFileMoves = async (
   const changed = moves.filter((m) => m.from !== m.to);
   if (changed.length === 0) return;
 
-  const chaptersDir = getNovelChaptersPath(novelId);
-  const stagingDir = `${chaptersDir}.reindex/`;
-  const stagingInfo = await FileSystem.getInfoAsync(stagingDir);
-  if (stagingInfo.exists) {
-    // A previous run was interrupted and its staged copies may be the only
-    // copy of some chapters. Refuse to touch the folder rather than guess.
-    throw new Error(
-      "Chapter re-index interrupted earlier; staging folder left in place",
-    );
-  }
+  const stagingDir = getReindexDir(novelId);
+  // A leftover staging folder means an earlier run was interrupted: roll it
+  // back so the files match the saved metadata before moving anything.
+  await recoverInterruptedReindex(novelId);
   await ensureDirectoryExists(stagingDir);
 
   // 1. Copy every moved chapter into staging. Sources stay untouched.
@@ -419,6 +520,13 @@ const applyChapterFileMoves = async (
     });
     staged.push(m);
   }
+
+  // Commit point: every copy exists, so deleting originals is now safe and
+  // recovery knows exactly which moves were in flight.
+  await FileSystem.writeAsStringAsync(
+    `${stagingDir}${REINDEX_MARKER_FILE}`,
+    JSON.stringify(staged),
+  );
 
   // 2. Remove the originals of moved chapters. Every one is now in staging.
   for (const m of staged) {
@@ -1081,6 +1189,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         await ensureAppDirectoryExists();
         await ensureDirectoryExists(getChaptersPath());
         await ensureDirectoryExists(getNovelsPath());
+
+        // 4b. Roll back any chapter re-index that was interrupted mid-way
+        await recoverAllInterruptedReindex();
 
         addInitStep({
           id: "directory",
