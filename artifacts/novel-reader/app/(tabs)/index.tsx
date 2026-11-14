@@ -34,6 +34,7 @@ import { UpdateModal } from "@/components/update/UpdateModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary, Novel, NovelStatus } from "@/context/LibraryContext";
+import { checkDeprecatedSite } from "@/hooks/scrapers/deprecatedSites";
 import { useTheme } from "@/context/ThemeContext";
 
 // ── Helper: Extract readable source name from URL ───────────────────────────
@@ -85,6 +86,7 @@ const STATUS_CONFIG: Record<
   },
 };
 
+const DEPRECATED_BADGE_COLOR = "#E74C3C";
 const LAST_READ_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 const RECENTLY_ADDED_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -125,6 +127,7 @@ function NovelCard({
   const status = novel.status ?? "unread";
   const statusCfg = STATUS_CONFIG[status];
   const sourceName = getSourceDisplayName(novel.sourceUrl);
+  const isDeprecatedSource = checkDeprecatedSite(novel.sourceUrl) !== null;
 
   // ── Badge resolution: Recently Added → Last Read: X days → normal status ──
   const now = Date.now();
@@ -217,18 +220,43 @@ function NovelCard({
             >
               {novel.title}
             </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: displayColor + "22" },
-              ]}
-            >
+            <View style={styles.badgeRow}>
               <View
-                style={[styles.statusDot, { backgroundColor: displayColor }]}
-              />
-              <Text style={[styles.statusText, { color: displayColor }]}>
-                {displayLabel}
-              </Text>
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: displayColor + "22" },
+                ]}
+              >
+                <View
+                  style={[styles.statusDot, { backgroundColor: displayColor }]}
+                />
+                <Text style={[styles.statusText, { color: displayColor }]}>
+                  {displayLabel}
+                </Text>
+              </View>
+              {isDeprecatedSource && (
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: DEPRECATED_BADGE_COLOR + "22" },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { backgroundColor: DEPRECATED_BADGE_COLOR },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: DEPRECATED_BADGE_COLOR },
+                    ]}
+                  >
+                    Deprecated Source
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -1343,6 +1371,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 },
   statusText: { fontFamily: "Inter_500Medium", fontSize: 10 },
 
   metaRow: {
