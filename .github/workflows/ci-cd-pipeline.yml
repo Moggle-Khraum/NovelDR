@@ -8,12 +8,14 @@ on:
       - dev3
       - arch-review
       - testDrive
+      - 5.1.5
   pull_request:
     branches:
       - dev5.5
       - dev3
       - arch-review
       - testDrive
+      - 5.1.5
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
