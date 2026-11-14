@@ -1,6 +1,5 @@
 import { directFetchNovelMeta, directFetchChapter } from "./useDirectScraper";
 import { findExternalScraper } from "./scrapers/registry";
-import { fetchViaWebView } from "./scrapers/shared/webviewBridge";
 
 export type { NovelMeta, ChapterData } from "./useDirectScraper";
 
@@ -79,11 +78,7 @@ const fetchWithBoundedTimeout = (
  * Check if a site is healthy/accessible
  * Returns true if the site responds with any status code < 500
  * Uses a HEAD request first (faster), falls back to GET if needed, then a
- * CORS proxy retry (same one real scraping falls back to), and finally the
- * WebView bridge as the last resort - a real browser context that can pass
- * a JS challenge no plain HTTP request (direct or proxied) can get through.
- * This is the heaviest, slowest tier, so it's only reached after everything
- * else has already failed.
+ * CORS proxy retry (same one real scraping falls back to).
  *
  * Every attempt is bounded by a hard timeout (see withHardTimeout above) so
  * a single unresponsive host can never stall the health-check loop forever.
@@ -109,7 +104,7 @@ const classifyStatus = (status: number): SiteHealthState => {
 
 /**
  * Check if a site is healthy, escalating through progressively heavier
- * tiers (HEAD -> GET -> alternate paths -> CORS proxy -> WebView bridge)
+ * tiers (HEAD -> GET -> alternate paths -> CORS proxy)
  * until one succeeds or all are exhausted. Returns not just up/down but
  * the status code, response time, which tier answered, and a classified
  * state so "down", "under maintenance" (503), and "gateway timeout" (504)
@@ -141,7 +136,7 @@ export const checkSiteHealthDetailed = async (
 
   // A 503/504 is meaningful even mid-escalation - if a site tells us
   // outright "I'm in maintenance" or "gateway timed out", that's more
-  // useful information than continuing to hammer it with GET/proxy/WebView
+  // useful information than continuing to hammer it with GET/proxy
   // tiers meant for sites that don't respond at all. Stop and report it.
   const isDefinitive = (status: number) => status === 503 || status === 504;
 
@@ -225,10 +220,9 @@ export const checkSiteHealthDetailed = async (
       }
     }
 
-    // Last resort before WebView: retry via the same CORS proxy real
-    // scraping falls back to. Handles sites that block a direct request
-    // but don't specifically challenge proxied traffic.
-    let proxyFailed = false;
+    // Last resort: retry via the same CORS proxy real scraping falls back
+    // to. Handles sites that block a direct request but don't specifically
+    // challenge proxied traffic.
     try {
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(cleanUrl)}`;
       const response = await fetchWithBoundedTimeout(
@@ -248,40 +242,8 @@ export const checkSiteHealthDetailed = async (
           tier: "PROXY",
         };
       }
-      proxyFailed = true;
     } catch (error) {
-      proxyFailed = true;
-    }
-
-    // Absolute last resort: a real (hidden) browser context via the WebView
-    // bridge. This is the only tier that can pass a JS challenge outright,
-    // so it catches sites that block every plain HTTP attempt - direct or
-    // proxied - but that the app can still actually reach when scraping,
-    // since real scraping can fall back to this same bridge per-source.
-    // Slow and heavy on purpose - only reached once everything else failed.
-    if (proxyFailed) {
-      try {
-        const html = await fetchViaWebView(cleanUrl, 25000);
-        // A real page is always more than a trivial stub; a challenge page
-        // that never cleared would still resolve (the bridge always sends
-        // something after its own poll timeout), so check for substance
-        // rather than just "did it resolve".
-        const isUp = typeof html === "string" && html.length > 500;
-        return {
-          isUp,
-          state: isUp ? "online" : "offline",
-          responseTime: elapsed(),
-          tier: "WEBVIEW",
-        };
-      } catch (error: any) {
-        return {
-          isUp: false,
-          state: "offline",
-          responseTime: elapsed(),
-          tier: "WEBVIEW",
-          error: error?.message || "WebView check failed",
-        };
-      }
+      // Proxy failed too - fall through to the offline result below.
     }
 
     return { isUp: false, state: "offline", responseTime: elapsed() };
