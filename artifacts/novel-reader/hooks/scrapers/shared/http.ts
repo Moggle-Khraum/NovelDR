@@ -43,60 +43,33 @@ export interface FetchOptions {
   proxyFirst?: boolean;
   /** Proxy URL builder; defaults to corsproxy.io */
   buildProxyUrl?: (url: string) => string;
-  /**
-   * Final tier: if direct and proxy both fail, load the URL in the hidden
-   * WebView bridge (a real browser context that can pass JS challenges).
-   * Enabled by default; set to false to opt a call out.
-   */
-  webviewFallback?: boolean;
 }
 
 const defaultBuildProxyUrl = (url: string) =>
   `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
 // ── Tiered fetch ────────────────────────────────────────────────────────────
-// direct -> proxy -> WebView. Each tier runs only after the previous one
-// failed, never in parallel. The WebView tier is the heaviest, so it is
-// skipped when a previous tier got a definitive "not found" (404/410):
-// a real browser won't find a page that doesn't exist.
+// direct -> proxy. Each tier runs only after the previous one failed, never
+// in parallel.
 
 type Tier<T> = { name: string; run: () => Promise<T> };
-
-const statusOf = (err: unknown): number | undefined =>
-  (err as { response?: { status?: number } })?.response?.status;
 
 const messageOf = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
 
 const runTiers = async <T>(tiers: Tier<T>[]): Promise<T> => {
   const failures: string[] = [];
-  let definitiveMiss = false;
 
   for (const tier of tiers) {
-    if (tier.name === "webview" && definitiveMiss) {
-      failures.push("webview: skipped (page not found)");
-      continue;
-    }
     try {
       return await tier.run();
     } catch (err) {
-      const status = statusOf(err);
-      if (status === 404 || status === 410) definitiveMiss = true;
       failures.push(`${tier.name}: ${messageOf(err)}`);
     }
   }
 
   throw new Error(`All fetch tiers failed — ${failures.join(" | ")}`);
 };
-
-// Loaded lazily so Node-side tooling (scripts/test-scrapers.ts) that imports
-// the scrapers doesn't pull react-native-webview in at module load.
-const loadViaWebView = async (url: string, timeoutMs: number) => {
-  const { fetchViaWebView } = await import("./webviewBridge");
-  return fetchViaWebView(url, timeoutMs);
-};
-
-const WEBVIEW_TIMEOUT_MS = 35000;
 
 export const looksLikeChallenge = (html: string): boolean =>
   /<title[^>]*>\s*(?:just a moment|attention required|checking your browser)/i.test(
@@ -116,23 +89,10 @@ const assertUsableHtml = (value: unknown, tier: string): string => {
   return value;
 };
 
-// A browser shows a JSON response as <pre>{...}</pre>; pull the JSON back out.
-const jsonFromWebViewHtml = <T>(html: string): T => {
-  const match = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-  const raw = (match ? match[1] : html.replace(/<[^>]+>/g, ""))
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .trim();
-  return JSON.parse(raw) as T;
-};
-
 /**
- * Fetch a URL's HTML: direct, then proxy, then the WebView bridge (or proxy
- * first if proxyFirst is set). Each tier only runs after the previous one
- * failed. Throws, listing every tier's error, if all of them fail.
+ * Fetch a URL's HTML: direct, then proxy (or proxy first if proxyFirst is
+ * set). Each tier only runs after the previous one failed. Throws, listing
+ * every tier's error, if both fail.
  */
 export const fetchHtmlWithFallback = async (
   url: string,
@@ -155,16 +115,8 @@ export const fetchHtmlWithFallback = async (
         .get(buildProxyUrl(validatedUrl))
         .then((res) => assertUsableHtml(res.data, "proxy fetch")),
   };
-  const webview: Tier<string> = {
-    name: "webview",
-    run: async () => {
-      const html = await loadViaWebView(validatedUrl, WEBVIEW_TIMEOUT_MS);
-      return assertUsableHtml(html, "WebView fetch");
-    },
-  };
 
   const tiers = options.proxyFirst ? [proxy, direct] : [direct, proxy];
-  if (options.webviewFallback !== false) tiers.push(webview);
   return runTiers(tiers);
 };
 
@@ -174,9 +126,9 @@ const JSON_HEADERS = {
 };
 
 /**
- * Fetch and parse a JSON endpoint: direct, then proxy, then the WebView
- * bridge (or proxy first if proxyFirst is set). Each tier only runs after
- * the previous one failed. Throws, listing every tier's error, if all fail.
+ * Fetch and parse a JSON endpoint: direct, then proxy (or proxy first if
+ * proxyFirst is set). Each tier only runs after the previous one failed.
+ * Throws, listing every tier's error, if both fail.
  * Sibling to fetchHtmlWithFallback for API-based sources (e.g.
  * novelarchivecc.ts) rather than HTML-scraped ones.
  */
@@ -201,16 +153,8 @@ export const fetchJsonWithFallback = async <T = unknown>(
         .get(buildProxyUrl(validatedUrl), { headers: JSON_HEADERS })
         .then((res) => res.data),
   };
-  const webview: Tier<T> = {
-    name: "webview",
-    run: async () =>
-      jsonFromWebViewHtml<T>(
-        await loadViaWebView(validatedUrl, WEBVIEW_TIMEOUT_MS),
-      ),
-  };
 
   const tiers = options.proxyFirst ? [proxy, direct] : [direct, proxy];
-  if (options.webviewFallback !== false) tiers.push(webview);
   return runTiers(tiers);
 };
 
