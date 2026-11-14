@@ -29,6 +29,10 @@
 
 NovelDR is a free, open-source Android application that lets you download webnovels from multiple sources and read them offline. Built for readers who want uninterrupted access to their favorite stories without ads, or account creation, only use internet when downloading.
 
+**Export formats:** TXT, EPUB 3, PDF, DOCX, and RTF. Long novels are exported in parts.
+
+**Updating saved novels:** Each saved novel updates from the source it was added from. If that site is marked as dead in this README, the app blocks the update and shows a message.
+
 ---
 
 <a id="download-counts"></a>
@@ -76,11 +80,11 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | Source Domain | Status | Source Domain | Status | Source Domain | Status |
 | --- | --- | --- | --- | --- | --- |
 | [ReadNovelFull](https://readnovelfull.com/) | ✅ Site Active | [NovelFull.com](https://novelfull.com/) | ✅ Site Active | [NovelbinCC](https://www.novelbin.cc/) | ✅ Site Active |
-| [FreeWebNovel](https://freewebnovel.com/) | ✅ Site Active | [NovGo](https://novgo.net/) | ✅ Site Active | [NovelArchive.cc](https://novelarchive.cc/) | ✅ Site Active |
+| [FreeWebNovel](https://freewebnovel.com/) | ✅ Site Active | [NovGo](https://novgo.net/) | ✅ Site Active | [NovelArchive.st](https://novelarchive.st/) | ✅ Site Active |
 | [MTLNovel.me](https://mtlnovel.me/) | ✅ Site Active | [WuxiaWorld.site](https://wuxiaworld.site/) | ✅ Site Active | [FanMTL](https://fanmtl.com/) | ✅ Site Active |
 | [RoyalRoad](https://www.royalroad.com/) | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/) | ✅ Site Active | [WuxiaBox](https://www.wuxiabox.com/) | ✅ Site Active |
 | [NovelPhoenix](https://novelphoenix.com/) | ✅ Site Active | [Novel-bin](https://novel-bin.com/) | ✅ Site Active | [WuxiaClick](https://wuxia.click/) | ✅ Site Active |
-| [NovelPing](https://novelping.com/) | ✅ Site Active |  |  |  |  |
+| [NovelPing](https://novelping.com/) | ✅ Site Active | [NovelFull.net](https://novelfull.net/) | ✅ Site Active |  |  |
 
 ---
 
@@ -92,7 +96,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | --- | --- | --- | --- |
 | [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
 | [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead | [AllNovel](https://allnovel.org/) | ❌ Site Dead |
-| [NovelFull.net](https://novelfull.net/) | ❌ Site Dead |  |  |
+| [NovelArrow](https://novelarrow.com/) | ❌ Changed Domain |  |  |
 
 ---
 
