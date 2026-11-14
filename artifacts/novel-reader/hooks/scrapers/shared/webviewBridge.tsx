@@ -206,6 +206,9 @@ export function WebViewFetchBridge() {
       ref={webViewRef}
       source={{ uri: current.url }}
       style={styles.hidden}
+      // react-native-webview wraps the WebView in a flex:1 View; without this
+      // the wrapper takes half the screen next to the app while a job runs.
+      containerStyle={styles.hidden}
       onLoadEnd={onLoadEnd}
       onMessage={handleMessage}
       onError={handleError}
