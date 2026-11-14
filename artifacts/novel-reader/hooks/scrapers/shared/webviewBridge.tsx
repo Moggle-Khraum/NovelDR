@@ -69,26 +69,46 @@ export const fetchViaWebView = (
   });
 };
 
-// UPDATED POLLING SCRIPT:
-// - Waits for a real page marker (RSC payload, article, or reading copy)
-// - Does NOT stop just because the challenge UI disappears
-// - Falls back to sending whatever is there after maxAttempts
+// How the page is judged "ready". The goal is to hand HTML back about as
+// fast as a plain fetch would once the real page exists, instead of waiting
+// out a fixed delay.
+const POLL_INTERVAL_MS = 150;
+// Poll results that must agree (DOM size unchanged) before sending.
+const SETTLE_POLLS = 2;
+// Last-resort send of whatever is there. Kept under the job's hard timeout
+// (30s by default) so the page content wins the race instead of an error.
+const POLL_DEADLINE_MS = 25000;
+// Pages with fewer characters than this are error stubs, not real content.
+const MIN_REAL_PAGE_CHARS = 1500;
+
+// Runs inside the page. Sends the document once it is a real page:
+// - a JSON response, a Next.js RSC payload, or a NovelArrow reading element
+//   is final immediately;
+// - any other page is sent once it is past the JS challenge, its DOM has
+//   loaded, and its size has stopped changing.
+// A Cloudflare challenge page is never sent early. The guard flag keeps the
+// two injections (before load and onLoadEnd) from running two pollers, which
+// could post the same page twice and hand it to the next queued job.
 const CHALLENGE_POLL_JS = `
 (function () {
-  var attempts = 0;
-  var maxAttempts = 60; // 30 seconds (60 * 500ms)
+  if (window.__noveldrPoll) return;
+  window.__noveldrPoll = true;
 
-  function isRealPage() {
+  var startedAt = Date.now();
+  var lastSize = -1;
+  var stableCount = 0;
+
+  function isFinalMarker() {
     // A JSON API response (no challenge in front of it) is already final
     if (/json/i.test(document.contentType || '')) return true;
-    // Look for the Next.js RSC payload – this is a solid marker
+    // Next.js RSC payload – a solid marker
     var scripts = document.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
       if (scripts[i].textContent && scripts[i].textContent.includes('self.__next_f.push')) {
         return true;
       }
     }
-    // Alternative: check for known content elements on NovelArrow
+    // Known content elements on NovelArrow
     if (document.querySelector('article[data-chapter-id]')) return true;
     if (document.querySelector('.site-reading-copy')) return true;
     return false;
@@ -96,8 +116,12 @@ const CHALLENGE_POLL_JS = `
 
   function isStillChallenge() {
     var t = document.title || '';
-    return /just a moment/i.test(t) ||
-      !!document.querySelector('#challenge-running, .cf-browser-verification');
+    if (/just a moment|attention required|verify you are human|checking your browser/i.test(t)) return true;
+    if (document.querySelector('#challenge-running, #challenge-form, #cf-challenge-running, .cf-browser-verification')) return true;
+    // Only defined on the interstitial; ordinary pages carry a different
+    // passive Cloudflare script that does not set this.
+    if (window._cf_chl_opt) return true;
+    return false;
   }
 
   function send() {
@@ -105,23 +129,27 @@ const CHALLENGE_POLL_JS = `
   }
 
   function poll() {
-    attempts++;
-    // If we have real content, send it immediately
-    if (isRealPage()) {
-      send();
-      return;
+    if (isFinalMarker()) { send(); return; }
+
+    if (!isStillChallenge() && document.readyState !== 'loading' && document.body) {
+      var size = document.body.getElementsByTagName('*').length;
+      stableCount = size === lastSize ? stableCount + 1 : 0;
+      lastSize = size;
+      if (stableCount >= ${SETTLE_POLLS - 1} &&
+          document.documentElement.outerHTML.length >= ${MIN_REAL_PAGE_CHARS}) {
+        send();
+        return;
+      }
+    } else {
+      stableCount = 0;
+      lastSize = -1;
     }
-    // If timeout reached, send whatever is there
-    if (attempts >= maxAttempts) {
-      send();
-      return;
-    }
-    // Otherwise keep polling
-    setTimeout(poll, 500);
+
+    if (Date.now() - startedAt >= ${POLL_DEADLINE_MS}) { send(); return; }
+    setTimeout(poll, ${POLL_INTERVAL_MS});
   }
 
-  // Start polling after a short delay to let the page initialise
-  setTimeout(poll, 500);
+  setTimeout(poll, ${POLL_INTERVAL_MS});
 })();
 true;
 `;
