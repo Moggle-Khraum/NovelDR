@@ -96,7 +96,7 @@ const synopsisFromPage = async (novelId: string): Promise<string> => {
   }
 };
 
-export const novelArchiveCcScraper: SourceScraper = {
+export const novelArchiveStScraper: SourceScraper = {
   id: "novelarchivecc",
   name: "NovelArchive.cc",
 
