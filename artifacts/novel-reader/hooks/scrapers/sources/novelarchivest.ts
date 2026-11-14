@@ -160,7 +160,7 @@ export const novelArchiveCcScraper: SourceScraper = {
       synopsis,
       coverUrl,
       firstChapterUrl,
-      debugInfo: ["fetched via external scraper: novelarchivecc"],
+      debugInfo: ["fetched via external scraper: novelarchivest"],
     };
   },
 
@@ -174,7 +174,7 @@ export const novelArchiveCcScraper: SourceScraper = {
 
     if (!novelId) {
       throw new Error(
-        `novelarchivecc: could not extract novel ID from chapter URL: ${url}`,
+        `novelarchivest: could not extract novel ID from chapter URL: ${url}`,
       );
     }
 
@@ -185,14 +185,14 @@ export const novelArchiveCcScraper: SourceScraper = {
     const chapter = data?.chapter;
     if (!chapter) {
       throw new Error(
-        `novelarchivecc: chapter data not found in response for chapter ${chapterNum}`,
+        `novelarchivest: chapter data not found in response for chapter ${chapterNum}`,
       );
     }
 
     const content = cleanContent(chapter.content || "");
     if (!content) {
       throw new Error(
-        `novelarchivecc: chapter ${chapterNum} has no content (may be unavailable)`,
+        `novelarchivest: chapter ${chapterNum} has no content (may be unavailable)`,
       );
     }
 
