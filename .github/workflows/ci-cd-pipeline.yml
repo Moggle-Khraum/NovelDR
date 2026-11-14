@@ -280,5 +280,8 @@ jobs:
         run: pnpm run test:scrapers
 
       - name: Run API allowlist and chapter extraction regression tests
+        # Branches without the script (e.g. 5.1.5) skip this step.
+        if: ${{ hashFiles('artifacts/api-server/scripts/test-novel-route.ts') != '' }}
         working-directory: artifacts/api-server
         run: pnpm exec tsx scripts/test-novel-route.ts
+        
