@@ -370,6 +370,21 @@ export default function UpdatesScreen() {
       const n = extractChapterNumber(c.title);
       if (n > 0 && !localByNumber.has(n)) localByNumber.set(n, i);
     });
+    // A novel whose saved chapter links point at a different host than its
+    // current source (after "Change Source"). Those links cannot be used to
+    // resume or to match chapters, so chapters are matched by chapter number.
+    const hostOf = (u: string): string => {
+      try {
+        return new URL(u).hostname.toLowerCase();
+      } catch {
+        return "";
+      }
+    };
+    const currentHost = hostOf(selectedNovel.sourceUrl);
+    const crossSource =
+      currentHost !== "" &&
+      existingChapters.some((c) => !!c.url && hostOf(c.url) !== currentHost);
+
     const startCh = Math.max(
       1,
       parseInt(startChStr) || getNextStartChapter(selectedNovel),
@@ -426,6 +441,8 @@ export default function UpdatesScreen() {
       addLog(`Title: ${meta.title}`, "success");
       addLog(`Author: ${meta.author}`, "info");
       addLog(`Current chapters in library: ${existingCount}`, "info");
+      if (crossSource)
+        addLog("Source changed: matching chapters by number", "info");
       if (startChStr) addLog(`Starting from chapter: ${startCh}`, "info");
       if (maxCh) addLog(`Max chapters to download: ${maxCh}`, "info");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
@@ -529,7 +546,11 @@ export default function UpdatesScreen() {
           // numbers missing between it and startCh are crawled as before.
           for (let n = startCh - 1; n >= 1; n--) {
             const localIdx = localByNumber.get(n);
-            if (localIdx !== undefined && existingChapters[localIdx].url) {
+            if (
+              !crossSource &&
+              localIdx !== undefined &&
+              existingChapters[localIdx].url
+            ) {
               currentUrl = existingChapters[localIdx].url;
               chapterNum = n;
               addLog(
@@ -615,7 +636,12 @@ export default function UpdatesScreen() {
         chapterNumber: number;
         content?: string;
       })[] = [];
-      const gapFills: { url: string; content: string; title: string }[] = [];
+      const gapFills: {
+        url: string;
+        content: string;
+        title: string;
+        num: number;
+      }[] = [];
       let downloaded = 0;
       let gapFillCount = 0;
       let consecutiveErrors = 0;
@@ -657,7 +683,12 @@ export default function UpdatesScreen() {
         if (maxCh) setProgress((downloaded / maxCh) * 100);
 
         // Check if chapter exists in library (by URL)
-        const existsInLibrary = chapterExists(currentUrl, existingChapters);
+        const localIdxForNum = crossSource
+          ? localByNumber.get(chapterNum)
+          : undefined;
+        const existsInLibrary = crossSource
+          ? localIdxForNum !== undefined
+          : chapterExists(currentUrl, existingChapters);
         const existsInNew = chapterExists(currentUrl, newChapters);
 
         // A URL repeating at all in this run — whether it's a duplicate "new"
@@ -709,7 +740,9 @@ export default function UpdatesScreen() {
           // trusting it, instead of either (a) blindly skipping forever, or
           // (b) re-downloading every chapter on every run regardless of
           // whether it's actually there.
-          const idx = existingChapters.findIndex((c) => c.url === currentUrl);
+          const idx = crossSource
+            ? (localIdxForNum ?? -1)
+            : existingChapters.findIndex((c) => c.url === currentUrl);
           const onDisk =
             idx >= 0 ? await loadChapterContent(selectedNovel.id, idx) : null;
           const hasRealContent =
@@ -725,7 +758,9 @@ export default function UpdatesScreen() {
             // content on disk, hop straight to it using its saved URL — no
             // request. Only when the next one is missing locally do we fetch
             // this chapter to read its "next" link.
-            const nextLocalIdx = localByNumber.get(chapterNum + 1);
+            const nextLocalIdx = crossSource
+              ? undefined
+              : localByNumber.get(chapterNum + 1);
             if (nextLocalIdx !== undefined) {
               const nextOnDisk = await loadChapterContent(
                 selectedNovel.id,
@@ -799,6 +834,7 @@ export default function UpdatesScreen() {
                 url: currentUrl,
                 content: data.content,
                 title: data.title,
+                num: chapterNumber,
               });
               gapFillCount++;
               addLog(
@@ -896,8 +932,12 @@ export default function UpdatesScreen() {
 
         // Fill in gap chapters at their existing position (by URL) rather
         // than appending — they were already listed, just missing content.
-        gapFills.forEach(({ url, content, title }) => {
-          const existing = allChapters.find((c) => c.url === url);
+        gapFills.forEach(({ url, content, title, num }) => {
+          const existing =
+            allChapters.find((c) => c.url === url) ??
+            (crossSource && num > 0
+              ? allChapters.find((c) => extractChapterNumber(c.title) === num)
+              : undefined);
           if (existing) {
             existing.content = content;
             if (title) existing.title = title;
