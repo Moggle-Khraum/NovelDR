@@ -39,6 +39,8 @@ import type { ExportProgress } from "../../lib/exportRunner";
 import { filterChaptersByTitle } from "../../lib/chapterSearch";
 
 import { useLibrary } from "@/context/LibraryContext";
+import { checkDeprecatedSite } from "@/hooks/scrapers/deprecatedSites";
+import { fetchNovelMeta } from "@/hooks/useApi";
 import { useTheme } from "@/context/ThemeContext";
 
 const BULK_DELETE_LOADING_THRESHOLD = 3;
@@ -350,10 +352,50 @@ export default function NovelDetailScreen() {
     getSortedChapters,
     deleteChapters,
     loadChapterContent,
+    updateNovel,
   } = useLibrary();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
+  const [changeSourceOpen, setChangeSourceOpen] = useState(false);
+  const [newSourceInput, setNewSourceInput] = useState("");
+  const [changingSource, setChangingSource] = useState(false);
+
+  // Only for novels whose saved source is marked dead. Keeps all chapters.
+  const handleChangeSource = async () => {
+    if (!novel) return;
+    let parsed: URL;
+    try {
+      parsed = new URL(newSourceInput.trim());
+    } catch {
+      Alert.alert("Invalid link", "Paste the full novel page link, starting with https://");
+      return;
+    }
+    if (checkDeprecatedSite(parsed.href)) {
+      Alert.alert("Dead site", "That site is also marked as dead. Paste a link from a working site.");
+      return;
+    }
+    setChangingSource(true);
+    try {
+      const meta = await fetchNovelMeta(parsed.href);
+      await updateNovel(novel.id, {
+        sourceUrl: parsed.href,
+        author: meta.author || novel.author,
+        synopsis: meta.synopsis || novel.synopsis,
+        coverUrl: meta.coverUrl || novel.coverUrl,
+      });
+      setChangeSourceOpen(false);
+      setNewSourceInput("");
+      Alert.alert(
+        "Source changed",
+        `Now using ${parsed.hostname}. Your ${novel.chapters.length} saved chapters were kept.`,
+      );
+    } catch {
+      Alert.alert("Could not connect", "Check the link and try again.");
+    } finally {
+      setChangingSource(false);
+    }
+  };
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -940,6 +982,63 @@ export default function NovelDetailScreen() {
         </View>
       )}
 
+      <Modal
+        visible={changeSourceOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChangeSourceOpen(false)}
+      >
+        <View style={styles.csBackdrop}>
+          <View
+            style={[
+              styles.csCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.csTitle, { color: colors.text }]}>Change source</Text>
+            <Text style={[styles.csHint, { color: colors.textSecondary }]}>
+              Paste this novel's page link on a working site. Your saved chapters stay.
+            </Text>
+            <TextInput
+              value={newSourceInput}
+              onChangeText={setNewSourceInput}
+              placeholder="https://"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              editable={!changingSource}
+              style={[
+                styles.csInput,
+                { color: colors.text, borderColor: colors.border },
+              ]}
+            />
+            <View style={styles.csButtons}>
+              <Pressable
+                onPress={() => setChangeSourceOpen(false)}
+                disabled={changingSource}
+                style={styles.csBtn}
+              >
+                <Text style={[styles.csBtnText, { color: colors.textSecondary }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleChangeSource}
+                disabled={changingSource}
+                style={[styles.csBtn, { backgroundColor: colors.accent }]}
+              >
+                {changingSource ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={[styles.csBtnText, { color: "#fff" }]}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPad + 20 }}
@@ -997,6 +1096,17 @@ export default function NovelDetailScreen() {
                   {novel.lastRead ? "Continue" : "Start Reading"}
                 </Text>
               </Pressable>
+              {checkDeprecatedSite(novel.sourceUrl) !== null && (
+                <Pressable
+                  style={[styles.changeSourceBtn, { borderColor: colors.accent }]}
+                  onPress={() => setChangeSourceOpen(true)}
+                >
+                  <Ionicons name="swap-horizontal" size={16} color={colors.accent} />
+                  <Text style={[styles.changeSourceText, { color: colors.accent }]}>
+                    Change Source
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </View>
@@ -1571,6 +1681,45 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   readBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
+  changeSourceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  changeSourceText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  csBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  csCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 18, gap: 10 },
+  csTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  csHint: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
+  csInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+  },
+  csButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 4 },
+  csBtn: {
+    minWidth: 84,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  csBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   content: { paddingHorizontal: 16, gap: 12 },
   progressCard: {
     borderRadius: 14,
