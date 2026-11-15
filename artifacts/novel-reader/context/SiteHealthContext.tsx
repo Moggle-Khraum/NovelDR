@@ -15,24 +15,31 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 // the app root (see SiteHealthProvider below) instead of being tied to
 // whether the Download tab happens to be mounted. add.tsx still imports
 // this list for rendering the grid.
-export const SUPPORTED_SITES = [
-  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/" },
-  { name: "NovelFullCom", baseUrl: "https://novelfull.com/" },
-  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/" },
-  { name: "NovGoNet", baseUrl: "https://novgo.net/" },
+export type SiteLanguage = "en" | "mtl" | "etc";
+
+export const SUPPORTED_SITES: {
+  name: string;
+  baseUrl: string;
+  language: SiteLanguage;
+}[] = [
+  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/", language: "en" },
+  { name: "NovelFullCom", baseUrl: "https://novelfull.com/", language: "en" },
+  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/", language: "en" },
+  { name: "NovGoNet", baseUrl: "https://novgo.net/", language: "en" },
   //{ name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
-  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/" },
-  { name: "RoyalRoad", baseUrl: "https://royalroad.com/" },
-  { name: "AsiaNovel", baseUrl: "https://asianovel.net/" },
-  { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/" },
-  { name: "Novel-Bin", baseUrl: "https://novel-bin.com/" },
-  { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/" },
-  { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/" },
-  { name: "NovelPing", baseUrl: "https://novelping.com/" },
-  { name: "FanMTL", baseUrl: "https://fanmtl.com/" },
-  { name: "WuxiaBox", baseUrl: "https://www.wuxiabox.com/" },
-  { name: "WuxiaClick", baseUrl: "https://wuxia.click/" },
-  { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/" },
+  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/", language: "en" },
+  { name: "RoyalRoad", baseUrl: "https://royalroad.com/", language: "en" },
+  { name: "AsiaNovel", baseUrl: "https://asianovel.net/", language: "en" },
+  { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/", language: "en" },
+  { name: "Novel-Bin", baseUrl: "https://novel-bin.com/", language: "en" },
+  { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/", language: "en" },
+  { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/", language: "en" },
+  { name: "NovelFullNet", baseUrl: "https://novelfull.net/", language: "en" },
+  { name: "NovelPing", baseUrl: "https://novelping.com/", language: "en" },
+  { name: "FanMTL", baseUrl: "https://fanmtl.com/", language: "mtl" },
+  { name: "WuxiaBox", baseUrl: "https://www.wuxiabox.com/", language: "en" },
+  { name: "WuxiaClick", baseUrl: "https://wuxia.click/", language: "en" },
+  { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/", language: "mtl" },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
