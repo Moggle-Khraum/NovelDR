@@ -1398,6 +1398,51 @@ export default function AddNovelScreen() {
             )}
           </View>
 
+          {/* Legend */}
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.success }}>🟢</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                UP
+              </Text>
+            </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.error }}>🔴</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                DOWN
+              </Text>
+            </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.amber }}>⛔</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                MAINT.
+              </Text>
+            </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text style={{ color: Colors.amber }}>🟠</Text>
+              <Text
+                style={[styles.legendText, { color: colors.textSecondary }]}
+              >
+                504
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.langSummaryRow}>
             {langSummary.map((item) => (
               <Pressable
@@ -1414,7 +1459,10 @@ export default function AddNovelScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.langSummaryText, { color: colors.text }]}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.langSummaryText, { color: colors.text }]}
+                >
                   {item.dot} {LANG_LABEL[item.key]}: {item.up}/{item.total}
                 </Text>
                 <Ionicons
@@ -1909,20 +1957,22 @@ const styles = StyleSheet.create({
   },
   langSummaryRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    flexWrap: "nowrap",
+    gap: 6,
     marginBottom: 8,
   },
   langSummaryPill: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
   },
-  langSummaryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  langSummaryText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   sectionContainer: {
     width: "100%",
     marginBottom: 20,
