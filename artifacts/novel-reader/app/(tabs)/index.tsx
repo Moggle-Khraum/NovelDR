@@ -50,7 +50,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novelfull.com": "NovelFullCom",
       "novelfull.net": "NovelFullNet",
       "novgo.net": "NovGoNet",
-      //"lightnovelworld.org": "LightNovelWorld",
+      "lightnovelworld.net": "LightNovelWorldNet",
       "royalroad.com": "RoyalRoad",
       "mtlnovel.me": "MTLNovelMe",
       "wuxiaworld.site": "WuxiaWorldSite",
@@ -64,6 +64,9 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "fanmtl.com": "FanMTL",
       "wuxiabox.com": "WuxiaBox",
       "wuxia.click": "WuxiaClick",
+      "lightnovel.to": "LightNovelTo",
+      "novelbuddy.me": "NovelBuddyMe",
+      
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
