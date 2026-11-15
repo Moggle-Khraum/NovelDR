@@ -37,10 +37,31 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
   "asianovel.net": "en",
   "wuxia.click": "en",
   "wuxiabox.com": "en",
+  "lightnovel.to": "en",
+  "novelbuddy.me": "en",
 
   // Machine-translated (MTL) sites
   "mtlnovel.me": "mtl",
   "fanmtl.com": "mtl",
+
+  // Other languages (neither English nor MTL)
+  "centralnovel.com": "etc", // Portuguese
+};
+
+// Optional flag shown beside the pill for "etc" (other-language) sites.
+// Add one line per site, e.g. "newsite.es": "🇪🇸".
+const SOURCE_FLAG: Record<string, string> = {
+  "centralnovel.com": "🇧🇷", // Portuguese (Brazil)
+};
+
+/** Returns the flag emoji for a saved source URL, or null if the site has none. */
+export const getSourceFlag = (sourceUrl: string): string | null => {
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
+    return SOURCE_FLAG[host] ?? null;
+  } catch {
+    return null;
+  }
 };
 
 /** Returns the language for a saved source URL, or null if the site is not listed. */
