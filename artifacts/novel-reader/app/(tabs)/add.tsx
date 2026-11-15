@@ -24,6 +24,7 @@ import {
   useSiteHealth,
   SUPPORTED_SITES,
   SiteStatus,
+  SiteLanguage,
 } from "@/context/SiteHealthContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import {
@@ -214,6 +215,8 @@ interface SourceListModalProps {
   sites: typeof SUPPORTED_SITES;
   siteStatuses: Record<string, SiteStatus>;
   deprecatedSites?: { domain: string }[];
+  langFilter: SiteLanguage;
+  onLangFilterChange: (lang: SiteLanguage) => void;
 }
 
 function SourceListModal({
@@ -222,10 +225,19 @@ function SourceListModal({
   sites,
   siteStatuses,
   deprecatedSites,
+  langFilter,
+  onLangFilterChange,
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck } = useSiteHealth();
   const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
+
+  const LANG_PILLS: { key: SiteLanguage; label: string }[] = [
+    { key: "en", label: "\u{1F1FA}\u{1F1F8} EN" },
+    { key: "mtl", label: "\u{1F916} MTL" },
+    { key: "etc", label: "\u{1F517} ETC" },
+  ];
+  const filteredSites = sites.filter((site) => site.language === langFilter);
 
   return (
     <Modal
@@ -345,14 +357,47 @@ function SourceListModal({
             {/* ACTIVE SITES TAB */}
             {activeTab === "active" && (
               <View style={styles.sectionContainer}>
+                <View style={styles.langPillRow}>
+                  {LANG_PILLS.map((pill) => {
+                    const selected = langFilter === pill.key;
+                    return (
+                      <Pressable
+                        key={pill.key}
+                        onPress={() => onLangFilterChange(pill.key)}
+                        style={[
+                          styles.langPill,
+                          {
+                            borderColor: selected ? colors.accent : colors.border,
+                            backgroundColor: selected ? colors.accent + "14" : colors.card,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.langPillText,
+                            { color: selected ? colors.accent : colors.textMuted },
+                          ]}
+                        >
+                          {pill.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <View style={styles.sitesList}>
-                  {sites.map((site) => (
-                    <SourceListModalCell
-                      key={site.name}
-                      name={site.name}
-                      status={siteStatuses[site.name] || "idle"}
-                    />
-                  ))}
+                  {filteredSites.length === 0 ? (
+                    <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
+                      No sites in this group yet.
+                    </Text>
+                  ) : (
+                    filteredSites.map((site) => (
+                      <SourceListModalCell
+                        key={site.name}
+                        name={site.name}
+                        status={siteStatuses[site.name] || "idle"}
+                      />
+                    ))
+                  )}
                 </View>
               </View>
             )}
@@ -411,12 +456,40 @@ export default function AddNovelScreen() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [sourceListModalVisible, setSourceListModalVisible] = useState(false);
+  const [sourceListLang, setSourceListLang] = useState<SiteLanguage>("en");
+  const openSourceList = (lang: SiteLanguage) => {
+    setSourceListLang(lang);
+    setSourceListModalVisible(true);
+  };
 
   // --- Site Health Check State (owned by SiteHealthProvider at app root -
   // this just reads it, so status is already current by the time this
   // screen is visited, and doesn't restart checking on every tab visit) ---
   const { statuses: siteStatuses, isChecking: isCheckingSites } =
     useSiteHealth();
+
+  // Up/total per language group, e.g. EN 13/13. Dot: gray when the group is
+  // empty, green when all are up, red when none are, orange when some are.
+  const langSummary = (["en", "mtl", "etc"] as SiteLanguage[]).map((key) => {
+    const group = SUPPORTED_SITES.filter((site) => site.language === key);
+    const up = group.filter(
+      (site) => (siteStatuses[site.name] || "idle") === "online",
+    ).length;
+    const dot =
+      group.length === 0
+        ? "\u26AB"
+        : up === group.length
+          ? "\u{1F7E2}"
+          : up === 0
+            ? "\u{1F534}"
+            : "\u{1F7E0}";
+    return { key, up, total: group.length, dot };
+  });
+  const LANG_LABEL: Record<SiteLanguage, string> = {
+    en: "EN",
+    mtl: "MTL",
+    etc: "ETC",
+  };
 
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1325,89 +1398,37 @@ export default function AddNovelScreen() {
             )}
           </View>
 
-          {/* Legend */}
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <Text style={{ color: Colors.success }}>🟢</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
+          <View style={styles.langSummaryRow}>
+            {langSummary.map((item) => (
+              <Pressable
+                key={item.key}
+                onPress={() => openSourceList(item.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${LANG_LABEL[item.key]} sites`}
+                style={({ pressed }) => [
+                  styles.langSummaryPill,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
               >
-                UP
-              </Text>
-            </View>
-            <View style={styles.legendSeparator}>
-              <Text style={{ color: colors.textSecondary }}>|</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text style={{ color: Colors.error }}>🔴</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
-              >
-                DOWN
-              </Text>
-            </View>
-            <View style={styles.legendSeparator}>
-              <Text style={{ color: colors.textSecondary }}>|</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text style={{ color: Colors.amber }}>⛔</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
-              >
-                MAINT.
-              </Text>
-            </View>
-            <View style={styles.legendSeparator}>
-              <Text style={{ color: colors.textSecondary }}>|</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text style={{ color: Colors.amber }}>🟠</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
-              >
-                504
-              </Text>
-            </View>
-          </View>
-
-          {/* Subtitle */}
-          <Text style={[styles.legendSubtitle, { color: colors.textMuted }]}>
-            *Downed source more than a month will be removed
-          </Text>
-
-          <View
-            style={[
-              styles.sitesGrid,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            {SUPPORTED_SITES.slice(0, 8).map((site) => (
-              <SiteCell
-                key={site.name}
-                name={site.name}
-                status={siteStatuses[site.name] || "idle"}
-              />
+                <Text style={[styles.langSummaryText, { color: colors.text }]}>
+                  {item.dot} {LANG_LABEL[item.key]}: {item.up}/{item.total}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={14}
+                  color={colors.textMuted}
+                />
+              </Pressable>
             ))}
-            <Pressable
-              style={[
-                styles.siteCell,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => setSourceListModalVisible(true)}
-            >
-              <Text
-                style={[styles.siteName, { color: colors.text }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                +{SUPPORTED_SITES.length - 8} more
-              </Text>
-            </Pressable>
           </View>
+
+          <Text style={[styles.legendSubtitle, { color: colors.textMuted }]}>
+            Tap a group to see its sites. *Downed source more than a month will be removed
+          </Text>
         </View>
 
         {/* Form Section */}
@@ -1623,6 +1644,8 @@ export default function AddNovelScreen() {
         sites={SUPPORTED_SITES}
         siteStatuses={siteStatuses}
         deprecatedSites={DEPRECATED_SITES}
+        langFilter={sourceListLang}
+        onLangFilterChange={setSourceListLang}
       />
 
       {/* Chapter Limiter Danger Modal */}
@@ -1864,6 +1887,42 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     paddingBottom: 10,
   },
+  langPillRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  langPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 2,
+  },
+  langPillText: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  langEmpty: {
+    width: "100%",
+    textAlign: "center",
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    paddingVertical: 12,
+  },
+  langSummaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  langSummaryPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  langSummaryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   sectionContainer: {
     width: "100%",
     marginBottom: 20,

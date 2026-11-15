@@ -35,6 +35,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLibrary, Novel, NovelStatus } from "@/context/LibraryContext";
 import { checkDeprecatedSite } from "@/hooks/scrapers/deprecatedSites";
+import { getSourceLanguage } from "@/hooks/scrapers/sourceLanguages";
 import { useTheme } from "@/context/ThemeContext";
 
 // ── Helper: Extract readable source name from URL ───────────────────────────
@@ -87,6 +88,12 @@ const STATUS_CONFIG: Record<
 };
 
 const DEPRECATED_BADGE_COLOR = "#E74C3C";
+// Language pill shown beside the status tag: flag + EN, or robot + MTL.
+const LANGUAGE_BADGE: Record<"en" | "mtl" | "etc", { icon: string; label: string; color: string }> = {
+  en: { icon: "\u{1F1FA}\u{1F1F8}", label: "EN", color: "#3B82F6" },
+  mtl: { icon: "\u{1F916}", label: "MTL", color: "#A855F7" },
+  etc: { icon: "\u{1F517}", label: "ETC", color: "#64748B" },
+};
 const LAST_READ_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 const RECENTLY_ADDED_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -128,6 +135,7 @@ function NovelCard({
   const statusCfg = STATUS_CONFIG[status];
   const sourceName = getSourceDisplayName(novel.sourceUrl);
   const isDeprecatedSource = checkDeprecatedSite(novel.sourceUrl) !== null;
+  const sourceLanguage = getSourceLanguage(novel.sourceUrl);
 
   // ── Badge resolution: Recently Added → Last Read: X days → normal status ──
   const now = Date.now();
@@ -234,6 +242,26 @@ function NovelCard({
                   {displayLabel}
                 </Text>
               </View>
+              {sourceLanguage && (
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: LANGUAGE_BADGE[sourceLanguage].color + "22" },
+                  ]}
+                >
+                  <Text style={styles.langIcon}>
+                    {LANGUAGE_BADGE[sourceLanguage].icon}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: LANGUAGE_BADGE[sourceLanguage].color },
+                    ]}
+                  >
+                    {LANGUAGE_BADGE[sourceLanguage].label}
+                  </Text>
+                </View>
+              )}
               {isDeprecatedSource && (
                 <View
                   style={[
@@ -1372,6 +1400,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 },
+  langIcon: { fontSize: 11 },
   statusText: { fontFamily: "Inter_500Medium", fontSize: 10 },
 
   metaRow: {
