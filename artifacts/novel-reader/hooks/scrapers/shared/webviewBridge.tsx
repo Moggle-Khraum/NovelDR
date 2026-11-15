@@ -117,6 +117,8 @@ const CHALLENGE_POLL_JS = `
   function isStillChallenge() {
     var t = document.title || '';
     if (/just a moment|attention required|verify you are human|checking your browser/i.test(t)) return true;
+    // Cloudflare waiting screen that says "Please wait" instead of the usual titles
+    if (/please wait/i.test(t) && /cloudflare/i.test(document.documentElement.innerHTML)) return true;
     if (document.querySelector('#challenge-running, #challenge-form, #cf-challenge-running, .cf-browser-verification')) return true;
     // Only defined on the interstitial; ordinary pages carry a different
     // passive Cloudflare script that does not set this.
