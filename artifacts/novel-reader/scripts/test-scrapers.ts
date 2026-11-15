@@ -39,6 +39,12 @@ import { extractParagraphs as novelArrowExtract } from "../hooks/scrapers/source
 import { extractParagraphs as novelPhoenixExtract } from "../hooks/scrapers/sources/novelphoenix";
 import { extractFreeWebNovelContent as freeWebNovelExtract } from "../hooks/scrapers/sources/freewebnovel";
 import { extractWuxiaworldContent as wuxiaworldExtract } from "../hooks/scrapers/sources/wuxiaworld";
+import {
+  parseLightNovelToMeta,
+  parseLightNovelToChapter,
+  lightNovelToScraper,
+} from "../hooks/scrapers/sources/lightnovelto";
+import { needsWebView } from "../hooks/scrapers/shared/webviewSites";
 import { findExternalScraper } from "../hooks/scrapers/registry";
 import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
@@ -489,6 +495,173 @@ checks.push(
       assert(
         findExternalScraper("not-a-valid-url") === null,
         "expected malformed URL to have no external scraper",
+      );
+    },
+  },
+);
+
+// ── LightNovelTo (lightnovel.to) ─────────────────────────────────────────
+// Fixtures below are hand-written placeholders that copy only the page
+// structure (class names and tags), not any real novel text.
+const LNT_NOVEL_PAGE = `
+  <html><body>
+    <h1 class="ln-dtitle text-balance">Sample Novel Title</h1>
+    <a class="ln-v" href="/author/sample-author">Sample Author</a>
+    <div class="ln-dcv"><img src="https://lightnovel.to/uploads/cover.webp" alt=""></div>
+    <div class="ln-syn"><p>First placeholder synopsis line.</p><p>Second placeholder line.</p></div>
+    <a class="ln-sb ln-pri" href="/novel/sample-novel/chapter-1">Start Chapter 1</a>
+  </body></html>
+`;
+
+const LNT_CHAPTER_PAGE = `
+  <html><body>
+    <h1 class="text-balance text-2xl font-semibold">Chapter 1 - Sample Opening</h1>
+    <div class="ln-prose" style="font-size: 19px;">
+      <p>Placeholder paragraph one.</p>
+      <div class="advertisment"><script src="https://ads.example/x.js"></script></div>
+      <p>Placeholder paragraph two.</p>
+    </div>
+    <a class="ln-chapnav-side ln-chapnav-next" href="/novel/sample-novel/chapter-2"><span>Next</span></a>
+  </body></html>
+`;
+
+const LNT_LAST_CHAPTER_PAGE = LNT_CHAPTER_PAGE.replace(
+  '<a class="ln-chapnav-side ln-chapnav-next" href="/novel/sample-novel/chapter-2">',
+  '<a class="ln-chapnav-side ln-chapnav-next" aria-disabled="true" href="#">',
+);
+
+checks.push(
+  {
+    name: "lightnovelto: novel page yields title, author, cover, synopsis",
+    run: () => {
+      const meta = parseLightNovelToMeta(
+        LNT_NOVEL_PAGE,
+        "https://lightnovel.to/novel/sample-novel",
+      );
+      assert(meta.title === "Sample Novel Title", `title: ${meta.title}`);
+      assert(meta.author === "Sample Author", `author: ${meta.author}`);
+      assert(
+        meta.coverUrl === "https://lightnovel.to/uploads/cover.webp",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis.includes("First placeholder synopsis line.") &&
+          meta.synopsis.includes("Second placeholder line."),
+        `synopsis: ${JSON.stringify(meta.synopsis)}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: novel page resolves the first chapter URL",
+    run: () => {
+      const meta = parseLightNovelToMeta(
+        LNT_NOVEL_PAGE,
+        "https://lightnovel.to/novel/sample-novel",
+      );
+      assert(
+        meta.firstChapterUrl ===
+          "https://lightnovel.to/novel/sample-novel/chapter-1",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: chapter page yields title and paragraph text",
+    run: () => {
+      const ch = parseLightNovelToChapter(
+        LNT_CHAPTER_PAGE,
+        "https://lightnovel.to/novel/sample-novel/chapter-1",
+      );
+      assert(ch.title === "Chapter 1 - Sample Opening", `title: ${ch.title}`);
+      assert(
+        ch.content.includes("Placeholder paragraph one.") &&
+          ch.content.includes("Placeholder paragraph two."),
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: chapter content skips ad blocks",
+    run: () => {
+      const ch = parseLightNovelToChapter(
+        LNT_CHAPTER_PAGE,
+        "https://lightnovel.to/novel/sample-novel/chapter-1",
+      );
+      assert(
+        !ch.content.includes("ads.example") && !ch.content.includes("<script"),
+        `ad markup leaked into content: ${JSON.stringify(ch.content)}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: next link resolves to an absolute URL",
+    run: () => {
+      const ch = parseLightNovelToChapter(
+        LNT_CHAPTER_PAGE,
+        "https://lightnovel.to/novel/sample-novel/chapter-1",
+      );
+      assert(
+        ch.nextUrl === "https://lightnovel.to/novel/sample-novel/chapter-2",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: last chapter (aria-disabled next) has no next URL",
+    run: () => {
+      const ch = parseLightNovelToChapter(
+        LNT_LAST_CHAPTER_PAGE,
+        "https://lightnovel.to/novel/sample-novel/chapter-9",
+      );
+      assert(
+        ch.nextUrl === null,
+        `expected null nextUrl on last chapter, got: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: canHandle accepts lightnovel.to and subdomains only",
+    run: () => {
+      assert(
+        lightNovelToScraper.canHandle("https://lightnovel.to/novel/x"),
+        "lightnovel.to should match",
+      );
+      assert(
+        lightNovelToScraper.canHandle("https://www.lightnovel.to/novel/x"),
+        "www subdomain should match",
+      );
+      assert(
+        !lightNovelToScraper.canHandle("https://lightnovel.to.evil.example/x"),
+        "lookalike host must not match",
+      );
+      assert(
+        !lightNovelToScraper.canHandle("https://evil.example/lightnovel.to"),
+        "host in path must not match",
+      );
+    },
+  },
+  {
+    name: "lightnovelto: registry finds the scraper for lightnovel.to",
+    run: () => {
+      const found = findExternalScraper(
+        "https://lightnovel.to/novel/sample-novel",
+      );
+      assert(
+        found?.id === "lightnovelto",
+        `registry returned: ${found?.id ?? "null"}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelto: WebView tier is enabled for lightnovel.to",
+    run: () => {
+      assert(
+        needsWebView("https://lightnovel.to/novel/sample-novel"),
+        "lightnovel.to should use the WebView tier",
+      );
+      assert(
+        !needsWebView("https://example.com/novel"),
+        "unrelated host should not use the WebView tier",
       );
     },
   },
