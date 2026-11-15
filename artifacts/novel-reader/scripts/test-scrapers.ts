@@ -45,6 +45,11 @@ import {
   lightNovelToScraper,
 } from "../hooks/scrapers/sources/lightnovelto";
 import { needsWebView } from "../hooks/scrapers/shared/webviewSites";
+import {
+  parseNovelBuddyMeta,
+  parseNovelBuddyChapter,
+  novelBuddyScraper,
+} from "../hooks/scrapers/sources/novelbuddy";
 import { findExternalScraper } from "../hooks/scrapers/registry";
 import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
@@ -662,6 +667,141 @@ checks.push(
       assert(
         !needsWebView("https://example.com/novel"),
         "unrelated host should not use the WebView tier",
+      );
+    },
+  },
+);
+
+// ── NovelBuddy (novelbuddy.me) ───────────────────────────────────────────
+// Hand-written placeholder fixtures that copy only the page structure.
+const NB_NOVEL_PAGE = `
+  <html><body>
+    <img src="https://rs.novelbuddy.me/covers/sample-novel.png" alt="Sample Novel">
+    <h1 class="font-display text-[30px] font-bold">Sample Novel</h1>
+    <div class="flex flex-wrap gap-x-2"><a href="/authors/sample-author">Sample Author</a></div>
+    <p class="text-[14px] leading-relaxed text-fg-muted">A placeholder synopsis line.</p>
+    <a href="/sample-novel/chapter-1-opening"><button type="button" class="btn">
+      <svg></svg> Start Reading</button></a>
+  </body></html>
+`;
+
+const NB_CHAPTER_PAGE = `
+  <html><body>
+    <p class="mt-1.5 text-[14px]">Chapter 1: Sample Opening</p>
+    <div class="novel-tts-content px-7">
+      <p>Placeholder paragraph one.</p>
+      <div style="margin-top:0px"><div></div></div>
+      <p>Placeholder paragraph two.</p>
+    </div>
+    <a class="reader-btn reader-step" aria-label="Next chapter" href="/sample-novel/chapter-2-next">next</a>
+  </body></html>
+`;
+
+const NB_LAST_CHAPTER_PAGE = NB_CHAPTER_PAGE.replace(
+  /<a class="reader-btn reader-step" aria-label="Next chapter"[^>]*>next<\/a>/,
+  "",
+);
+
+checks.push(
+  {
+    name: "novelbuddy: novel page yields title, author, cover, synopsis",
+    run: () => {
+      const meta = parseNovelBuddyMeta(
+        NB_NOVEL_PAGE,
+        "https://novelbuddy.me/sample-novel",
+      );
+      assert(meta.title === "Sample Novel", `title: ${meta.title}`);
+      assert(meta.author === "Sample Author", `author: ${meta.author}`);
+      assert(
+        meta.coverUrl === "https://rs.novelbuddy.me/covers/sample-novel.png",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis.includes("placeholder synopsis"),
+        `synopsis: ${meta.synopsis}`,
+      );
+    },
+  },
+  {
+    name: "novelbuddy: novel page resolves the Start Reading link",
+    run: () => {
+      const meta = parseNovelBuddyMeta(
+        NB_NOVEL_PAGE,
+        "https://novelbuddy.me/sample-novel",
+      );
+      assert(
+        meta.firstChapterUrl ===
+          "https://novelbuddy.me/sample-novel/chapter-1-opening",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "novelbuddy: chapter page yields title and paragraphs",
+    run: () => {
+      const ch = parseNovelBuddyChapter(
+        NB_CHAPTER_PAGE,
+        "https://novelbuddy.me/sample-novel/chapter-1-opening",
+      );
+      assert(ch.title === "Chapter 1: Sample Opening", `title: ${ch.title}`);
+      assert(
+        ch.content.includes("Placeholder paragraph one.") &&
+          ch.content.includes("Placeholder paragraph two."),
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+    },
+  },
+  {
+    name: "novelbuddy: chapter page resolves the next chapter",
+    run: () => {
+      const ch = parseNovelBuddyChapter(
+        NB_CHAPTER_PAGE,
+        "https://novelbuddy.me/sample-novel/chapter-1-opening",
+      );
+      assert(
+        ch.nextUrl === "https://novelbuddy.me/sample-novel/chapter-2-next",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "novelbuddy: last chapter (no next link) has no next URL",
+    run: () => {
+      const ch = parseNovelBuddyChapter(
+        NB_LAST_CHAPTER_PAGE,
+        "https://novelbuddy.me/sample-novel/chapter-9",
+      );
+      assert(ch.nextUrl === null, `expected null nextUrl, got: ${ch.nextUrl}`);
+    },
+  },
+  {
+    name: "novelbuddy: canHandle accepts novelbuddy.me and subdomains only",
+    run: () => {
+      assert(
+        novelBuddyScraper.canHandle("https://novelbuddy.me/sample-novel"),
+        "novelbuddy.me should match",
+      );
+      assert(
+        novelBuddyScraper.canHandle("https://www.novelbuddy.me/sample-novel"),
+        "www subdomain should match",
+      );
+      assert(
+        !novelBuddyScraper.canHandle("https://novelbuddy.me.evil.example/x"),
+        "lookalike host must not match",
+      );
+    },
+  },
+  {
+    name: "novelbuddy: registry finds the scraper and WebView tier is enabled",
+    run: () => {
+      const found = findExternalScraper("https://novelbuddy.me/sample-novel");
+      assert(
+        found?.id === "novelbuddy",
+        `registry returned: ${found?.id ?? "null"}`,
+      );
+      assert(
+        needsWebView("https://novelbuddy.me/sample-novel"),
+        "novelbuddy.me should use the WebView tier",
       );
     },
   },
