@@ -39,8 +39,9 @@ export const parseLightNovelToMeta = (html: string, url: string): NovelMeta => {
       /<div[^>]*class="ln-dcv"[^>]*>\s*<img[^>]*src="([^"]+)"/i,
     ) ?? "";
 
-  // <div class="ln-syn"> ... <p>paragraphs</p> ... </div>
-  const synBlock = extractByDepth(html, 'class="ln-syn') ?? "";
+  // <div class="ln-synwrap"><div class="ln-syn" ...><p>paragraphs</p></div></div>
+  // The closing quote matters: a bare 'class="ln-syn' prefix is ambiguous.
+  const synBlock = extractByDepth(html, 'class="ln-synwrap"') ?? "";
   const synopsis = extractParagraphs(synBlock);
 
   // <a class="ln-sb ln-pri" href="/novel/<slug>/chapter-1">Start Chapter 1
