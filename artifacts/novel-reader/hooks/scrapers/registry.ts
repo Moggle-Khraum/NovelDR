@@ -23,6 +23,7 @@ import { wuxiaBoxScraper } from "./sources/wuxiabox";
 import { wuxiaClickScraper } from "./sources/wuxiaclick";
 import { mtlNovelMeScraper } from "./sources/mtlnovelme";
 import { lightNovelToScraper } from "./sources/lightnovelto";
+import { novelBuddyScraper } from "./sources/novelbuddy";
 
 const REGISTERED_SCRAPERS: SourceScraper[] = [
   novelPhoenixScraper,
@@ -43,6 +44,7 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   wuxiaClickScraper,
   mtlNovelMeScraper,
   lightNovelToScraper,
+  novelBuddyScraper,
 ];
 
 export const findExternalScraper = (url: string): SourceScraper | null => {
