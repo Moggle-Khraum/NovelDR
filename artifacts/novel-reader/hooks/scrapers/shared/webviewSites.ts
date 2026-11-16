@@ -20,6 +20,7 @@ const WEBVIEW_HOSTS: readonly string[] = [
   "novelbin.cc",
   "lightnovel.to",
   "novelbuddy.me",
+  "centralnovel.com",
   // "wuxiabox.com",
   // "wuxia.click",
   // "mtlnovel.me",

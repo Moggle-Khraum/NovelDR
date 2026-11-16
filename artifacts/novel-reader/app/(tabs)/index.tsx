@@ -66,6 +66,7 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "wuxia.click": "WuxiaClick",
       "lightnovel.to": "LightNovelTo",
       "novelbuddy.me": "NovelBuddyMe",
+      "centralnovel.com": "CentralNovel",
       "novelbin.com": "NovelBinCom",
       
     };
