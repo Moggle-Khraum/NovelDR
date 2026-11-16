@@ -21,6 +21,7 @@ const WEBVIEW_HOSTS: readonly string[] = [
   "lightnovel.to",
   "novelbuddy.me",
   "centralnovel.com",
+  "meionovels.com",
   "novelasligera.com",
   "novelasligeras.net",
   // "wuxiabox.com",
@@ -36,6 +37,7 @@ const WEBVIEW_HOSTS: readonly string[] = [
 // Every host here must also be in WEBVIEW_HOSTS above.
 const INTERACTIVE_CHALLENGE_HOSTS: readonly string[] = [
   "centralnovel.com",
+  "meionovels.com",
   "novelasligera.com",
   "novelasligeras.net",
 ];

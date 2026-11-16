@@ -59,6 +59,11 @@ import {
   centralNovelScraper,
 } from "../hooks/scrapers/sources/centralnovel";
 import {
+  parseMeioNovelsMeta,
+  parseMeioNovelsChapter,
+  meioNovelsScraper,
+} from "../hooks/scrapers/sources/meionovels";
+import {
   parseNovelasLigeraMeta,
   parseNovelasLigeraChapter,
   novelasLigeraScraper,
@@ -1105,6 +1110,107 @@ checks.push(
       assert(
         !needsUserChallenge("https://royalroad.com/fiction/1/x"),
         "sites without a checkbox should stay hidden-only",
+      );
+    },
+  },
+);
+
+// ── MeioNovels (meionovels.com) ──────────────────────────────────────────
+// Hand-written placeholder fixtures that copy only the page structure.
+const MN_SERIES_PAGE = `
+  <html><head>
+    <meta property="og:image" content="https://meionovels.com/wp-content/uploads/sample.jpg">
+  </head><body>
+    <h1>
+    Sample Novel   </h1>
+    <div class="author-content">
+      <a href="https://meionovels.com/novel-author/sample-author/" rel="tag">Sample Author</a>
+    </div>
+    <div class="description-summary">
+      <div class="summary__content show-more">
+        <p>A placeholder synopsis line.</p>
+      </div>
+    </div>
+    <a href="https://meionovels.com/novel/sample/mtl/chapter-1/" id="btn-read-first" class="c-btn">Read First</a>
+  </body></html>
+`;
+
+const MN_CHAPTER_PAGE = `
+  <html><body>
+    <h1 id="chapter-heading">
+Sample Novel - MTL - Chapter 1      </h1>
+    <div class="reading-content">
+      <input type="hidden" id="wp-manga-current-chap" value="chapter-1">
+      <div class="text-left">
+        <p>Placeholder paragraph one.</p>
+        <p>Placeholder paragraph two.</p>
+      </div>
+    </div>
+    <a href="https://meionovels.com/novel/sample/mtl/chapter-2/" class="btn next_page" title="Chapter 2">Next</a>
+  </body></html>
+`;
+
+checks.push(
+  {
+    name: "meionovels: series page yields title, author, cover, synopsis, first chapter",
+    run: () => {
+      const meta = parseMeioNovelsMeta(
+        MN_SERIES_PAGE,
+        "https://meionovels.com/novel/sample/",
+      );
+      assert(meta.title === "Sample Novel", `title: ${meta.title}`);
+      assert(meta.author === "Sample Author", `author: ${meta.author}`);
+      assert(
+        meta.coverUrl === "https://meionovels.com/wp-content/uploads/sample.jpg",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis === "A placeholder synopsis line.",
+        `synopsis: ${meta.synopsis}`,
+      );
+      assert(
+        meta.firstChapterUrl === "https://meionovels.com/novel/sample/mtl/chapter-1/",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "meionovels: chapter page yields title, paragraphs and next chapter",
+    run: () => {
+      const ch = parseMeioNovelsChapter(
+        MN_CHAPTER_PAGE,
+        "https://meionovels.com/novel/sample/mtl/chapter-1/",
+      );
+      assert(
+        ch.title === "Sample Novel - MTL - Chapter 1",
+        `title: ${ch.title}`,
+      );
+      assert(
+        ch.content === "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+      assert(
+        ch.nextUrl === "https://meionovels.com/novel/sample/mtl/chapter-2/",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "meionovels: canHandle and registry routing with WebView tier",
+    run: () => {
+      assert(
+        meioNovelsScraper.canHandle("https://meionovels.com/novel/btth/"),
+        "meionovels.com should match",
+      );
+      assert(
+        !meioNovelsScraper.canHandle("https://meionovels.com.evil.example/x"),
+        "lookalike host should not match",
+      );
+      const found = findExternalScraper("https://meionovels.com/novel/btth/");
+      assert(found?.id === "meionovels", `registry returned: ${found?.id ?? "null"}`);
+      assert(
+        needsWebView("https://meionovels.com/novel/btth/"),
+        "meionovels.com should use the WebView tier",
       );
     },
   },

@@ -68,6 +68,11 @@ export const SUPPORTED_SITES: {
     language: "etc",
   },
   {
+    name: "MeioNovels",
+    baseUrl: "https://meionovels.com/",
+    language: "etc",
+  },
+  {
     name: "NovelasLigera",
     baseUrl: "https://novelasligeras.net/",
     language: "etc",
