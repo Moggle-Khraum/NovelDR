@@ -43,6 +43,7 @@ export const SUPPORTED_SITES: {
   { name: "LightNovelTo", baseUrl: "https://lightnovel.to/", language: "en" },
   { name: "NovelBuddy", baseUrl: "https://novelbuddy.me/", language: "en" },
   { name: "CentralNovel", baseUrl: "https://centralnovel.com/", language: "etc" },
+  { name: "NovelasLigera", baseUrl: "https://novelasligeras.net/", language: "etc" },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
