@@ -879,6 +879,20 @@ checks.push(
     },
   },
   {
+    name: "centralnovel: first chapter found with Portuguese label",
+    run: () => {
+      const meta = parseCentralNovelMeta(
+        CN_SERIES_PAGE.replace("First Chapter", "Primeiro Capítulo"),
+        "https://centralnovel.com/series/sample-novel/",
+      );
+      assert(
+        meta.firstChapterUrl ===
+          "https://centralnovel.com/sample-novel-capitulo-1/",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
     name: "centralnovel: chapter page yields title, paragraphs and next chapter",
     run: () => {
       const ch = parseCentralNovelChapter(

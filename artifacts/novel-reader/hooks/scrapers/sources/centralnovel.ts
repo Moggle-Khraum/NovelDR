@@ -46,10 +46,14 @@ export const parseCentralNovelMeta = (html: string, url: string): NovelMeta => {
   const synopsis = decodeEntities(extractParagraphs(synBlock)).trim();
 
   // <a href="https://centralnovel.com/<slug>-capitulo-1/"><span>...First Chapter...</span>
-  const firstRaw = safeMatch(
-    html,
-    /<a href="([^"]+)">(?:(?!<\/a>)[\s\S])*?First Chapter/i,
-  );
+  // The live site is Portuguese, so the label may be "Primeiro Capítulo"
+  // rather than "First Chapter". Fall back to the chapter-1 URL pattern.
+  const firstRaw =
+    safeMatch(
+      html,
+      /<a href="([^"]+)">(?:(?!<\/a>)[\s\S])*?(?:First Chapter|Primeiro Cap[ií]tulo)/i,
+    ) ??
+    safeMatch(html, /href="(https:\/\/centralnovel\.com\/[^"]*-capitulo-1\/)"/i);
   const firstChapterUrl =
     firstRaw && isSafeHref(firstRaw) ? makeAbsoluteUrl(firstRaw, url) : null;
 
