@@ -611,7 +611,11 @@ export default function AddNovelScreen() {
     coverUrl: string,
     novelId: string,
   ): Promise<string> => {
-    if (!coverUrl) return "";
+    if (!coverUrl) {
+      addLog("Cover: scraper returned no image URL", "warning");
+      return "";
+    }
+    addLog(`Cover URL: ${coverUrl}`, "info");
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
     try {
@@ -638,16 +642,20 @@ export default function AddNovelScreen() {
           },
         },
       );
-      if (downloadResult.status !== 200) {
-        await FileSystem.deleteAsync(coverPath, { idempotent: true });
-        throw new Error(`HTTP ${downloadResult.status}`);
-      }
-      // A 200 can still be an HTML block page or a hotlink placeholder.
       const contentType = String(
         downloadResult.headers?.["Content-Type"] ??
           downloadResult.headers?.["content-type"] ??
           "",
       );
+      addLog(
+        `Cover response: HTTP ${downloadResult.status}, type ${contentType || "none"}`,
+        "info",
+      );
+      if (downloadResult.status !== 200) {
+        await FileSystem.deleteAsync(coverPath, { idempotent: true });
+        throw new Error(`HTTP ${downloadResult.status}`);
+      }
+      // A 200 can still be an HTML block page or a hotlink placeholder.
       if (contentType && !/^image\//i.test(contentType)) {
         await FileSystem.deleteAsync(coverPath, { idempotent: true });
         throw new Error(`not an image (${contentType})`);
@@ -656,7 +664,8 @@ export default function AddNovelScreen() {
       return downloadResult.uri;
     } catch (err) {
       console.warn("Failed to download cover:", err);
-      addLog(`Cover download failed, using remote URL`, "warning");
+      const reason = err instanceof Error ? err.message : String(err);
+      addLog(`Cover download failed (${reason}), using remote URL`, "warning");
       return coverUrl;
     }
   };
