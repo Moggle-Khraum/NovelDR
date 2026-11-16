@@ -70,7 +70,6 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "novelasligeras.net": "NovelasLigera",
       "novelasligera.com": "NovelasLigera",
       "novelbin.com": "NovelBinCom",
-      
     };
     return siteNames[clean] || clean.split(".")[0];
   } catch {
@@ -1378,7 +1377,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeRow: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 0,
+  },
   langIcon: { fontSize: 11 },
   statusText: { fontFamily: "Inter_500Medium", fontSize: 10 },
 

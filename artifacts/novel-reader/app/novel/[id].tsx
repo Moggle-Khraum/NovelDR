@@ -368,11 +368,17 @@ export default function NovelDetailScreen() {
     try {
       parsed = new URL(newSourceInput.trim());
     } catch {
-      Alert.alert("Invalid link", "Paste the full novel page link, starting with https://");
+      Alert.alert(
+        "Invalid link",
+        "Paste the full novel page link, starting with https://",
+      );
       return;
     }
     if (checkDeprecatedSite(parsed.href)) {
-      Alert.alert("Dead site", "That site is also marked as dead. Paste a link from a working site.");
+      Alert.alert(
+        "Dead site",
+        "That site is also marked as dead. Paste a link from a working site.",
+      );
       return;
     }
     setChangingSource(true);
@@ -995,9 +1001,12 @@ export default function NovelDetailScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            <Text style={[styles.csTitle, { color: colors.text }]}>Change source</Text>
+            <Text style={[styles.csTitle, { color: colors.text }]}>
+              Change source
+            </Text>
             <Text style={[styles.csHint, { color: colors.textSecondary }]}>
-              Paste this novel's page link on a working site. Your saved chapters stay.
+              Paste this novel's page link on a working site. Your saved
+              chapters stay.
             </Text>
             <TextInput
               value={newSourceInput}
@@ -1019,7 +1028,9 @@ export default function NovelDetailScreen() {
                 disabled={changingSource}
                 style={styles.csBtn}
               >
-                <Text style={[styles.csBtnText, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.csBtnText, { color: colors.textSecondary }]}
+                >
                   Cancel
                 </Text>
               </Pressable>
@@ -1031,7 +1042,9 @@ export default function NovelDetailScreen() {
                 {changingSource ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={[styles.csBtnText, { color: "#fff" }]}>Save</Text>
+                  <Text style={[styles.csBtnText, { color: "#fff" }]}>
+                    Save
+                  </Text>
                 )}
               </Pressable>
             </View>
@@ -1098,11 +1111,20 @@ export default function NovelDetailScreen() {
               </Pressable>
               {checkDeprecatedSite(novel.sourceUrl) !== null && (
                 <Pressable
-                  style={[styles.changeSourceBtn, { borderColor: colors.accent }]}
+                  style={[
+                    styles.changeSourceBtn,
+                    { borderColor: colors.accent },
+                  ]}
                   onPress={() => setChangeSourceOpen(true)}
                 >
-                  <Ionicons name="swap-horizontal" size={16} color={colors.accent} />
-                  <Text style={[styles.changeSourceText, { color: colors.accent }]}>
+                  <Ionicons
+                    name="swap-horizontal"
+                    size={16}
+                    color={colors.accent}
+                  />
+                  <Text
+                    style={[styles.changeSourceText, { color: colors.accent }]}
+                  >
                     Change Source
                   </Text>
                 </Pressable>
@@ -1699,7 +1721,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-  csCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 18, gap: 10 },
+  csCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 18,
+    gap: 10,
+  },
   csTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
   csHint: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
   csInput: {
@@ -1710,7 +1737,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 14,
   },
-  csButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 4 },
+  csButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 4,
+  },
   csBtn: {
     minWidth: 84,
     alignItems: "center",

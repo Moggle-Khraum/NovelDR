@@ -61,7 +61,9 @@ const SOURCE_FLAG: Record<string, string> = {
 /** Returns the flag emoji for a saved source URL, or null if the site has none. */
 export const getSourceFlag = (sourceUrl: string): string | null => {
   try {
-    const host = new URL(sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
+    const host = new URL(sourceUrl).hostname
+      .toLowerCase()
+      .replace(/^www\./, "");
     return SOURCE_FLAG[host] ?? null;
   } catch {
     return null;
@@ -71,7 +73,9 @@ export const getSourceFlag = (sourceUrl: string): string | null => {
 /** Returns the language for a saved source URL, or null if the site is not listed. */
 export const getSourceLanguage = (sourceUrl: string): SourceLanguage | null => {
   try {
-    const host = new URL(sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
+    const host = new URL(sourceUrl).hostname
+      .toLowerCase()
+      .replace(/^www\./, "");
     return SOURCE_LANGUAGE[host] ?? null;
   } catch {
     return null;

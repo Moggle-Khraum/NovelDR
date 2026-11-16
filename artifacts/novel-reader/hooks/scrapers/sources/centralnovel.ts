@@ -32,7 +32,9 @@ export const parseCentralNovelMeta = (html: string, url: string): NovelMeta => {
     html,
     /<b>(?:<font[^>]*>)*\s*(?:Autor|Author):?\s*(?:<\/font>)*<\/b>\s*<a[^>]*>(?:<font[^>]*>)*\s*([^<]+?)\s*(?:<\/font>)*<\/a>/i,
   );
-  const author = authorRaw ? decodeEntities(authorRaw).trim() : "Unknown Author";
+  const author = authorRaw
+    ? decodeEntities(authorRaw).trim()
+    : "Unknown Author";
 
   // <img src="https://i*.wp.com/centralnovel.com/wp-content/uploads/..." ... itemprop="image">
   const coverUrl =

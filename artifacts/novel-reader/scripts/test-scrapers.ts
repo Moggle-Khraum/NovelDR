@@ -885,10 +885,7 @@ checks.push(
         CN_CHAPTER_PAGE,
         "https://centralnovel.com/sample-novel-capitulo-1/",
       );
-      assert(
-        ch.title === "Sample Novel – Capítulo 1",
-        `title: ${ch.title}`,
-      );
+      assert(ch.title === "Sample Novel – Capítulo 1", `title: ${ch.title}`);
       assert(
         ch.content ===
           "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
@@ -912,7 +909,9 @@ checks.push(
         "www.centralnovel.com should match",
       );
       assert(
-        !centralNovelScraper.canHandle("https://centralnovel.com.evil.example/x"),
+        !centralNovelScraper.canHandle(
+          "https://centralnovel.com.evil.example/x",
+        ),
         "lookalike host should not match",
       );
     },
@@ -1024,10 +1023,7 @@ checks.push(
         NL_CHAPTER_PAGE,
         "https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-1-novela-ligera/",
       );
-      assert(
-        ch.title === "Capítulo 1: Sample (Parte 1)",
-        `title: ${ch.title}`,
-      );
+      assert(ch.title === "Capítulo 1: Sample (Parte 1)", `title: ${ch.title}`);
       assert(
         ch.content ===
           "Placeholder paragraph one.\n\nPlaceholder text.\n\nPlaceholder paragraph two.",

@@ -22,18 +22,38 @@ export const SUPPORTED_SITES: {
   baseUrl: string;
   language: SiteLanguage;
 }[] = [
-  { name: "ReadNovelFullCom", baseUrl: "https://readnovelfull.com/", language: "en" },
+  {
+    name: "ReadNovelFullCom",
+    baseUrl: "https://readnovelfull.com/",
+    language: "en",
+  },
   { name: "NovelFullCom", baseUrl: "https://novelfull.com/", language: "en" },
-  { name: "FreeWebNovelCom", baseUrl: "https://freewebnovel.com/", language: "en" },
+  {
+    name: "FreeWebNovelCom",
+    baseUrl: "https://freewebnovel.com/",
+    language: "en",
+  },
   { name: "NovGoNet", baseUrl: "https://novgo.net/", language: "en" },
   //{ name: "LightNovelWorldOrg", baseUrl: "https://lightnovelworld.org/" },
-  { name: "WuxiaWorldSite", baseUrl: "https://wuxiaworld.site/", language: "en" },
+  {
+    name: "WuxiaWorldSite",
+    baseUrl: "https://wuxiaworld.site/",
+    language: "en",
+  },
   { name: "RoyalRoad", baseUrl: "https://royalroad.com/", language: "en" },
   { name: "AsiaNovel", baseUrl: "https://asianovel.net/", language: "en" },
-  { name: "NovelPhoenix", baseUrl: "https://novelphoenix.com/", language: "en" },
+  {
+    name: "NovelPhoenix",
+    baseUrl: "https://novelphoenix.com/",
+    language: "en",
+  },
   { name: "Novel-Bin", baseUrl: "https://novel-bin.com/", language: "en" },
   { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/", language: "en" },
-  { name: "NovelArchiveCC", baseUrl: "https://novelarchive.cc/", language: "en" },
+  {
+    name: "NovelArchiveCC",
+    baseUrl: "https://novelarchive.cc/",
+    language: "en",
+  },
   { name: "NovelFullNet", baseUrl: "https://novelfull.net/", language: "en" },
   { name: "NovelPing", baseUrl: "https://novelping.com/", language: "en" },
   { name: "FanMTL", baseUrl: "https://fanmtl.com/", language: "mtl" },
@@ -42,8 +62,16 @@ export const SUPPORTED_SITES: {
   { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/", language: "mtl" },
   { name: "LightNovelTo", baseUrl: "https://lightnovel.to/", language: "en" },
   { name: "NovelBuddy", baseUrl: "https://novelbuddy.me/", language: "en" },
-  { name: "CentralNovel", baseUrl: "https://centralnovel.com/", language: "etc" },
-  { name: "NovelasLigera", baseUrl: "https://novelasligeras.net/", language: "etc" },
+  {
+    name: "CentralNovel",
+    baseUrl: "https://centralnovel.com/",
+    language: "etc",
+  },
+  {
+    name: "NovelasLigera",
+    baseUrl: "https://novelasligeras.net/",
+    language: "etc",
+  },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline

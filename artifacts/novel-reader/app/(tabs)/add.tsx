@@ -370,15 +370,23 @@ function SourceListModal({
                         style={[
                           styles.langPill,
                           {
-                            borderColor: selected ? colors.accent : colors.border,
-                            backgroundColor: selected ? colors.accent + "14" : colors.card,
+                            borderColor: selected
+                              ? colors.accent
+                              : colors.border,
+                            backgroundColor: selected
+                              ? colors.accent + "14"
+                              : colors.card,
                           },
                         ]}
                       >
                         <Text
                           style={[
                             styles.langPillText,
-                            { color: selected ? colors.accent : colors.textMuted },
+                            {
+                              color: selected
+                                ? colors.accent
+                                : colors.textMuted,
+                            },
                           ]}
                         >
                           {pill.label}
@@ -389,7 +397,9 @@ function SourceListModal({
                 </View>
                 <View style={styles.sitesList}>
                   {filteredSites.length === 0 ? (
-                    <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
+                    <Text
+                      style={[styles.langEmpty, { color: colors.textMuted }]}
+                    >
                       No sites in this group yet.
                     </Text>
                   ) : (
@@ -1479,7 +1489,8 @@ export default function AddNovelScreen() {
           </View>
 
           <Text style={[styles.legendSubtitle, { color: colors.textMuted }]}>
-            Tap a group to see its sites. *Downed source more than a month will be removed
+            Tap a group to see its sites. *Downed source more than a month will
+            be removed
           </Text>
         </View>
 
