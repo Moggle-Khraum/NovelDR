@@ -1745,7 +1745,7 @@ const styles = StyleSheet.create({
   siteCell: {
     width: "31%",
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
@@ -1755,6 +1755,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     textAlign: "center",
+    width: "100%",
   },
   form: {
     gap: 14,
