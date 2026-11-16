@@ -1089,8 +1089,8 @@ checks.push(
       assert(needsWebView(url), "should use the WebView tier");
       assert(needsUserChallenge(url), "should allow the checkbox prompt");
       assert(
-        !needsUserChallenge("https://centralnovel.com/series/x/"),
-        "centralnovel.com should stay hidden-only",
+        !needsUserChallenge("https://royalroad.com/fiction/1/x"),
+        "sites without a checkbox should stay hidden-only",
       );
     },
   },

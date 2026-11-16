@@ -35,6 +35,7 @@ const WEBVIEW_HOSTS: readonly string[] = [
 // is kept by the WebView, so later fetches usually pass without asking.
 // Every host here must also be in WEBVIEW_HOSTS above.
 const INTERACTIVE_CHALLENGE_HOSTS: readonly string[] = [
+  "centralnovel.com",
   "novelasligera.com",
   "novelasligeras.net",
 ];

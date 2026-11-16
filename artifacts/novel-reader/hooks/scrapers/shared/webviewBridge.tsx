@@ -21,6 +21,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -197,6 +198,13 @@ export function WebViewFetchBridge() {
   const [current, setCurrent] = useState<PendingJob | null>(null);
   // True while the WebView is on screen for the person to tap a checkbox.
   const [needsUser, setNeedsUser] = useState(false);
+  // True once this job has asked the person for a tap, so a challenge that
+  // keeps coming back cannot keep extending the timeout forever.
+  const promptedRef = useRef(false);
+  // The page reads the window size while Cloudflare decides whether it is
+  // talking to a bot, and a 1x1 window is a strong "headless" signal. So the
+  // hidden WebView gets the real window size and is only moved off-screen.
+  const win = useWindowDimensions();
   const currentRef = useRef<PendingJob | null>(null);
   const settledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -221,6 +229,7 @@ export function WebViewFetchBridge() {
     const job = queue.shift();
     if (!job) return;
     settledRef.current = false;
+    promptedRef.current = false;
     currentRef.current = job;
     setNeedsUser(false);
     setCurrent(job);
@@ -247,6 +256,10 @@ export function WebViewFetchBridge() {
       if (event.nativeEvent.data === CHALLENGE_SIGNAL) {
         // Checkbox challenge: show the WebView and give the person time.
         if (!job.interactive || settledRef.current) return;
+        // A challenge that reappears after the person solved it is Cloudflare
+        // refusing this WebView, not a reason to wait longer.
+        if (promptedRef.current) return;
+        promptedRef.current = true;
         setNeedsUser(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
@@ -303,10 +316,22 @@ export function WebViewFetchBridge() {
 
   if (!current) return null;
 
+  const hiddenStyle = {
+    position: "absolute" as const,
+    width: win.width,
+    height: win.height,
+    opacity: 0,
+    top: -(win.height + 200),
+    left: 0,
+  };
+
   // One element tree for both states: the WebView must stay mounted (not be
   // recreated) when it moves on screen, or the challenge would restart.
   return (
-    <View style={needsUser ? styles.overlay : styles.hidden}>
+    <View
+      style={needsUser ? styles.overlay : hiddenStyle}
+      pointerEvents={needsUser ? "auto" : "none"}
+    >
       {needsUser && (
         <View style={styles.header}>
           <Text style={styles.headerText}>
@@ -320,10 +345,10 @@ export function WebViewFetchBridge() {
       <WebView
         ref={webViewRef}
         source={{ uri: current.url }}
-        style={needsUser ? styles.visible : styles.hidden}
+        style={styles.visible}
         // react-native-webview wraps the WebView in a flex:1 View; without this
         // the wrapper takes half the screen next to the app while a job runs.
-        containerStyle={needsUser ? styles.visible : styles.hidden}
+        containerStyle={styles.visible}
         onLoadEnd={onLoadEnd}
         onMessage={handleMessage}
         onError={handleError}
@@ -342,7 +367,10 @@ export function WebViewFetchBridge() {
             return false;
           }
         }}
-        userAgent={DESKTOP_USER_AGENT}
+        // Sites that show a checkbox get the WebView's own user agent: a
+        // Windows/Chrome user agent on an Android engine is exactly the
+        // mismatch Cloudflare re-challenges on, so the check never completes.
+        userAgent={current.interactive ? undefined : DESKTOP_USER_AGENT}
         injectedJavaScriptBeforeContentLoaded={buildPollJs(current.interactive)}
         sharedCookiesEnabled
       />
@@ -375,14 +403,4 @@ const styles = StyleSheet.create({
   headerText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   cancelText: { color: "#ff7a3d", fontSize: 15, fontWeight: "600" },
   visible: { flex: 1, width: "100%" },
-  // Off-screen + zero-size rather than display:none — some WebView
-  // implementations pause/never fire load events for display:none content.
-  hidden: {
-    position: "absolute",
-    width: 1,
-    height: 1,
-    opacity: 0,
-    top: -1000,
-    left: -1000,
-  },
 });

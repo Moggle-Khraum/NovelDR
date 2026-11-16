@@ -104,6 +104,19 @@ function LogLine({ entry }: { entry: LogEntry }) {
   );
 }
 
+// --- Status highlight colors ---
+// Each status gets its own outline color instead of an emoji dot. Maintenance
+// and 504 used to share amber and differ only by emoji, so maintenance is
+// yellow and 504 orange. "checking" and "idle" have no highlight.
+const STATUS_YELLOW = "#FFD60A";
+const statusColor = (status: SiteStatus): string | null => {
+  if (status === "online") return Colors.success;
+  if (status === "offline") return Colors.error;
+  if (status === "maintenance") return STATUS_YELLOW;
+  if (status === "gateway_timeout") return Colors.amber;
+  return null;
+};
+
 // --- Modal Cell ---
 function SourceListModalCell({
   name,
@@ -115,40 +128,37 @@ function SourceListModalCell({
   flag?: string | null;
 }) {
   const { colors } = useTheme();
-  const isOffline =
+  const isDown =
     status === "offline" ||
     status === "maintenance" ||
     status === "gateway_timeout";
-
-  const getStatusIndicator = () => {
-    if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
-    if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
-    if (status === "gateway_timeout")
-      return { color: Colors.amber, symbol: "🟠" };
-    if (status === "offline") return { color: Colors.error, symbol: "🔴" };
-    return { color: colors.textMuted, symbol: "?" };
-  };
-
-  const statusInfo = getStatusIndicator();
+  const tint = statusColor(status);
 
   return (
+    // Outer ring = soft halo; inner pill = the solid outline. Both keep their
+    // size when there is no status so the grid doesn't shift while checking.
     <View
       style={[
-        styles.siteCell,
-        {
-          backgroundColor: colors.surface,
-          borderColor: isOffline ? Colors.error : colors.border,
-          opacity: isOffline ? 0.6 : 1,
-        },
+        styles.siteCellRing,
+        { borderColor: tint ? tint + "40" : "transparent" },
       ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Text style={{ color: statusInfo.color, fontSize: 12 }}>
-          {statusInfo.symbol}
-        </Text>
+      <View
+        style={[
+          styles.siteCell,
+          {
+            backgroundColor: tint ? tint + "1A" : colors.surface,
+            borderColor: tint ?? colors.border,
+            borderWidth: tint ? 1.5 : StyleSheet.hairlineWidth,
+          },
+        ]}
+      >
         <Text
-          style={[styles.siteName, { color: colors.text }]}
+          style={[
+            styles.siteName,
+            // Dim the name of a site that is down; the outline stays vivid.
+            { color: colors.text, opacity: isDown ? 0.6 : 1 },
+          ]}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.7}
@@ -431,22 +441,22 @@ export default function AddNovelScreen() {
   const { statuses: siteStatuses, isChecking: isCheckingSites } =
     useSiteHealth();
 
-  // Up/total per language group, e.g. EN 13/13. Dot: gray when the group is
-  // empty, green when all are up, red when none are, orange when some are.
+  // Up/total per language group, e.g. EN 13/13. Outline: none when the group
+  // is empty, green when all are up, red when none are, orange when some are.
   const langSummary = (["en", "mtl", "etc"] as SiteLanguage[]).map((key) => {
     const group = SUPPORTED_SITES.filter((site) => site.language === key);
     const up = group.filter(
       (site) => (siteStatuses[site.name] || "idle") === "online",
     ).length;
-    const dot =
+    const color =
       group.length === 0
-        ? "\u26AB"
+        ? null
         : up === group.length
-          ? "\u{1F7E2}"
+          ? Colors.success
           : up === 0
-            ? "\u{1F534}"
-            : "\u{1F7E0}";
-    return { key, up, total: group.length, dot };
+            ? Colors.error
+            : Colors.amber;
+    return { key, up, total: group.length, color };
   });
   const LANG_LABEL: Record<SiteLanguage, string> = {
     en: "EN",
@@ -1364,7 +1374,7 @@ export default function AddNovelScreen() {
           {/* Legend */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
-              <Text style={{ color: Colors.success }}>🟢</Text>
+              <Text>🟢</Text>
               <Text
                 style={[styles.legendText, { color: colors.textSecondary }]}
               >
@@ -1375,7 +1385,7 @@ export default function AddNovelScreen() {
               <Text style={{ color: colors.textSecondary }}>|</Text>
             </View>
             <View style={styles.legendItem}>
-              <Text style={{ color: Colors.error }}>🔴</Text>
+              <Text>🔴</Text>
               <Text
                 style={[styles.legendText, { color: colors.textSecondary }]}
               >
@@ -1386,7 +1396,7 @@ export default function AddNovelScreen() {
               <Text style={{ color: colors.textSecondary }}>|</Text>
             </View>
             <View style={styles.legendItem}>
-              <Text style={{ color: Colors.amber }}>⛔</Text>
+              <Text>🟡</Text>
               <Text
                 style={[styles.legendText, { color: colors.textSecondary }]}
               >
@@ -1397,7 +1407,7 @@ export default function AddNovelScreen() {
               <Text style={{ color: colors.textSecondary }}>|</Text>
             </View>
             <View style={styles.legendItem}>
-              <Text style={{ color: Colors.amber }}>🟠</Text>
+              <Text>🟠</Text>
               <Text
                 style={[styles.legendText, { color: colors.textSecondary }]}
               >
@@ -1416,8 +1426,11 @@ export default function AddNovelScreen() {
                 style={({ pressed }) => [
                   styles.langSummaryPill,
                   {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
+                    backgroundColor: item.color
+                      ? item.color + "1A"
+                      : colors.card,
+                    borderColor: item.color ?? colors.border,
+                    borderWidth: item.color ? 1.5 : 1,
                     opacity: pressed ? 0.7 : 1,
                   },
                 ]}
@@ -1426,7 +1439,7 @@ export default function AddNovelScreen() {
                   numberOfLines={1}
                   style={[styles.langSummaryText, { color: colors.text }]}
                 >
-                  {item.dot} {LANG_LABEL[item.key]}: {item.up}/{item.total}
+                  {LANG_LABEL[item.key]}: {item.up}/{item.total}
                 </Text>
                 <Ionicons
                   name="chevron-forward"
@@ -1736,8 +1749,14 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 10,
   },
-  siteCell: {
+  // Halo around a site pill; transparent when the site has no status yet.
+  siteCellRing: {
     width: "31%",
+    padding: 2,
+    borderRadius: 13,
+    borderWidth: 1,
+  },
+  siteCell: {
     paddingVertical: 8,
     paddingHorizontal: 8,
     alignItems: "center",
