@@ -26,7 +26,9 @@ export const parseMeioNovelsMeta = (html: string, url: string): NovelMeta => {
     html,
     /<div class="author-content">\s*<a[^>]*>([^<]+)<\/a>/i,
   );
-  const author = authorRaw ? decodeEntities(authorRaw).trim() : "Unknown Author";
+  const author = authorRaw
+    ? decodeEntities(authorRaw).trim()
+    : "Unknown Author";
 
   // <meta property="og:image" content="...">
   const coverUrl =

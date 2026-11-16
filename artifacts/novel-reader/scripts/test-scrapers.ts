@@ -1161,7 +1161,8 @@ checks.push(
       assert(meta.title === "Sample Novel", `title: ${meta.title}`);
       assert(meta.author === "Sample Author", `author: ${meta.author}`);
       assert(
-        meta.coverUrl === "https://meionovels.com/wp-content/uploads/sample.jpg",
+        meta.coverUrl ===
+          "https://meionovels.com/wp-content/uploads/sample.jpg",
         `cover: ${meta.coverUrl}`,
       );
       assert(
@@ -1169,7 +1170,8 @@ checks.push(
         `synopsis: ${meta.synopsis}`,
       );
       assert(
-        meta.firstChapterUrl === "https://meionovels.com/novel/sample/mtl/chapter-1/",
+        meta.firstChapterUrl ===
+          "https://meionovels.com/novel/sample/mtl/chapter-1/",
         `firstChapterUrl: ${meta.firstChapterUrl}`,
       );
     },
@@ -1186,7 +1188,8 @@ checks.push(
         `title: ${ch.title}`,
       );
       assert(
-        ch.content === "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
+        ch.content ===
+          "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
         `content: ${JSON.stringify(ch.content)}`,
       );
       assert(
@@ -1207,7 +1210,10 @@ checks.push(
         "lookalike host should not match",
       );
       const found = findExternalScraper("https://meionovels.com/novel/btth/");
-      assert(found?.id === "meionovels", `registry returned: ${found?.id ?? "null"}`);
+      assert(
+        found?.id === "meionovels",
+        `registry returned: ${found?.id ?? "null"}`,
+      );
       assert(
         needsWebView("https://meionovels.com/novel/btth/"),
         "meionovels.com should use the WebView tier",
