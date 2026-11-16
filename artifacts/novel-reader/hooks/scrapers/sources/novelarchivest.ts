@@ -6,6 +6,7 @@
 import type { SourceScraper, NovelMeta, ChapterData } from "../types";
 import { fetchJsonWithFallback, fetchHtmlWithFallback } from "../shared/http";
 import { decodeEntities, stripTags } from "../shared/html";
+import sanitizeHtml from "sanitize-html";
 
 const BASE_HOST = "novelarchive.st";
 const BASE_URL = "https://novelarchive.st";
@@ -66,9 +67,14 @@ const synopsisHtmlToText = (html: string): string => {
   if (!html) return "";
   const withBreaks = html
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n\n")
-    .replace(/<[^>]*>/g, "");
-  return withBreaks
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n\n");
+
+  const sanitized = sanitizeHtml(withBreaks, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
+  return sanitized
     .split(/\r?\n/)
     .map((line) =>
       decodeEntities(line)
