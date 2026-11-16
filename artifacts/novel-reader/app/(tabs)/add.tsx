@@ -674,7 +674,10 @@ export default function AddNovelScreen() {
       console.warn("Failed to download cover:", err);
       const reason = err instanceof Error ? err.message : String(err);
       if (hasProtectedCover(coverUrl)) {
-        addLog(`Cover download blocked (${reason}), using placeholder`, "warning");
+        addLog(
+          `Cover download blocked (${reason}), using placeholder`,
+          "warning",
+        );
         return "";
       }
       addLog(`Cover download failed (${reason}), using remote URL`, "warning");
