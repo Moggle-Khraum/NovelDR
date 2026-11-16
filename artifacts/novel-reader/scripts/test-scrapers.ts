@@ -50,6 +50,11 @@ import {
   parseNovelBuddyChapter,
   novelBuddyScraper,
 } from "../hooks/scrapers/sources/novelbuddy";
+import {
+  parseCentralNovelMeta,
+  parseCentralNovelChapter,
+  centralNovelScraper,
+} from "../hooks/scrapers/sources/centralnovel";
 import { findExternalScraper } from "../hooks/scrapers/registry";
 import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
@@ -802,6 +807,119 @@ checks.push(
       assert(
         needsWebView("https://novelbuddy.me/sample-novel"),
         "novelbuddy.me should use the WebView tier",
+      );
+    },
+  },
+);
+
+// ── CentralNovel (centralnovel.com) ──────────────────────────────────────
+// Hand-written placeholder fixtures that copy only the page structure.
+const CN_SERIES_PAGE = `
+  <html><body>
+    <img src="https://i3.wp.com/centralnovel.com/wp-content/uploads/sample.png?resize=370,500" class="ts-post-image" itemprop="image">
+    <h1 class="entry-title" itemprop="name"><font>Sample Novel</font></h1>
+    <span><b>Autor:</b> <a href="https://centralnovel.com/writer/sample-author/" rel="tag">Sample Author</a></span>
+    <div class="bixbox synp">
+      <div class="entry-content" itemprop="description">
+        <p>A placeholder synopsis line.</p>
+      </div>
+    </div>
+    <div class="lastend"><div class="inepcx">
+      <a href="https://centralnovel.com/sample-novel-capitulo-1/">
+        <span>First Chapter</span>
+      </a>
+    </div></div>
+  </body></html>
+`;
+
+const CN_CHAPTER_PAGE = `
+  <html><body>
+    <h1 class="entry-title" itemprop="headline">Sample
+Novel – Capítulo 1</h1>
+    <div class="epcontent entry-content" itemprop="text">
+      <div id="leitor-serie-body"><p>Placeholder paragraph one.</p><p>Placeholder paragraph two.</p></div>
+    </div>
+    <div class="announ"><a href="https://centralnovel.com/doacao/">donate</a></div>
+    <a aria-label="next" href="https://centralnovel.com/sample-novel-capitulo-2/" rel="next">Próximo</a>
+  </body></html>
+`;
+
+checks.push(
+  {
+    name: "centralnovel: series page yields title, author, cover, synopsis, first chapter",
+    run: () => {
+      const meta = parseCentralNovelMeta(
+        CN_SERIES_PAGE,
+        "https://centralnovel.com/series/sample-novel/",
+      );
+      assert(meta.title === "Sample Novel", `title: ${meta.title}`);
+      assert(meta.author === "Sample Author", `author: ${meta.author}`);
+      assert(
+        meta.coverUrl ===
+          "https://i3.wp.com/centralnovel.com/wp-content/uploads/sample.png?resize=370,500",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis === "A placeholder synopsis line.",
+        `synopsis: ${meta.synopsis}`,
+      );
+      assert(
+        meta.firstChapterUrl ===
+          "https://centralnovel.com/sample-novel-capitulo-1/",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "centralnovel: chapter page yields title, paragraphs and next chapter",
+    run: () => {
+      const ch = parseCentralNovelChapter(
+        CN_CHAPTER_PAGE,
+        "https://centralnovel.com/sample-novel-capitulo-1/",
+      );
+      assert(
+        ch.title === "Sample Novel – Capítulo 1",
+        `title: ${ch.title}`,
+      );
+      assert(
+        ch.content ===
+          "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+      assert(
+        ch.nextUrl === "https://centralnovel.com/sample-novel-capitulo-2/",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "centralnovel: canHandle accepts centralnovel.com and subdomains only",
+    run: () => {
+      assert(
+        centralNovelScraper.canHandle("https://centralnovel.com/series/x/"),
+        "centralnovel.com should match",
+      );
+      assert(
+        centralNovelScraper.canHandle("https://www.centralnovel.com/x/"),
+        "www.centralnovel.com should match",
+      );
+      assert(
+        !centralNovelScraper.canHandle("https://centralnovel.com.evil.example/x"),
+        "lookalike host should not match",
+      );
+    },
+  },
+  {
+    name: "centralnovel: registry finds the scraper and WebView tier is enabled",
+    run: () => {
+      const found = findExternalScraper("https://centralnovel.com/series/x/");
+      assert(
+        found?.id === "centralnovel",
+        `registry returned: ${found?.id ?? "null"}`,
+      );
+      assert(
+        needsWebView("https://centralnovel.com/series/x/"),
+        "centralnovel.com should use the WebView tier",
       );
     },
   },
