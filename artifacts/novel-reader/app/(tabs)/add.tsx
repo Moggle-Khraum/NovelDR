@@ -154,9 +154,7 @@ function SourceListModalCell({
           // Dim the name of a site that is down; the outline stays vivid.
           { color: colors.text, opacity: isDown ? 0.6 : 1 },
         ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.7}
+        numberOfLines={2}
       >
         {flag ? `${name} ${flag}` : name}
       </Text>
