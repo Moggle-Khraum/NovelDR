@@ -46,12 +46,16 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
 
   // Other languages (neither English nor MTL)
   "centralnovel.com": "etc", // Portuguese
+  "novelasligeras.net": "etc", // Spanish (NovelasLigera / NOVA)
+  "novelasligera.com": "etc", // Spanish (older domain)
 };
 
 // Optional flag shown beside the pill for "etc" (other-language) sites.
 // Add one line per site, e.g. "newsite.es": "🇪🇸".
 const SOURCE_FLAG: Record<string, string> = {
   "centralnovel.com": "🇧🇷", // Portuguese (Brazil)
+  "novelasligeras.net": "🇪🇸", // Spanish
+  "novelasligera.com": "🇪🇸", // Spanish (older domain)
 };
 
 /** Returns the flag emoji for a saved source URL, or null if the site has none. */

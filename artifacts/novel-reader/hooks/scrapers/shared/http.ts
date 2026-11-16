@@ -3,7 +3,7 @@
 // import the axios instance/headers from useDirectScraper.ts.
 
 import axios from "axios";
-import { needsWebView } from "./webviewSites";
+import { needsWebView, needsUserChallenge } from "./webviewSites";
 
 const DEFAULT_HEADERS = {
   "User-Agent":
@@ -95,7 +95,7 @@ const runTiers = async <T>(tiers: Tier<T>[]): Promise<T> => {
 // the scrapers doesn't pull react-native-webview in at module load.
 const loadViaWebView = async (url: string, timeoutMs: number) => {
   const { fetchViaWebView } = await import("./webviewBridge");
-  return fetchViaWebView(url, timeoutMs);
+  return fetchViaWebView(url, timeoutMs, needsUserChallenge(url));
 };
 
 const WEBVIEW_TIMEOUT_MS = 30000;

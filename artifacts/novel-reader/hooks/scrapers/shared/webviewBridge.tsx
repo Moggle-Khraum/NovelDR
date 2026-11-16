@@ -15,7 +15,14 @@
 // every fetch.
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   WebView as RNWebView,
   WebViewMessageEvent,
@@ -38,6 +45,8 @@ const WebView = RNWebView as unknown as React.ComponentType<
 type PendingJob = {
   url: string;
   timeoutMs: number;
+  /** Site may show a checkbox challenge; allow the person to solve it. */
+  interactive: boolean;
   resolve: (html: string) => void;
   reject: (err: Error) => void;
 };
@@ -58,13 +67,14 @@ let processNext: (() => void) | null = null;
 export const fetchViaWebView = (
   url: string,
   timeoutMs = 30000,
+  interactive = false,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!processNext) {
       reject(new Error("webview: WebViewFetchBridge is not mounted"));
       return;
     }
-    queue.push({ url, timeoutMs, resolve, reject });
+    queue.push({ url, timeoutMs, interactive, resolve, reject });
     processNext();
   });
 };
@@ -78,6 +88,15 @@ const SETTLE_POLLS = 2;
 // Last-resort send of whatever is there. Kept under the job's hard timeout
 // (30s by default) so the page content wins the race instead of an error.
 const POLL_DEADLINE_MS = 25000;
+// Sites with a checkbox challenge: once the challenge has been on screen this
+// long without clearing by itself, ask the person to tap it.
+const CHALLENGE_SHOW_AFTER_MS = 4000;
+// Total time allowed for the person to solve it. The poll's own last-resort
+// send and the job's hard timeout both stretch to cover this.
+const INTERACTIVE_DEADLINE_MS = 85000;
+const INTERACTIVE_TIMEOUT_MS = 90000;
+// Message the page sends (instead of HTML) to say "show me to the person".
+const CHALLENGE_SIGNAL = "__noveldr_challenge__";
 // Pages with fewer characters than this are error stubs, not real content.
 const MIN_REAL_PAGE_CHARS = 1500;
 
@@ -89,7 +108,7 @@ const MIN_REAL_PAGE_CHARS = 1500;
 // A Cloudflare challenge page is never sent early. The guard flag keeps the
 // two injections (before load and onLoadEnd) from running two pollers, which
 // could post the same page twice and hand it to the next queued job.
-const CHALLENGE_POLL_JS = `
+const buildPollJs = (interactive: boolean): string => `
 (function () {
   if (window.__noveldrPoll) return;
   window.__noveldrPoll = true;
@@ -97,6 +116,9 @@ const CHALLENGE_POLL_JS = `
   var startedAt = Date.now();
   var lastSize = -1;
   var stableCount = 0;
+  var interactive = ${interactive};
+  var deadline = interactive ? ${INTERACTIVE_DEADLINE_MS} : ${POLL_DEADLINE_MS};
+  var signalled = false;
 
   function isFinalMarker() {
     // A JSON API response (no challenge in front of it) is already final
@@ -145,9 +167,16 @@ const CHALLENGE_POLL_JS = `
     } else {
       stableCount = 0;
       lastSize = -1;
+      // Still on the challenge page after a few seconds: it is probably the
+      // checkbox variant, which needs a real tap. Ask the app to show us.
+      if (interactive && !signalled && isStillChallenge() &&
+          Date.now() - startedAt >= ${CHALLENGE_SHOW_AFTER_MS}) {
+        signalled = true;
+        window.ReactNativeWebView.postMessage('${CHALLENGE_SIGNAL}');
+      }
     }
 
-    if (Date.now() - startedAt >= ${POLL_DEADLINE_MS}) { send(); return; }
+    if (Date.now() - startedAt >= deadline) { send(); return; }
     setTimeout(poll, ${POLL_INTERVAL_MS});
   }
 
@@ -166,6 +195,8 @@ const DESKTOP_USER_AGENT =
  */
 export function WebViewFetchBridge() {
   const [current, setCurrent] = useState<PendingJob | null>(null);
+  // True while the WebView is on screen for the person to tap a checkbox.
+  const [needsUser, setNeedsUser] = useState(false);
   const currentRef = useRef<PendingJob | null>(null);
   const settledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,6 +210,7 @@ export function WebViewFetchBridge() {
       if ("html" in result) job.resolve(result.html);
       else job.reject(result.error);
       currentRef.current = null;
+      setNeedsUser(false);
       setCurrent(null);
     },
     [],
@@ -190,6 +222,7 @@ export function WebViewFetchBridge() {
     if (!job) return;
     settledRef.current = false;
     currentRef.current = job;
+    setNeedsUser(false);
     setCurrent(job);
     timeoutRef.current = setTimeout(() => {
       finish(job, {
@@ -211,11 +244,33 @@ export function WebViewFetchBridge() {
     (event: WebViewMessageEvent) => {
       const job = currentRef.current;
       if (!job) return;
+      if (event.nativeEvent.data === CHALLENGE_SIGNAL) {
+        // Checkbox challenge: show the WebView and give the person time.
+        if (!job.interactive || settledRef.current) return;
+        setNeedsUser(true);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+          finish(job, {
+            error: new Error(
+              `webview: timed out waiting for verification on ${job.url}`,
+            ),
+          });
+          startNext();
+        }, INTERACTIVE_TIMEOUT_MS);
+        return;
+      }
       finish(job, { html: event.nativeEvent.data });
       startNext();
     },
     [finish, startNext],
   );
+
+  const cancelVerification = useCallback(() => {
+    const job = currentRef.current;
+    if (!job) return;
+    finish(job, { error: new Error("webview: verification cancelled") });
+    startNext();
+  }, [finish, startNext]);
 
   const handleError = useCallback(() => {
     const job = currentRef.current;
@@ -224,46 +279,102 @@ export function WebViewFetchBridge() {
     startNext();
   }, [finish, startNext]);
 
+  // Cloudflare serves its "Just a moment..." challenge page with an HTTP 403
+  // (or 503) status. onHttpError fires for that response, so treating every
+  // HTTP error as fatal kills the job before the JS challenge can run and
+  // clear. Let those statuses through: the poll script already waits out
+  // the challenge, and assertUsableHtml rejects it if it never clears. Any
+  // other HTTP error (404, 410, 5xx...) is still a real failure.
+  const handleHttpError = useCallback(
+    (event: { nativeEvent: { statusCode?: number } }) => {
+      const status = event.nativeEvent?.statusCode;
+      if (status === 403 || status === 503) return;
+      handleError();
+    },
+    [handleError],
+  );
+
   // Re‑inject the polling script after every successful navigation
   const onLoadEnd = useCallback(() => {
-    webViewRef.current?.injectJavaScript(CHALLENGE_POLL_JS);
+    webViewRef.current?.injectJavaScript(
+      buildPollJs(currentRef.current?.interactive ?? false),
+    );
   }, []);
 
   if (!current) return null;
 
+  // One element tree for both states: the WebView must stay mounted (not be
+  // recreated) when it moves on screen, or the challenge would restart.
   return (
-    <WebView
-      ref={webViewRef}
-      source={{ uri: current.url }}
-      style={styles.hidden}
-      // react-native-webview wraps the WebView in a flex:1 View; without this
-      // the wrapper takes half the screen next to the app while a job runs.
-      containerStyle={styles.hidden}
-      onLoadEnd={onLoadEnd}
-      onMessage={handleMessage}
-      onError={handleError}
-      onHttpError={handleError}
-      javaScriptEnabled
-      domStorageEnabled
-      thirdPartyCookiesEnabled={true}
-      cacheEnabled={false}
-      // Only web URLs are needed for scraper pages; block file/data/javascript schemes.
-      originWhitelist={["https://*", "http://*"]}
-      onShouldStartLoadWithRequest={(request) => {
-        try {
-          const protocol = new URL(request.url).protocol;
-          return protocol === "https:" || protocol === "http:";
-        } catch {
-          return false;
-        }
-      }}
-      userAgent={DESKTOP_USER_AGENT}
-      injectedJavaScriptBeforeContentLoaded={CHALLENGE_POLL_JS}
-    />
+    <View style={needsUser ? styles.overlay : styles.hidden}>
+      {needsUser && (
+        <View style={styles.header}>
+          <Text style={styles.headerText}>
+            Verify you are human to continue
+          </Text>
+          <Pressable onPress={cancelVerification} hitSlop={12}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </Pressable>
+        </View>
+      )}
+      <WebView
+        ref={webViewRef}
+        source={{ uri: current.url }}
+        style={needsUser ? styles.visible : styles.hidden}
+        // react-native-webview wraps the WebView in a flex:1 View; without this
+        // the wrapper takes half the screen next to the app while a job runs.
+        containerStyle={needsUser ? styles.visible : styles.hidden}
+        onLoadEnd={onLoadEnd}
+        onMessage={handleMessage}
+        onError={handleError}
+        onHttpError={handleHttpError}
+        javaScriptEnabled
+        domStorageEnabled
+        thirdPartyCookiesEnabled={true}
+        cacheEnabled={false}
+        // Only web URLs are needed for scraper pages; block file/data/javascript schemes.
+        originWhitelist={["https://*", "http://*"]}
+        onShouldStartLoadWithRequest={(request) => {
+          try {
+            const protocol = new URL(request.url).protocol;
+            return protocol === "https:" || protocol === "http:";
+          } catch {
+            return false;
+          }
+        }}
+        userAgent={DESKTOP_USER_AGENT}
+        injectedJavaScriptBeforeContentLoaded={buildPollJs(current.interactive)}
+        sharedCookiesEnabled
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Shown only while the person has to tap a Cloudflare checkbox.
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: "#111",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop:
+      (Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 48) + 8,
+    backgroundColor: "#111",
+  },
+  headerText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  cancelText: { color: "#ff7a3d", fontSize: 15, fontWeight: "600" },
+  visible: { flex: 1, width: "100%" },
   // Off-screen + zero-size rather than display:none — some WebView
   // implementations pause/never fire load events for display:none content.
   hidden: {
