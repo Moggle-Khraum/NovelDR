@@ -1005,7 +1005,7 @@ export default function NovelDetailScreen() {
               Change source
             </Text>
             <Text style={[styles.csHint, { color: colors.textSecondary }]}>
-              Paste this novel's page link on a working site. Your saved
+              Paste this novel&apos;s page link on a working site. Your saved
               chapters stay.
             </Text>
             <TextInput
