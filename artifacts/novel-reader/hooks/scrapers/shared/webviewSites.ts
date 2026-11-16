@@ -67,3 +67,23 @@ export const needsWebView = (url: string): boolean => {
     return false;
   }
 };
+
+// Sites whose cover images sit behind a Cloudflare challenge. If the app
+// can't download their cover, it shows the placeholder instead of a blank
+// remote image.
+const PROTECTED_COVER_HOSTS: readonly string[] = [
+  "meionovels.com",
+  "novelasligeras.net",
+  "novelasligera.com",
+];
+
+export const hasProtectedCover = (url: string): boolean => {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return PROTECTED_COVER_HOSTS.some(
+      (h) => host === h || host.endsWith(`.${h}`),
+    );
+  } catch {
+    return false;
+  }
+};

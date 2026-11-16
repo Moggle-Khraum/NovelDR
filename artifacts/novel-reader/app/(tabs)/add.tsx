@@ -34,6 +34,7 @@ import {
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
 import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
+import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -672,6 +673,10 @@ export default function AddNovelScreen() {
     } catch (err) {
       console.warn("Failed to download cover:", err);
       const reason = err instanceof Error ? err.message : String(err);
+      if (hasProtectedCover(coverUrl)) {
+        addLog(`Cover download blocked (${reason}), using placeholder`, "warning");
+        return "";
+      }
       addLog(`Cover download failed (${reason}), using remote URL`, "warning");
       return coverUrl;
     }
