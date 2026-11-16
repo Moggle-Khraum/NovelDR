@@ -32,6 +32,7 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
+import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -158,9 +159,11 @@ function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
 function SourceListModalCell({
   name,
   status,
+  flag,
 }: {
   name: string;
   status: SiteStatus;
+  flag?: string | null;
 }) {
   const { colors } = useTheme();
   const isOffline =
@@ -201,7 +204,7 @@ function SourceListModalCell({
           adjustsFontSizeToFit
           minimumFontScale={0.7}
         >
-          {name}
+          {flag ? `${name} ${flag}` : name}
         </Text>
       </View>
     </View>
@@ -235,7 +238,7 @@ function SourceListModal({
   const LANG_PILLS: { key: SiteLanguage; label: string }[] = [
     { key: "en", label: "\u{1F1FA}\u{1F1F8} EN" },
     { key: "mtl", label: "\u{1F916} MTL" },
-    { key: "etc", label: "\u{1F517} ETC" },
+    { key: "etc", label: "\u{1F310} ETC" },
   ];
   const filteredSites = sites.filter((site) => site.language === langFilter);
 
@@ -395,6 +398,7 @@ function SourceListModal({
                         key={site.name}
                         name={site.name}
                         status={siteStatuses[site.name] || "idle"}
+                        flag={getSourceFlag(site.baseUrl)}
                       />
                     ))
                   )}

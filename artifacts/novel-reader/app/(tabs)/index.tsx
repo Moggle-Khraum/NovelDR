@@ -67,6 +67,8 @@ const getSourceDisplayName = (sourceUrl: string): string => {
       "lightnovel.to": "LightNovelTo",
       "novelbuddy.me": "NovelBuddyMe",
       "centralnovel.com": "CentralNovel",
+      "novelasligeras.net": "NovelasLigera",
+      "novelasligera.com": "NovelasLigera",
       "novelbin.com": "NovelBinCom",
       
     };
