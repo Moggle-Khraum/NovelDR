@@ -53,7 +53,10 @@ export const parseCentralNovelMeta = (html: string, url: string): NovelMeta => {
       html,
       /<a href="([^"]+)">(?:(?!<\/a>)[\s\S])*?(?:First Chapter|Primeiro Cap[ií]tulo)/i,
     ) ??
-    safeMatch(html, /href="(https:\/\/centralnovel\.com\/[^"]*-capitulo-1\/)"/i);
+    safeMatch(
+      html,
+      /href="(https:\/\/centralnovel\.com\/[^"]*-capitulo-1\/)"/i,
+    );
   const firstChapterUrl =
     firstRaw && isSafeHref(firstRaw) ? makeAbsoluteUrl(firstRaw, url) : null;
 
