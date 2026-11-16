@@ -118,6 +118,9 @@ const statusColor = (status: SiteStatus): string | null => {
 };
 
 // --- Modal Cell ---
+// Styled like the language pills above: one element, a 2px outline, a rounded
+// pill shape and a light tinted fill. Idle/checking cells use the neutral
+// border so the grid keeps its size.
 function SourceListModalCell({
   name,
   status,
@@ -135,37 +138,27 @@ function SourceListModalCell({
   const tint = statusColor(status);
 
   return (
-    // Outer ring = soft halo; inner pill = the solid outline. Both keep their
-    // size when there is no status so the grid doesn't shift while checking.
     <View
       style={[
-        styles.siteCellRing,
-        { borderColor: tint ? tint + "40" : "transparent" },
+        styles.siteCell,
+        {
+          backgroundColor: tint ? tint + "14" : colors.card,
+          borderColor: tint ?? colors.border,
+        },
       ]}
     >
-      <View
+      <Text
         style={[
-          styles.siteCell,
-          {
-            backgroundColor: tint ? tint + "1A" : colors.surface,
-            borderColor: tint ?? colors.border,
-            borderWidth: tint ? 1.5 : StyleSheet.hairlineWidth,
-          },
+          styles.siteName,
+          // Dim the name of a site that is down; the outline stays vivid.
+          { color: colors.text, opacity: isDown ? 0.6 : 1 },
         ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
       >
-        <Text
-          style={[
-            styles.siteName,
-            // Dim the name of a site that is down; the outline stays vivid.
-            { color: colors.text, opacity: isDown ? 0.6 : 1 },
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-        >
-          {flag ? `${name} ${flag}` : name}
-        </Text>
-      </View>
+        {flag ? `${name} ${flag}` : name}
+      </Text>
     </View>
   );
 }
@@ -1749,20 +1742,14 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 10,
   },
-  // Halo around a site pill; transparent when the site has no status yet.
-  siteCellRing: {
-    width: "31%",
-    padding: 2,
-    borderRadius: 13,
-    borderWidth: 1,
-  },
   siteCell: {
+    width: "31%",
     paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    borderWidth: 2,
   },
   siteName: {
     fontFamily: "Inter_500Medium",
