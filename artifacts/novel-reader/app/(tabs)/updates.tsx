@@ -28,6 +28,7 @@ import {
   CHAPTER_LIMIT_MAX,
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
+import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -234,6 +235,10 @@ export default function UpdatesScreen() {
       return downloadResult.uri;
     } catch (err) {
       console.warn("Failed to download cover:", err);
+      if (hasProtectedCover(coverUrl)) {
+        addLog(`Cover download blocked, using placeholder`, "warning");
+        return "";
+      }
       addLog(`Cover download failed, using remote URL`, "warning");
       return coverUrl;
     }
