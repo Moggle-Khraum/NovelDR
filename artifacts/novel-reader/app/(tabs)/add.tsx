@@ -33,6 +33,7 @@ import {
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
+import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -616,6 +617,13 @@ export default function AddNovelScreen() {
       return "";
     }
     addLog(`Cover URL: ${coverUrl}`, "info");
+    // Cloudflare's clearance cookie from the WebView is required for some
+    // image hosts (e.g. NovelasLigera), so send the stored cookies with it.
+    const cookieHeader = await getCookieHeader(coverUrl);
+    addLog(
+      `Cover: sending ${cookieHeader ? cookieHeader.split(";").length : 0} cookie(s)`,
+      "info",
+    );
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
     try {
@@ -639,6 +647,7 @@ export default function AddNovelScreen() {
               "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
             Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
             ...(referer ? { Referer: referer } : {}),
+            ...(cookieHeader ? { Cookie: cookieHeader } : {}),
           },
         },
       );
