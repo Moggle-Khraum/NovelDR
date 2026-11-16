@@ -104,57 +104,6 @@ function LogLine({ entry }: { entry: LogEntry }) {
   );
 }
 
-// --- Reusable Site Cell with Status Indicator ---
-function SiteCell({ name, status }: { name: string; status: SiteStatus }) {
-  const { colors } = useTheme();
-
-  const getStatusDot = () => {
-    if (status === "checking") return { color: colors.textMuted, symbol: "⏳" };
-    if (status === "online") return { color: Colors.success, symbol: "🟢" };
-    if (status === "maintenance") return { color: Colors.amber, symbol: "⛔" };
-    if (status === "gateway_timeout")
-      return { color: Colors.amber, symbol: "🟠" };
-    if (status === "offline") return { color: Colors.error, symbol: "🔴" };
-    return { color: colors.textMuted, symbol: "?" };
-  };
-
-  const statusInfo = getStatusDot();
-  // Maintenance/gateway-timeout still mean "don't pick this source right
-  // now", same as offline, so the cell dims/outlines the same way.
-  const isOffline =
-    status === "offline" ||
-    status === "maintenance" ||
-    status === "gateway_timeout";
-
-  return (
-    <Pressable
-      style={[
-        styles.siteCell,
-        {
-          backgroundColor: colors.surface,
-          borderColor: isOffline ? Colors.error : colors.border,
-          opacity: isOffline ? 0.6 : 1,
-        },
-      ]}
-      disabled={true}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Text style={{ color: statusInfo.color, fontSize: 14 }}>
-          {statusInfo.symbol}
-        </Text>
-        <Text
-          style={[styles.siteName, { color: colors.text }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-        >
-          {name}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 // --- Modal Cell ---
 function SourceListModalCell({
   name,
