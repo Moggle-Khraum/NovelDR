@@ -44,7 +44,10 @@ import {
   parseLightNovelToChapter,
   lightNovelToScraper,
 } from "../hooks/scrapers/sources/lightnovelto";
-import { needsWebView } from "../hooks/scrapers/shared/webviewSites";
+import {
+  needsWebView,
+  needsUserChallenge,
+} from "../hooks/scrapers/shared/webviewSites";
 import {
   parseNovelBuddyMeta,
   parseNovelBuddyChapter,
@@ -55,6 +58,11 @@ import {
   parseCentralNovelChapter,
   centralNovelScraper,
 } from "../hooks/scrapers/sources/centralnovel";
+import {
+  parseNovelasLigeraMeta,
+  parseNovelasLigeraChapter,
+  novelasLigeraScraper,
+} from "../hooks/scrapers/sources/novelasligera";
 import { findExternalScraper } from "../hooks/scrapers/registry";
 import { looksLikeChallenge } from "../hooks/scrapers/shared/http";
 
@@ -518,7 +526,7 @@ const LNT_NOVEL_PAGE = `
     <h1 class="ln-dtitle text-balance">Sample Novel Title</h1>
     <a class="ln-v" href="/author/sample-author">Sample Author</a>
     <div class="ln-dcv"><img src="https://lightnovel.to/uploads/cover.webp" alt=""></div>
-    <div class="ln-syn"><p>First placeholder synopsis line.</p><p>Second placeholder line.</p></div>
+    <div class="ln-synwrap"><div class="ln-syn"><p>First placeholder synopsis line.</p><p>Second placeholder line.</p></div></div>
     <a class="ln-sb ln-pri" href="/novel/sample-novel/chapter-1">Start Chapter 1</a>
   </body></html>
 `;
@@ -920,6 +928,173 @@ checks.push(
       assert(
         needsWebView("https://centralnovel.com/series/x/"),
         "centralnovel.com should use the WebView tier",
+      );
+    },
+  },
+);
+
+// ── NovelasLigera (novelasligeras.net) ───────────────────────────────────
+// Hand-written placeholder fixtures that copy only the page structure of a
+// real novel page and chapter page (WooCommerce product + WPBakery tabs), not
+// any real novel text.
+const NL_NOVEL_PAGE = `
+  <html><head>
+    <meta property="og:image" content="https://novelasligeras.net/wp-content/uploads/2023/11/Sample-Novel.jpg">
+  </head><body>
+    <div class="summary entry-summary" style="height: auto !important;">
+      <h1 class="product_title entry-title">Sample Novel (NW)</h1>
+      <div class="woocommerce-product-details__short-description" style="height: auto !important;">
+        <p>Placeholder synopsis line one.</p>
+        <p><strong>[Placeholder bold line]</strong></p>
+        <div class="google-auto-placed"><ins class="adsbygoogle"><div id="ad"><iframe src="https://ads.example/x"></iframe></div></ins></div>
+        <p>Placeholder synopsis line two.</p>
+        <p style="text-align: right;"><em><strong>Sinopsis por NOVA</strong></em></p>
+      </div>
+    </div>
+    <table class="woocommerce-product-attributes shop_attributes"><tbody>
+      <tr class="woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_nombres-alternativos"><th class="woocommerce-product-attributes-item__label" scope="row">Nombre(s) Alternativo(s)</th><td class="woocommerce-product-attributes-item__value"><p>Alt Name</p></td></tr>
+      <tr class="woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_escritor"><th class="woocommerce-product-attributes-item__label" scope="row">Escritor</th><td class="woocommerce-product-attributes-item__value"><p><a href="https://novelasligeras.net/index.php/filtro/escritor/sample-author/" rel="tag">Sample Author</a></p></td></tr>
+    </tbody></table>
+    <div class="wpb_tour wpb_content_element tab-style-one"><div class="wpb_wrapper wpb_tour_tabs_wrapper">
+      <ul class="wpb_tabs_nav"><li><a href="#tab-1">Capitulos del 01 al 10</a></li><li><a href="#tab-2">Capitulos del 11 al 20</a></li></ul>
+      <div id="tab-2" class="wpb_tab"><div class="wpb_text_column"><div class="wpb_wrapper">
+        <p><a href="https://novelasligeras.net/index.php/2023/12/01/sample-novel-capitulo-11-novela-ligera/">Capítulo 11: Sample</a></p><p>&nbsp;</p>
+      </div></div></div>
+      <div id="tab-1" class="wpb_tab"><div class="wpb_text_column"><div class="wpb_wrapper"><div class="wf-cell wf-1"><article><div class="post-content">
+        <p><a href="https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-2-novela-ligera/">Capitulo 2: Sample (Parte 2).</a></p><p>&nbsp;</p>
+      </div></article></div><div class="wf-cell wf-1"><article><div class="post-content">
+        <p><a href="https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-1-novela-ligera/">Capítulo 1: Sample (Parte 1)</a></p><p>&nbsp;</p>
+      </div></article></div></div></div></div>
+    </div></div>
+    <div class="latest"><a href="https://novelasligeras.net/index.php/2023/11/12/other-novel-capitulo-0-novela-ligera/">Capítulo 0: Other novel</a></div>
+  </body></html>
+`;
+
+const NL_CHAPTER_PAGE = `
+  <html><head><title>Sample Novel Capítulo 1 Novela Ligera - NOVA</title></head><body>
+    <article class="single-postlike"><div class="entry-content" style="height: auto !important;"><div class="wpb-content-wrapper">
+      <div class="vc_row"><div class="vc_col-sm-4"><div class="wpb_wrapper"></div></div>
+        <div class="vc_col-sm-4"><div class="wpb_wrapper"><div class="btn-align-center"><a href="https://novelasligeras.net/index.php/producto/sample-novel-novela-web/" class="dt-btn" title="Sample Novel (NW)"><i class="fa fa-book"></i><span>Indice</span></a></div></div></div>
+        <div class="vc_col-sm-4"><div class="wpb_wrapper"><div class="btn-align-right"><a href="https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-2-novela-ligera/" class="dt-btn ico-right-side" title="Capítulo 2: Sample"><span>Siguiente</span><i class="fa fa-arrow-right"></i></a></div></div></div></div>
+      <div class="vc_row"><div class="wpb_text_column"><div class="wpb_wrapper">
+        <h1>Sample Novel</h1><h2>Volumen 1</h2><h2>Capítulo 1: Sample (Parte 1)</h2>
+        <p>&nbsp;</p>
+        <p>Placeholder paragraph one.</p>
+        <div class="google-auto-placed"><ins class="adsbygoogle"><div id="ad"><iframe src="https://ads.example/x"></iframe></div></ins></div>
+        <p>Placeholder text.<div class="google-anno-skip google-anno-sc" role="link" aria-label="Explorar mitos"><span>Explorar mitos</span></div></p>
+        <script>var x = 1;</script>
+        <p>Placeholder paragraph two.</p>
+      </div></div></div>
+    </div></div></article>
+    <div class="author-info entry-author"><p>About the site author</p></div>
+  </body></html>
+`;
+
+checks.push(
+  {
+    name: "novelasligera: novel page yields title, author, cover, synopsis, lowest chapter as first",
+    run: () => {
+      const meta = parseNovelasLigeraMeta(
+        NL_NOVEL_PAGE,
+        "https://novelasligeras.net/index.php/producto/sample-novel-novela-web/",
+      );
+      assert(meta.title === "Sample Novel (NW)", `title: ${meta.title}`);
+      assert(meta.author === "Sample Author", `author: ${meta.author}`);
+      assert(
+        meta.coverUrl ===
+          "https://novelasligeras.net/wp-content/uploads/2023/11/Sample-Novel.jpg",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis ===
+          "Placeholder synopsis line one.\n\n[Placeholder bold line]\n\nPlaceholder synopsis line two.",
+        `synopsis: ${JSON.stringify(meta.synopsis)}`,
+      );
+      assert(
+        meta.firstChapterUrl ===
+          "https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-1-novela-ligera/",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "novelasligera: chapter page gives heading, clean paragraphs and next chapter",
+    run: () => {
+      const ch = parseNovelasLigeraChapter(
+        NL_CHAPTER_PAGE,
+        "https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-1-novela-ligera/",
+      );
+      assert(
+        ch.title === "Capítulo 1: Sample (Parte 1)",
+        `title: ${ch.title}`,
+      );
+      assert(
+        ch.content ===
+          "Placeholder paragraph one.\n\nPlaceholder text.\n\nPlaceholder paragraph two.",
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+      assert(
+        ch.nextUrl ===
+          "https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-2-novela-ligera/",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "novelasligera: no Siguiente button, or one pointing at the novel page, gives nextUrl null",
+    run: () => {
+      const noNext = NL_CHAPTER_PAGE.replace(
+        "<span>Siguiente</span>",
+        "<span>Indice</span>",
+      );
+      assert(
+        parseNovelasLigeraChapter(noNext, "https://novelasligeras.net/x/")
+          .nextUrl === null,
+        "missing Siguiente should give null",
+      );
+      const toIndex = NL_CHAPTER_PAGE.replace(
+        "https://novelasligeras.net/index.php/2023/11/12/sample-novel-capitulo-2-novela-ligera/",
+        "https://novelasligeras.net/index.php/producto/sample-novel-novela-web/",
+      );
+      assert(
+        parseNovelasLigeraChapter(toIndex, "https://novelasligeras.net/x/")
+          .nextUrl === null,
+        "Siguiente pointing at the novel page should give null",
+      );
+    },
+  },
+  {
+    name: "novelasligera: canHandle accepts novelasligeras.net, the old .com, and subdomains only",
+    run: () => {
+      for (const ok of [
+        "https://novelasligeras.net/index.php/producto/x/",
+        "https://www.novelasligeras.net/x/",
+        "https://novelasligera.com/x/",
+      ]) {
+        assert(novelasLigeraScraper.canHandle(ok), `${ok} should match`);
+      }
+      assert(
+        !novelasLigeraScraper.canHandle(
+          "https://novelasligeras.net.evil.example/x",
+        ),
+        "lookalike host should not match",
+      );
+    },
+  },
+  {
+    name: "novelasligera: registry finds the scraper; WebView tier on and checkbox prompt allowed",
+    run: () => {
+      const url = "https://novelasligeras.net/index.php/producto/x/";
+      const found = findExternalScraper(url);
+      assert(
+        found?.id === "novelasligera",
+        `registry returned: ${found?.id ?? "null"}`,
+      );
+      assert(needsWebView(url), "should use the WebView tier");
+      assert(needsUserChallenge(url), "should allow the checkbox prompt");
+      assert(
+        !needsUserChallenge("https://centralnovel.com/series/x/"),
+        "centralnovel.com should stay hidden-only",
       );
     },
   },
