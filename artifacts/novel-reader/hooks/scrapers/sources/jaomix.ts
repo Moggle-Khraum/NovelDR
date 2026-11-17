@@ -88,7 +88,9 @@ const nextChapterFromDropdown = (html: string, url: string): string | null => {
 };
 
 /** Chapter 1 from a chapter page's dropdown, if that page reaches it. */
-export const parseJaomixFirstChapter = (chapterPageHtml: string): string | null => {
+export const parseJaomixFirstChapter = (
+  chapterPageHtml: string,
+): string | null => {
   const low = lowestChapterOnPage(chapterPageHtml);
   return low && low.num === 1 && isSafeHref(low.url) ? low.url : null;
 };
