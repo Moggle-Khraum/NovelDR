@@ -81,8 +81,7 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const enabled =
-    setting === "auto" ? isLowRamDevice : setting === "on";
+  const enabled = setting === "auto" ? isLowRamDevice : setting === "on";
 
   useEffect(() => {
     setLowMemoryActive(enabled);

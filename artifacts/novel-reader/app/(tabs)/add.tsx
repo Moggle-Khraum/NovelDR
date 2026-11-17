@@ -167,7 +167,12 @@ function SourceListModalCell({
         {flag ? `${name} ${flag}` : name}
       </Text>
       {status === "paused" ? (
-        <Text style={[styles.siteName, { color: colors.text, opacity: 0.6, fontSize: 10 }]}>
+        <Text
+          style={[
+            styles.siteName,
+            { color: colors.text, opacity: 0.6, fontSize: 10 },
+          ]}
+        >
           Paused in Low Memory Mode
         </Text>
       ) : null}

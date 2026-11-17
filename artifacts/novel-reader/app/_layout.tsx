@@ -390,15 +390,15 @@ export default Sentry.wrap(function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
               <LowMemoryProvider>
-              <LibraryProvider>
-                <UpdateProvider>
-                  <SiteHealthProvider>
-                    <RootLayoutNav />
-                    <WebViewFetchBridge />
-                  </SiteHealthProvider>
-                </UpdateProvider>
-              </LibraryProvider>
-            </LowMemoryProvider>
+                <LibraryProvider>
+                  <UpdateProvider>
+                    <SiteHealthProvider>
+                      <RootLayoutNav />
+                      <WebViewFetchBridge />
+                    </SiteHealthProvider>
+                  </UpdateProvider>
+                </LibraryProvider>
+              </LowMemoryProvider>
             </ThemeProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

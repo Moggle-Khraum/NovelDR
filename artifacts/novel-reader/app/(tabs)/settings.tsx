@@ -3761,7 +3761,10 @@ export default function SettingsScreen() {
                   onValueChange={(v) => lowMemory.setSetting(v ? "on" : "off")}
                 />
                 {lowMemory.setting !== "auto" && (
-                  <Pressable onPress={() => lowMemory.setSetting("auto")} hitSlop={8}>
+                  <Pressable
+                    onPress={() => lowMemory.setSetting("auto")}
+                    hitSlop={8}
+                  >
                     <Text style={[styles.devLabel, { color: colors.accent }]}>
                       Reset to Auto
                     </Text>
