@@ -237,12 +237,8 @@ export default function UpdatesScreen() {
       return downloadResult.uri;
     } catch (err) {
       console.warn("Failed to download cover:", err);
-      if (hasProtectedCover(coverUrl)) {
-        addLog(`Cover download blocked, using placeholder`, "warning");
-        return "";
-      }
-      addLog(`Cover download failed, using remote URL`, "warning");
-      return coverUrl;
+      addLog(`Cover download failed, using placeholder`, "warning");
+      return "";
     }
   };
 

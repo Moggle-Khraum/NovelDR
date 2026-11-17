@@ -678,15 +678,8 @@ export default function AddNovelScreen() {
     } catch (err) {
       console.warn("Failed to download cover:", err);
       const reason = err instanceof Error ? err.message : String(err);
-      if (hasProtectedCover(coverUrl)) {
-        addLog(
-          `Cover download blocked (${reason}), using placeholder`,
-          "warning",
-        );
-        return "";
-      }
-      addLog(`Cover download failed (${reason}), using remote URL`, "warning");
-      return coverUrl;
+      addLog(`Cover download failed (${reason}), using placeholder`, "warning");
+      return "";
     }
   };
 
@@ -896,9 +889,7 @@ export default function AddNovelScreen() {
         title: meta.title,
         author: meta.author,
         synopsis: meta.synopsis,
-        coverUrl:
-          localCoverUrl ||
-          (hasProtectedCover(meta.coverUrl) ? "" : meta.coverUrl),
+        coverUrl: localCoverUrl,
         sourceUrl: metaUrl,
         dateAdded,
         status: "unread",
