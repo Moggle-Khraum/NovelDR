@@ -92,6 +92,11 @@ export const SUPPORTED_SITES: {
     baseUrl: "https://novelasligeras.net/",
     language: "etc",
   },
+  {
+    name: "Webnovel.vn",
+    baseUrl: "https://webnovel.vn/",
+    language: "etc",
+  },
 ];
 
 // Simple status: checking, online, maintenance (503), gateway_timeout (504), or offline
