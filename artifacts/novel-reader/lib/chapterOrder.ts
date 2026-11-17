@@ -96,12 +96,30 @@ const PROLOGUE = /\bprologue\b/i;
 const wordMatch = (words: string[]) =>
   new RegExp(`(?<!\\p{L})(?:${words.join("|")})(?!\\p{L})`, "iu");
 const FRONT_MATTER = wordMatch([
-  "prologue", "introduction", "prolog", "пролог", "введение", "вступление",
-  "prólogo", "prologo", "introducción", "introduccion", "prefacio", "prefácio",
+  "prologue",
+  "introduction",
+  "prolog",
+  "пролог",
+  "введение",
+  "вступление",
+  "prólogo",
+  "prologo",
+  "introducción",
+  "introduccion",
+  "prefacio",
+  "prefácio",
 ]);
 const BACK_MATTER = wordMatch([
-  "epilogue", "afterword", "epílogo", "epilogo", "epilog", "эпилог",
-  "послесловие", "posfácio", "posfacio", "postscript",
+  "epilogue",
+  "afterword",
+  "epílogo",
+  "epilogo",
+  "epilog",
+  "эпилог",
+  "послесловие",
+  "posfácio",
+  "posfacio",
+  "postscript",
 ]);
 
 // Orders chapters into reading order without changing their identity.
