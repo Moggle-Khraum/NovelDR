@@ -41,15 +41,15 @@ export const parseLightNovelWorldNetMeta = (
   ]
     .map((m) => decodeEntities(stripTags(m[1])).replace(/\s+/g, " ").trim())
     .filter(Boolean);
-  const author = authorNames.length > 0 ? authorNames.join(", ") : "Unknown Author";
+  const author =
+    authorNames.length > 0 ? authorNames.join(", ") : "Unknown Author";
 
   // <meta property="og:image" content="...webp">
   const coverUrl =
     safeMatch(html, /<meta property="og:image" content="([^"]+)"/i) ?? "";
 
   // <div class="sersys entry-content" itemprop="description"> <p>...</p> </div>
-  const synBlock =
-    extractByDepth(html, 'class="sersys entry-content"') ?? "";
+  const synBlock = extractByDepth(html, 'class="sersys entry-content"') ?? "";
   const synopsis = decodeEntities(extractParagraphs(synBlock)).trim();
 
   // <a href="https://lightnovelworld.net/<slug>-chapter-1/"><span>First Chapter</span>

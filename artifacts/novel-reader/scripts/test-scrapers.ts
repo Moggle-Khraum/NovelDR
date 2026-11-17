@@ -1269,7 +1269,8 @@ checks.push(
         `author: ${meta.author}`,
       );
       assert(
-        meta.coverUrl === "https://lightnovelworld.net/wp-content/uploads/sample.webp",
+        meta.coverUrl ===
+          "https://lightnovelworld.net/wp-content/uploads/sample.webp",
         `cover: ${meta.coverUrl}`,
       );
       assert(
@@ -1277,7 +1278,8 @@ checks.push(
         `synopsis: ${meta.synopsis}`,
       );
       assert(
-        meta.firstChapterUrl === "https://lightnovelworld.net/sample-novel-chapter-1/",
+        meta.firstChapterUrl ===
+          "https://lightnovelworld.net/sample-novel-chapter-1/",
         `firstChapterUrl: ${meta.firstChapterUrl}`,
       );
     },
@@ -1289,9 +1291,13 @@ checks.push(
         LNW_CHAPTER_PAGE,
         "https://lightnovelworld.net/sample-novel-chapter-1/",
       );
-      assert(ch.title === "Chapter 1 – Placeholder Title", `title: ${ch.title}`);
       assert(
-        ch.content === "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
+        ch.title === "Chapter 1 – Placeholder Title",
+        `title: ${ch.title}`,
+      );
+      assert(
+        ch.content ===
+          "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
         `content: ${JSON.stringify(ch.content)}`,
       );
       assert(
@@ -1304,11 +1310,15 @@ checks.push(
     name: "lightnovelworldnet: canHandle accepts only lightnovelworld.net",
     run: () => {
       assert(
-        lightNovelWorldNetScraper.canHandle("https://lightnovelworld.net/novel/x/"),
+        lightNovelWorldNetScraper.canHandle(
+          "https://lightnovelworld.net/novel/x/",
+        ),
         "lightnovelworld.net should match",
       );
       assert(
-        !lightNovelWorldNetScraper.canHandle("https://lightnovelworld.org/novel/x/"),
+        !lightNovelWorldNetScraper.canHandle(
+          "https://lightnovelworld.org/novel/x/",
+        ),
         ".org should not match",
       );
     },
