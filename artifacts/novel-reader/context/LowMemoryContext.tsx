@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { Alert } from "react-native";
 import * as Device from "expo-device";
 import * as Sentry from "@sentry/react-native";
 
@@ -15,6 +16,9 @@ import * as Sentry from "@sentry/react-native";
 export const LOW_RAM_THRESHOLD_BYTES = 2 * 1024 * 1024 * 1024;
 
 const STORAGE_KEY = "low_memory_mode_setting";
+
+// Shown once per app launch, not on every render.
+let lowModeNoticeShown = false;
 
 // "auto": follow the device (on for low-RAM devices, off otherwise). Default.
 // "on" / "off": the user has chosen manually.
@@ -71,6 +75,16 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
 
   const enabled =
     setting === "auto" ? isLowRamDevice : setting === "on";
+
+  // Tell the person once per app launch when Low Memory Mode is in effect.
+  useEffect(() => {
+    if (!enabled || lowModeNoticeShown) return;
+    lowModeNoticeShown = true;
+    Alert.alert(
+      "Running on Low Mode",
+      "This device has limited memory, so NovelDR is running in Low Memory Mode to avoid crashes. You can change this in Settings.",
+    );
+  }, [enabled]);
 
   // Tag every Sentry event so we can see the device class and mode on crashes.
   useEffect(() => {
