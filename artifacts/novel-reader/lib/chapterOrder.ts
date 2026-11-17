@@ -56,6 +56,27 @@ export function romanToInt(text: string): number | null {
   return total > 0 && intToRoman(total) === upper ? total : null;
 }
 
+const EN_UNITS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+  nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+  fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+};
+const EN_TENS: Record<string, number> = {
+  twenty: 20, thirty: 30, forty: 40, fifty: 50,
+  sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+
+// Reads "Twelve", "Twenty-One" or "twenty one" as a number (1-99).
+function englishWordsToInt(words: string): number | null {
+  const parts = words.toLowerCase().split(/[\s-]+/).filter(Boolean);
+  if (parts.length === 1) return EN_UNITS[parts[0]] ?? null;
+  if (parts.length === 2 && EN_TENS[parts[0]] !== undefined) {
+    const unit = EN_UNITS[parts[1]];
+    if (unit !== undefined && unit < 10) return EN_TENS[parts[0]] + unit;
+  }
+  return null;
+}
+
 // Returns the chapter number written in a title, or null if there is none.
 // Titles such as "Prologue", "Interlude", "Extra", and "Afterword" return null.
 export function parseChapterNumber(title: string | undefined): number | null {
@@ -83,6 +104,19 @@ export function parseChapterNumber(title: string | undefined): number | null {
   if (roman) {
     const value = romanToInt(roman[1]);
     if (value !== null) return value;
+  }
+
+  // Number written out in words, e.g. "Chapter Twelve Marrying..." or
+  // "Chapter Twenty-One: ...". Try two words first, then one.
+  const words = text.match(/\bchapter\s+([a-z]+(?:[\s-]+[a-z]+)?)/i);
+  if (words) {
+    const parts = words[1].split(/[\s-]+/);
+    if (parts.length >= 2) {
+      const pair = englishWordsToInt(parts.slice(0, 2).join(" "));
+      if (pair !== null) return pair;
+    }
+    const single = englishWordsToInt(parts[0]);
+    if (single !== null) return single;
   }
 
   return null;
