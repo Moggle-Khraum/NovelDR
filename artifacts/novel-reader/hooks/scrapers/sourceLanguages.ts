@@ -45,7 +45,6 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
   "mtlnovel.me": "mtl",
   "fanmtl.com": "mtl",
   "mtl-novel.com": "mtl",
-  "lnmtl.com": "mtl",
 
   // Other languages (neither English nor MTL)
   "centralnovel.com": "etc", // Portuguese
