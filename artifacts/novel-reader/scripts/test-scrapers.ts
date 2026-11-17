@@ -1538,26 +1538,47 @@ checks.push(
   {
     name: "jaomix: novel page yields title, Russian-labelled author, synopsis, first chapter",
     run: () => {
-      const m = parseJaomixMeta(JAOMIX_NOVEL, "https://jaomix.ru/sample-novel/");
+      const m = parseJaomixMeta(
+        JAOMIX_NOVEL,
+        "https://jaomix.ru/sample-novel/",
+      );
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(m.synopsis.includes("Placeholder synopsis."), "synopsis missing");
-      assert(m.firstChapterUrl === "https://jaomix.ru/sample-novel/glava-1/", `first: ${m.firstChapterUrl}`);
+      assert(
+        m.firstChapterUrl === "https://jaomix.ru/sample-novel/glava-1/",
+        `first: ${m.firstChapterUrl}`,
+      );
     },
   },
   {
     name: "jaomix: chapter page yields title, paragraphs and next link",
     run: () => {
-      const ch = parseJaomixChapter(JAOMIX_CHAPTER, "https://jaomix.ru/sample-novel/glava-1/");
-      assert(ch.content.includes("Placeholder paragraph."), "paragraph missing");
-      assert(ch.nextUrl === "https://jaomix.ru/sample-novel/glava-2/", `next: ${ch.nextUrl}`);
+      const ch = parseJaomixChapter(
+        JAOMIX_CHAPTER,
+        "https://jaomix.ru/sample-novel/glava-1/",
+      );
+      assert(
+        ch.content.includes("Placeholder paragraph."),
+        "paragraph missing",
+      );
+      assert(
+        ch.nextUrl === "https://jaomix.ru/sample-novel/glava-2/",
+        `next: ${ch.nextUrl}`,
+      );
     },
   },
   {
     name: "jaomix: canHandle accepts jaomix.ru only",
     run: () => {
-      assert(jaomixScraper.canHandle("https://jaomix.ru/sample-novel/"), "should match");
-      assert(!jaomixScraper.canHandle("https://jaomix.org/x/"), "other domain must not match");
+      assert(
+        jaomixScraper.canHandle("https://jaomix.ru/sample-novel/"),
+        "should match",
+      );
+      assert(
+        !jaomixScraper.canHandle("https://jaomix.org/x/"),
+        "other domain must not match",
+      );
     },
   },
 );
