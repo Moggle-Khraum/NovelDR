@@ -74,6 +74,11 @@ import {
   raNovelScraper,
 } from "../hooks/scrapers/sources/ranovel";
 import {
+  parseJaomixMeta,
+  parseJaomixChapter,
+  jaomixScraper,
+} from "../hooks/scrapers/sources/jaomix";
+import {
   parseLightNovelWorldNetMeta,
   parseLightNovelWorldNetChapter,
   lightNovelWorldNetScraper,
@@ -1511,6 +1516,48 @@ checks.push(
         needsWebView("https://ranovel.com/novel/x/"),
         "ranovel.com should use the WebView tier",
       );
+    },
+  },
+);
+
+// ── Jaomix (jaomix.ru), ported from LNReader ─────────────────────────────
+const JAOMIX_NOVEL = `
+  <div class="desc-book"><h1>Sample Novel</h1></div>
+  <div class="img-book"><img src="https://jaomix.ru/wp-content/uploads/sample.jpg"></div>
+  <div id="info-book"><p>Автор: Sample Author</p><p>Статус: продолжается</p></div>
+  <div id="desc-tab"><p>Placeholder synopsis.</p></div>
+  <div class="title"><a href="https://jaomix.ru/sample-novel/glava-1/" title="Глава 1">Глава 1</a></div>
+`;
+const JAOMIX_CHAPTER = `
+  <h1>Глава 1</h1>
+  <div class="entry-content"><p>Placeholder paragraph.</p></div>
+  <a rel="next" href="https://jaomix.ru/sample-novel/glava-2/">Далее</a>
+`;
+
+checks.push(
+  {
+    name: "jaomix: novel page yields title, Russian-labelled author, synopsis, first chapter",
+    run: () => {
+      const m = parseJaomixMeta(JAOMIX_NOVEL, "https://jaomix.ru/sample-novel/");
+      assert(m.title === "Sample Novel", `title: ${m.title}`);
+      assert(m.author === "Sample Author", `author: ${m.author}`);
+      assert(m.synopsis.includes("Placeholder synopsis."), "synopsis missing");
+      assert(m.firstChapterUrl === "https://jaomix.ru/sample-novel/glava-1/", `first: ${m.firstChapterUrl}`);
+    },
+  },
+  {
+    name: "jaomix: chapter page yields title, paragraphs and next link",
+    run: () => {
+      const ch = parseJaomixChapter(JAOMIX_CHAPTER, "https://jaomix.ru/sample-novel/glava-1/");
+      assert(ch.content.includes("Placeholder paragraph."), "paragraph missing");
+      assert(ch.nextUrl === "https://jaomix.ru/sample-novel/glava-2/", `next: ${ch.nextUrl}`);
+    },
+  },
+  {
+    name: "jaomix: canHandle accepts jaomix.ru only",
+    run: () => {
+      assert(jaomixScraper.canHandle("https://jaomix.ru/sample-novel/"), "should match");
+      assert(!jaomixScraper.canHandle("https://jaomix.org/x/"), "other domain must not match");
     },
   },
 );

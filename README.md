@@ -86,6 +86,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [NovelPing](https://novelping.com/) | ✅ Site Active | [NovelFull.net](https://novelfull.net/) | ✅ Site Active | [CentralNovel](https://centralnovel.com/) | ✅ Site Active |
 | [MTL-Novel](https://mtl-novel.com/) | ✅ Site Active | [LightNovelWorld](https://lightnovelworld.net/) | ✅ Site Active | [MeioNovels](https://meionovels.com/) | ✅ Site Active |
 | [NovelasLigera](https://novelasligeras.net/) | ✅ Site Active | | | | |
+| [Jaomix](https://jaomix.ru/) | 🧪 Untested | | | | |
 
 ---
 
@@ -134,6 +135,7 @@ If this project helps you somehow, please dont forget to Star the Repo~!
 | Author | Repository | Credited For |
 |-------------|-----------|--------------|
 |~~[@TUVIMEN](https://github.com/TUVIMEN)~~ | ~~[lightnovelworld](https://github.com/TUVIMEN/lightnovelworld)~~ |~~Forked LightNovelWorld Scraper into the App.~~ [💀DEPRECATED]|
+| [@LNReader](https://github.com/LNReader/lnreader-plugins) | [lnreader-plugins](https://github.com/LNReader/lnreader-plugins) | Ported the Jaomix plugin (MIT) into the App as a Source Scraper. |
 | [@lncrawl](https://github.com/lncrawl) | [lightnovel-crawler](https://github.com/lncrawl/lightnovel-crawler/tree/dev) | Adapted and ported 3 novel scraper sources into the App. |
 | [@5ghzx](https://github.com/5ghzx) | [novelarchive-lnreader](https://github.com/5ghzx/novelarchive-lnreader) | Adapted and ported the NovelArchive Extension into a Source Scraper. |
 
