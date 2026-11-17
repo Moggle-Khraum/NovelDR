@@ -22,11 +22,16 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
   "freewebnovel.com": "en",
   "freewebnovel.org": "en",
   "bednovel.com": "en",
+  "readnovelfull.com": "en",
+  "novelfull.com": "en",
+  "novelfull.net": "en",
   "novgo.net": "en",
   "royalroad.com": "en",
   "wuxiaworld.site": "en",
   "novelphoenix.com": "en",
   "novelarrow.com": "en",
+  "novel-bin.com": "en",
+  "novelbin.cc": "en",
   "novelarchive.st": "en",
   "novelping.com": "en",
   "asianovel.net": "en",
@@ -38,11 +43,6 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
 
   // Machine-translated (MTL) sites
   "mtlnovel.me": "mtl",
-  "readnovelfull.com": "mtl",
-  "novelfull.com": "mtl",
-  "novelfull.net": "mtl",
-  "novel-bin.com": "mtl",
-  "novelbin.cc": "mtl",
   "fanmtl.com": "mtl",
 
   // Other languages (neither English nor MTL)
