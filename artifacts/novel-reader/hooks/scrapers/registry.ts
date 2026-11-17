@@ -27,6 +27,7 @@ import { novelBuddyScraper } from "./sources/novelbuddy";
 import { centralNovelScraper } from "./sources/centralnovel";
 import { lightNovelWorldNetScraper } from "./sources/lightnovelworldnet";
 import { meioNovelsScraper } from "./sources/meionovels";
+import { raNovelScraper } from "./sources/ranovel";
 import { mtlNovelScraper } from "./sources/mtlnovel";
 import { novelasLigeraScraper } from "./sources/novelasligera";
 
@@ -53,6 +54,7 @@ const REGISTERED_SCRAPERS: SourceScraper[] = [
   centralNovelScraper,
   lightNovelWorldNetScraper,
   meioNovelsScraper,
+  raNovelScraper,
   mtlNovelScraper,
   novelasLigeraScraper,
 ];

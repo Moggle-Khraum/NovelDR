@@ -69,6 +69,11 @@ import {
   mtlNovelScraper,
 } from "../hooks/scrapers/sources/mtlnovel";
 import {
+  parseRaNovelMeta,
+  parseRaNovelChapter,
+  raNovelScraper,
+} from "../hooks/scrapers/sources/ranovel";
+import {
   parseLightNovelWorldNetMeta,
   parseLightNovelWorldNetChapter,
   lightNovelWorldNetScraper,
@@ -1418,6 +1423,65 @@ checks.push(
         !mtlNovelScraper.canHandle("https://mtlnovel.me/read/x/"),
         "mtlnovel.me must not match",
       );
+    },
+  },
+);
+
+// ── RaNovel (ranovel.com) ───────────────────────────────────────────────
+// Placeholder fixtures that copy only the Madara page structure, not real text.
+const RA_NOVEL_PAGE = `
+  <meta property="og:image" content="https://ranovel.com/wp-content/uploads/2025/02/sample.png"/>
+  <div class="post-title"><h1> Sample Novel </h1></div>
+  <div class="author-content"><a href="https://ranovel.com/novel-author/sample/" rel="tag"> Sample Author </ a></div>
+  <div class="summary__content ">
+    <!-- <div class="maintenance-notice"><p>Maintenance notice</p></div> -->
+    <p>Placeholder synopsis line one.</p>
+    <p>Only Ran(o)vel dot com placeholder watermark</p>
+    <p>* * * * *</p>
+  </div>
+  <a href="#" id="btn-read-last" class="c-btn c-btn_style-1"> Read First</a>
+`;
+
+const RA_CHAPTER = `
+  <h1 id="chapter-heading">Sample Novel - Chapter 1</h1>
+  <div class="reading-content">
+    <p>Placeholder paragraph one.</p>
+    <p>Only Ran(o)vel dot com placeholder watermark</p>
+    <p>Placeholder paragraph two.</p>
+  </div>
+  <div class="select-pagination"><div class="nav-next"><a href="https://ranovel.com/novel/sample-novel/chapter-2/" class="btn next_page" title="Chapter 2">Next</a></div></div>
+`;
+
+checks.push(
+  {
+    name: "ranovel: novel page yields title, author, cover, synopsis without watermark, chapter 1 URL",
+    run: () => {
+      const u = "https://ranovel.com/novel/sample-novel/";
+      const m = parseRaNovelMeta(RA_NOVEL_PAGE, u);
+      assert(m.title === "Sample Novel", `title: ${m.title}`);
+      assert(m.author === "Sample Author", `author: ${m.author}`);
+      assert(m.coverUrl.endsWith("sample.png"), `cover: ${m.coverUrl}`);
+      assert(m.synopsis.includes("Placeholder synopsis line one."), "synopsis missing");
+      assert(!m.synopsis.includes("Ran(o)vel") && !m.synopsis.includes("maintenance"), "watermark or comment leaked");
+      assert(m.firstChapterUrl === "https://ranovel.com/novel/sample-novel/chapter-1/", `first: ${m.firstChapterUrl}`);
+    },
+  },
+  {
+    name: "ranovel: chapter page yields title, clean paragraphs and next chapter",
+    run: () => {
+      const ch = parseRaNovelChapter(RA_CHAPTER, "https://ranovel.com/novel/sample-novel/chapter-1/");
+      assert(ch.title === "Sample Novel - Chapter 1", `title: ${ch.title}`);
+      assert(ch.content.includes("Placeholder paragraph two."), "paragraphs missing");
+      assert(!ch.content.includes("Ran(o)vel"), "watermark leaked");
+      assert(ch.nextUrl === "https://ranovel.com/novel/sample-novel/chapter-2/", `next: ${ch.nextUrl}`);
+    },
+  },
+  {
+    name: "ranovel: canHandle accepts ranovel.com only and WebView tier is enabled",
+    run: () => {
+      assert(raNovelScraper.canHandle("https://ranovel.com/novel/x/"), "should match");
+      assert(!raNovelScraper.canHandle("https://ranovel.org/novel/x/"), "other domain must not match");
+      assert(needsWebView("https://ranovel.com/novel/x/"), "ranovel.com should use the WebView tier");
     },
   },
 );

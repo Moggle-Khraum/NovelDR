@@ -14,6 +14,7 @@ const WEBVIEW_HOSTS: readonly string[] = [
   "fanmtl.com",
   "freewebnovel.com",
   "freewebnovel.org",
+  "ranovel.com",
   "novgo.net",
   "wuxiaworld.site",
   "novelphoenix.com",
