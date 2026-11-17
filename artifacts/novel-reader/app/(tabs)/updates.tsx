@@ -29,6 +29,7 @@ import {
 } from "@/hooks/useChapterLimiter";
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
+import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -220,10 +221,20 @@ export default function UpdatesScreen() {
     novelId: string,
   ): Promise<string> => {
     if (!coverUrl) return "";
-    // Protected-cover sites use the placeholder by default.
-    if (hasProtectedCover(coverUrl)) return "";
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
+    // Last resort: fetch the image from inside a WebView that passed the
+    // Cloudflare challenge. If that fails too, the placeholder is used.
+    const viaWebView = async (): Promise<string> => {
+      try {
+        return await saveCoverViaWebView(coverUrl, coverPath);
+      } catch (err) {
+        console.warn("Cover WebView fetch failed:", err);
+        addLog(`Cover WebView fetch failed, using placeholder`, "warning");
+        return "";
+      }
+    };
+    if (hasProtectedCover(coverUrl)) return viaWebView();
     try {
       const dirInfo = await FileSystem.getInfoAsync(coverDir);
       if (!dirInfo.exists) {
@@ -237,8 +248,7 @@ export default function UpdatesScreen() {
       return downloadResult.uri;
     } catch (err) {
       console.warn("Failed to download cover:", err);
-      addLog(`Cover download failed, using placeholder`, "warning");
-      return "";
+      return viaWebView();
     }
   };
 

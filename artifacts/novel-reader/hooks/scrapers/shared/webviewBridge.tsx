@@ -48,6 +48,12 @@ type PendingJob = {
   timeoutMs: number;
   /** Site may show a checkbox challenge; allow the person to solve it. */
   interactive: boolean;
+  /**
+   * When set, the page is only used to pass the challenge: once it settles,
+   * the image is fetched from inside the page (same session and user agent)
+   * and returned as base64 instead of HTML.
+   */
+  imageUrl?: string;
   resolve: (html: string) => void;
   reject: (err: Error) => void;
 };
@@ -76,6 +82,33 @@ export const fetchViaWebView = (
       return;
     }
     queue.push({ url, timeoutMs, interactive, resolve, reject });
+    processNext();
+  });
+};
+
+/**
+ * Load `pageUrl` in the WebView so any Cloudflare challenge clears, then fetch
+ * `imageUrl` from inside that page. Resolves with the image as base64. Rejects
+ * if the fetch fails, so callers can fall back to a placeholder.
+ */
+export const fetchImageViaWebView = (
+  pageUrl: string,
+  imageUrl: string,
+  timeoutMs = 60000,
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!processNext) {
+      reject(new Error("webview: WebViewFetchBridge is not mounted"));
+      return;
+    }
+    queue.push({
+      url: pageUrl,
+      imageUrl,
+      timeoutMs,
+      interactive: false,
+      resolve,
+      reject,
+    });
     processNext();
   });
 };
@@ -109,11 +142,12 @@ const MIN_REAL_PAGE_CHARS = 1500;
 // A Cloudflare challenge page is never sent early. The guard flag keeps the
 // two injections (before load and onLoadEnd) from running two pollers, which
 // could post the same page twice and hand it to the next queued job.
-const buildPollJs = (interactive: boolean): string => `
+const buildPollJs = (interactive: boolean, imageUrl?: string): string => `
 (function () {
   if (window.__noveldrPoll) return;
   window.__noveldrPoll = true;
 
+  var imageUrl = ${imageUrl ? JSON.stringify(imageUrl) : "null"};
   var startedAt = Date.now();
   var lastSize = -1;
   var stableCount = 0;
@@ -149,7 +183,30 @@ const buildPollJs = (interactive: boolean): string => `
     return false;
   }
 
+  // Fetch the image from inside the page, so it carries the same cookies
+  // and user agent that passed the challenge.
+  function sendImage() {
+    fetch(imageUrl, { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      })
+      .then(function (b) {
+        if (b.type && b.type.indexOf('image') !== 0) throw new Error('not an image (' + b.type + ')');
+        var fr = new FileReader();
+        fr.onloadend = function () {
+          var s = String(fr.result || '');
+          window.ReactNativeWebView.postMessage('IMG:' + s.slice(s.indexOf(',') + 1));
+        };
+        fr.readAsDataURL(b);
+      })
+      .catch(function (e) {
+        window.ReactNativeWebView.postMessage('IMGERR:' + (e && e.message ? e.message : 'fetch failed'));
+      });
+  }
+
   function send() {
+    if (imageUrl) { sendImage(); return; }
     window.ReactNativeWebView.postMessage(document.documentElement.outerHTML);
   }
 
@@ -253,7 +310,22 @@ export function WebViewFetchBridge() {
     (event: WebViewMessageEvent) => {
       const job = currentRef.current;
       if (!job) return;
-      if (event.nativeEvent.data === CHALLENGE_SIGNAL) {
+      const data = event.nativeEvent.data;
+      if (job.imageUrl && data !== CHALLENGE_SIGNAL) {
+        if (data.startsWith("IMG:")) {
+          finish(job, { html: data.slice(4) });
+        } else {
+          const reason = data.startsWith("IMGERR:")
+            ? data.slice(7)
+            : "image fetch failed";
+          finish(job, {
+            error: new Error(`webview: ${reason} for ${job.imageUrl}`),
+          });
+        }
+        startNext();
+        return;
+      }
+      if (data === CHALLENGE_SIGNAL) {
         // Checkbox challenge: show the WebView and give the person time.
         if (!job.interactive || settledRef.current) return;
         // A challenge that reappears after the person solved it is Cloudflare
@@ -310,7 +382,10 @@ export function WebViewFetchBridge() {
   // Re‑inject the polling script after every successful navigation
   const onLoadEnd = useCallback(() => {
     webViewRef.current?.injectJavaScript(
-      buildPollJs(currentRef.current?.interactive ?? false),
+      buildPollJs(
+        currentRef.current?.interactive ?? false,
+        currentRef.current?.imageUrl,
+      ),
     );
   }, []);
 
@@ -371,7 +446,10 @@ export function WebViewFetchBridge() {
         // Windows/Chrome user agent on an Android engine is exactly the
         // mismatch Cloudflare re-challenges on, so the check never completes.
         userAgent={current.interactive ? undefined : DESKTOP_USER_AGENT}
-        injectedJavaScriptBeforeContentLoaded={buildPollJs(current.interactive)}
+        injectedJavaScriptBeforeContentLoaded={buildPollJs(
+          current.interactive,
+          current.imageUrl,
+        )}
         sharedCookiesEnabled
       />
     </View>

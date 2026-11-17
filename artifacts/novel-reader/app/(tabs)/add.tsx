@@ -35,6 +35,7 @@ import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
 import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
+import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -615,10 +616,27 @@ export default function AddNovelScreen() {
       addLog("Cover: scraper returned no image URL", "warning");
       return "";
     }
-    // Protected-cover sites use the placeholder by default.
+    const coverDir = `${FileSystem.documentDirectory}covers/`;
+    const coverPath = `${coverDir}${novelId}.jpg`;
+    // Last resort: fetch the image from inside a WebView that passed the
+    // Cloudflare challenge. If that fails too, the placeholder is used.
+    const viaWebView = async (reason: string): Promise<string> => {
+      addLog(`Cover: ${reason}, fetching through WebView`, "info");
+      try {
+        const uri = await saveCoverViaWebView(coverUrl, coverPath);
+        addLog("Cover image saved through WebView", "success");
+        return uri;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        addLog(
+          `Cover WebView fetch failed (${msg}), using placeholder`,
+          "warning",
+        );
+        return "";
+      }
+    };
     if (hasProtectedCover(coverUrl)) {
-      addLog("Cover: protected site, using placeholder", "info");
-      return "";
+      return viaWebView("protected site");
     }
     addLog(`Cover URL: ${coverUrl}`, "info");
     // Cloudflare's clearance cookie from the WebView is required for some
@@ -628,8 +646,6 @@ export default function AddNovelScreen() {
       `Cover: sending ${cookieHeader ? cookieHeader.split(";").length : 0} cookie(s)`,
       "info",
     );
-    const coverDir = `${FileSystem.documentDirectory}covers/`;
-    const coverPath = `${coverDir}${novelId}.jpg`;
     try {
       const dirInfo = await FileSystem.getInfoAsync(coverDir);
       if (!dirInfo.exists) {
@@ -678,8 +694,7 @@ export default function AddNovelScreen() {
     } catch (err) {
       console.warn("Failed to download cover:", err);
       const reason = err instanceof Error ? err.message : String(err);
-      addLog(`Cover download failed (${reason}), using placeholder`, "warning");
-      return "";
+      return viaWebView(`download failed (${reason})`);
     }
   };
 
