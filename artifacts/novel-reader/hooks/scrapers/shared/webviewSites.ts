@@ -44,6 +44,7 @@ const INTERACTIVE_CHALLENGE_HOSTS: readonly string[] = [
   "lightnovelworld.net",
   "novelasligera.com",
   "novelasligeras.net",
+  "ranovel.com",
 ];
 
 /** True if this site may need the person to tap a Cloudflare checkbox. */

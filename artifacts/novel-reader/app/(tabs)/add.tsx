@@ -27,6 +27,7 @@ import {
   SiteLanguage,
 } from "@/context/SiteHealthContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
+import { parseChapterNumber } from "@/lib/chapterOrder";
 import {
   useChapterLimiter,
   CHAPTER_LIMIT_MAX,
@@ -592,6 +593,8 @@ export default function AddNovelScreen() {
 
   // Extract chapter number from title
   const extractChapterNumber = (title: string): number => {
+    const shared = parseChapterNumber(title);
+    if (shared !== null) return shared;
     const patterns = [
       /chapter\s+(\d+(?:\.\d+)?)/i,
       /ch\.?\s*(\d+(?:\.\d+)?)/i,

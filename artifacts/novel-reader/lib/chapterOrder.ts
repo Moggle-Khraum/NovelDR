@@ -68,6 +68,10 @@ export function parseChapterNumber(title: string | undefined): number | null {
     /#(\d+(?:\.\d+)?)/,
     /(\d+)(?:st|nd|rd|th)\s+chapter\b/i,
     /^(\d+(?:\.\d+)?)[\s\-:]/,
+    // Chapter words used by the other languages we scrape.
+    /(?:глава|розділ|chương|chapitre|capítulo|capitulo|bölüm|rozdział|rozdzial|bab)\s*(\d+(?:\.\d+)?)/i,
+    /第\s*(\d+(?:\.\d+)?)\s*[章话回節节]/,
+    /บท\s*(?:ที่\s*)?(\d+(?:\.\d+)?)/,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
