@@ -10,6 +10,7 @@
     "entities": "^8.1.0",
     "expo-application": "~7.0.8",
     "expo-build-properties": "~1.0.10",
+    "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.24",
     "expo-image-manipulator": "~14.0.8",
