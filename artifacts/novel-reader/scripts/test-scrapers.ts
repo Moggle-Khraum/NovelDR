@@ -1366,16 +1366,24 @@ checks.push(
   {
     name: "mtl-novel: novel page yields title, author, lazy cover, synopsis, first chapter",
     run: () => {
-      const m = parseMtlNovelMeta(MTL_NOVEL_PAGE, "https://mtl-novel.com/novel/sample-novel/");
+      const m = parseMtlNovelMeta(
+        MTL_NOVEL_PAGE,
+        "https://mtl-novel.com/novel/sample-novel/",
+      );
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(
-        m.coverUrl === "https://mtl-novel.com/wp-content/uploads/2026/11/sample-cover.png",
+        m.coverUrl ===
+          "https://mtl-novel.com/wp-content/uploads/2026/11/sample-cover.png",
         `cover: ${m.coverUrl}`,
       );
-      assert(m.synopsis.includes("Placeholder synopsis line one."), "synopsis missing");
       assert(
-        m.firstChapterUrl === "https://mtl-novel.com/novel/sample-novel/chapter-1-opening/",
+        m.synopsis.includes("Placeholder synopsis line one."),
+        "synopsis missing",
+      );
+      assert(
+        m.firstChapterUrl ===
+          "https://mtl-novel.com/novel/sample-novel/chapter-1-opening/",
         `first: ${m.firstChapterUrl}`,
       );
     },
@@ -1388,9 +1396,13 @@ checks.push(
         "https://mtl-novel.com/novel/sample-novel/chapter-1-opening/",
       );
       assert(ch.title === "Chapter 1: Opening", `title: ${ch.title}`);
-      assert(ch.content.includes("Placeholder paragraph two."), "paragraphs missing");
       assert(
-        ch.nextUrl === "https://mtl-novel.com/novel/sample-novel/chapter-2-next/",
+        ch.content.includes("Placeholder paragraph two."),
+        "paragraphs missing",
+      );
+      assert(
+        ch.nextUrl ===
+          "https://mtl-novel.com/novel/sample-novel/chapter-2-next/",
         `next: ${ch.nextUrl}`,
       );
     },
@@ -1398,8 +1410,14 @@ checks.push(
   {
     name: "mtl-novel: canHandle accepts mtl-novel.com only, not mtlnovel.me",
     run: () => {
-      assert(mtlNovelScraper.canHandle("https://mtl-novel.com/novel/x/"), "should match");
-      assert(!mtlNovelScraper.canHandle("https://mtlnovel.me/read/x/"), "mtlnovel.me must not match");
+      assert(
+        mtlNovelScraper.canHandle("https://mtl-novel.com/novel/x/"),
+        "should match",
+      );
+      assert(
+        !mtlNovelScraper.canHandle("https://mtlnovel.me/read/x/"),
+        "mtlnovel.me must not match",
+      );
     },
   },
 );
