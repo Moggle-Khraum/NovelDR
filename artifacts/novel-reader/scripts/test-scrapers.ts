@@ -1633,31 +1633,55 @@ checks.push(
   {
     name: "lightnovelvf: novel page yields title, author, cover, synopsis, chapter 1 URL",
     run: () => {
-      const m = parseLightNovelVfMeta(VF_NOVEL, "https://www.lightnovelvf.com/novel/sample");
+      const m = parseLightNovelVfMeta(
+        VF_NOVEL,
+        "https://www.lightnovelvf.com/novel/sample",
+      );
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(m.coverUrl.endsWith("sample.jpg"), `cover: ${m.coverUrl}`);
       assert(m.synopsis === "Placeholder synopsis.", `synopsis: ${m.synopsis}`);
-      assert(m.firstChapterUrl === "https://www.lightnovelvf.com/novel/sample/1", `first: ${m.firstChapterUrl}`);
+      assert(
+        m.firstChapterUrl === "https://www.lightnovelvf.com/novel/sample/1",
+        `first: ${m.firstChapterUrl}`,
+      );
     },
   },
   {
     name: "lightnovelvf: chapter page follows data-next-url and stops on the last chapter",
     run: () => {
-      const c = parseLightNovelVfChapter(VF_CHAPTER, "https://www.lightnovelvf.com/novel/sample/2");
+      const c = parseLightNovelVfChapter(
+        VF_CHAPTER,
+        "https://www.lightnovelvf.com/novel/sample/2",
+      );
       assert(c.title === "Chapitre 2 — Sample", `title: ${c.title}`);
       assert(c.content.includes("Placeholder paragraph."), "paragraph missing");
-      assert(c.nextUrl === "https://www.lightnovelvf.com/novel/sample/3", `next: ${c.nextUrl}`);
-      const last = parseLightNovelVfChapter(VF_LAST, "https://www.lightnovelvf.com/novel/sample/40");
+      assert(
+        c.nextUrl === "https://www.lightnovelvf.com/novel/sample/3",
+        `next: ${c.nextUrl}`,
+      );
+      const last = parseLightNovelVfChapter(
+        VF_LAST,
+        "https://www.lightnovelvf.com/novel/sample/40",
+      );
       assert(last.nextUrl === null, `last next: ${last.nextUrl}`);
     },
   },
   {
     name: "lightnovelvf: canHandle accepts lightnovelvf.com and www, not other domains",
     run: () => {
-      assert(lightNovelVfScraper.canHandle("https://www.lightnovelvf.com/novel/x"), "www should match");
-      assert(lightNovelVfScraper.canHandle("https://lightnovelvf.com/novel/x"), "bare should match");
-      assert(!lightNovelVfScraper.canHandle("https://lightnovelvf.net/novel/x"), "other domain must not match");
+      assert(
+        lightNovelVfScraper.canHandle("https://www.lightnovelvf.com/novel/x"),
+        "www should match",
+      );
+      assert(
+        lightNovelVfScraper.canHandle("https://lightnovelvf.com/novel/x"),
+        "bare should match",
+      );
+      assert(
+        !lightNovelVfScraper.canHandle("https://lightnovelvf.net/novel/x"),
+        "other domain must not match",
+      );
     },
   },
 );

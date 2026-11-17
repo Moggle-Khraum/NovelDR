@@ -63,7 +63,11 @@ export const SUPPORTED_SITES: {
   { name: "MTL-Novel", baseUrl: "https://mtl-novel.com/", language: "mtl" },
   { name: "RaNovel", baseUrl: "https://ranovel.com/", language: "mtl" },
   { name: "Jaomix", baseUrl: "https://jaomix.ru/", language: "etc" },
-  { name: "LightNovelVF", baseUrl: "https://www.lightnovelvf.com/", language: "etc" },
+  {
+    name: "LightNovelVF",
+    baseUrl: "https://www.lightnovelvf.com/",
+    language: "etc",
+  },
   { name: "LightNovelTo", baseUrl: "https://lightnovel.to/", language: "en" },
   { name: "NovelBuddy", baseUrl: "https://novelbuddy.me/", language: "en" },
   {
