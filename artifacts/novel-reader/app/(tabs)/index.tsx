@@ -206,14 +206,11 @@ function NovelCard({
               contentFit="cover"
             />
           ) : (
-            <View
-              style={[
-                styles.coverPlaceholder,
-                { backgroundColor: colors.surface },
-              ]}
-            >
-              <Ionicons name="book" size={28} color={colors.accent} />
-            </View>
+            <Image
+              source={require("@/assets/images/cover-placeholder.jpg")}
+              style={styles.cover}
+              contentFit="cover"
+            />
           )}
         </View>
 

@@ -1066,14 +1066,11 @@ export default function NovelDetailScreen() {
                 contentFit="cover"
               />
             ) : (
-              <View
-                style={[
-                  styles.coverPlaceholder,
-                  { backgroundColor: colors.card },
-                ]}
-              >
-                <Ionicons name="book" size={48} color={colors.accent} />
-              </View>
+              <Image
+                source={require("@/assets/images/cover-placeholder.jpg")}
+                style={styles.cover}
+                contentFit="cover"
+              />
             )}
           </View>
           <View style={styles.heroInfo}>
