@@ -85,6 +85,8 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [RoyalRoad](https://www.royalroad.com/) | ✅ Site Active | [AsiaNovel](https://www.asianovel.net/) | ✅ Site Active | [WuxiaBox](https://www.wuxiabox.com/) | ✅ Site Active |
 | [NovelPhoenix](https://novelphoenix.com/) | ✅ Site Active | [Novel-bin](https://novel-bin.com/) | ✅ Site Active | [WuxiaClick](https://wuxia.click/) | ✅ Site Active |
 | [NovelPing](https://novelping.com/) | ✅ Site Active | [NovelFull.net](https://novelfull.net/) | ✅ Site Active | [CentralNovel](https://centralnovel.com/) | ✅ Site Active |
+| [MTL-Novel](https://mtl-novel.com/) | 🧪 Untested | [LightNovelWorld](https://lightnovelworld.net/) | 🧪 Untested | [MeioNovels](https://meionovels.com/) | 🧪 Untested |
+| [NovelasLigera](https://novelasligeras.net/) | ✅ Site Active | | | | |
 
 ---
 
