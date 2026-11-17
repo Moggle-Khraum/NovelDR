@@ -615,6 +615,11 @@ export default function AddNovelScreen() {
       addLog("Cover: scraper returned no image URL", "warning");
       return "";
     }
+    // Protected-cover sites use the placeholder by default.
+    if (hasProtectedCover(coverUrl)) {
+      addLog("Cover: protected site, using placeholder", "info");
+      return "";
+    }
     addLog(`Cover URL: ${coverUrl}`, "info");
     // Cloudflare's clearance cookie from the WebView is required for some
     // image hosts (e.g. NovelasLigera), so send the stored cookies with it.
@@ -891,7 +896,9 @@ export default function AddNovelScreen() {
         title: meta.title,
         author: meta.author,
         synopsis: meta.synopsis,
-        coverUrl: localCoverUrl || meta.coverUrl,
+        coverUrl:
+          localCoverUrl ||
+          (hasProtectedCover(meta.coverUrl) ? "" : meta.coverUrl),
         sourceUrl: metaUrl,
         dateAdded,
         status: "unread",

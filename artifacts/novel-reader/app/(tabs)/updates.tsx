@@ -220,6 +220,8 @@ export default function UpdatesScreen() {
     novelId: string,
   ): Promise<string> => {
     if (!coverUrl) return "";
+    // Protected-cover sites use the placeholder by default.
+    if (hasProtectedCover(coverUrl)) return "";
     const coverDir = `${FileSystem.documentDirectory}covers/`;
     const coverPath = `${coverDir}${novelId}.jpg`;
     try {

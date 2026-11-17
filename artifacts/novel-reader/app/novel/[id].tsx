@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -388,7 +389,9 @@ export default function NovelDetailScreen() {
         sourceUrl: parsed.href,
         author: meta.author || novel.author,
         synopsis: meta.synopsis || novel.synopsis,
-        coverUrl: meta.coverUrl || novel.coverUrl,
+        coverUrl: hasProtectedCover(meta.coverUrl)
+          ? ""
+          : meta.coverUrl || novel.coverUrl,
       });
       setChangeSourceOpen(false);
       setNewSourceInput("");
