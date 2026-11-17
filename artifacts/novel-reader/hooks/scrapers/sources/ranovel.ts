@@ -123,7 +123,7 @@ export const raNovelScraper: SourceScraper = {
   },
 
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
-    const html = await fetchHtmlWithFallback(url);
+    const html = await fetchHtmlWithFallback(url, { webviewFirst: true });
     return parseRaNovelMeta(html, url);
   },
 
@@ -131,7 +131,7 @@ export const raNovelScraper: SourceScraper = {
     url: string,
     _chapterNum: number,
   ): Promise<ChapterData> => {
-    const html = await fetchHtmlWithFallback(url);
+    const html = await fetchHtmlWithFallback(url, { webviewFirst: true });
     return parseRaNovelChapter(html, url);
   },
 };

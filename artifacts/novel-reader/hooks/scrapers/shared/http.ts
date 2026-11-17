@@ -51,6 +51,12 @@ export interface FetchOptions {
    * false to override it for one call.
    */
   webviewFallback?: boolean;
+  /**
+   * Try the WebView first, before direct and proxy. Use for sites whose plain
+   * HTML loads without the content (the browser fills it in with JavaScript),
+   * where a direct fetch succeeds but returns an empty page.
+   */
+  webviewFirst?: boolean;
 }
 
 const defaultBuildProxyUrl = (url: string) =>
@@ -169,7 +175,8 @@ export const fetchHtmlWithFallback = async (
   };
 
   const tiers = options.proxyFirst ? [proxy, direct] : [direct, proxy];
-  if (options.webviewFallback ?? needsWebView(validatedUrl))
+  if (options.webviewFirst) tiers.unshift(webview);
+  else if (options.webviewFallback ?? needsWebView(validatedUrl))
     tiers.push(webview);
   return runTiers(tiers);
 };
