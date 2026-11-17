@@ -52,6 +52,9 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
     totalMemoryBytes !== null && totalMemoryBytes < LOW_RAM_THRESHOLD_BYTES;
 
   const [setting, setSettingState] = useState<LowMemorySetting>("auto");
+  // False until the saved setting has been read (or failed to read). The
+  // notice waits for this, so a saved Off is never announced as Low Mode.
+  const [settingLoaded, setSettingLoaded] = useState(false);
 
   // Load the saved setting once at startup. Failures keep the default (auto).
   useEffect(() => {
@@ -66,6 +69,8 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // Keep the default.
+      } finally {
+        if (!cancelled) setSettingLoaded(true);
       }
     })();
     return () => {
@@ -78,13 +83,13 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
 
   // Tell the person once per app launch when Low Memory Mode is in effect.
   useEffect(() => {
-    if (!enabled || lowModeNoticeShown) return;
+    if (!settingLoaded || !enabled || lowModeNoticeShown) return;
     lowModeNoticeShown = true;
     Alert.alert(
       "Running on Low Mode",
       "This device has limited memory, so NovelDR is running in Low Memory Mode to avoid crashes. You can change this in Settings.",
     );
-  }, [enabled]);
+  }, [enabled, settingLoaded]);
 
   // Tag every Sentry event so we can see the device class and mode on crashes.
   useEffect(() => {
