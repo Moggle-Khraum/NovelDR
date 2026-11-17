@@ -90,6 +90,20 @@ export function parseChapterNumber(title: string | undefined): number | null {
 
 const PROLOGUE = /\bprologue\b/i;
 
+// Front matter that always goes to the top, and back matter that always goes
+// to the bottom, whatever their position in the list.
+// Unicode-aware whole-word match, since \b does not work for Cyrillic or accents.
+const wordMatch = (words: string[]) =>
+  new RegExp(`(?<!\\p{L})(?:${words.join("|")})(?!\\p{L})`, "iu");
+const FRONT_MATTER = wordMatch([
+  "prologue", "introduction", "prolog", "пролог", "введение", "вступление",
+  "prólogo", "prologo", "introducción", "introduccion", "prefacio", "prefácio",
+]);
+const BACK_MATTER = wordMatch([
+  "epilogue", "afterword", "epílogo", "epilogo", "epilog", "эпилог",
+  "послесловие", "posfácio", "posfacio", "postscript",
+]);
+
 // Orders chapters into reading order without changing their identity.
 //
 // - Numbered chapters are ordered by their number.
@@ -104,12 +118,17 @@ const PROLOGUE = /\bprologue\b/i;
 export function orderChapters<T extends OrderableChapter>(chapters: T[]): T[] {
   let lastNumber: number | null = null;
   const keyed = chapters.map((chapter, index) => {
-    const number = parseChapterNumber(chapter.title);
+    const title = chapter.title || "";
+    const number = parseChapterNumber(title);
     let key: number;
-    if (number !== null) {
+    if (BACK_MATTER.test(title)) {
+      key = 1e9;
+    } else if (FRONT_MATTER.test(title) || number === 0) {
+      key = -1e9;
+    } else if (number !== null) {
       key = number;
       lastNumber = number;
-    } else if (PROLOGUE.test(chapter.title || "")) {
+    } else if (PROLOGUE.test(title)) {
       key = -1e9;
     } else {
       key = (lastNumber ?? 0) + 0.5;
