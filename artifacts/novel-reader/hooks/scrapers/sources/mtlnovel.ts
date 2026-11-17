@@ -67,7 +67,10 @@ export const parseMtlNovelMeta = (html: string, url: string): NovelMeta => {
 /**
  * Pure parser for a chapter page. No network.
  */
-export const parseMtlNovelChapter = (html: string, url: string): ChapterData => {
+export const parseMtlNovelChapter = (
+  html: string,
+  url: string,
+): ChapterData => {
   // <h1 class="main-title">Chapter 1: Title</h1>
   const titleRaw = safeMatch(
     html,
