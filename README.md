@@ -87,7 +87,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [MTL-Novel](https://mtl-novel.com/) | ✅ Site Active | [LightNovelWorld](https://lightnovelworld.net/) | ✅ Site Active | [MeioNovels](https://meionovels.com/) | ✅ Site Active |
 | [NovelasLigera](https://novelasligeras.net/) | ✅ Site Active | | | | |
 | [Jaomix](https://jaomix.ru/) | 🧪 Untested | | | | |
-| [LightNovelVF](https://www.lightnovelvf.com/) | 🧪 Untested | | | | |
+| [LightNovelVF](https://www.lightnovelvf.com/) | ✅ Site Active | | | | |
 | [Webnovel.vn](https://webnovel.vn/) | 🧪 Untested | | | | |
 
 ---
