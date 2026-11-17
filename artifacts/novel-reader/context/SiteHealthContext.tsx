@@ -53,7 +53,7 @@ export const SUPPORTED_SITES: {
   { name: "NovelBinCC", baseUrl: "https://www.novelbin.cc/", language: "en" },
   {
     name: "NovelArchiveCC",
-    baseUrl: "https://novelarchive.cc/",
+    baseUrl: "https://novelarchive.st/",
     language: "en",
   },
   { name: "NovelFullNet", baseUrl: "https://novelfull.net/", language: "en" },
