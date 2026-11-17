@@ -22,7 +22,9 @@ const readChapterDropdown = (html: string): string[] => {
   // options point at chapter pages; the font/line-height selects don't.
   for (const sel of html.matchAll(/<select[^>]*>([\s\S]*?)<\/select>/gi)) {
     const urls: string[] = [];
-    for (const m of sel[1].matchAll(/<option[^>]*value="(https?:\/\/[^"]+)"/gi)) {
+    for (const m of sel[1].matchAll(
+      /<option[^>]*value="(https?:\/\/[^"]+)"/gi,
+    )) {
       urls.push(m[1].replace(/\s+/g, ""));
     }
     if (urls.some((u) => /\/glava-/i.test(u))) return urls;
@@ -31,7 +33,9 @@ const readChapterDropdown = (html: string): string[] => {
 };
 
 /** Chapter 1 is the last option of the dropdown (list is newest first). */
-export const parseJaomixFirstChapter = (chapterPageHtml: string): string | null => {
+export const parseJaomixFirstChapter = (
+  chapterPageHtml: string,
+): string | null => {
   const urls = readChapterDropdown(chapterPageHtml);
   const last = urls[urls.length - 1];
   return last && isSafeHref(last) ? last : null;
@@ -63,7 +67,8 @@ export const parseJaomixMeta = (html: string, url: string): NovelMeta => {
   // <div class="img-book"><img src="…"></div>
   // <div class="img-book"><div class="img-book-back" style="…"></div><img src="…">
   const coverUrl =
-    safeMatch(html, /<div class="img-book"[\s\S]*?<img[^>]*src="([^"]+)"/i) ?? "";
+    safeMatch(html, /<div class="img-book"[\s\S]*?<img[^>]*src="([^"]+)"/i) ??
+    "";
 
   // <div id="info-book"><p>Автор: Name</p><p>Статус: продолжается</p>…</div>
   // Labels are Russian: "Автор:" (author), "Жанры:" (genres), "Статус:" (status).
