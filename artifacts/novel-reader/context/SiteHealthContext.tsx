@@ -61,6 +61,7 @@ export const SUPPORTED_SITES: {
   { name: "WuxiaClick", baseUrl: "https://wuxia.click/", language: "en" },
   { name: "MTLNovelMe", baseUrl: "https://mtlnovel.me/", language: "mtl" },
   { name: "MTL-Novel", baseUrl: "https://mtl-novel.com/", language: "mtl" },
+  { name: "LNMTL", baseUrl: "https://lnmtl.com/", language: "mtl" },
   { name: "LightNovelTo", baseUrl: "https://lightnovel.to/", language: "en" },
   { name: "NovelBuddy", baseUrl: "https://novelbuddy.me/", language: "en" },
   {
