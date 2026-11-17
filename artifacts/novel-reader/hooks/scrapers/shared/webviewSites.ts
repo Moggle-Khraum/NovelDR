@@ -77,6 +77,7 @@ const PROTECTED_COVER_HOSTS: readonly string[] = [
   "meionovels.com",
   "novelasligeras.net",
   "novelasligera.com",
+  "lightnovelworld.net",
 ];
 
 export const hasProtectedCover = (url: string): boolean => {
