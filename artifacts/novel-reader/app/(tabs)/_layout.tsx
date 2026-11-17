@@ -1,5 +1,6 @@
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { useLowMemory } from "@/context/LowMemoryContext";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
@@ -46,6 +47,7 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const { colors } = useTheme();
+  const lowMemory = useLowMemory();
   const { updateInfo } = useUpdateContext();
   const updateAvailable = !!updateInfo;
   const isIOS = Platform.OS === "ios";
@@ -66,13 +68,13 @@ function ClassicTabLayout() {
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
-          isIOS ? (
+          isIOS && !lowMemory.enabled ? (
             <BlurView
               intensity={90}
               tint="dark"
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
+          ) : isWeb || isIOS ? (
             <View
               style={[
                 StyleSheet.absoluteFill,
@@ -181,7 +183,8 @@ const styles = StyleSheet.create({
 });
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  const lowMemory = useLowMemory();
+  if (isLiquidGlassAvailable() && !lowMemory.enabled) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;

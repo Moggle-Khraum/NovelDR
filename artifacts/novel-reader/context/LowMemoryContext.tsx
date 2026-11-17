@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { Alert } from "react-native";
 import * as Device from "expo-device";
+import { setLowMemoryActive } from "@/hooks/scrapers/shared/lowMemoryState";
 import * as Sentry from "@sentry/react-native";
 
 // Devices with less total RAM than this are treated as low-memory.
@@ -82,6 +83,10 @@ export function LowMemoryProvider({ children }: { children: ReactNode }) {
 
   const enabled =
     setting === "auto" ? isLowRamDevice : setting === "on";
+
+  useEffect(() => {
+    setLowMemoryActive(enabled);
+  }, [enabled]);
 
   // Tell the person once per app launch when Low Memory Mode is in effect.
   useEffect(() => {
