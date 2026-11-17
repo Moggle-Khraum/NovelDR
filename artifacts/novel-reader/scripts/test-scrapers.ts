@@ -1708,27 +1708,48 @@ checks.push(
   {
     name: "webnovelvn: novel page yields title, author, cover, synopsis, chapter 1 URL",
     run: () => {
-      const m = parseWebnovelVnMeta(VN_NOVEL, "https://webnovel.vn/sample-novel/");
+      const m = parseWebnovelVnMeta(
+        VN_NOVEL,
+        "https://webnovel.vn/sample-novel/",
+      );
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(m.synopsis.includes("Placeholder synopsis."), "synopsis missing");
-      assert(m.firstChapterUrl === "https://webnovel.vn/sample-novel/chuong-1/", `first: ${m.firstChapterUrl}`);
+      assert(
+        m.firstChapterUrl === "https://webnovel.vn/sample-novel/chuong-1/",
+        `first: ${m.firstChapterUrl}`,
+      );
     },
   },
   {
     name: "webnovelvn: chapter page reads <br> lines, chapter label and next link",
     run: () => {
-      const c = parseWebnovelVnChapter(VN_CHAPTER, "https://webnovel.vn/sample-novel/chuong-1/");
+      const c = parseWebnovelVnChapter(
+        VN_CHAPTER,
+        "https://webnovel.vn/sample-novel/chuong-1/",
+      );
       assert(c.title === "Chương 1", `title: ${c.title}`);
-      assert(c.content === "Line one.\nLine two.", `content: ${JSON.stringify(c.content)}`);
-      assert(c.nextUrl === "https://webnovel.vn/sample-novel/chuong-2/", `next: ${c.nextUrl}`);
+      assert(
+        c.content === "Line one.\nLine two.",
+        `content: ${JSON.stringify(c.content)}`,
+      );
+      assert(
+        c.nextUrl === "https://webnovel.vn/sample-novel/chuong-2/",
+        `next: ${c.nextUrl}`,
+      );
     },
   },
   {
     name: "webnovelvn: canHandle accepts webnovel.vn only",
     run: () => {
-      assert(webnovelVnScraper.canHandle("https://webnovel.vn/x/"), "should match");
-      assert(!webnovelVnScraper.canHandle("https://webnovel.com/x/"), "other domain must not match");
+      assert(
+        webnovelVnScraper.canHandle("https://webnovel.vn/x/"),
+        "should match",
+      );
+      assert(
+        !webnovelVnScraper.canHandle("https://webnovel.com/x/"),
+        "other domain must not match",
+      );
     },
   },
 );

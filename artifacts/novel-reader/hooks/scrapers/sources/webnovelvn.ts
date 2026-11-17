@@ -43,7 +43,9 @@ export const parseWebnovelVnMeta = (html: string, url: string): NovelMeta => {
     html,
     /<p[^>]*class="book-detail__author[^"]*"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i,
   );
-  const author = authorRaw ? decodeEntities(authorRaw).trim() : "Unknown Author";
+  const author = authorRaw
+    ? decodeEntities(authorRaw).trim()
+    : "Unknown Author";
 
   // <meta property="og:image" content="https://cdn.webnovel.vn/…">
   const coverUrl =
