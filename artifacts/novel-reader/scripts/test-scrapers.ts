@@ -85,6 +85,11 @@ import {
   lightNovelVfScraper,
 } from "../hooks/scrapers/sources/lightnovelvf";
 import {
+  parseWebnovelVnMeta,
+  parseWebnovelVnChapter,
+  webnovelVnScraper,
+} from "../hooks/scrapers/sources/webnovelvn";
+import {
   parseLightNovelWorldNetMeta,
   parseLightNovelWorldNetChapter,
   lightNovelWorldNetScraper,
@@ -1682,6 +1687,48 @@ checks.push(
         !lightNovelVfScraper.canHandle("https://lightnovelvf.net/novel/x"),
         "other domain must not match",
       );
+    },
+  },
+);
+
+// ── Webnovel.vn (webnovel.vn) ────────────────────────────────────────────
+const VN_NOVEL = `
+  <meta property="og:image" content="https://cdn.webnovel.vn/img/sample.webp?t=1"/>
+  <h1 id="book-detail-title" class="book-detail__title">Sample Novel</h1>
+  <p class="book-detail__author book-detail__stat"><span class="icon"></span><a href="https://webnovel.vn/tac-gia/sample/" title="Sample Author">Sample Author</a></p>
+  <div id="panel-summary"><div class="book-detail__summary">Nhóm dịch: Sample<br><br>Văn án:<br><br>Placeholder synopsis.</div></div>
+`;
+const VN_CHAPTER = `
+  <title>Chương 1 - Sample Novel | Webnovel.vn</title>
+  <article class="reader__content"><div id="chapter-c">Line one.<br><br>Line two.</div></article>
+  <link rel="next" href="https://webnovel.vn/sample-novel/chuong-2/">
+`;
+
+checks.push(
+  {
+    name: "webnovelvn: novel page yields title, author, cover, synopsis, chapter 1 URL",
+    run: () => {
+      const m = parseWebnovelVnMeta(VN_NOVEL, "https://webnovel.vn/sample-novel/");
+      assert(m.title === "Sample Novel", `title: ${m.title}`);
+      assert(m.author === "Sample Author", `author: ${m.author}`);
+      assert(m.synopsis.includes("Placeholder synopsis."), "synopsis missing");
+      assert(m.firstChapterUrl === "https://webnovel.vn/sample-novel/chuong-1/", `first: ${m.firstChapterUrl}`);
+    },
+  },
+  {
+    name: "webnovelvn: chapter page reads <br> lines, chapter label and next link",
+    run: () => {
+      const c = parseWebnovelVnChapter(VN_CHAPTER, "https://webnovel.vn/sample-novel/chuong-1/");
+      assert(c.title === "Chương 1", `title: ${c.title}`);
+      assert(c.content === "Line one.\nLine two.", `content: ${JSON.stringify(c.content)}`);
+      assert(c.nextUrl === "https://webnovel.vn/sample-novel/chuong-2/", `next: ${c.nextUrl}`);
+    },
+  },
+  {
+    name: "webnovelvn: canHandle accepts webnovel.vn only",
+    run: () => {
+      assert(webnovelVnScraper.canHandle("https://webnovel.vn/x/"), "should match");
+      assert(!webnovelVnScraper.canHandle("https://webnovel.com/x/"), "other domain must not match");
     },
   },
 );

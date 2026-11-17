@@ -48,6 +48,7 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
   "ranovel.com": "mtl",
   "jaomix.ru": "etc", // Russian
   "lightnovelvf.com": "etc", // French
+  "webnovel.vn": "etc", // Vietnamese
 
   // Other languages (neither English nor MTL)
   "centralnovel.com": "etc", // Portuguese
@@ -65,6 +66,7 @@ const SOURCE_FLAG: Record<string, string> = {
   "meionovels.com": "🇮🇩", // Indonesian
   "jaomix.ru": "🇷🇺", // Russian
   "lightnovelvf.com": "🇫🇷", // French
+  "webnovel.vn": "🇻🇳", // Vietnamese
 };
 
 /** Returns the flag emoji for a saved source URL, or null if the site has none. */
