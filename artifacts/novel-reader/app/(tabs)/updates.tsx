@@ -30,6 +30,8 @@ import {
 import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
+import { isHalted, resetHalt } from "@/hooks/scrapers/shared/haltControl";
+import { useHaltControl } from "@/hooks/useHaltControl";
 import {
   checkDeprecatedSite,
   getDeprecatedSiteMessage,
@@ -134,6 +136,10 @@ export default function UpdatesScreen() {
   const [showNovelSearch, setShowNovelSearch] = useState(false);
 
   const stopRef = useRef(false);
+  // Halt: countdown button; at zero it aborts in-flight requests and WebView jobs.
+  const halt = useHaltControl(isUpdating, () => {
+    stopRef.current = true;
+  });
   const logScrollRef = useRef<ScrollView>(null);
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -406,6 +412,7 @@ export default function UpdatesScreen() {
     const maxCh = Math.min(parsedMaxCh, CHAPTER_LIMIT_MAX);
 
     stopRef.current = false;
+    resetHalt();
     setIsUpdating(true);
     setLogs([]);
     setProgress(0);
@@ -885,6 +892,7 @@ export default function UpdatesScreen() {
             currentUrl = data.nextUrl;
             chapterNum++;
           } catch (err: any) {
+            if (isHalted()) break;
             consecutiveErrors++;
             addLog(
               `Failed to download Chapter ${chapterNum}: ${err.message}`,
@@ -1057,7 +1065,8 @@ export default function UpdatesScreen() {
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
-      addLog(`ERROR: ${e.message || "Update failed"}`, "error");
+      if (isHalted()) addLog(`Update halted by user.`, "warning");
+      else addLog(`ERROR: ${e.message || "Update failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
       setIsUpdating(false);
@@ -1336,13 +1345,12 @@ export default function UpdatesScreen() {
             {isUpdating && (
               <Pressable
                 style={[styles.outlineBtn, { borderColor: Colors.error }]}
-                onPress={() => {
-                  stopRef.current = true;
-                }}
+                onPress={halt.press}
+                disabled={halt.disabled}
               >
                 <Ionicons name="stop" size={16} color={Colors.error} />
                 <Text style={[styles.outlineBtnText, { color: Colors.error }]}>
-                  Halt
+                  {halt.label}
                 </Text>
               </Pressable>
             )}

@@ -36,6 +36,8 @@ import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
 import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
+import { isHalted, resetHalt } from "@/hooks/scrapers/shared/haltControl";
+import { useHaltControl } from "@/hooks/useHaltControl";
 import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
 import {
   checkDeprecatedSite,
@@ -462,6 +464,10 @@ export default function AddNovelScreen() {
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopRef = useRef(false);
+  // Halt: countdown button; at zero it aborts in-flight requests and WebView jobs.
+  const halt = useHaltControl(isDownloading, () => {
+    stopRef.current = true;
+  });
   const logScrollRef = useRef<ScrollView>(null);
 
   // Detect chapter URL and auto-fill Start Chapter
@@ -570,6 +576,7 @@ export default function AddNovelScreen() {
         return await fetchChapter(fetchUrl, num);
       } catch (err) {
         lastErr = err;
+        if (isHalted()) throw err;
         if (attempt < retries) {
           addLog(
             `Chapter ${num} failed (attempt ${attempt}/${retries}), retrying...`,
@@ -803,6 +810,7 @@ export default function AddNovelScreen() {
     // ─────────────────────────────────────────────────────────────────────────
 
     stopRef.current = false;
+    resetHalt();
     setIsDownloading(true);
     setLogs([]);
     setProgress(0);
@@ -1215,6 +1223,7 @@ export default function AddNovelScreen() {
           currentUrl = data.nextUrl;
           chapterNum++;
         } catch (err: any) {
+          if (isHalted()) break;
           addLog(
             `Chapter ${chapterNum} failed after 3 attempts, skipping for now: ${err.message}`,
             "warning",
@@ -1344,7 +1353,8 @@ export default function AddNovelScreen() {
       setProgress(100);
     } catch (e: any) {
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
-      addLog(`ERROR: ${e.message || "Download failed"}`, "error");
+      if (isHalted()) addLog(`Download halted by user.`, "warning");
+      else addLog(`ERROR: ${e.message || "Download failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
       setIsDownloading(false);
@@ -1585,13 +1595,12 @@ export default function AddNovelScreen() {
             {isDownloading && (
               <Pressable
                 style={[styles.outlineBtn, { borderColor: Colors.error }]}
-                onPress={() => {
-                  stopRef.current = true;
-                }}
+                onPress={halt.press}
+                disabled={halt.disabled}
               >
                 <Ionicons name="stop" size={16} color={Colors.error} />
                 <Text style={[styles.outlineBtnText, { color: Colors.error }]}>
-                  Halt
+                  {halt.label}
                 </Text>
               </Pressable>
             )}

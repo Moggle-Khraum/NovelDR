@@ -29,6 +29,7 @@ import {
   WebViewMessageEvent,
   WebViewProps,
 } from "react-native-webview";
+import { haltError, isHalted, onHalt } from "./haltControl";
 
 // react-native-webview's published root index.d.ts declares
 // `class WebView<P = undefined> extends Component<WebViewProps & P>`. JSX can't
@@ -77,6 +78,10 @@ export const fetchViaWebView = (
   interactive = false,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (isHalted()) {
+      reject(haltError());
+      return;
+    }
     if (!processNext) {
       reject(new Error("webview: WebViewFetchBridge is not mounted"));
       return;
@@ -97,6 +102,10 @@ export const fetchImageViaWebView = (
   timeoutMs = 60000,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (isHalted()) {
+      reject(haltError());
+      return;
+    }
     if (!processNext) {
       reject(new Error("webview: WebViewFetchBridge is not mounted"));
       return;
@@ -279,6 +288,20 @@ export function WebViewFetchBridge() {
       setCurrent(null);
     },
     [],
+  );
+
+  // Halt: drop every queued job and abort the running one at once, so the
+  // scraper stops waiting on the WebView instead of finishing the page.
+  useEffect(
+    () =>
+      onHalt(() => {
+        while (queue.length > 0) {
+          queue.shift()?.reject(haltError());
+        }
+        const job = currentRef.current;
+        if (job) finish(job, { error: haltError() });
+      }),
+    [finish],
   );
 
   const startNext = useCallback(() => {

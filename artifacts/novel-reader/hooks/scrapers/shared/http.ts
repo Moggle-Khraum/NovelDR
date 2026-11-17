@@ -4,6 +4,7 @@
 
 import axios from "axios";
 import { needsWebView, needsUserChallenge } from "./webviewSites";
+import { haltError, haltSignal, isHalted } from "./haltControl";
 
 const DEFAULT_HEADERS = {
   "User-Agent":
@@ -81,6 +82,7 @@ const runTiers = async <T>(tiers: Tier<T>[]): Promise<T> => {
   let definitiveMiss = false;
 
   for (const tier of tiers) {
+    if (isHalted()) throw haltError();
     if (tier.name === "webview" && definitiveMiss) {
       failures.push("webview: skipped (page not found)");
       continue;
@@ -88,6 +90,7 @@ const runTiers = async <T>(tiers: Tier<T>[]): Promise<T> => {
     try {
       return await tier.run();
     } catch (err) {
+      if (isHalted()) throw haltError();
       const status = statusOf(err);
       if (status === 404 || status === 410) definitiveMiss = true;
       failures.push(`${tier.name}: ${messageOf(err)}`);
@@ -156,14 +159,14 @@ export const fetchHtmlWithFallback = async (
     name: "direct",
     run: () =>
       httpClient
-        .get(validatedUrl)
+        .get(validatedUrl, { signal: haltSignal() })
         .then((res) => assertUsableHtml(res.data, "direct fetch")),
   };
   const proxy: Tier<string> = {
     name: "proxy",
     run: () =>
       httpClient
-        .get(buildProxyUrl(validatedUrl))
+        .get(buildProxyUrl(validatedUrl), { signal: haltSignal() })
         .then((res) => assertUsableHtml(res.data, "proxy fetch")),
   };
   const webview: Tier<string> = {
@@ -204,14 +207,14 @@ export const fetchJsonWithFallback = async <T = unknown>(
     name: "direct",
     run: () =>
       httpClient
-        .get(validatedUrl, { headers: JSON_HEADERS })
+        .get(validatedUrl, { headers: JSON_HEADERS, signal: haltSignal() })
         .then((res) => res.data),
   };
   const proxy: Tier<T> = {
     name: "proxy",
     run: () =>
       httpClient
-        .get(buildProxyUrl(validatedUrl), { headers: JSON_HEADERS })
+        .get(buildProxyUrl(validatedUrl), { headers: JSON_HEADERS, signal: haltSignal() })
         .then((res) => res.data),
   };
   const webview: Tier<T> = {
