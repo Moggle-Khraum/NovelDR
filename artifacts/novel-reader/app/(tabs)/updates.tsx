@@ -31,6 +31,8 @@ import { ChapterLimitModal } from "@/components/ChapterLimitModal";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
 import { isHalted, resetHalt } from "@/hooks/scrapers/shared/haltControl";
+import { endPausedSiteException } from "@/hooks/scrapers/shared/lowMemoryState";
+import { confirmPausedSiteJob, isPausedSiteUrl } from "@/lib/pausedSitePrompt";
 import { useHaltControl } from "@/hooks/useHaltControl";
 import {
   checkDeprecatedSite,
@@ -403,6 +405,14 @@ export default function UpdatesScreen() {
     const crossSource =
       currentHost !== "" &&
       existingChapters.some((c) => !!c.url && hostOf(c.url) !== currentHost);
+
+    if (isPausedSiteUrl(selectedNovel.sourceUrl)) {
+      const ok = await confirmPausedSiteJob(hostOf(selectedNovel.sourceUrl));
+      if (!ok) {
+        addLog("Update cancelled.", "info");
+        return;
+      }
+    }
 
     const startCh = Math.max(
       1,
@@ -1069,6 +1079,7 @@ export default function UpdatesScreen() {
       else addLog(`ERROR: ${e.message || "Update failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
+      endPausedSiteException();
       setIsUpdating(false);
       stopTimer();
     }

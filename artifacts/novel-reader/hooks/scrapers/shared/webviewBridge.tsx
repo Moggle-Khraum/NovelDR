@@ -30,6 +30,7 @@ import {
   WebViewProps,
 } from "react-native-webview";
 import { haltError, isHalted, onHalt } from "./haltControl";
+import { isLowMemoryActive, PAUSED_MESSAGE } from "./lowMemoryState";
 
 // react-native-webview's published root index.d.ts declares
 // `class WebView<P = undefined> extends Component<WebViewProps & P>`. JSX can't
@@ -82,6 +83,10 @@ export const fetchViaWebView = (
       reject(haltError());
       return;
     }
+    if (isLowMemoryActive()) {
+      reject(new Error(`webview: ${PAUSED_MESSAGE}`));
+      return;
+    }
     if (!processNext) {
       reject(new Error("webview: WebViewFetchBridge is not mounted"));
       return;
@@ -104,6 +109,10 @@ export const fetchImageViaWebView = (
   return new Promise((resolve, reject) => {
     if (isHalted()) {
       reject(haltError());
+      return;
+    }
+    if (isLowMemoryActive()) {
+      reject(new Error(`webview: ${PAUSED_MESSAGE}`));
       return;
     }
     if (!processNext) {

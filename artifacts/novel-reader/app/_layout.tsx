@@ -26,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
+import { LowMemoryProvider } from "@/context/LowMemoryContext";
 import { SiteHealthProvider } from "@/context/SiteHealthContext";
 import { UpdateProvider } from "@/context/UpdateContext";
 import { WebViewFetchBridge } from "@/hooks/scrapers/shared/webviewBridge";
@@ -388,6 +389,7 @@ export default Sentry.wrap(function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
+              <LowMemoryProvider>
               <LibraryProvider>
                 <UpdateProvider>
                   <SiteHealthProvider>
@@ -396,6 +398,7 @@ export default Sentry.wrap(function RootLayout() {
                   </SiteHealthProvider>
                 </UpdateProvider>
               </LibraryProvider>
+            </LowMemoryProvider>
             </ThemeProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

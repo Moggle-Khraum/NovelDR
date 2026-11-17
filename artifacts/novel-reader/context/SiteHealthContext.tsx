@@ -9,6 +9,8 @@ import React, {
 
 import { checkSiteHealth } from "@/hooks/useApi";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { needsWebView } from "@/hooks/scrapers/shared/webviewSites";
+import { useLowMemory } from "./LowMemoryContext";
 
 // --- SUPPORTED SITES ---
 // Moved here from app/(tabs)/add.tsx so the health-check logic can live at
@@ -104,7 +106,8 @@ export type SiteStatus =
   | "online"
   | "maintenance"
   | "gateway_timeout"
-  | "offline";
+  | "offline"
+  | "paused";
 
 const SITE_STATUS_STORAGE = `${FileSystem.documentDirectory}NovelDR/site_status.json`;
 const CACHE_VALID_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -159,6 +162,9 @@ export function SiteHealthProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { enabled: lowMemoryOn } = useLowMemory();
+  const lowMemoryRef = useRef(lowMemoryOn);
+  lowMemoryRef.current = lowMemoryOn;
   const [statuses, setStatuses] = useState<Record<string, SiteStatus>>({});
   const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
@@ -181,8 +187,12 @@ export function SiteHealthProvider({
   const runHealthChecks = async (
     sitesToCheck: typeof SUPPORTED_SITES,
     baseStatuses: Record<string, SiteStatus>,
+    force = false,
   ) => {
     if (sitesToCheck.length === 0) return;
+
+    // Low Memory Mode: only a manual Recheck runs checks.
+    if (lowMemoryRef.current && !force) return;
 
     // Simple switch: if device is offline, skip checks
     if (connectivityRef.current !== "online") {
@@ -203,6 +213,8 @@ export function SiteHealthProvider({
     // shows "checking", and its result lands as soon as it finishes
     // instead of every site waiting on the slowest one.
     for (const site of sitesToCheck) {
+      // Paused, not offline: these sites need the WebView, which is off in Low Memory Mode.
+      if (lowMemoryRef.current && needsWebView(site.baseUrl)) continue;
       setStatuses((prev) => ({ ...prev, [site.name]: "checking" }));
       try {
         const isUp = await checkSiteHealth(site.baseUrl);
@@ -224,7 +236,7 @@ export function SiteHealthProvider({
     // between the two runs.
     if (pendingRecheckRef.current) {
       pendingRecheckRef.current = false;
-      await runHealthChecks(SUPPORTED_SITES, finalStatuses);
+      await runHealthChecks(SUPPORTED_SITES, finalStatuses, true);
     } else {
       setIsChecking(false);
     }
@@ -239,7 +251,7 @@ export function SiteHealthProvider({
     const targets = siteName
       ? SUPPORTED_SITES.filter((s) => s.name === siteName)
       : SUPPORTED_SITES;
-    runHealthChecks(targets, statuses);
+    runHealthChecks(targets, statuses, true);
   };
 
   useEffect(() => {
@@ -286,7 +298,7 @@ export function SiteHealthProvider({
         }
       } else if (connectivityRef.current === "online") {
         // No cache at all - first run, and connectivity is confirmed.
-        await runHealthChecks(SUPPORTED_SITES, {});
+        await runHealthChecks(SUPPORTED_SITES, {}, true);
       }
     };
 
@@ -323,8 +335,17 @@ export function SiteHealthProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectivity.status]);
 
+  const shownStatuses: Record<string, SiteStatus> = { ...statuses };
+  if (lowMemoryOn) {
+    for (const site of SUPPORTED_SITES) {
+      if (needsWebView(site.baseUrl)) shownStatuses[site.name] = "paused";
+    }
+  }
+
   return (
-    <SiteHealthContext.Provider value={{ statuses, isChecking, recheck }}>
+    <SiteHealthContext.Provider
+      value={{ statuses: shownStatuses, isChecking, recheck }}
+    >
       {children}
     </SiteHealthContext.Provider>
   );

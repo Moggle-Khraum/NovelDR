@@ -37,6 +37,8 @@ import { getSourceFlag } from "@/hooks/scrapers/sourceLanguages";
 import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
 import { isHalted, resetHalt } from "@/hooks/scrapers/shared/haltControl";
+import { endPausedSiteException } from "@/hooks/scrapers/shared/lowMemoryState";
+import { confirmPausedSiteJob, isPausedSiteUrl } from "@/lib/pausedSitePrompt";
 import { useHaltControl } from "@/hooks/useHaltControl";
 import { saveCoverViaWebView } from "@/hooks/scrapers/shared/coverFetch";
 import {
@@ -151,6 +153,7 @@ function SourceListModalCell({
           backgroundColor: tint ? tint + "14" : colors.card,
           borderColor: tint ?? colors.border,
         },
+        status === "paused" ? { opacity: 0.45 } : null,
       ]}
     >
       <Text
@@ -163,6 +166,11 @@ function SourceListModalCell({
       >
         {flag ? `${name} ${flag}` : name}
       </Text>
+      {status === "paused" ? (
+        <Text style={[styles.siteName, { color: colors.text, opacity: 0.6, fontSize: 10 }]}>
+          Paused in Low Memory Mode
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -720,6 +728,21 @@ export default function AddNovelScreen() {
         "error",
       );
       return;
+    }
+
+    if (isPausedSiteUrl(trimmedUrl)) {
+      const host = (() => {
+        try {
+          return new URL(trimmedUrl).hostname;
+        } catch {
+          return trimmedUrl;
+        }
+      })();
+      const ok = await confirmPausedSiteJob(host);
+      if (!ok) {
+        addLog("Download cancelled.", "info");
+        return;
+      }
     }
 
     // ===== NEW: Check for deprecated sites =====
@@ -1357,6 +1380,7 @@ export default function AddNovelScreen() {
       else addLog(`ERROR: ${e.message || "Download failed"}`, "error");
       addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "error");
     } finally {
+      endPausedSiteException();
       setIsDownloading(false);
       stopTimer();
     }

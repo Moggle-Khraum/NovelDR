@@ -40,6 +40,7 @@ import {
 } from "../../lib/storageStats";
 import { Theme } from "@/constants/colors";
 import { useUpdateContext } from "@/context/UpdateContext";
+import { useLowMemory } from "@/context/LowMemoryContext";
 import { CRASH_LOG_FILE_PATH } from "@/hooks/useCrashLogger";
 
 // =============================================================================
@@ -275,6 +276,7 @@ export default function SettingsScreen() {
   );
   const [estimatingSize, setEstimatingSize] = useState(false);
   const [showDevProfile, setShowDevProfile] = useState(false);
+  const lowMemory = useLowMemory();
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [showWarningCard, setShowWarningCard] = useState(false);
   const [operationProgress, setOperationProgress] = useState("");
@@ -3551,6 +3553,29 @@ export default function SettingsScreen() {
                   Scraper.
                 </Text>
 
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      "https://github.com/LNReader/lnreader-plugins",
+                    )
+                  }
+                >
+                  <Text
+                    style={[styles.creditsItemLink, { color: colors.accent }]}
+                  >
+                    @LNReader/lnreader-plugins
+                  </Text>
+                </Pressable>
+                <Text
+                  style={[
+                    styles.creditsItemDesc,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Ported the Jaomix plugin (MIT) into the App as a Source
+                  Scraper.
+                </Text>
+
                 {/* ═══════════════════════════════════════════════════════════════
                     TEMPLATE: Add more WebNovel Source Scrapers here
                     ═══════════════════════════════════════════════════════════════
@@ -3716,6 +3741,34 @@ export default function SettingsScreen() {
             <View
               style={[styles.devDivider, { backgroundColor: colors.border }]}
             />
+
+            <View style={styles.devLowMemRow}>
+              <View style={styles.devInfo}>
+                <Text style={[styles.devLabel, { color: colors.textMuted }]}>
+                  {lowMemory.setting === "auto"
+                    ? "Low Memory Mode (Auto)"
+                    : "Low Memory Mode (Manual)"}
+                </Text>
+                <Text style={[styles.devValue, { color: colors.text }]}>
+                  {lowMemory.totalMemoryBytes
+                    ? `${(lowMemory.totalMemoryBytes / (1024 * 1024 * 1024)).toFixed(1)} GB RAM${lowMemory.isLowRamDevice ? " (low-RAM device)" : ""}`
+                    : "RAM not reported"}
+                </Text>
+              </View>
+              <View style={{ alignItems: "flex-end", gap: 4 }}>
+                <Switch
+                  value={lowMemory.enabled}
+                  onValueChange={(v) => lowMemory.setSetting(v ? "on" : "off")}
+                />
+                {lowMemory.setting !== "auto" && (
+                  <Pressable onPress={() => lowMemory.setSetting("auto")} hitSlop={8}>
+                    <Text style={[styles.devLabel, { color: colors.accent }]}>
+                      Reset to Auto
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
 
             <View style={styles.devLinksRow}>
               <View style={styles.devLinkCol}>
@@ -4240,6 +4293,13 @@ const styles = StyleSheet.create({
   devLabel: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.4 },
   devValue: { fontFamily: "Inter_700Bold", fontSize: 17 },
   devDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  devLowMemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   devLinksRow: {
     flexDirection: "row",
     gap: 10,
