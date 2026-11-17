@@ -3553,6 +3553,29 @@ export default function SettingsScreen() {
                   Scraper.
                 </Text>
 
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      "https://github.com/LNReader/lnreader-plugins",
+                    )
+                  }
+                >
+                  <Text
+                    style={[styles.creditsItemLink, { color: colors.accent }]}
+                  >
+                    @LNReader/lnreader-plugins
+                  </Text>
+                </Pressable>
+                <Text
+                  style={[
+                    styles.creditsItemDesc,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Ported the Jaomix plugin (MIT) into the App as a Source
+                  Scraper.
+                </Text>
+
                 {/* ═══════════════════════════════════════════════════════════════
                     TEMPLATE: Add more WebNovel Source Scrapers here
                     ═══════════════════════════════════════════════════════════════
