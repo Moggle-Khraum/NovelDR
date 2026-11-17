@@ -1461,27 +1461,56 @@ checks.push(
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(m.coverUrl.endsWith("sample.png"), `cover: ${m.coverUrl}`);
-      assert(m.synopsis.includes("Placeholder synopsis line one."), "synopsis missing");
-      assert(!m.synopsis.includes("Ran(o)vel") && !m.synopsis.includes("maintenance"), "watermark or comment leaked");
-      assert(m.firstChapterUrl === "https://ranovel.com/novel/sample-novel/chapter-1/", `first: ${m.firstChapterUrl}`);
+      assert(
+        m.synopsis.includes("Placeholder synopsis line one."),
+        "synopsis missing",
+      );
+      assert(
+        !m.synopsis.includes("Ran(o)vel") &&
+          !m.synopsis.includes("maintenance"),
+        "watermark or comment leaked",
+      );
+      assert(
+        m.firstChapterUrl ===
+          "https://ranovel.com/novel/sample-novel/chapter-1/",
+        `first: ${m.firstChapterUrl}`,
+      );
     },
   },
   {
     name: "ranovel: chapter page yields title, clean paragraphs and next chapter",
     run: () => {
-      const ch = parseRaNovelChapter(RA_CHAPTER, "https://ranovel.com/novel/sample-novel/chapter-1/");
+      const ch = parseRaNovelChapter(
+        RA_CHAPTER,
+        "https://ranovel.com/novel/sample-novel/chapter-1/",
+      );
       assert(ch.title === "Sample Novel - Chapter 1", `title: ${ch.title}`);
-      assert(ch.content.includes("Placeholder paragraph two."), "paragraphs missing");
+      assert(
+        ch.content.includes("Placeholder paragraph two."),
+        "paragraphs missing",
+      );
       assert(!ch.content.includes("Ran(o)vel"), "watermark leaked");
-      assert(ch.nextUrl === "https://ranovel.com/novel/sample-novel/chapter-2/", `next: ${ch.nextUrl}`);
+      assert(
+        ch.nextUrl === "https://ranovel.com/novel/sample-novel/chapter-2/",
+        `next: ${ch.nextUrl}`,
+      );
     },
   },
   {
     name: "ranovel: canHandle accepts ranovel.com only and WebView tier is enabled",
     run: () => {
-      assert(raNovelScraper.canHandle("https://ranovel.com/novel/x/"), "should match");
-      assert(!raNovelScraper.canHandle("https://ranovel.org/novel/x/"), "other domain must not match");
-      assert(needsWebView("https://ranovel.com/novel/x/"), "ranovel.com should use the WebView tier");
+      assert(
+        raNovelScraper.canHandle("https://ranovel.com/novel/x/"),
+        "should match",
+      );
+      assert(
+        !raNovelScraper.canHandle("https://ranovel.org/novel/x/"),
+        "other domain must not match",
+      );
+      assert(
+        needsWebView("https://ranovel.com/novel/x/"),
+        "ranovel.com should use the WebView tier",
+      );
     },
   },
 );
