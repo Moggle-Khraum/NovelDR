@@ -14,7 +14,6 @@
 - [📈 Download Counts](#download-counts)
 - [🖼️ App Screenshots](#app-screenshots)
 - [🌐 Supported Sources](#supported-sources)
-- [💀 Deprecated Sources](#dead-sources)
 - [📚 Add Source or Request Source](#wiki-add-or-requestsource)
 - [🌟 Appreciation](#appreciation)
 - [📖 Source Scraper Acknowledgements](#source-scraper)
@@ -31,7 +30,7 @@ NovelDR is a free, open-source Android application that lets you download webnov
 
 **Export formats:** TXT, EPUB 3, PDF, DOCX, and RTF. Long novels are exported in parts.
 
-**Updating saved novels:** Each saved novel updates from the source it was added from. If that site is marked as dead in this README, the app blocks the update and shows a message.
+**Updating saved novels:** Each saved novel updates from the source it was added from. If that site is no longer available, the app blocks the update and shows a message.
 
 ---
 
@@ -87,18 +86,6 @@ NovelDR is a free, open-source Android application that lets you download webnov
 | [NovelPing](https://novelping.com/) | ✅ Site Active | [NovelFull.net](https://novelfull.net/) | ✅ Site Active | [CentralNovel](https://centralnovel.com/) | ✅ Site Active |
 | [MTL-Novel](https://mtl-novel.com/) | ✅ Site Active | [LightNovelWorld](https://lightnovelworld.net/) | ✅ Site Active | [MeioNovels](https://meionovels.com/) | ✅ Site Active |
 | [NovelasLigera](https://novelasligeras.net/) | ✅ Site Active | | | | |
-
----
-
-<a id="dead-sources"></a>
-
-## 💀 Deprecated Sources
-
-| Source Domain | Status | Source Domain | Status |
-| --- | --- | --- | --- |
-| [Novelbin.me](https://novelbin.me/) | ❌ Site Dead | [Novelbin.com](https://novelbin.com/) | ❌ Site Dead |
-| [LightNovelWorld](https://lightnovelworld.org/) | ❌ Site Dead | [AllNovel](https://allnovel.org/) | ❌ Site Dead |
-| [NovelArrow](https://novelarrow.com/) | ❌ Changed Domain |  |  |
 
 ---
 
