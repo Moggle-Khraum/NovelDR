@@ -76,6 +76,7 @@ import {
 import {
   parseJaomixMeta,
   parseJaomixChapter,
+  parseJaomixFirstChapter,
   jaomixScraper,
 } from "../hooks/scrapers/sources/jaomix";
 import {
@@ -1530,8 +1531,8 @@ const JAOMIX_NOVEL = `
 `;
 const JAOMIX_CHAPTER = `
   <h1>Глава 1</h1>
-  <div class="entry-content"><p>Placeholder paragraph.</p></div>
-  <a rel="next" href="https://jaomix.ru/sample-novel/glava-2/">Далее</a>
+  <div class="entry-content entry"><p>Placeholder paragraph.</p></div>
+  <select><option value="https://jaomix.ru/sample-novel/glava-2/">Глава 2</option><option value="https://jaomix.ru/sample-novel/glava-1/">Глава 1</option></select>
 `;
 
 checks.push(
@@ -1545,10 +1546,7 @@ checks.push(
       assert(m.title === "Sample Novel", `title: ${m.title}`);
       assert(m.author === "Sample Author", `author: ${m.author}`);
       assert(m.synopsis.includes("Placeholder synopsis."), "synopsis missing");
-      assert(
-        m.firstChapterUrl === "https://jaomix.ru/sample-novel/glava-1/",
-        `first: ${m.firstChapterUrl}`,
-      );
+      assert(m.firstChapterUrl === null, "novel page alone should not invent chapter 1");
     },
   },
   {
@@ -1566,6 +1564,16 @@ checks.push(
         ch.nextUrl === "https://jaomix.ru/sample-novel/glava-2/",
         `next: ${ch.nextUrl}`,
       );
+    },
+  },
+  {
+    name: "jaomix: chapter 1 is the last option of the newest-first dropdown",
+    run: () => {
+      const page = `<select id="font-size"><option value="12">12</option></select>
+        <select><option value="https://jaomix.ru/sample-novel/glava-3/">Глава 3</option><option value="https://jaomix.ru/sample-novel/glava-2/">Глава 2</option><option value="https://jaomix.ru/sample-novel/glava-1/">Глава 1</option></select>`;
+      assert(parseJaomixFirstChapter(page) === "https://jaomix.ru/sample-novel/glava-1/", "chapter 1 not found");
+      const ch = parseJaomixChapter(`<h1 class="entry-title">Глава 2</h1>${page}<div class="entry-content entry"><p>Текст.</p></div>`, "https://jaomix.ru/sample-novel/glava-2/");
+      assert(ch.nextUrl === "https://jaomix.ru/sample-novel/glava-3/", `next: ${ch.nextUrl}`);
     },
   },
   {

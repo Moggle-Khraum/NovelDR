@@ -16,6 +16,37 @@ import { extractParagraphs } from "./novelphoenix";
 
 const BASE_HOST = "jaomix.ru";
 
+/** Pairs of [url, label] from the chapter dropdown on a chapter page. */
+const readChapterDropdown = (html: string): string[] => {
+  // The chapter dropdown is a plain <select> (no class). Pick the select whose
+  // options point at chapter pages; the font/line-height selects don't.
+  for (const sel of html.matchAll(/<select[^>]*>([\s\S]*?)<\/select>/gi)) {
+    const urls: string[] = [];
+    for (const m of sel[1].matchAll(/<option[^>]*value="(https?:\/\/[^"]+)"/gi)) {
+      urls.push(m[1].replace(/\s+/g, ""));
+    }
+    if (urls.some((u) => /\/glava-/i.test(u))) return urls;
+  }
+  return [];
+};
+
+/** Chapter 1 is the last option of the dropdown (list is newest first). */
+export const parseJaomixFirstChapter = (chapterPageHtml: string): string | null => {
+  const urls = readChapterDropdown(chapterPageHtml);
+  const last = urls[urls.length - 1];
+  return last && isSafeHref(last) ? last : null;
+};
+
+/** The chapter above the current one in the newest-first dropdown is the next. */
+const nextChapterFromDropdown = (html: string, url: string): string | null => {
+  const urls = readChapterDropdown(html);
+  const current = url.replace(/\s+/g, "").replace(/\/$/, "");
+  const idx = urls.findIndex((u) => u.replace(/\/$/, "") === current);
+  if (idx <= 0) return null;
+  const next = urls[idx - 1];
+  return isSafeHref(next) ? next : null;
+};
+
 /**
  * Pure parser for the novel info page. No network.
  */
@@ -30,8 +61,9 @@ export const parseJaomixMeta = (html: string, url: string): NovelMeta => {
     : "Unknown Title";
 
   // <div class="img-book"><img src="…"></div>
+  // <div class="img-book"><div class="img-book-back" style="…"></div><img src="…">
   const coverUrl =
-    safeMatch(html, /<div class="img-book">\s*<img[^>]*src="([^"]+)"/i) ?? "";
+    safeMatch(html, /<div class="img-book"[\s\S]*?<img[^>]*src="([^"]+)"/i) ?? "";
 
   // <div id="info-book"><p>Автор: Name</p><p>Статус: продолжается</p>…</div>
   // Labels are Russian: "Автор:" (author), "Жанры:" (genres), "Статус:" (status).
@@ -49,15 +81,9 @@ export const parseJaomixMeta = (html: string, url: string): NovelMeta => {
   const descBlock = extractByDepth(html, 'id="desc-tab"') ?? "";
   const synopsis = decodeEntities(extractParagraphs(descBlock)).trim();
 
-  // The first chapter is the first entry of the chapter list on the page.
-  // The list may continue on AJAX pages (admin-ajax.php), which we don't fetch
-  // here; chapter 1 is always the first row.
-  const firstRaw = safeMatch(
-    html,
-    /<div class="title">\s*<a[^>]*href="([^"]+)"/i,
-  );
-  const firstChapterUrl =
-    firstRaw && isSafeHref(firstRaw) ? makeAbsoluteUrl(firstRaw, url) : null;
+  // Chapter 1 is not on the novel page (it lists the newest chapters only), so
+  // firstChapterUrl is filled in by fetchNovelMeta from a chapter page's dropdown.
+  const firstChapterUrl: string | null = null;
 
   return {
     title,
@@ -80,14 +106,13 @@ export const parseJaomixChapter = (html: string, url: string): ChapterData => {
     : "";
 
   // <div class="entry-content"> … <p>paragraphs</p> … </div>
-  const contentBlock = extractByDepth(html, 'class="entry-content"') ?? "";
+  // <div class="entry-content entry"> … <p>paragraphs</p> … </div>
+  const contentBlock = extractByDepth(html, 'class="entry-content') ?? "";
   const content = extractParagraphs(contentBlock);
 
-  // TODO(sample needed): the next-chapter link is not in the LNReader plugin.
-  // Set from a real chapter page once a sample is provided.
-  const nextRaw = safeMatch(html, /<a[^>]*rel="next"[^>]*href="([^"]+)"/i);
-  const nextUrl =
-    nextRaw && isSafeHref(nextRaw) ? makeAbsoluteUrl(nextRaw, url) : null;
+  // The chapter dropdown lists every chapter, newest first, so the next chapter
+  // is the option just above the current one.
+  const nextUrl = nextChapterFromDropdown(html, url);
 
   return {
     url,
@@ -112,7 +137,19 @@ export const jaomixScraper: SourceScraper = {
 
   fetchNovelMeta: async (url: string): Promise<NovelMeta> => {
     const html = await fetchHtmlWithFallback(url);
-    return parseJaomixMeta(html, url);
+    const meta = parseJaomixMeta(html, url);
+    // Open the newest chapter once to read the full dropdown and get chapter 1.
+    const newestRaw = safeMatch(
+      html,
+      /<div class="title">\s*<a[^>]*href="([^"]+)"/i,
+    );
+    if (newestRaw && isSafeHref(newestRaw)) {
+      const chapterHtml = await fetchHtmlWithFallback(
+        makeAbsoluteUrl(newestRaw, url),
+      );
+      meta.firstChapterUrl = parseJaomixFirstChapter(chapterHtml);
+    }
+    return meta;
   },
 
   fetchChapter: async (
