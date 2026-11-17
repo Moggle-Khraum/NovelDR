@@ -64,6 +64,11 @@ import {
   meioNovelsScraper,
 } from "../hooks/scrapers/sources/meionovels";
 import {
+  parseMtlNovelMeta,
+  parseMtlNovelChapter,
+  mtlNovelScraper,
+} from "../hooks/scrapers/sources/mtlnovel";
+import {
   parseLightNovelWorldNetMeta,
   parseLightNovelWorldNetChapter,
   lightNovelWorldNetScraper,
@@ -1321,6 +1326,80 @@ checks.push(
         ),
         ".org should not match",
       );
+    },
+  },
+);
+
+// ── MTL-Novel (mtl-novel.com) ────────────────────────────────────────────
+// Placeholder fixtures that copy only the page structure (Madara-like novel
+// info table, lazy-loaded cover, chapter reader), not any real novel text.
+const MTL_NOVEL_PAGE = `
+  <h1 class="entry-title">Sample Novel</h1>
+  <img data-lazyloaded="1" src="data:image/gif;base64,R0lGOD" width="225" data-src="https://mtl-novel.com/wp-content/uploads/2026/11/sample-cover.png" class="main-tmb wp-post-image" alt="">
+  <div class="desc">
+    <h2>Novel Summary</h2>
+    <p>Placeholder synopsis line one.</p>
+    <p>Placeholder synopsis line two.</p>
+  </div>
+  <table class="info">
+    <tr><td class="tbl-lbl">Titles</td><td>Sample Title</td></tr>
+    <tr class="odd"><td class="tbl-lbl">Author</td><td>
+      Sample Author
+    </td></tr>
+  </table>
+  <a class="but" href="https://mtl-novel.com/novel/sample-novel/chapter-1-opening/">Start Reading</a>
+`;
+
+const MTL_NOVEL_CHAPTER = `
+  <h1 class="main-title">Chapter 1: Opening</h1>
+  <div class="par" id="chapter-par">
+    <p>Placeholder paragraph one.</p>
+    <p>Placeholder paragraph two.</p>
+  </div>
+  <nav class="chapter-nav">
+    <span class="prev disabled">&laquo; Prev</span>
+    <a class="next" href="https://mtl-novel.com/novel/sample-novel/chapter-2-next/">Next &raquo;</a>
+  </nav>
+`;
+
+checks.push(
+  {
+    name: "mtl-novel: novel page yields title, author, lazy cover, synopsis, first chapter",
+    run: () => {
+      const m = parseMtlNovelMeta(MTL_NOVEL_PAGE, "https://mtl-novel.com/novel/sample-novel/");
+      assert(m.title === "Sample Novel", `title: ${m.title}`);
+      assert(m.author === "Sample Author", `author: ${m.author}`);
+      assert(
+        m.coverUrl === "https://mtl-novel.com/wp-content/uploads/2026/11/sample-cover.png",
+        `cover: ${m.coverUrl}`,
+      );
+      assert(m.synopsis.includes("Placeholder synopsis line one."), "synopsis missing");
+      assert(
+        m.firstChapterUrl === "https://mtl-novel.com/novel/sample-novel/chapter-1-opening/",
+        `first: ${m.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "mtl-novel: chapter page yields title, paragraphs and next chapter",
+    run: () => {
+      const ch = parseMtlNovelChapter(
+        MTL_NOVEL_CHAPTER,
+        "https://mtl-novel.com/novel/sample-novel/chapter-1-opening/",
+      );
+      assert(ch.title === "Chapter 1: Opening", `title: ${ch.title}`);
+      assert(ch.content.includes("Placeholder paragraph two."), "paragraphs missing");
+      assert(
+        ch.nextUrl === "https://mtl-novel.com/novel/sample-novel/chapter-2-next/",
+        `next: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "mtl-novel: canHandle accepts mtl-novel.com only, not mtlnovel.me",
+    run: () => {
+      assert(mtlNovelScraper.canHandle("https://mtl-novel.com/novel/x/"), "should match");
+      assert(!mtlNovelScraper.canHandle("https://mtlnovel.me/read/x/"), "mtlnovel.me must not match");
     },
   },
 );
