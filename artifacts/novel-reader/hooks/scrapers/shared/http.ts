@@ -214,7 +214,10 @@ export const fetchJsonWithFallback = async <T = unknown>(
     name: "proxy",
     run: () =>
       httpClient
-        .get(buildProxyUrl(validatedUrl), { headers: JSON_HEADERS, signal: haltSignal() })
+        .get(buildProxyUrl(validatedUrl), {
+          headers: JSON_HEADERS,
+          signal: haltSignal(),
+        })
         .then((res) => res.data),
   };
   const webview: Tier<T> = {
