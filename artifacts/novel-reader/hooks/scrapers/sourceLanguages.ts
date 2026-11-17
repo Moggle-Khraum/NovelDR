@@ -39,6 +39,7 @@ const SOURCE_LANGUAGE: Record<string, SourceLanguage> = {
   "wuxiabox.com": "en",
   "lightnovel.to": "en",
   "novelbuddy.me": "en",
+  "lightnovelworld.net": "en",
 
   // Machine-translated (MTL) sites
   "mtlnovel.me": "mtl",

@@ -64,6 +64,11 @@ import {
   meioNovelsScraper,
 } from "../hooks/scrapers/sources/meionovels";
 import {
+  parseLightNovelWorldNetMeta,
+  parseLightNovelWorldNetChapter,
+  lightNovelWorldNetScraper,
+} from "../hooks/scrapers/sources/lightnovelworldnet";
+import {
   parseNovelasLigeraMeta,
   parseNovelasLigeraChapter,
   novelasLigeraScraper,
@@ -1217,6 +1222,94 @@ checks.push(
       assert(
         needsWebView("https://meionovels.com/novel/btth/"),
         "meionovels.com should use the WebView tier",
+      );
+    },
+  },
+);
+
+// ── LightNovelWorld.net ──────────────────────────────────────────────────
+// Hand-written placeholder fixtures that copy only the page structure.
+const LNW_SERIES_PAGE = `
+  <html><head>
+    <meta property="og:image" content="https://lightnovelworld.net/wp-content/uploads/sample.webp">
+  </head><body>
+    <h1 class="entry-title" itemprop="name">Sample
+Novel</h1>
+    <div class="serl"><span class="sername">Author</span><span class="serval"><a href="https://lightnovelworld.net/writer/sample-author/" rel="tag">Sample Author</a>, <a href="https://lightnovelworld.net/writer/other/" rel="tag">Other Name</a></span></div>
+    <div class="sersys entry-content" itemprop="description"><p>A placeholder synopsis line.</p></div>
+    <div class="inepcx"><a href="https://lightnovelworld.net/sample-novel-chapter-1/"><span>First Chapter</span><span class="epcur epcurfirst">Vol. 1 Ch. 1</span></a></div>
+  </body></html>
+`;
+
+const LNW_CHAPTER_PAGE = `
+  <html><body>
+    <div class="epcontent entry-content" itemprop="text">
+      <p><em>Promo line outside the chapter body.</em></p>
+      <h3>Chapter 1 &#8211; Placeholder Title</h3>
+      <div class="novel-content">
+        <p class="chapter-paragraph">Placeholder paragraph one.</p>
+        <p class="chapter-paragraph">Placeholder paragraph two.</p>
+      </div>
+    </div>
+    <div class="bottomnav"><a aria-label="next" href="https://lightnovelworld.net/sample-novel-chapter-2/" rel="next">Next</a></div>
+  </body></html>
+`;
+
+checks.push(
+  {
+    name: "lightnovelworldnet: series page yields title, author, cover, synopsis, first chapter",
+    run: () => {
+      const meta = parseLightNovelWorldNetMeta(
+        LNW_SERIES_PAGE,
+        "https://lightnovelworld.net/novel/sample-novel/",
+      );
+      assert(meta.title === "Sample Novel", `title: ${meta.title}`);
+      assert(
+        meta.author === "Sample Author, Other Name",
+        `author: ${meta.author}`,
+      );
+      assert(
+        meta.coverUrl === "https://lightnovelworld.net/wp-content/uploads/sample.webp",
+        `cover: ${meta.coverUrl}`,
+      );
+      assert(
+        meta.synopsis === "A placeholder synopsis line.",
+        `synopsis: ${meta.synopsis}`,
+      );
+      assert(
+        meta.firstChapterUrl === "https://lightnovelworld.net/sample-novel-chapter-1/",
+        `firstChapterUrl: ${meta.firstChapterUrl}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelworldnet: chapter page yields title, chapter paragraphs and next",
+    run: () => {
+      const ch = parseLightNovelWorldNetChapter(
+        LNW_CHAPTER_PAGE,
+        "https://lightnovelworld.net/sample-novel-chapter-1/",
+      );
+      assert(ch.title === "Chapter 1 – Placeholder Title", `title: ${ch.title}`);
+      assert(
+        ch.content === "Placeholder paragraph one.\n\nPlaceholder paragraph two.",
+        `content: ${JSON.stringify(ch.content)}`,
+      );
+      assert(
+        ch.nextUrl === "https://lightnovelworld.net/sample-novel-chapter-2/",
+        `nextUrl: ${ch.nextUrl}`,
+      );
+    },
+  },
+  {
+    name: "lightnovelworldnet: canHandle accepts only lightnovelworld.net",
+    run: () => {
+      assert(
+        lightNovelWorldNetScraper.canHandle("https://lightnovelworld.net/novel/x/"),
+        "lightnovelworld.net should match",
+      );
+      assert(
+        !lightNovelWorldNetScraper.canHandle("https://lightnovelworld.org/novel/x/"),
+        ".org should not match",
       );
     },
   },
