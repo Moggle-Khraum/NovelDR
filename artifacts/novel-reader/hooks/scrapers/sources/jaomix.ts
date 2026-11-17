@@ -16,39 +16,81 @@ import { extractParagraphs } from "./novelphoenix";
 
 const BASE_HOST = "jaomix.ru";
 
-/** Pairs of [url, label] from the chapter dropdown on a chapter page. */
-const readChapterDropdown = (html: string): string[] => {
+type DropdownChapter = { url: string; num: number | null };
+
+/**
+ * Chapter links from the chapter dropdown on a chapter page, with the chapter
+ * number taken from the label ("Глава 12: …"). The dropdown only covers part
+ * of the novel and its order is not fixed, so callers use the numbers.
+ */
+const readChapterDropdown = (html: string): DropdownChapter[] => {
   // The chapter dropdown is a plain <select> (no class). Pick the select whose
   // options point at chapter pages; the font/line-height selects don't.
   for (const sel of html.matchAll(/<select[^>]*>([\s\S]*?)<\/select>/gi)) {
-    const urls: string[] = [];
+    const chapters: DropdownChapter[] = [];
     for (const m of sel[1].matchAll(
-      /<option[^>]*value="(https?:\/\/[^"]+)"/gi,
+      /<option[^>]*value="(https?:\/\/[^"]+)"[^>]*>([^<]*)<\/option>/gi,
     )) {
-      urls.push(m[1].replace(/\s+/g, ""));
+      const url = m[1].replace(/\s+/g, "");
+      const numMatch = m[2].match(/(\d+)/);
+      chapters.push({ url, num: numMatch ? Number(numMatch[1]) : null });
     }
-    if (urls.some((u) => /\/glava-/i.test(u))) return urls;
+    if (chapters.some((c) => /\/glava-/i.test(c.url))) return chapters;
   }
   return [];
 };
 
-/** Chapter 1 is the last option of the dropdown (list is newest first). */
-export const parseJaomixFirstChapter = (
-  chapterPageHtml: string,
-): string | null => {
-  const urls = readChapterDropdown(chapterPageHtml);
-  const last = urls[urls.length - 1];
-  return last && isSafeHref(last) ? last : null;
+/** The dropdown entry with the lowest chapter number on this page, if any. */
+const lowestChapterOnPage = (html: string): DropdownChapter | null => {
+  const numbered = readChapterDropdown(html).filter((c) => c.num !== null);
+  if (numbered.length === 0) return null;
+  return numbered.reduce((a, b) => (b.num! < a.num! ? b : a));
 };
 
-/** The chapter above the current one in the newest-first dropdown is the next. */
+/**
+ * Walks back through the chapter pages (each dropdown only covers part of the
+ * novel) until the page whose dropdown reaches chapter 1. Caller passes a
+ * fetcher so this stays free of network code in the pure parser.
+ */
+export const findJaomixFirstChapter = async (
+  newestChapterUrl: string,
+  fetchPage: (url: string) => Promise<string>,
+  maxSteps = 60,
+): Promise<string | null> => {
+  let current = newestChapterUrl;
+  for (let step = 0; step < maxSteps; step++) {
+    const html = await fetchPage(current);
+    const low = lowestChapterOnPage(html);
+    if (!low) return null;
+    if (low.num! <= 1) return low.url;
+    if (low.url === current) return null;
+    current = low.url;
+  }
+  return null;
+};
+
+/** The chapter after the current one: the dropdown entry numbered one higher. */
 const nextChapterFromDropdown = (html: string, url: string): string | null => {
-  const urls = readChapterDropdown(html);
+  const chapters = readChapterDropdown(html);
   const current = url.replace(/\s+/g, "").replace(/\/$/, "");
-  const idx = urls.findIndex((u) => u.replace(/\/$/, "") === current);
-  if (idx <= 0) return null;
-  const next = urls[idx - 1];
-  return isSafeHref(next) ? next : null;
+  const self = chapters.find((c) => c.url.replace(/\/$/, "") === current);
+  if (!self) return null;
+  let next: DropdownChapter | undefined;
+  if (self.num !== null) {
+    next = chapters.find((c) => c.num === self.num! + 1);
+  }
+  if (!next) {
+    // Fallback: the dropdown lists newest first, so the entry above is next.
+    const idx = chapters.indexOf(self);
+    next = idx > 0 ? chapters[idx - 1] : undefined;
+  }
+  return next && isSafeHref(next.url) ? next.url : null;
+};
+
+/** Chapter 1 from a chapter page's dropdown, if that page reaches it. */
+export const parseJaomixFirstChapter = (chapterPageHtml: string): string | null => {
+  const low = lowestChapterOnPage(chapterPageHtml);
+  return low && low.num === 1 && isSafeHref(low.url) ? low.url : null;
 };
 
 /**
@@ -149,10 +191,10 @@ export const jaomixScraper: SourceScraper = {
       /<div class="title">\s*<a[^>]*href="([^"]+)"/i,
     );
     if (newestRaw && isSafeHref(newestRaw)) {
-      const chapterHtml = await fetchHtmlWithFallback(
+      meta.firstChapterUrl = await findJaomixFirstChapter(
         makeAbsoluteUrl(newestRaw, url),
+        (u) => fetchHtmlWithFallback(u),
       );
-      meta.firstChapterUrl = parseJaomixFirstChapter(chapterHtml);
     }
     return meta;
   },
