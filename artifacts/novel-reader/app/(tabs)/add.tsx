@@ -394,35 +394,35 @@ function SourceListModal({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalGrid}
             >
-            {/* DEPRECATED SITES TAB */}
-            {activeTab === "deprecated" &&
-              deprecatedSites &&
-              deprecatedSites.length > 0 && (
-                <View style={styles.sectionContainer}>
-                  <Text
-                    style={[styles.deprecatedTitle, { color: colors.text }]}
-                  >
-                    Deprecated Sites
-                  </Text>
-                  <View style={styles.deprecatedPillGrid}>
-                    {deprecatedSites.map((site) => (
-                      <View
-                        key={site.domain}
-                        style={styles.deprecatedPillContainer}
-                      >
-                        <Text
-                          style={[
-                            styles.deprecatedPillDomain,
-                            { color: colors.textMuted },
-                          ]}
+              {/* DEPRECATED SITES TAB */}
+              {activeTab === "deprecated" &&
+                deprecatedSites &&
+                deprecatedSites.length > 0 && (
+                  <View style={styles.sectionContainer}>
+                    <Text
+                      style={[styles.deprecatedTitle, { color: colors.text }]}
+                    >
+                      Deprecated Sites
+                    </Text>
+                    <View style={styles.deprecatedPillGrid}>
+                      {deprecatedSites.map((site) => (
+                        <View
+                          key={site.domain}
+                          style={styles.deprecatedPillContainer}
                         >
-                          {site.domain}
-                        </Text>
-                      </View>
-                    ))}
+                          <Text
+                            style={[
+                              styles.deprecatedPillDomain,
+                              { color: colors.textMuted },
+                            ]}
+                          >
+                            {site.domain}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
             </ScrollView>
           )}
         </Pressable>
