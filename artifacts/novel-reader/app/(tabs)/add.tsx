@@ -477,10 +477,10 @@ export default function AddNovelScreen() {
         : lowMemory.enabled
           ? Colors.amber
           : up === group.length
-          ? Colors.success
-          : up === 0
-            ? Colors.error
-            : Colors.amber;
+            ? Colors.success
+            : up === 0
+              ? Colors.error
+              : Colors.amber;
     return { key, up, total: group.length, color };
   });
   const LANG_LABEL: Record<SiteLanguage, string> = {
