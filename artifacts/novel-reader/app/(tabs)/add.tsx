@@ -27,6 +27,7 @@ import {
   SiteStatus,
   SiteLanguage,
 } from "@/context/SiteHealthContext";
+import { useLowMemory } from "@/context/LowMemoryContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import { parseChapterNumber } from "@/lib/chapterOrder";
 import {
@@ -460,6 +461,7 @@ export default function AddNovelScreen() {
   // screen is visited, and doesn't restart checking on every tab visit) ---
   const { statuses: siteStatuses, isChecking: isCheckingSites } =
     useSiteHealth();
+  const lowMemory = useLowMemory();
 
   // Up/total per language group, e.g. EN 13/13. Outline: none when the group
   // is empty, green when all are up, red when none are, orange when some are.
@@ -468,10 +470,13 @@ export default function AddNovelScreen() {
     const up = group.filter(
       (site) => (siteStatuses[site.name] || "idle") === "online",
     ).length;
+    // Low Memory Mode is on: every group shows orange.
     const color =
       group.length === 0
         ? null
-        : up === group.length
+        : lowMemory.enabled
+          ? Colors.amber
+          : up === group.length
           ? Colors.success
           : up === 0
             ? Colors.error
@@ -1493,7 +1498,7 @@ export default function AddNovelScreen() {
               <Text
                 style={[styles.legendText, { color: colors.textSecondary }]}
               >
-                504
+                Low Mode
               </Text>
             </View>
           </View>
