@@ -68,9 +68,9 @@ const removeDivsByClass = (html: string, className: string): string => {
 const withoutNoise = (html: string): string =>
   removeDivsByClass(
     html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<ins[\s\S]*?<\/ins>/gi, ""),
+      .replace(/<script[\s\S]*?<\/script(?:\s+[^>]*)?\s*>/gi, "")
+      .replace(/<style[\s\S]*?<\/style(?:\s+[^>]*)?\s*>/gi, "")
+      .replace(/<ins[\s\S]*?<\/ins(?:\s+[^>]*)?\s*>/gi, ""),
     "google-anno-skip",
   );
 
