@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 
 import { Novel, Chapter } from "@/context/LibraryContext";
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
-import { parseChapterNumber } from "@/lib/chapterOrder";
+import { tryDirectSkip, extractChapterNumber } from "@/lib/addHelpers";
 import { CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
 import { getCookieHeader } from "@/hooks/scrapers/shared/cookies";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
@@ -45,31 +45,6 @@ export type AddEngineUi = {
   onDuplicate: (title: string, chapterCount: number) => void;
 };
 
-export const tryDirectSkip = (
-  firstUrl: string,
-  targetChapter: number,
-): string | null => {
-  const chapterPattern = /(chapter[-_]?)(\d+)/i;
-  const match = firstUrl.match(chapterPattern);
-  if (match) {
-    const prefix = match[1];
-    const newUrl = firstUrl.replace(
-      chapterPattern,
-      `${prefix}${targetChapter}`,
-    );
-    if (newUrl !== firstUrl) return newUrl;
-  }
-
-  const slashPattern = /\/(\d+)\//;
-  const slashMatch = firstUrl.match(slashPattern);
-  if (slashMatch) {
-    const newUrl = firstUrl.replace(slashPattern, `/${targetChapter}/`);
-    if (newUrl !== firstUrl) return newUrl;
-  }
-
-  return null;
-};
-
 export const fetchChapterWithRetries = async (
   log: LogFn,
   fetchUrl: string,
@@ -101,24 +76,6 @@ export const getChapterMetadata = async (
 ): Promise<{ nextUrl: string | null; title: string }> => {
   const data = await fetchChapter(url, chapterNum);
   return { nextUrl: data.nextUrl || null, title: data.title };
-};
-
-export const extractChapterNumber = (title: string): number => {
-  const shared = parseChapterNumber(title);
-  if (shared !== null) return shared;
-  const patterns = [
-    /chapter\s+(\d+(?:\.\d+)?)/i,
-    /ch\.?\s*(\d+(?:\.\d+)?)/i,
-    /#(\d+(?:\.\d+)?)/,
-    /(\d+)(?:st|nd|rd|th)\s+chapter/i,
-    /^(\d+(?:\.\d+)?)[\s\-:]/,
-    /volume\s+\d+\s+chapter\s+(\d+)/i,
-  ];
-  for (const pattern of patterns) {
-    const match = title.match(pattern);
-    if (match) return parseFloat(match[1]);
-  }
-  return 0;
 };
 
 export const downloadAndSaveCover = async (

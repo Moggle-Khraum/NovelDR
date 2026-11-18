@@ -2,7 +2,16 @@ import type { MutableRefObject } from "react";
 import * as FileSystem from "expo-file-system/legacy";
 import type { useLibrary } from "@/context/LibraryContext";
 import { Novel, Chapter, ChapterFileMove } from "@/context/LibraryContext";
-import { orderChapters, parseChapterNumber } from "@/lib/chapterOrder";
+import { orderChapters } from "@/lib/chapterOrder";
+import {
+  extractChapterNumber,
+  getNextStartChapter,
+  chapterExists,
+  tryDirectSkip,
+  hostOf,
+} from "@/lib/updateHelpers";
+
+export { getNextStartChapter, hostOf };
 import { fetchNovelMeta, fetchChapter } from "@/hooks/useApi";
 import { CHAPTER_LIMIT_MAX } from "@/hooks/useChapterLimiter";
 import { hasProtectedCover } from "@/hooks/scrapers/shared/webviewSites";
@@ -56,19 +65,6 @@ export type UpdateEngineUi = {
   library: UpdateLibraryOps;
 };
 
-// ─── Extract chapter number from title ──────────────────────────────────────
-// Shared parser (digits and Roman numerals). 0 when the title has no number.
-export const extractChapterNumber = (title: string): number =>
-  parseChapterNumber(title) ?? 0;
-
-// ─── Determine next Start Chapter from saved chapters ───────────────────────
-export const getNextStartChapter = (novel: Novel): number => {
-  if (novel.chapters.length === 0) return 1;
-  const lastChapter = novel.chapters[novel.chapters.length - 1];
-  const lastNum = extractChapterNumber(lastChapter.title);
-  return lastNum > 0 ? lastNum + 1 : novel.chapters.length + 1;
-};
-
 // ─── Download cover ──────────────────────────────────────────────────────────
 export const downloadAndSaveCover = async (
   log: LogFn,
@@ -104,12 +100,6 @@ export const downloadAndSaveCover = async (
   }
 };
 
-// ─── Chapter exists check (by URL) ──────────────────────────────────────────
-export const chapterExists = (
-  url: string,
-  existingChapters: Chapter[],
-): boolean => existingChapters.some((c) => c.url === url);
-
 // ─── Lightweight metadata fetch (next URL only, no content parsing) ──────────
 // FIX: this used to hand-roll its own fetch() + regex HTML scrape for the
 // "next chapter" link, which didn't know about per-site quirks (AJAX-loaded
@@ -123,87 +113,6 @@ export const getChapterMetadata = async (
 ): Promise<{ nextUrl: string | null; title: string }> => {
   const data = await fetchChapter(url, chapterNum);
   return { nextUrl: data.nextUrl || null, title: data.title };
-};
-
-// ─── Direct URL skip for predictable chapter URL patterns ───────────────────
-const isLightNovelWorld = (url: string): boolean =>
-  url.toLowerCase().includes("lightnovelworld.org");
-
-// AsiaNovel chapter URLs (.../chapter/chapter-773154/) LOOK like they'd
-// match the generic chapter-N patterns below, but the number is an opaque
-// internal post ID, NOT a sequential chapter number — substituting the
-// target chapter number in produces a URL that doesn't exist. AsiaNovel's
-// WordPress theme returns a soft-404 (HTTP 200, "Page Not Found" body) for
-// those, so the guess doesn't even throw — it silently scrapes garbage
-// (e.g. a chapter literally titled "404") instead of failing loudly.
-const isAsianovel = (url: string): boolean =>
-  url.toLowerCase().includes("asianovel.net");
-
-const CHAPTER_SKIP_PATTERNS: { regex: RegExp }[] = [
-  { regex: /(\/chapter-)(\d+)(\.html)$/ },
-  { regex: /(\/chapter-)(\d+)(\/?)$/ },
-  { regex: /(_chapter_)(\d+)()$/ },
-];
-
-const LNW_SKIP_PATTERNS: { regex: RegExp }[] = [
-  { regex: /(\/chapter\/)(\d+)(\/?)$/ },
-  { regex: /(chapter[-_]?)(\d+)()/i },
-];
-
-export const tryDirectSkip = (
-  firstChapterUrl: string,
-  targetChapter: number,
-): string | null => {
-  if (isAsianovel(firstChapterUrl)) {
-    // No reliable way to guess a chapter's real URL from a target chapter
-    // number on this site — always fall back to the sequential crawl,
-    // which correctly walks the real chapter-index list instead.
-    return null;
-  }
-
-  if (isLightNovelWorld(firstChapterUrl)) {
-    for (const { regex } of LNW_SKIP_PATTERNS) {
-      if (regex.test(firstChapterUrl)) {
-        return firstChapterUrl.replace(
-          regex,
-          (_m: string, prefix: string, _num: string, suffix: string) =>
-            `${prefix}${targetChapter}${suffix}`,
-        );
-      }
-    }
-    // Last resort for LNW only: bare trailing-number replace.
-    if (/chapter/i.test(firstChapterUrl)) {
-      const slashPattern = /\/(\d+)(\/?)$/;
-      if (slashPattern.test(firstChapterUrl)) {
-        return firstChapterUrl.replace(
-          slashPattern,
-          (_m: string, _num: string, trailingSlash: string) =>
-            `/${targetChapter}${trailingSlash}`,
-        );
-      }
-    }
-    return null;
-  }
-
-  // Non-LNW sources: only the narrow, exact-suffix patterns.
-  for (const { regex } of CHAPTER_SKIP_PATTERNS) {
-    if (regex.test(firstChapterUrl)) {
-      return firstChapterUrl.replace(
-        regex,
-        (_m: string, prefix: string, _num: string, suffix: string) =>
-          `${prefix}${targetChapter}${suffix}`,
-      );
-    }
-  }
-  return null;
-};
-
-export const hostOf = (u: string): string => {
-  try {
-    return new URL(u).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
 };
 
 export async function runUpdate(
