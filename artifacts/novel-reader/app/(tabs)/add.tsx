@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
-import React, { useRef, useState } from "react";
+import React, { memo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -129,7 +130,7 @@ const statusColor = (status: SiteStatus): string | null => {
 // Styled like the language pills above: one element, a 2px outline, a rounded
 // pill shape and a light tinted fill. Idle/checking cells use the neutral
 // border so the grid keeps its size.
-function SourceListModalCell({
+function SourceListModalCellBase({
   name,
   status,
   flag,
@@ -173,12 +174,14 @@ function SourceListModalCell({
             { color: colors.text, opacity: 0.6, fontSize: 10 },
           ]}
         >
-          Paused in Low Memory Mode
+          Paused
         </Text>
       ) : null}
     </View>
   );
 }
+
+const SourceListModalCell = memo(SourceListModalCellBase);
 
 // --- Source List Modal ---
 interface SourceListModalProps {
@@ -322,69 +325,75 @@ function SourceListModal({
             )}
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalGrid}
-          >
-            {/* ACTIVE SITES TAB */}
-            {activeTab === "active" && (
-              <View style={styles.sectionContainer}>
-                <View style={styles.langPillRow}>
-                  {LANG_PILLS.map((pill) => {
-                    const selected = langFilter === pill.key;
-                    return (
-                      <Pressable
-                        key={pill.key}
-                        onPress={() => onLangFilterChange(pill.key)}
-                        style={[
-                          styles.langPill,
-                          {
-                            borderColor: selected
-                              ? colors.accent
-                              : colors.border,
-                            backgroundColor: selected
-                              ? colors.accent + "14"
-                              : colors.card,
-                          },
-                        ]}
-                      >
-                        <Text
+          {activeTab === "active" ? (
+            <FlatList
+              key={langFilter}
+              data={filteredSites}
+              keyExtractor={(site) => site.name}
+              numColumns={3}
+              columnWrapperStyle={styles.gridRow}
+              contentContainerStyle={styles.gridContent}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={12}
+              windowSize={5}
+              removeClippedSubviews
+              ListHeaderComponent={
+                <View style={styles.sectionContainer}>
+                  <View style={styles.langPillRow}>
+                    {LANG_PILLS.map((pill) => {
+                      const selected = langFilter === pill.key;
+                      return (
+                        <Pressable
+                          key={pill.key}
+                          onPress={() => onLangFilterChange(pill.key)}
                           style={[
-                            styles.langPillText,
+                            styles.langPill,
                             {
-                              color: selected
+                              borderColor: selected
                                 ? colors.accent
-                                : colors.textMuted,
+                                : colors.border,
+                              backgroundColor: selected
+                                ? colors.accent + "14"
+                                : colors.card,
                             },
                           ]}
                         >
-                          {pill.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                          <Text
+                            style={[
+                              styles.langPillText,
+                              {
+                                color: selected
+                                  ? colors.accent
+                                  : colors.textMuted,
+                              },
+                            ]}
+                          >
+                            {pill.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-                <View style={styles.sitesList}>
-                  {filteredSites.length === 0 ? (
-                    <Text
-                      style={[styles.langEmpty, { color: colors.textMuted }]}
-                    >
-                      No sites in this group yet.
-                    </Text>
-                  ) : (
-                    filteredSites.map((site) => (
-                      <SourceListModalCell
-                        key={site.name}
-                        name={site.name}
-                        status={siteStatuses[site.name] || "idle"}
-                        flag={getSourceFlag(site.baseUrl)}
-                      />
-                    ))
-                  )}
-                </View>
-              </View>
-            )}
-
+              }
+              ListEmptyComponent={
+                <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
+                  No sites in this group yet.
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <SourceListModalCell
+                  name={item.name}
+                  status={siteStatuses[item.name] || "idle"}
+                  flag={getSourceFlag(item.baseUrl)}
+                />
+              )}
+            />
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalGrid}
+            >
             {/* DEPRECATED SITES TAB */}
             {activeTab === "deprecated" &&
               deprecatedSites &&
@@ -414,7 +423,8 @@ function SourceListModal({
                   </View>
                 </View>
               )}
-          </ScrollView>
+            </ScrollView>
+          )}
         </Pressable>
       </Pressable>
     </Modal>
@@ -1976,6 +1986,13 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 14,
     marginBottom: 16,
+  },
+  gridRow: {
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  gridContent: {
+    paddingBottom: 10,
   },
   modalGrid: {
     flexDirection: "row",
