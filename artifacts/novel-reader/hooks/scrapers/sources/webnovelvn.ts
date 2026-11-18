@@ -19,7 +19,7 @@ const brTextToLines = (block: string): string =>
   decodeEntities(
     block
       .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<[^>]+>/g, "")
+      .replace(/[<>]/g, "")
       .replace(/[ \t]+/g, " "),
   )
     .split("\n")
