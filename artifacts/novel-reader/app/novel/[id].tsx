@@ -1399,6 +1399,24 @@ export default function NovelDetailScreen() {
                 Export Novel
               </Text>
             </Pressable>
+            {checkDeprecatedSite(novel.sourceUrl) === null && (
+              <Pressable
+                style={[styles.menuItem, { borderColor: colors.border }]}
+                onPress={() => {
+                  setShowMenu(false);
+                  setChangeSourceOpen(true);
+                }}
+              >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={20}
+                  color={colors.accent}
+                />
+                <Text style={[styles.menuItemText, { color: colors.text }]}>
+                  Change Source
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               style={[styles.menuItem, { borderColor: colors.border }]}
               onPress={() => setShowMenu(false)}
