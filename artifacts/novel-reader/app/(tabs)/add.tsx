@@ -320,7 +320,7 @@ function SourceListModal({
               key={langFilter}
               data={filteredSites}
               keyExtractor={(site) => site.name}
-              numColumns={3}
+              numColumns={2}
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
@@ -767,17 +767,21 @@ export default function AddNovelScreen() {
                 MAINT.
               </Text>
             </View>
-            <View style={styles.legendSeparator}>
-              <Text style={{ color: colors.textSecondary }}>|</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text>🟠</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
-              >
-                Low Mode
-              </Text>
-            </View>
+            {lowMemory.enabled && (
+              <>
+                <View style={styles.legendSeparator}>
+                  <Text style={{ color: colors.textSecondary }}>|</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <Text>🟠</Text>
+                  <Text
+                    style={[styles.legendText, { color: colors.textSecondary }]}
+                  >
+                    Low Mode
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
 
           <View style={styles.langSummaryRow}>
@@ -1113,7 +1117,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   siteCell: {
-    width: "31%",
+    width: "48%",
     paddingVertical: 8,
     paddingHorizontal: 4,
     alignItems: "center",
