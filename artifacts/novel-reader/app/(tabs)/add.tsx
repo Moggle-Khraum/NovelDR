@@ -194,7 +194,8 @@ function SourceListModal({
   onLangFilterChange,
 }: SourceListModalProps) {
   const { colors } = useTheme();
-  const { isChecking, recheck } = useSiteHealth();
+  const { isChecking, recheck, networkSlow } = useSiteHealth();
+  const lowMemory = useLowMemory();
   const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
   const LANG_PILLS: { key: SiteLanguage; label: string }[] = [
@@ -232,28 +233,57 @@ function SourceListModal({
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Source List
             </Text>
-            <Pressable
-              onPress={() => recheck()}
-              disabled={isChecking}
+            <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: isChecking ? 0.5 : 1,
+                gap: 8,
               }}
             >
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                {isChecking ? "⏳" : "🔄"}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                {isChecking ? "Checking…" : "Recheck"}
-              </Text>
-            </Pressable>
+              {lowMemory.enabled && (
+                <View
+                  style={{
+                    borderWidth: 1.5,
+                    borderColor: Colors.amber,
+                    borderRadius: 999,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_700Bold",
+                      color: Colors.amber,
+                    }}
+                  >
+                    Low Mode
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                onPress={() => recheck()}
+                disabled={isChecking}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  opacity: isChecking ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                  {isChecking ? "⏳" : "🔄"}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                  {isChecking ? "Checking…" : "Recheck"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <View
@@ -320,7 +350,7 @@ function SourceListModal({
               key={langFilter}
               data={filteredSites}
               keyExtractor={(site) => site.name}
-              numColumns={3}
+              numColumns={2}
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
@@ -329,6 +359,18 @@ function SourceListModal({
               removeClippedSubviews
               ListHeaderComponent={
                 <View style={styles.sectionContainer}>
+                  {networkSlow && (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Network is slow, so site checks stopped early. Tap Recheck
+                      to try again.
+                    </Text>
+                  )}
                   <View style={styles.langPillRow}>
                     {LANG_PILLS.map((pill) => {
                       const selected = langFilter === pill.key;
@@ -767,17 +809,6 @@ export default function AddNovelScreen() {
                 MAINT.
               </Text>
             </View>
-            <View style={styles.legendSeparator}>
-              <Text style={{ color: colors.textSecondary }}>|</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text>🟠</Text>
-              <Text
-                style={[styles.legendText, { color: colors.textSecondary }]}
-              >
-                Low Mode
-              </Text>
-            </View>
           </View>
 
           <View style={styles.langSummaryRow}>
@@ -1113,7 +1144,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   siteCell: {
-    width: "31%",
+    width: "48%",
     paddingVertical: 8,
     paddingHorizontal: 4,
     alignItems: "center",
