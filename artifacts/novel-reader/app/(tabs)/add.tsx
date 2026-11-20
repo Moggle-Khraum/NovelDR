@@ -194,7 +194,7 @@ function SourceListModal({
   onLangFilterChange,
 }: SourceListModalProps) {
   const { colors } = useTheme();
-  const { isChecking, recheck } = useSiteHealth();
+  const { isChecking, recheck, networkSlow } = useSiteHealth();
   const lowMemory = useLowMemory();
   const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
@@ -359,6 +359,18 @@ function SourceListModal({
               removeClippedSubviews
               ListHeaderComponent={
                 <View style={styles.sectionContainer}>
+                  {networkSlow && (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Network is slow, so site checks stopped early. Tap Recheck
+                      to try again.
+                    </Text>
+                  )}
                   <View style={styles.langPillRow}>
                     {LANG_PILLS.map((pill) => {
                       const selected = langFilter === pill.key;

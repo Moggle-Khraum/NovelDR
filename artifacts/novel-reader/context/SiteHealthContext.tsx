@@ -11,6 +11,7 @@ import { checkSiteHealth } from "@/hooks/useApi";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { needsWebView } from "@/hooks/scrapers/shared/webviewSites";
 import { useLowMemory } from "./LowMemoryContext";
+import { createNetworkSpeed, probeConnection } from "@/lib/networkSpeed";
 
 // --- SUPPORTED SITES ---
 // Moved here from app/(tabs)/add.tsx so the health-check logic can live at
@@ -115,12 +116,15 @@ const CACHE_VALID_MS = 12 * 60 * 60 * 1000; // 12 hours
 type SiteHealthContextType = {
   statuses: Record<string, SiteStatus>;
   isChecking: boolean;
+  /** True when a run stopped early because the connection looks slow. */
+  networkSlow: boolean;
   recheck: (siteName?: string) => void;
 };
 
 const SiteHealthContext = createContext<SiteHealthContextType>({
   statuses: {},
   isChecking: false,
+  networkSlow: false,
   recheck: () => {},
 });
 
@@ -167,6 +171,8 @@ export function SiteHealthProvider({
   lowMemoryRef.current = lowMemoryOn;
   const [statuses, setStatuses] = useState<Record<string, SiteStatus>>({});
   const [isChecking, setIsChecking] = useState(false);
+  const [networkSlow, setNetworkSlow] = useState(false);
+  const speedRef = useRef(createNetworkSpeed());
   const checkingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingRecheckRef = useRef(false);
@@ -206,24 +212,46 @@ export function SiteHealthProvider({
 
     checkingRef.current = true;
     setIsChecking(true);
+    setNetworkSlow(false);
+    speedRef.current.startRun();
 
     const results: Record<string, SiteStatus> = {};
 
     // Check each site on its own: only the site currently being checked
     // shows "checking", and its result lands as soon as it finishes
     // instead of every site waiting on the slowest one.
+    const speed = speedRef.current;
+    let stalled = false;
     for (const site of sitesToCheck) {
       // Paused, not offline: these sites need the WebView, which is off in Low Memory Mode.
       if (lowMemoryRef.current && needsWebView(site.baseUrl)) continue;
+
+      // Several timeouts in a row can also mean a few sites are down, so
+      // confirm with one fast request to a stable host before stopping.
+      // Only a slow probe stops the run.
+      if (speed.isStalled()) {
+        if (await probeConnection()) {
+          speed.clearStall();
+        } else {
+          stalled = true;
+          break;
+        }
+      }
+
       setStatuses((prev) => ({ ...prev, [site.name]: "checking" }));
+      const startedAt = Date.now();
       try {
-        const isUp = await checkSiteHealth(site.baseUrl);
+        const isUp = await checkSiteHealth(site.baseUrl, {
+          timeoutScale: speed.timeoutScale(),
+        });
         results[site.name] = isUp ? "online" : "offline";
       } catch (error: any) {
         results[site.name] = "offline";
       }
+      speed.record(Date.now() - startedAt);
       setStatuses((prev) => ({ ...prev, [site.name]: results[site.name] }));
     }
+    setNetworkSlow(stalled);
 
     const finalStatuses = { ...baseStatuses, ...results };
     await saveSiteStatus(finalStatuses);
@@ -344,7 +372,7 @@ export function SiteHealthProvider({
 
   return (
     <SiteHealthContext.Provider
-      value={{ statuses: shownStatuses, isChecking, recheck }}
+      value={{ statuses: shownStatuses, isChecking, networkSlow, recheck }}
     >
       {children}
     </SiteHealthContext.Provider>

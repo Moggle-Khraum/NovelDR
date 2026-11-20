@@ -118,6 +118,7 @@ const classifyStatus = (status: number): SiteHealthState => {
  */
 export const checkSiteHealthDetailed = async (
   baseUrl: string,
+  options?: { timeoutScale?: number },
 ): Promise<{
   isUp: boolean;
   state: SiteHealthState;
@@ -129,6 +130,8 @@ export const checkSiteHealthDetailed = async (
   const startTime = Date.now();
   const elapsed = () => Date.now() - startTime;
   const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
+  // Scales every tier's timeout; the speed tracker raises it on slow networks.
+  const scaled = (ms: number) => Math.round(ms * (options?.timeoutScale ?? 1));
 
   const baseHeaders = {
     "User-Agent":
@@ -152,8 +155,8 @@ export const checkSiteHealthDetailed = async (
       const response = await fetchWithBoundedTimeout(
         cleanUrl,
         { method: "HEAD", headers: baseHeaders, redirect: "follow" as any },
-        10000, // soft (abort) timeout
-        12000, // hard timeout - always wins even if abort doesn't work
+        scaled(10000), // soft (abort) timeout
+        scaled(12000), // hard timeout - always wins even if abort doesn't work
         `HEAD ${cleanUrl}`,
       );
 
@@ -180,8 +183,8 @@ export const checkSiteHealthDetailed = async (
           headers: { ...baseHeaders, "Cache-Control": "no-cache" },
           redirect: "follow" as any,
         },
-        15000,
-        17000,
+        scaled(15000),
+        scaled(17000),
         `GET ${cleanUrl}`,
       );
 
@@ -206,8 +209,8 @@ export const checkSiteHealthDetailed = async (
         const response = await fetchWithBoundedTimeout(
           `${cleanUrl}${path}`,
           { method: "GET", headers: baseHeaders, redirect: "follow" as any },
-          10000,
-          12000,
+          scaled(10000),
+          scaled(12000),
           `GET ${cleanUrl}${path}`,
         );
 
@@ -235,8 +238,8 @@ export const checkSiteHealthDetailed = async (
       const response = await fetchWithBoundedTimeout(
         proxyUrl,
         { method: "GET", headers: baseHeaders, redirect: "follow" as any },
-        15000,
-        17000,
+        scaled(15000),
+        scaled(17000),
         `PROXY GET ${cleanUrl}`,
       );
 
@@ -300,7 +303,10 @@ export const checkSiteHealthDetailed = async (
 
 // Thin boolean wrapper kept for any other callers that only care about
 // up/down and don't need the state classification or diagnostics.
-export const checkSiteHealth = async (baseUrl: string): Promise<boolean> => {
-  const result = await checkSiteHealthDetailed(baseUrl);
+export const checkSiteHealth = async (
+  baseUrl: string,
+  options?: { timeoutScale?: number },
+): Promise<boolean> => {
+  const result = await checkSiteHealthDetailed(baseUrl, options);
   return result.isUp;
 };
