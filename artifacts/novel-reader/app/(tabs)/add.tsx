@@ -195,6 +195,9 @@ function SourceListModal({
 }: SourceListModalProps) {
   const { colors } = useTheme();
   const { isChecking, recheck, networkSlow } = useSiteHealth();
+  const pausedCount = Object.values(siteStatuses).filter(
+    (status) => status === "paused",
+  ).length;
   const lowMemory = useLowMemory();
   const [activeTab, setActiveTab] = useState<"active" | "deprecated">("active");
 
@@ -216,6 +219,7 @@ function SourceListModal({
         <Pressable
           style={[
             styles.modalContent,
+            { height: "75%", maxHeight: undefined },
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
@@ -223,67 +227,15 @@ function SourceListModal({
           ]}
           onPress={() => {}}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
+          <View>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Source List
             </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {lowMemory.enabled && (
-                <View
-                  style={{
-                    borderWidth: 1.5,
-                    borderColor: Colors.amber,
-                    borderRadius: 999,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "Inter_700Bold",
-                      color: Colors.amber,
-                    }}
-                  >
-                    Low Mode
-                  </Text>
-                </View>
-              )}
-              <Pressable
-                onPress={() => recheck()}
-                disabled={isChecking}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: isChecking ? 0.5 : 1,
-                }}
-              >
-                <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                  {isChecking ? "⏳" : "🔄"}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                  {isChecking ? "Checking…" : "Recheck"}
-                </Text>
-              </Pressable>
-            </View>
+            {lowMemory.enabled && (
+              <Text style={{ fontSize: 12, color: Colors.amber, marginTop: 2 }}>
+                Low Mode · {pausedCount} paused
+              </Text>
+            )}
           </View>
 
           <View
@@ -343,84 +295,106 @@ function SourceListModal({
                 </Text>
               </Pressable>
             )}
+            <Pressable
+              onPress={() => recheck()}
+              disabled={isChecking}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: isChecking ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "⏳" : "🔄"}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "Checking…" : "Recheck"}
+              </Text>
+            </Pressable>
           </View>
 
           {activeTab === "active" ? (
-            <FlatList
-              key={langFilter}
-              data={filteredSites}
-              keyExtractor={(site) => site.name}
-              numColumns={2}
-              columnWrapperStyle={styles.gridRow}
-              contentContainerStyle={styles.gridContent}
-              showsVerticalScrollIndicator={false}
-              initialNumToRender={12}
-              windowSize={5}
-              removeClippedSubviews
-              ListHeaderComponent={
-                <View style={styles.sectionContainer}>
-                  {networkSlow && (
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Network is slow, so site checks stopped early. Tap Recheck
-                      to try again.
-                    </Text>
-                  )}
-                  <View style={styles.langPillRow}>
-                    {LANG_PILLS.map((pill) => {
-                      const selected = langFilter === pill.key;
-                      return (
-                        <Pressable
-                          key={pill.key}
-                          onPress={() => onLangFilterChange(pill.key)}
+            <>
+              <View style={styles.sectionContainer}>
+                {networkSlow && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Network is slow, so site checks stopped early. Tap Recheck
+                    to try again.
+                  </Text>
+                )}
+                <View style={styles.langPillRow}>
+                  {LANG_PILLS.map((pill) => {
+                    const selected = langFilter === pill.key;
+                    return (
+                      <Pressable
+                        key={pill.key}
+                        onPress={() => onLangFilterChange(pill.key)}
+                        style={[
+                          styles.langPill,
+                          {
+                            borderColor: selected
+                              ? colors.accent
+                              : colors.border,
+                            backgroundColor: selected
+                              ? colors.accent + "14"
+                              : colors.card,
+                          },
+                        ]}
+                      >
+                        <Text
                           style={[
-                            styles.langPill,
+                            styles.langPillText,
                             {
-                              borderColor: selected
+                              color: selected
                                 ? colors.accent
-                                : colors.border,
-                              backgroundColor: selected
-                                ? colors.accent + "14"
-                                : colors.card,
+                                : colors.textMuted,
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.langPillText,
-                              {
-                                color: selected
-                                  ? colors.accent
-                                  : colors.textMuted,
-                              },
-                            ]}
-                          >
-                            {pill.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                          {pill.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              }
-              ListEmptyComponent={
-                <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
-                  No sites in this group yet.
-                </Text>
-              }
-              renderItem={({ item }) => (
-                <SourceListModalCell
-                  name={item.name}
-                  status={siteStatuses[item.name] || "idle"}
-                  flag={getSourceFlag(item.baseUrl)}
-                />
-              )}
-            />
+              </View>
+              <FlatList
+                style={{ flex: 1 }}
+                key={langFilter}
+                data={filteredSites}
+                keyExtractor={(site) => site.name}
+                numColumns={2}
+                columnWrapperStyle={styles.gridRow}
+                contentContainerStyle={styles.gridContent}
+                showsVerticalScrollIndicator={false}
+                initialNumToRender={12}
+                windowSize={5}
+                ListEmptyComponent={
+                  <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
+                    No sites in this group yet.
+                  </Text>
+                }
+                renderItem={({ item }) => (
+                  <SourceListModalCell
+                    name={item.name}
+                    status={siteStatuses[item.name] || "idle"}
+                    flag={getSourceFlag(item.baseUrl)}
+                  />
+                )}
+              />
+            </>
           ) : (
             <ScrollView
               showsVerticalScrollIndicator={false}
@@ -1145,6 +1119,7 @@ const styles = StyleSheet.create({
   },
   siteCell: {
     width: "48%",
+    height: 56,
     paddingVertical: 8,
     paddingHorizontal: 4,
     alignItems: "center",
