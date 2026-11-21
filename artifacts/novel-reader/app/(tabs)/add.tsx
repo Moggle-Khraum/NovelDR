@@ -227,15 +227,52 @@ function SourceListModal({
           ]}
           onPress={() => {}}
         >
-          <View>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Source List
-            </Text>
-            {lowMemory.enabled && (
-              <Text style={{ fontSize: 12, color: Colors.amber, marginTop: 2 }}>
-                Low Mode · {pausedCount} paused
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View>
+              <Text
+                style={[
+                  styles.modalTitle,
+                  { color: colors.text, textAlign: "left" },
+                ]}
+              >
+                Source List
               </Text>
-            )}
+              {lowMemory.enabled && (
+                <Text
+                  style={{ fontSize: 12, color: Colors.amber, marginTop: 2 }}
+                >
+                  Low Mode · {pausedCount} paused
+                </Text>
+              )}
+            </View>
+            <Pressable
+              onPress={() => recheck()}
+              disabled={isChecking}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: isChecking ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "⏳" : "🔄"}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isChecking ? "Checking…" : "Recheck"}
+              </Text>
+            </Pressable>
           </View>
 
           <View
@@ -295,28 +332,6 @@ function SourceListModal({
                 </Text>
               </Pressable>
             )}
-            <Pressable
-              onPress={() => recheck()}
-              disabled={isChecking}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: isChecking ? 0.5 : 1,
-              }}
-            >
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                {isChecking ? "⏳" : "🔄"}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                {isChecking ? "Checking…" : "Recheck"}
-              </Text>
-            </Pressable>
           </View>
 
           {activeTab === "active" ? (
