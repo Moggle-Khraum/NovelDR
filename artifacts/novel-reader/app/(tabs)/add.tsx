@@ -247,7 +247,7 @@ function SourceListModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
+      <View style={styles.modalOverlay}>
         <View
           style={[
             styles.modalContent,
@@ -436,7 +436,15 @@ function SourceListModal({
             </ScrollView>
           )}
         </View>
-      </Pressable>
+        <Pressable
+          onPress={onClose}
+          style={[styles.sourceCloseButton, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.sourceCloseText, { color: colors.text }]}>
+            Close
+          </Text>
+        </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -1146,6 +1154,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   scrollBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 8 },
+  sourceCloseButton: {
+    marginTop: 12,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sourceCloseText: { fontFamily: "Inter_700Bold", fontSize: 14 },
   rowList: { gap: 6, paddingTop: 8, paddingBottom: 8 },
   rowCell: {
     height: 34,
