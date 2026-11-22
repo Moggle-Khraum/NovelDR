@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
-import React, { memo, useRef, useState } from "react";
+import React, { memo, useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -117,6 +117,10 @@ const statusColor = (status: SiteStatus): string | null => {
 };
 
 // --- Modal Cell ---
+// Fixed row height (34) plus the 6px gap between rows. Keep in sync with
+// styles.rowCell and styles.rowList.gap.
+const SOURCE_ROW_STRIDE = 40;
+
 // One full-width row per site: name on the left, status on the right.
 // Active is green, Paused is blue-grey, a site that is down shows its state.
 const ROW_ACTIVE = "#3ddc84";
@@ -225,6 +229,17 @@ function SourceListModal({
   ];
   const filteredSites = sites.filter((site) => site.language === langFilter);
 
+  const renderSite = useCallback(
+    ({ item }: { item: (typeof SUPPORTED_SITES)[number] }) => (
+      <SourceListRow
+        name={item.name}
+        status={siteStatuses[item.name] || "idle"}
+        flag={getSourceFlag(item.baseUrl)}
+      />
+    ),
+    [siteStatuses],
+  );
+
   return (
     <Modal
       visible={visible}
@@ -233,7 +248,7 @@ function SourceListModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable
+        <View
           style={[
             styles.modalContent,
             { height: "75%", maxHeight: undefined },
@@ -242,7 +257,6 @@ function SourceListModal({
               borderColor: colors.border,
             },
           ]}
-          onPress={() => {}}
         >
           <Text
             style={[
@@ -395,18 +409,19 @@ function SourceListModal({
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={12}
                 windowSize={5}
+                maxToRenderPerBatch={8}
+                removeClippedSubviews
+                getItemLayout={(_, index) => ({
+                  length: SOURCE_ROW_STRIDE,
+                  offset: SOURCE_ROW_STRIDE * index,
+                  index,
+                })}
                 ListEmptyComponent={
                   <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
                     No sites in this group yet.
                   </Text>
                 }
-                renderItem={({ item }) => (
-                  <SourceListRow
-                    name={item.name}
-                    status={siteStatuses[item.name] || "idle"}
-                    flag={getSourceFlag(item.baseUrl)}
-                  />
-                )}
+                renderItem={renderSite}
               />
             </>
           ) : (
@@ -420,7 +435,7 @@ function SourceListModal({
               ))}
             </ScrollView>
           )}
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
@@ -1133,9 +1148,9 @@ const styles = StyleSheet.create({
   scrollBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 8 },
   rowList: { gap: 6, paddingTop: 8, paddingBottom: 8 },
   rowCell: {
+    height: 34,
     borderWidth: 2,
     borderRadius: 12,
-    paddingVertical: 6,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
