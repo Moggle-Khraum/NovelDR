@@ -247,7 +247,7 @@ function SourceListModal({
           <Text
             style={[
               styles.modalTitle,
-              { color: colors.text, textAlign: "left" },
+              { color: colors.text, textAlign: "center" },
             ]}
           >
             Source List
@@ -276,10 +276,6 @@ function SourceListModal({
               </Text>
             </Pressable>
           </View>
-
-          <View
-            style={[styles.modalSeparator, { backgroundColor: colors.border }]}
-          />
 
           {/* TAB NAVIGATION */}
           <View style={styles.tabNavigation}>
@@ -388,7 +384,10 @@ function SourceListModal({
                 </View>
               </View>
               <FlatList
-                style={{ flex: 1 }}
+                style={[
+                  styles.scrollBox,
+                  { borderColor: colors.border, flex: 1 },
+                ]}
                 key={langFilter}
                 data={filteredSites}
                 keyExtractor={(site) => site.name}
@@ -412,6 +411,7 @@ function SourceListModal({
             </>
           ) : (
             <ScrollView
+              style={[styles.scrollBox, { borderColor: colors.border }]}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.rowList}
             >
@@ -1110,8 +1110,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 8,
   },
   lowModeBadge: {
     borderWidth: 1.5,
@@ -1130,18 +1130,19 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
-  rowList: { gap: 10, paddingTop: 12, paddingBottom: 24 },
+  scrollBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 8 },
+  rowList: { gap: 6, paddingTop: 8, paddingBottom: 8 },
   rowCell: {
-    height: 52,
     borderWidth: 2,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  rowName: { fontSize: 15, fontWeight: "600", flexShrink: 1, marginRight: 10 },
-  rowStatus: { fontSize: 14, fontWeight: "700" },
+  rowName: { fontSize: 14, fontWeight: "600", flexShrink: 1, marginRight: 10 },
+  rowStatus: { fontSize: 12, fontWeight: "700" },
   siteCell: {
     width: "48%",
     height: 56,
@@ -1317,12 +1318,12 @@ const styles = StyleSheet.create({
   langPillRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 10,
-    marginBottom: 16,
+    gap: 6,
+    marginBottom: 8,
   },
   langPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 14,
     borderWidth: 2,
   },
@@ -1354,7 +1355,7 @@ const styles = StyleSheet.create({
   langSummaryText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   sectionContainer: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 8,
     paddingHorizontal: 8,
   },
   sectionLabel: {
@@ -1393,8 +1394,7 @@ const styles = StyleSheet.create({
   },
   tabNavigation: {
     flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   tabButton: {
     flex: 1,
