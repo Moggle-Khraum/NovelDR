@@ -117,10 +117,13 @@ const statusColor = (status: SiteStatus): string | null => {
 };
 
 // --- Modal Cell ---
-// Styled like the language pills above: one element, a 2px outline, a rounded
-// pill shape and a light tinted fill. Idle/checking cells use the neutral
-// border so the grid keeps its size.
-function SourceListModalCellBase({
+// One full-width row per site: name on the left, status on the right.
+// Active is green, Paused is blue-grey, a site that is down shows its state.
+const ROW_ACTIVE = "#3ddc84";
+const ROW_PAUSED = "#8fa8c8";
+const ROW_DEAD = "#ff5c5c";
+
+function SourceListRowBase({
   name,
   status,
   flag,
@@ -134,44 +137,58 @@ function SourceListModalCellBase({
     status === "offline" ||
     status === "maintenance" ||
     status === "gateway_timeout";
-  const tint = statusColor(status);
+  const isPaused = status === "paused";
+  const tone = isPaused
+    ? ROW_PAUSED
+    : isDown
+      ? ROW_DEAD
+      : status === "idle"
+        ? colors.border
+        : ROW_ACTIVE;
+  const label = isPaused
+    ? "Paused"
+    : isDown
+      ? "Down"
+      : status === "idle"
+        ? "Waiting"
+        : "Active";
 
   return (
     <View
       style={[
-        styles.siteCell,
-        {
-          backgroundColor: tint ? tint + "14" : colors.card,
-          borderColor: tint ?? colors.border,
-        },
-        status === "paused" ? { opacity: 0.45 } : null,
+        styles.rowCell,
+        { borderColor: tone, backgroundColor: colors.card },
       ]}
     >
-      <Text
-        style={[
-          styles.siteName,
-          // Dim the name of a site that is down; the outline stays vivid.
-          { color: colors.text, opacity: isDown ? 0.6 : 1 },
-        ]}
-        numberOfLines={2}
-      >
+      <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={1}>
         {flag ? `${name} ${flag}` : name}
       </Text>
-      {status === "paused" ? (
-        <Text
-          style={[
-            styles.siteName,
-            { color: colors.text, opacity: 0.6, fontSize: 10 },
-          ]}
-        >
-          Paused
-        </Text>
-      ) : null}
+      <Text style={[styles.rowStatus, { color: tone }]}>{label}</Text>
     </View>
   );
 }
 
-const SourceListModalCell = memo(SourceListModalCellBase);
+const SourceListRow = memo(SourceListRowBase);
+
+// Deprecated site: domain on the left, DEAD on the right.
+function DeprecatedRowBase({ domain }: { domain: string }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={[
+        styles.rowCell,
+        { borderColor: ROW_DEAD, backgroundColor: colors.card },
+      ]}
+    >
+      <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={1}>
+        {domain}
+      </Text>
+      <Text style={[styles.rowStatus, { color: ROW_DEAD }]}>DEAD</Text>
+    </View>
+  );
+}
+
+const DeprecatedRow = memo(DeprecatedRowBase);
 
 // --- Source List Modal ---
 interface SourceListModalProps {
@@ -227,44 +244,29 @@ function SourceListModal({
           ]}
           onPress={() => {}}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+          <Text
+            style={[
+              styles.modalTitle,
+              { color: colors.text, textAlign: "left" },
+            ]}
           >
-            <View>
-              <Text
-                style={[
-                  styles.modalTitle,
-                  { color: colors.text, textAlign: "left" },
-                ]}
-              >
-                Source List
-              </Text>
-              {lowMemory.enabled && (
-                <Text
-                  style={{ fontSize: 12, color: Colors.amber, marginTop: 2 }}
-                >
-                  Low Mode · {pausedCount} paused
-                </Text>
-              )}
-            </View>
+            Source List
+          </Text>
+          <View style={styles.headerRow}>
+            {lowMemory.enabled ? (
+              <View style={styles.lowModeBadge}>
+                <Text style={styles.lowModeBadgeText}>Low Mode</Text>
+              </View>
+            ) : (
+              <View />
+            )}
             <Pressable
               onPress={() => recheck()}
               disabled={isChecking}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: isChecking ? 0.5 : 1,
-              }}
+              style={[
+                styles.recheckButton,
+                { borderColor: colors.border, opacity: isChecking ? 0.5 : 1 },
+              ]}
             >
               <Text style={{ fontSize: 12, color: colors.textMuted }}>
                 {isChecking ? "⏳" : "🔄"}
@@ -390,9 +392,7 @@ function SourceListModal({
                 key={langFilter}
                 data={filteredSites}
                 keyExtractor={(site) => site.name}
-                numColumns={2}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={styles.gridContent}
+                contentContainerStyle={styles.rowList}
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={12}
                 windowSize={5}
@@ -402,7 +402,7 @@ function SourceListModal({
                   </Text>
                 }
                 renderItem={({ item }) => (
-                  <SourceListModalCell
+                  <SourceListRow
                     name={item.name}
                     status={siteStatuses[item.name] || "idle"}
                     flag={getSourceFlag(item.baseUrl)}
@@ -413,37 +413,11 @@ function SourceListModal({
           ) : (
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalGrid}
+              contentContainerStyle={styles.rowList}
             >
-              {/* DEPRECATED SITES TAB */}
-              {activeTab === "deprecated" &&
-                deprecatedSites &&
-                deprecatedSites.length > 0 && (
-                  <View style={styles.sectionContainer}>
-                    <Text
-                      style={[styles.deprecatedTitle, { color: colors.text }]}
-                    >
-                      Deprecated Sites
-                    </Text>
-                    <View style={styles.deprecatedPillGrid}>
-                      {deprecatedSites.map((site) => (
-                        <View
-                          key={site.domain}
-                          style={styles.deprecatedPillContainer}
-                        >
-                          <Text
-                            style={[
-                              styles.deprecatedPillDomain,
-                              { color: colors.textMuted },
-                            ]}
-                          >
-                            {site.domain}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+              {deprecatedSites?.map((site) => (
+                <DeprecatedRow key={site.domain} domain={site.domain} />
+              ))}
             </ScrollView>
           )}
         </Pressable>
@@ -1132,6 +1106,42 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 10,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  lowModeBadge: {
+    borderWidth: 1.5,
+    borderColor: Colors.amber,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  lowModeBadgeText: { fontSize: 12, fontWeight: "700", color: Colors.amber },
+  recheckButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  rowList: { gap: 10, paddingTop: 12, paddingBottom: 24 },
+  rowCell: {
+    height: 52,
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowName: { fontSize: 15, fontWeight: "600", flexShrink: 1, marginRight: 10 },
+  rowStatus: { fontSize: 14, fontWeight: "700" },
   siteCell: {
     width: "48%",
     height: 56,
