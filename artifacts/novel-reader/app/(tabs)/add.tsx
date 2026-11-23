@@ -795,6 +795,19 @@ export default function AddNovelScreen() {
                 MAINT.
               </Text>
             </View>
+            {lowMemory.enabled && (
+              <>
+                <View style={styles.legendSeparator}>
+                  <Text style={{ color: colors.textSecondary }}>|</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <Text>🟠</Text>
+                  <Text style={[styles.legendText, { color: Colors.amber }]}>
+                    LOW MODE
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
 
           <View style={styles.langSummaryRow}>
