@@ -1,6 +1,6 @@
 {
   "name": "@workspace/novel-reader",
-  "version": "5.4.30",
+  "version": "5.5.35",
   "private": true,
   "main": "index.js",
   "dependencies": {
