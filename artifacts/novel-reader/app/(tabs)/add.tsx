@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
-import React, { memo, useRef, useState } from "react";
+import React, { memo, useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -117,10 +117,17 @@ const statusColor = (status: SiteStatus): string | null => {
 };
 
 // --- Modal Cell ---
-// Styled like the language pills above: one element, a 2px outline, a rounded
-// pill shape and a light tinted fill. Idle/checking cells use the neutral
-// border so the grid keeps its size.
-function SourceListModalCellBase({
+// Fixed row height (34) plus the 6px gap between rows. Keep in sync with
+// styles.rowCell and styles.rowList.gap.
+const SOURCE_ROW_STRIDE = 40;
+
+// One full-width row per site: name on the left, status on the right.
+// Active is green, Paused is blue-grey, a site that is down shows its state.
+const ROW_ACTIVE = "#3ddc84";
+const ROW_PAUSED = "#8fa8c8";
+const ROW_DEAD = "#ff5c5c";
+
+function SourceListRowBase({
   name,
   status,
   flag,
@@ -134,44 +141,58 @@ function SourceListModalCellBase({
     status === "offline" ||
     status === "maintenance" ||
     status === "gateway_timeout";
-  const tint = statusColor(status);
+  const isPaused = status === "paused";
+  const tone = isPaused
+    ? ROW_PAUSED
+    : isDown
+      ? ROW_DEAD
+      : status === "idle"
+        ? colors.border
+        : ROW_ACTIVE;
+  const label = isPaused
+    ? "Paused"
+    : isDown
+      ? "Down"
+      : status === "idle"
+        ? "Waiting"
+        : "Active";
 
   return (
     <View
       style={[
-        styles.siteCell,
-        {
-          backgroundColor: tint ? tint + "14" : colors.card,
-          borderColor: tint ?? colors.border,
-        },
-        status === "paused" ? { opacity: 0.45 } : null,
+        styles.rowCell,
+        { borderColor: tone, backgroundColor: colors.card },
       ]}
     >
-      <Text
-        style={[
-          styles.siteName,
-          // Dim the name of a site that is down; the outline stays vivid.
-          { color: colors.text, opacity: isDown ? 0.6 : 1 },
-        ]}
-        numberOfLines={2}
-      >
+      <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={1}>
         {flag ? `${name} ${flag}` : name}
       </Text>
-      {status === "paused" ? (
-        <Text
-          style={[
-            styles.siteName,
-            { color: colors.text, opacity: 0.6, fontSize: 10 },
-          ]}
-        >
-          Paused
-        </Text>
-      ) : null}
+      <Text style={[styles.rowStatus, { color: tone }]}>{label}</Text>
     </View>
   );
 }
 
-const SourceListModalCell = memo(SourceListModalCellBase);
+const SourceListRow = memo(SourceListRowBase);
+
+// Deprecated site: domain on the left, DEAD on the right.
+function DeprecatedRowBase({ domain }: { domain: string }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={[
+        styles.rowCell,
+        { borderColor: ROW_DEAD, backgroundColor: colors.card },
+      ]}
+    >
+      <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={1}>
+        {domain}
+      </Text>
+      <Text style={[styles.rowStatus, { color: ROW_DEAD }]}>DEAD</Text>
+    </View>
+  );
+}
+
+const DeprecatedRow = memo(DeprecatedRowBase);
 
 // --- Source List Modal ---
 interface SourceListModalProps {
@@ -208,6 +229,17 @@ function SourceListModal({
   ];
   const filteredSites = sites.filter((site) => site.language === langFilter);
 
+  const renderSite = useCallback(
+    ({ item }: { item: (typeof SUPPORTED_SITES)[number] }) => (
+      <SourceListRow
+        name={item.name}
+        status={siteStatuses[item.name] || "idle"}
+        flag={getSourceFlag(item.baseUrl)}
+      />
+    ),
+    [siteStatuses],
+  );
+
   return (
     <Modal
       visible={visible}
@@ -215,8 +247,8 @@ function SourceListModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable
+      <View style={styles.modalOverlay}>
+        <View
           style={[
             styles.modalContent,
             { height: "75%", maxHeight: undefined },
@@ -225,46 +257,30 @@ function SourceListModal({
               borderColor: colors.border,
             },
           ]}
-          onPress={() => {}}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+          <Text
+            style={[
+              styles.modalTitle,
+              { color: colors.text, textAlign: "center" },
+            ]}
           >
-            <View>
-              <Text
-                style={[
-                  styles.modalTitle,
-                  { color: colors.text, textAlign: "left" },
-                ]}
-              >
-                Source List
-              </Text>
-              {lowMemory.enabled && (
-                <Text
-                  style={{ fontSize: 12, color: Colors.amber, marginTop: 2 }}
-                >
-                  Low Mode · {pausedCount} paused
-                </Text>
-              )}
-            </View>
+            Source List
+          </Text>
+          <View style={styles.headerRow}>
+            {lowMemory.enabled ? (
+              <View style={styles.lowModeBadge}>
+                <Text style={styles.lowModeBadgeText}>Low Mode</Text>
+              </View>
+            ) : (
+              <View />
+            )}
             <Pressable
               onPress={() => recheck()}
               disabled={isChecking}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: isChecking ? 0.5 : 1,
-              }}
+              style={[
+                styles.recheckButton,
+                { borderColor: colors.border, opacity: isChecking ? 0.5 : 1 },
+              ]}
             >
               <Text style={{ fontSize: 12, color: colors.textMuted }}>
                 {isChecking ? "⏳" : "🔄"}
@@ -274,10 +290,6 @@ function SourceListModal({
               </Text>
             </Pressable>
           </View>
-
-          <View
-            style={[styles.modalSeparator, { backgroundColor: colors.border }]}
-          />
 
           {/* TAB NAVIGATION */}
           <View style={styles.tabNavigation}>
@@ -386,68 +398,53 @@ function SourceListModal({
                 </View>
               </View>
               <FlatList
-                style={{ flex: 1 }}
+                style={[
+                  styles.scrollBox,
+                  { borderColor: colors.border, flex: 1 },
+                ]}
                 key={langFilter}
                 data={filteredSites}
                 keyExtractor={(site) => site.name}
-                numColumns={2}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={styles.gridContent}
+                contentContainerStyle={styles.rowList}
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={12}
                 windowSize={5}
+                maxToRenderPerBatch={8}
+                removeClippedSubviews
+                getItemLayout={(_, index) => ({
+                  length: SOURCE_ROW_STRIDE,
+                  offset: SOURCE_ROW_STRIDE * index,
+                  index,
+                })}
                 ListEmptyComponent={
                   <Text style={[styles.langEmpty, { color: colors.textMuted }]}>
                     No sites in this group yet.
                   </Text>
                 }
-                renderItem={({ item }) => (
-                  <SourceListModalCell
-                    name={item.name}
-                    status={siteStatuses[item.name] || "idle"}
-                    flag={getSourceFlag(item.baseUrl)}
-                  />
-                )}
+                renderItem={renderSite}
               />
             </>
           ) : (
             <ScrollView
+              style={[styles.scrollBox, { borderColor: colors.border }]}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalGrid}
+              contentContainerStyle={styles.rowList}
             >
-              {/* DEPRECATED SITES TAB */}
-              {activeTab === "deprecated" &&
-                deprecatedSites &&
-                deprecatedSites.length > 0 && (
-                  <View style={styles.sectionContainer}>
-                    <Text
-                      style={[styles.deprecatedTitle, { color: colors.text }]}
-                    >
-                      Deprecated Sites
-                    </Text>
-                    <View style={styles.deprecatedPillGrid}>
-                      {deprecatedSites.map((site) => (
-                        <View
-                          key={site.domain}
-                          style={styles.deprecatedPillContainer}
-                        >
-                          <Text
-                            style={[
-                              styles.deprecatedPillDomain,
-                              { color: colors.textMuted },
-                            ]}
-                          >
-                            {site.domain}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+              {deprecatedSites?.map((site) => (
+                <DeprecatedRow key={site.domain} domain={site.domain} />
+              ))}
             </ScrollView>
           )}
+        </View>
+        <Pressable
+          onPress={onClose}
+          style={[styles.sourceCloseButton, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.sourceCloseText, { color: colors.text }]}>
+            Close
+          </Text>
         </Pressable>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -798,6 +795,15 @@ export default function AddNovelScreen() {
                 MAINT.
               </Text>
             </View>
+            <View style={styles.legendSeparator}>
+              <Text style={{ color: colors.textSecondary }}>|</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Text>🟠</Text>
+              <Text style={[styles.legendText, { color: Colors.amber }]}>
+                LOW MODE
+              </Text>
+            </View>
           </View>
 
           <View style={styles.langSummaryRow}>
@@ -1132,6 +1138,52 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 10,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  lowModeBadge: {
+    borderWidth: 1.5,
+    borderColor: Colors.amber,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  lowModeBadgeText: { fontSize: 12, fontWeight: "700", color: Colors.amber },
+  recheckButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  scrollBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 8 },
+  sourceCloseButton: {
+    marginTop: 12,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sourceCloseText: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  rowList: { gap: 6, paddingTop: 8, paddingBottom: 8 },
+  rowCell: {
+    height: 34,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowName: { fontSize: 14, fontWeight: "600", flexShrink: 1, marginRight: 10 },
+  rowStatus: { fontSize: 12, fontWeight: "700" },
   siteCell: {
     width: "48%",
     height: 56,
@@ -1307,12 +1359,12 @@ const styles = StyleSheet.create({
   langPillRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 10,
-    marginBottom: 16,
+    gap: 6,
+    marginBottom: 8,
   },
   langPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 14,
     borderWidth: 2,
   },
@@ -1344,7 +1396,7 @@ const styles = StyleSheet.create({
   langSummaryText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   sectionContainer: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 8,
     paddingHorizontal: 8,
   },
   sectionLabel: {
@@ -1383,8 +1435,7 @@ const styles = StyleSheet.create({
   },
   tabNavigation: {
     flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   tabButton: {
     flex: 1,
